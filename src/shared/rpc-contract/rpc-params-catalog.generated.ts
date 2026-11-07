@@ -1121,7 +1121,6 @@ export const RPC_PARAMS_BY_METHOD = {
   'agentSession.currentRequests': CurrentRequestsParams,
   'agentSession.delete': OptionsParams,
   'agentSession.ensure': AttachParams,
-  'agentSession.forkClaudeHome': OptionsParams,
   'agentSession.handoffStatus': HandoffStatusParams,
   'agentSession.history': HistoryParams,
   'agentSession.hold': HoldParams,

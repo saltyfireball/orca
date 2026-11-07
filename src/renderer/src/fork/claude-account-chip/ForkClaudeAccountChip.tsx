@@ -30,9 +30,19 @@ export type ForkClaudeAccountChipProps = {
   menu?: (chip: React.ReactElement) => React.ReactNode
 }
 
+/** The label without its ` @ host` suffix, for the left side of `A -> B @ kif`. */
+function bareLabel(account: ForkClaudeAccount): string {
+  const suffix = account.hostLabel ? ` @ ${account.hostLabel}` : ''
+  return suffix && account.label.endsWith(suffix)
+    ? account.label.slice(0, -suffix.length)
+    : account.label
+}
+
 function chipLabel(resolution: ForkClaudeAccountResolution): string {
   if (resolution.kind === 'account') {
-    return resolution.account.label
+    return resolution.movingTo
+      ? `${bareLabel(resolution.account)} -> ${resolution.movingTo.label}`
+      : resolution.account.label
   }
   if (resolution.kind === 'mixed') {
     return translate('fork.accountChip.mixed', 'Mixed')
@@ -45,7 +55,9 @@ function chipLabel(resolution: ForkClaudeAccountResolution): string {
 
 function chipColours(resolution: ForkClaudeAccountResolution): string[] {
   if (resolution.kind === 'account') {
-    return [resolution.account.colour]
+    return resolution.movingTo
+      ? [resolution.account.colour, resolution.movingTo.colour]
+      : [resolution.account.colour]
   }
   if (resolution.kind === 'mixed') {
     return resolution.accounts.slice(0, MAX_MIXED_DOTS).map((account) => account.colour)
@@ -120,17 +132,27 @@ function ChipHover({
       </div>
     )
   }
+  const movingTo = resolution.kind === 'account' ? resolution.movingTo : undefined
   const accounts =
     resolution.kind === 'mixed'
       ? resolution.accounts
       : resolution.kind === 'account'
-        ? [resolution.account]
+        ? [resolution.account, ...(movingTo ? [movingTo] : [])]
         : []
   return (
     <div className="space-y-3">
       {resolution.kind === 'mixed' ? (
         <div className="text-muted-foreground">
           {translate('fork.accountChip.mixedHelp', 'Sessions here run on different accounts.')}
+        </div>
+      ) : null}
+      {movingTo ? (
+        <div className="text-muted-foreground">
+          {translate(
+            'fork.accountChip.movingHelp',
+            'Moves to {{value0}} when the current turn ends.',
+            { value0: accountName(movingTo) }
+          )}
         </div>
       ) : null}
       {accounts.map((account) => (
