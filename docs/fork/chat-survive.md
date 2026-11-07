@@ -157,9 +157,10 @@ owner-gone signal, and fences decide who may write).
     would fail. The broker must load nothing lazily (it is dependency-free by design) or run from a
     copy outside the bundle, as the terminal daemon's executable host does.
 - **Journal gaps and duplicates.** The host journals by provider message ids. On adoption, replay
-  starts from the offset persisted at the last journal flush, so some frames are seen twice; the
-  adopter must drop provider items already journaled (Claude messages carry `uuid`) and must not
-  write a turn-cut witness for a turn that is in fact still running.
+  starts from the end of the last message the chat consumed (by its `uuid`), so nothing read but
+  not yet journaled is lost. A message the tracker could not place by uuid replays once more;
+  the adopter does not dedupe those, and must not write a turn-cut witness for a turn that is in
+  fact still running.
 - **The ring overflowing while detached.** A provider that writes more than the ring holds (16
   MiB by default) while nobody is attached loses its oldest bytes. The welcome says `truncated`;
   the adopter then rebuilds from the CLI's own transcript (what Resume reads today) instead of the
@@ -243,18 +244,24 @@ owner-gone signal, and fences decide who may write).
    as today.
    - Watching from the spawn (`chat-survive-registry.ts`, `chat-survive-stream-mark.ts`): every
      broker child is registered by session id. Its stdout is counted alongside the SDK's reader
-     (bytes handed to the app, the end of the last whole line) and each line's head is checked
-     for a provider `control_request` (kept pending with its line's offset until a
-     `control_response` for its id goes in on stdin, or a `control_cancel_request` comes out).
-   - Hand-off: the replay mark is `out` = the last whole line, or the earliest pending request
-     before it; `seen` = the last whole line; `pending` = the ids. The app says hello on the
+     and each line's head is checked for a provider `control_request` (kept pending with its
+     line's offset until a `control_response` for its id goes in on stdin, or a
+     `control_cancel_request` comes out). The SDK reads ahead of what the chat consumes, so bytes
+     read are not enough: after each message the adapter hands on, a hook in
+     `claude-stream-json-connection.ts` (`forkChatSurviveConsumed`) passes its `uuid`, and the
+     tracker moves `seen` to the end of the line that carries it (found in the line's first 64
+     KiB or last 1 KiB; lines are consumed in order, so a uuid it cannot place only means a
+     duplicate, never a loss).
+   - Hand-off: the replay mark is `seen` = the end of the last consumed message; `delivered` = the
+     last whole line read (control requests up to there were dispatched); `out` = `seen`, or the
+     earliest pending request before it; `pending` = the ids. The app says hello on the
      socket with `takeover: true` and the chat's fence (a takeover is the only hello the broker
      accepts while the app that spawned it lives; the fence check comes first), within 1 s. The
-     welcome must show no exit, no truncation from `out`, and at least `seen` bytes. Then the
-     record is rewritten (whole file, by rename) with `detached: {fence, out, err, seen,
-     pending}`, the entry is marked detached and the socket dropped, so the broker arms its orphan
-     timer. A failed or late connect returns false (a late one is dropped, and the stop that
-     follows signals the broker, which stops the provider); a bad welcome or a failed record write
+     welcome must show no exit, no truncation from `out`, and at least `delivered` bytes. Then
+     the record is rewritten (whole file, by rename) with `detached: {fence, out, err, seen,
+     delivered, pending}`, the entry is marked detached and the socket dropped, so the broker arms its orphan
+     timer. A failed or late connect returns false (a late one sends `stop`, as the stop that
+     follows does); a bad welcome or a failed record write
      sends `stop` and returns false.
    - After a hand-off nothing in this instance signals the broker: `child.kill` does nothing, and
      `forkChatSurviveManaged` (a Proxy on the managed process, the second line of the spawn hook)
@@ -284,8 +291,9 @@ owner-gone signal, and fences decide who may write).
      session and the owner pid. It must hold a `detached` mark, name this session and exactly
      that pid, and the setting must be on (macOS only: Linux owner probes also read the spawn
      token from the process, which the next lease cannot match). It says hello with the saved
-     fence plus one and `from` the saved offsets, within 2 s; the welcome must show the provider
-     running, nothing truncated and at least `seen` bytes. Then the claim is held
+     fence plus one and `from` the saved offsets, within 2 s (a late one gets `stop`); the welcome
+     must show the provider running, no stdout truncated and at least `delivered` bytes (stderr
+     is diagnostics, so its truncation does not count). Then the claim is held
      (`chat-survive-claims.ts`) and recovery releases the lease without signalling the owner.
      Anything else returns false and recovery stops the owner as before.
    - Start: the host's tab recovery callback goes through `forkChatSurviveRecover`, which starts
@@ -293,8 +301,9 @@ owner-gone signal, and fences decide who may write).
      provider is reattached at once. The spawn hook hands that start the claimed broker as its
      child (`chat-survive-adopted-child.ts`): pid = the broker's (the new lease, exit proof and
      signals name the real process), stdin to the socket (its end is an `end` frame), stdout
-     through the replay filter (below `seen` only the still-pending control requests, then
-     everything), and `exit`/`close` once the broker reports the provider's exit and the broker
+     through the replay filter (below `seen` only the still-pending control requests, up to
+     `delivered` also the messages read but never consumed, never a control frame already
+     dispatched, then everything), and `exit`/`close` once the broker reports the provider's exit and the broker
      process is gone. The record is rewritten without the mark, and the child is registered with
      a tracker that continues the saved mark in the broker's offsets, so the chat survives the
      next quit the same way (that hand-off uses a fence above the claim's).

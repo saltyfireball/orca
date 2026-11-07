@@ -11,19 +11,22 @@ import { chatSurviveRedeliveryFilter, chatSurviveReplayFilter } from './chat-sur
 import { forkChatSurviveAdopt } from './chat-survive-adopt'
 import { hasChatSurviveClaim } from './chat-survive-claims'
 import { forkChatSurviveQuit } from './chat-survive-detach'
+import { forkChatSurviveConsumed } from './chat-survive-registry'
 import { setChatSurviveConfigReader } from './chat-survive-spawn'
 import { createChatSurviveStreamTracker } from './chat-survive-stream-mark'
 
 const ENTRY = join(import.meta.dirname, 'chat-survive-broker-entry.ts')
 const tsxLoader = pathToFileURL(createRequire(import.meta.url).resolve('tsx')).href
 
-// Asks for two permissions, then echoes each input line it gets as {"echo": ...}.
+// Asks for two permissions, then echoes each input line it gets as {"echo": ...}. Messages carry
+// a uuid, as Claude Code's do, so a test can mark them consumed.
 const FAKE_CLAUDE = `
+const { randomUUID } = require('node:crypto')
 const say = (frame) => process.stdout.write(JSON.stringify(frame) + '\\n')
-say({ type: 'system', claude: process.pid })
+say({ type: 'system', claude: process.pid, uuid: randomUUID() })
 say({ type: 'control_request', request_id: 'r1', request: { subtype: 'can_use_tool' } })
 say({ type: 'control_request', request_id: 'r2', request: { subtype: 'can_use_tool' } })
-require('node:readline').createInterface({ input: process.stdin }).on('line', (line) => say({ echo: line }))
+require('node:readline').createInterface({ input: process.stdin }).on('line', (line) => say({ echo: line, uuid: randomUUID() }))
 `
 
 const dirs: string[] = []
@@ -58,20 +61,34 @@ function tempDir(): string {
   return dir
 }
 
+/** What the app's reader does with each message: hands it on, which moves the replay mark. */
+function consume(child: object, out: string): void {
+  const lines = out.split('\n')
+  for (const line of lines) {
+    const uuid = /"uuid":"([^"]+)"/.exec(line)?.[1]
+    if (uuid) {
+      forkChatSurviveConsumed(child, { uuid })
+    }
+  }
+}
+
 function waitFor(check: () => boolean, timeout = 8000): Promise<void> {
   return vi.waitFor(() => expect(check()).toBe(true), { timeout, interval: 20 })
 }
 
 describe('chat-survive replay', () => {
-  it('replays only still-pending requests below the mark, then everything', () => {
+  it('replays pending requests, then unconsumed messages, then everything', () => {
     const lines = [
       '{"type":"control_request","request_id":"a"}\n',
       '{"type":"assistant"}\n',
       '{"type":"control_request","request_id":"b"}\n',
-      '{"type":"result"}\n'
+      '{"type":"result"}\n',
+      '{"type":"control_response","response":{"request_id":"c"}}\n',
+      '{"type":"control_response","response":{"request_id":"d"}}\n'
     ]
-    const seen = Buffer.byteLength(lines.slice(0, 3).join(''))
-    const filter = chatSurviveReplayFilter({ out: 0, err: 0, seen, pending: ['a'] })
+    const seen = Buffer.byteLength(lines.slice(0, 2).join(''))
+    const delivered = Buffer.byteLength(lines.slice(0, 5).join(''))
+    const filter = chatSurviveReplayFilter({ out: 0, err: 0, seen, delivered, pending: ['a'] })
     let out = ''
     filter.on('data', (chunk: Buffer) => {
       out += chunk.toString('utf8')
@@ -80,7 +97,7 @@ describe('chat-survive replay', () => {
     // Split mid-line, so a line below the mark spans chunks.
     filter.write(Buffer.from(all.slice(0, 30)))
     filter.write(Buffer.from(all.slice(30)))
-    expect(out).toBe(`${lines[0]}${lines[3]}`)
+    expect(out).toBe(`${lines[0]}${lines[3]}${lines[5]}`)
   })
 
   it('drops replayed prompts from the CLI redelivery, so each is asked once', () => {
@@ -115,14 +132,19 @@ describe('chat-survive replay', () => {
   })
 
   it('continues a saved mark in the broker offsets', () => {
-    const tracker = createChatSurviveStreamTracker({ out: 100, err: 7, seen: 200, pending: ['a'] })
+    const saved = { out: 100, err: 7, seen: 200, delivered: 300, pending: ['a'] }
+    const tracker = createChatSurviveStreamTracker(saved)
     // Nothing replayed yet: the next mark is still the saved one.
-    expect(tracker.mark()).toEqual({ out: 100, err: 7, seen: 200, pending: ['a'] })
+    expect(tracker.mark()).toEqual(saved)
     tracker.stdout(`${'{"type":"control_request","request_id":"x"}'.padEnd(49, ' ')}\n`)
     tracker.stdout(`${'{"type":"control_request","request_id":"a"}'.padEnd(149, ' ')}\n`)
-    tracker.stdout('{"type":"assistant"}\n')
+    const message = '{"type":"assistant","uuid":"22222222-0001"}\n'
+    tracker.stdout(message)
     // An answered request below the mark does not come back; the pending one keeps its place.
-    expect(tracker.mark()).toMatchObject({ out: 150, seen: 321, pending: ['a'] })
+    const end = 300 + Buffer.byteLength(message)
+    expect(tracker.mark()).toMatchObject({ out: 150, seen: 200, delivered: end, pending: ['a'] })
+    tracker.consumed('22222222-0001')
+    expect(tracker.mark()).toMatchObject({ out: 150, seen: end })
   })
 })
 
@@ -167,6 +189,7 @@ describe.runIf(process.platform === 'darwin')('chat-survive adoption', () => {
     pids.add(Number(/"claude":(\d+)/.exec(first.out())?.[1]))
     first.child.stdin.write('{"type":"control_response","response":{"request_id":"r2"}}\n')
     await waitFor(() => first.out().includes('"echo"'))
+    consume(first.child, first.out())
     await expect(forkChatSurviveQuit('sess', { phase: 'ready', fence: 3 })).resolves.toBe(true)
     const brokerPid = first.child.pid ?? -1
 
@@ -177,8 +200,16 @@ describe.runIf(process.platform === 'darwin')('chat-survive adoption', () => {
     const second = spawnClaude()
     expect(hasChatSurviveClaim('sess')).toBe(false)
     expect(second.child.pid).toBe(brokerPid)
-    second.child.stdin.write('hello\n')
-    await waitFor(() => second.out().includes('"echo":"hello"'))
+    second.child.stdin.write('hello\nworld\n')
+    await waitFor(() => second.out().includes('"echo":"world"'))
+    // The app consumed hello but quit before it consumed world.
+    consume(
+      second.child,
+      second
+        .out()
+        .split('\n')
+        .find((line) => line.includes('hello')) ?? ''
+    )
     // The still-unanswered r1 comes again; nothing the first instance handled does.
     expect(second.out().startsWith('{"type":"control_request","request_id":"r1"')).toBe(true)
     expect(second.out()).not.toContain('"r2"')
@@ -189,8 +220,9 @@ describe.runIf(process.platform === 'darwin')('chat-survive adoption', () => {
     await expect(forkChatSurviveAdopt(adopt)).resolves.toBe(true)
     const third = spawnClaude()
     expect(third.child.pid).toBe(brokerPid)
-    await waitFor(() => third.out().includes('"r1"'))
+    await waitFor(() => third.out().includes('"r1"') && third.out().includes('world'))
     expect(third.out()).not.toContain('hello')
+    expect(third.out().split('"echo":"world"')).toHaveLength(2)
 
     const exited = new Promise((resolve) => third.child.once('exit', resolve))
     third.child.stdin.end()
