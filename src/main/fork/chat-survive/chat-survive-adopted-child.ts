@@ -1,7 +1,7 @@
 // SLRM-1394: a provider adopted from an earlier app instance, shaped as the child process the
 // Claude spawn hook returns. Its pid is the broker's, so the lease, the exit proof and every signal
 // still name the real process group; its stdio is the broker's socket. Output replays from the
-// saved mark: of the lines the earlier instance had already handled only its unanswered control
+// saved mark: of the lines the earlier instance had already consumed only its unanswered control
 // requests come again (a permission prompt still waiting on the user), then everything after.
 import { EventEmitter } from 'node:events'
 import { Transform, Writable, type TransformCallback } from 'node:stream'
@@ -9,6 +9,7 @@ import type { PipedChildProcess } from '@orca/process-host/process-spec'
 import type { ChatSurviveConnection } from './chat-survive-client'
 import type { ChatSurviveExit } from './chat-survive-protocol'
 import {
+  CONTROL_LINE,
   CONTROL_REQUEST,
   REQUEST_ID,
   type ChatSurviveStreamMark,
@@ -18,14 +19,26 @@ import {
 /** How often an adopted child checks that its broker has gone after the provider exited. */
 const EXIT_POLL_MS = 100
 
-/** Drops replayed lines below `mark.seen` unless they are still-pending control requests. */
+/**
+ * Replays from `mark.out`: below `mark.seen` only the still-pending control requests, up to
+ * `mark.delivered` also the messages the earlier instance read but never consumed, and from there
+ * on everything. Control frames the earlier instance dispatched never come again.
+ */
 export function chatSurviveReplayFilter(mark: ChatSurviveStreamMark): Transform {
   const pending = new Set(mark.pending)
   let offset = mark.out
   let partial = Buffer.alloc(0)
+  const keeps = (line: Buffer): boolean => {
+    const head = line.subarray(0, 64 * 1024).toString('latin1')
+    const id = CONTROL_REQUEST.test(head) ? REQUEST_ID.exec(head)?.[1] : undefined
+    if (id !== undefined && pending.has(id)) {
+      return true
+    }
+    return offset >= mark.seen && !CONTROL_LINE.test(head)
+  }
   return new Transform({
     transform(chunk: Buffer, _encoding, callback: TransformCallback) {
-      if (offset >= mark.seen && partial.length === 0) {
+      if (offset >= mark.delivered && partial.length === 0) {
         offset += chunk.length
         callback(null, chunk)
         return
@@ -34,18 +47,16 @@ export function chatSurviveReplayFilter(mark: ChatSurviveStreamMark): Transform 
       for (let newline = data.indexOf(0x0a); newline !== -1; newline = data.indexOf(0x0a)) {
         const line = data.subarray(0, newline + 1)
         data = data.subarray(newline + 1)
-        const head = line.subarray(0, 64 * 1024).toString('latin1')
-        const id = CONTROL_REQUEST.test(head) ? REQUEST_ID.exec(head)?.[1] : undefined
-        if (offset >= mark.seen || (id !== undefined && pending.has(id))) {
+        if (keeps(line)) {
           this.push(line)
         }
         offset += line.length
-        if (offset >= mark.seen) {
+        if (offset >= mark.delivered) {
           break
         }
       }
-      partial = offset >= mark.seen ? Buffer.alloc(0) : data
-      if (offset >= mark.seen && data.length > 0) {
+      partial = offset >= mark.delivered ? Buffer.alloc(0) : data
+      if (offset >= mark.delivered && data.length > 0) {
         offset += data.length
         this.push(data)
       }

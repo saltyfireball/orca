@@ -41,16 +41,16 @@ function takeOver(entry: ChatSurviveEntry, fence: number, from: { out: number; e
   return Promise.race([settled, timeout.promise]).then((connection) => {
     clearTimeout(timer)
     if (!connection) {
-      // Late is still ours: the broker stops the provider when the caller's stop signals it.
-      void settled.then((late) => late?.detach())
+      // Late is still ours and the caller stops the provider as today; so does the broker.
+      void settled.then((late) => late?.stop())
     }
     return connection
   })
 }
 
-function keepsEverything(connection: ChatSurviveConnection, seen: number): boolean {
+function keepsEverything(connection: ChatSurviveConnection, delivered: number): boolean {
   const { welcome } = connection
-  return welcome.exit === null && !welcome.out.truncated && welcome.out.end >= seen
+  return welcome.exit === null && !welcome.out.truncated && welcome.out.end >= delivered
 }
 
 /** Back to live unless the broker exited meanwhile; the caller stops the provider as today. */
@@ -78,7 +78,7 @@ export async function detachChatSurvive(sessionId: string, fence: number): Promi
   if (!connection) {
     return undo(entry)
   }
-  if (!keepsEverything(connection, mark.seen)) {
+  if (!keepsEverything(connection, mark.delivered)) {
     connection.stop()
     return undo(entry)
   }
