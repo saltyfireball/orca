@@ -255,9 +255,9 @@ jobs:
             pnpm-lock.yaml
             mobile/pnpm-lock.yaml
 
-      # Mirrors release-mac-build.yml "Install dependencies": build:mac packages x64 and arm64, so both natives are needed.
+      # The fork builds arm64 only (electron-builder.fork.config.cjs), so only arm64 natives are needed.
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --cpu=current,x64,arm64
+        run: pnpm install --frozen-lockfile --cpu=current,arm64
 
       # Mirrors release-mac-build.yml: out/mobile-web needs mobile's React Native/Expo install.
       - uses: ./.github/actions/install-mobile-dependencies
