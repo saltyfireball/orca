@@ -1,9 +1,12 @@
+import type { ExecutionHostId } from '../../../../../shared/execution-host'
 import type { RuntimeClientTarget } from '../../../../../shared/runtime-client-target'
 
 /** Where a confirmed Run launches, frozen when its dialog opens. */
 export type NativeChatRunTarget = {
   target: RuntimeClientTarget
   worktreeId: string
+  /** The workspace row's host, so a folder twin or SSH copy is checked on that same host. */
+  hostId: ExecutionHostId | null
   groupId: string | null
 }
 
