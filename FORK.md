@@ -30,6 +30,11 @@ named Orca Fork until SLRM-1367. `main` is always
 - **Shared mode: the fork can run on stock Orca's data.** See Shared mode below.
 - **Restart guard: quitting, restarting or updating waits for busy chats.** See Restart guard
   below.
+- **Groundwork for chats that survive a restart (SLRM-1394).** `src/main/fork/chat-survive/` holds
+  a broker that hosts one chat provider outside the app, keeps its output in a ring with byte
+  offsets, and lets the next app instance reattach by token and lease fence, with an orphan
+  timeout when nobody comes back. Nothing in the app uses it yet and it has no upstream hooks. The
+  design and the remaining phases are in `docs/fork/chat-survive.md`.
 
 ## Patch list
 
@@ -63,11 +68,13 @@ Apply these in this order. Each one is a single commit.
 26. `SLRM-1393 Warn before a quit, restart or update kills busy chats`
 27. `SLRM-1393 A held restart shows a neutral toast, not an error`
 28. `SLRM-1393 Fail open, bring the dialog forward and quit normally after a wait`
+29. `SLRM-1394 Chat survive: design and the provider broker transport`
 
 Fork-only code lives in `fork/` folders:
 
 - `src/shared/fork/`
 - `src/main/fork/`
+- `docs/fork/`
 - `src/main/updater/fork/`
 - `src/renderer/src/components/native-chat/fork/`
 - `src/renderer/src/fork/`
