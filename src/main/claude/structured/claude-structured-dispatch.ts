@@ -42,6 +42,11 @@ import {
   StructuredAgentSessionInputNotAdmitted,
   type StructuredAgentSessionAdmitFreshInput
 } from '../../native-chat/agent-session-wire/delivery/structured-agent-session-input-admission'
+import {
+  agentLetterLedgerRow,
+  appendAgentLetterLedgerRow,
+  claudeContentText
+} from './claude-agent-letter-ledger'
 
 const MAX_ACTIVE_DISPATCH_WAITERS = 64
 
@@ -113,6 +118,25 @@ export function retireClaudeDispatchWaiters(session: ClaudeSession): void {
     retireWaiter(session, waiter)
     waiter.resolve(null)
   }
+}
+
+/** A message another agent sent (`from`) that Claude took goes in the letter ledger (SLRM-1473). */
+function recordAgentLetter(
+  session: ClaudeSession,
+  body: AgentJournalMessageItem,
+  content: readonly unknown[],
+  uuid: string
+): void {
+  if (body.from?.kind !== 'agent') {
+    return
+  }
+  const text = claudeContentText(content)
+  if (!text) {
+    return
+  }
+  void appendAgentLetterLedgerRow(
+    agentLetterLedgerRow({ session: session.providerSessionId, uuid, text })
+  )
 }
 
 function claudeWriteFailureRejection(error: unknown): AgentJournalDispatchRejection {
@@ -224,6 +248,7 @@ export async function dispatchClaudeTurn(
     if (waiter.settledUuid) {
       const uuid = await replay.promise
       if (uuid) {
+        recordAgentLetter(session, input.body, content, uuid)
         return {
           state: 'accepted',
           providerIdentity: { provider: 'claude', sessionId: session.providerSessionId, uuid }
@@ -243,6 +268,7 @@ export async function dispatchClaudeTurn(
     }
     return { state: 'unknown', reason: dispatchWriteOutcomeUnknownReason(error) }
   }
+  recordAgentLetter(session, input.body, content, sentUuid)
   // Admit on write: an echo may wait for the current turn; replay settles delivery later.
   return { state: 'admitted' }
 }
