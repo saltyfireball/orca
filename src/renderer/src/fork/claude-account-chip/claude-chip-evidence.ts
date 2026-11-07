@@ -22,6 +22,8 @@ export type ClaudeChipEvidence = {
   hostLabel: string | null
   transcriptPath?: string
   chatSessionId?: string
+  /** The chat's status row state; a queued move is read again when it changes. */
+  chatStatus?: string
 }
 
 type SessionHost = Pick<
@@ -124,7 +126,10 @@ export function chatEvidence(
     return null
   }
   const host = sessionHost(state, worktreeId, tab.executionHostId)
-  return host ? { ...host, chatSessionId: sessionId } : null
+  const status = state.agentStatusByPaneKey[structuredAgentSessionPaneKey(tab.id, sessionId)]
+  return host
+    ? { ...host, chatSessionId: sessionId, ...(status ? { chatStatus: status.state } : {}) }
+    : null
 }
 
 /** Every Claude session in a worktree: terminal panes and native chats. */

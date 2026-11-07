@@ -17,6 +17,7 @@ import {
   getClaudeHostSnapshot,
   loadChatHome,
   loadClaudeHost,
+  refreshPendingChatHome,
   subscribeClaudeChipCache
 } from './claude-chip-host-cache'
 import { resolveAllEvidence } from './claude-chip-resolve'
@@ -49,7 +50,7 @@ export function useClaudeAccountResolution(
     return evidence.length > 0 ? JSON.stringify(evidence) : ''
   })
   const saved = useAppStore((state) => state.settings?.claudeManagedAccounts ?? NO_SAVED)
-  useSyncExternalStore(subscribeClaudeChipCache, getClaudeChipCacheVersion)
+  const cacheVersion = useSyncExternalStore(subscribeClaudeChipCache, getClaudeChipCacheVersion)
   const evidence = useMemo(() => parseEvidence(evidenceKey), [evidenceKey])
   useEffect(() => {
     for (const entry of evidence) {
@@ -61,6 +62,13 @@ export function useClaudeAccountResolution(
       }
     }
   }, [evidence])
+  useEffect(() => {
+    for (const entry of evidence) {
+      if (entry.chatSessionId !== undefined) {
+        refreshPendingChatHome(entry.transport, entry.chatSessionId, entry.chatStatus ?? '')
+      }
+    }
+  }, [evidence, cacheVersion])
   // A saved account added or removed changes which folders the host reports.
   const onLocalHost = evidence.some(
     (entry) => entry.ownerTarget.kind === 'local' && !entry.wslHostDistro
