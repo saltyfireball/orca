@@ -111,9 +111,15 @@ async function quitAndKill(owner: Owner, fence: number): Promise<void> {
 
 async function adopt(sessionId: string, recordDir: string, cwd: string, brokerPid: number) {
   const owner = startOwner(['adopt', sessionId, recordDir, cwd, CLAUDE, String(brokerPid)])
-  await waitFor(() => eventsOf(owner, 'pid').length > 0, 30_000)
+  // A refused start (the launch check) shows as an error event, not as a timeout.
+  await waitFor(() => eventsOf(owner, 'pid').length + eventsOf(owner, 'error').length > 0, 30_000)
+  expect(eventsOf(owner, 'error')).toEqual([])
   expect(field(eventsOf(owner, 'adopted')[0], 'ok')).toBe(true)
   expect(field(eventsOf(owner, 'pid')[0], 'pid')).toBe(brokerPid)
+  // Adopted although this launch resumes where the first started: the launch check allows that.
+  expect(field(eventsOf(owner, 'pid')[0], 'args')).toEqual(
+    expect.arrayContaining([expect.stringMatching(/^--resume=/)])
+  )
   return owner
 }
 
@@ -135,6 +141,9 @@ describe.runIf(process.env.ORCA_CHAT_SURVIVE_E2E === '1' && process.platform ===
         await waitFor(() => eventsOf(first, 'pid').length > 0, 30_000)
         const brokerPid = Number(field(eventsOf(first, 'pid')[0], 'pid'))
         brokers.add(brokerPid)
+        expect(field(eventsOf(first, 'pid')[0], 'args')).toEqual(
+          expect.arrayContaining([expect.stringMatching(/^--session-id=/)])
+        )
         await waitFor(() => eventsOf(first, 'perm').length > 0, 120_000)
         const toolUseID = field(eventsOf(first, 'perm')[0], 'toolUseID')
         await quitAndKill(first, 3)
