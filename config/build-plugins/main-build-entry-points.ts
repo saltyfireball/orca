@@ -9,6 +9,8 @@ export const MAIN_BUILD_ENTRY_POINTS: Record<string, string> = {
     'src/main/browser/extensions/native-messaging/browser-extension-native-host-supervisor-entry.ts'
   ),
   'daemon-entry': resolve('src/main/daemon/daemon-entry.ts'),
+  // Fork (SLRM-1394): the chat-survive broker, run under ELECTRON_RUN_AS_NODE.
+  'chat-survive-broker-entry': resolve('src/main/fork/chat-survive/chat-survive-broker-entry.ts'),
   'plugin-host-entry': resolve('src/main/plugins/workers/plugin-host-entry.ts'),
   'plugin-source-transpile-worker-entry': resolve(
     'src/main/plugins/panels/plugin-source-transpile-worker-entry.ts'
