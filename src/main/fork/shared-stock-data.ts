@@ -11,14 +11,14 @@ import {
 } from 'node:fs'
 import { hostname } from 'node:os'
 import { basename, join } from 'node:path'
+import { FORK_DATA_DIR_NAME, FORK_PRE_READY_APP_NAME, FORK_PRODUCT_NAME } from './app-name'
 
-// Shared mode: with the marker file in the fork's own data folder, Orca Fork runs on stock Orca's
+// Shared mode: with the marker file in the fork's own data folder, Blackfish runs on stock Orca's
 // data folder and Keychain key, so quitting one and opening the other switches with nothing to copy.
 // Electron's single-instance lock and the desktop profile lock live in that folder, so the two can
 // never have it open at once. Before a new fork version first opens it, the stock data is
 // snapshotted (APFS clones) into the fork's own folder, so a bad release can be rolled back.
 
-export const FORK_PRODUCT_NAME = 'Orca Fork'
 export const SHARED_DATA_MARKER = 'use-stock-data'
 // Stock Orca's userData folder and pre-ready app name both come from package.json `name`; the
 // pre-ready name fixes the Keychain service, "orca Safe Storage".
@@ -48,16 +48,30 @@ export type SharedDataResult =
   | { mode: 'own' }
   | { mode: 'shared'; stockDir: string; snapshot: string | null }
 
-/** Where shared mode would run, or null when this is not a packaged fork or the marker is absent. */
-function resolveSharedStockData(
-  forkApp: ForkApp,
-  platform: NodeJS.Platform
-): { forkOwnDir: string; stockDir: string } | null {
-  if (!forkApp.isPackaged || platform !== 'darwin') {
+/**
+ * Packaged only: Electron derives userData from productName ("Blackfish"), so point it back at the
+ * fork's folder from before the rename. Returns that folder, or null when this is not the fork's.
+ */
+function pinForkDataDir(forkApp: ForkApp): string | null {
+  if (!forkApp.isPackaged) {
     return null
   }
-  const forkOwnDir = forkApp.getPath('userData')
-  if (basename(forkOwnDir) !== FORK_PRODUCT_NAME) {
+  const userData = forkApp.getPath('userData')
+  if (basename(userData) === FORK_PRODUCT_NAME) {
+    const pinned = join(forkApp.getPath('appData'), FORK_DATA_DIR_NAME)
+    forkApp.setPath('userData', pinned)
+    return pinned
+  }
+  return basename(userData) === FORK_DATA_DIR_NAME ? userData : null
+}
+
+/** Where shared mode would run, or null off macOS or when the marker or stock folder is absent. */
+function resolveSharedStockData(
+  forkApp: ForkApp,
+  forkOwnDir: string,
+  platform: NodeJS.Platform
+): { forkOwnDir: string; stockDir: string } | null {
+  if (platform !== 'darwin') {
     return null
   }
   if (!existsSync(join(forkOwnDir, SHARED_DATA_MARKER))) {
@@ -166,16 +180,22 @@ function snapshotForVersion(
 }
 
 /**
- * Packaged fork only, before anything reads userData and before the instance locks. With the
- * marker set, points userData at stock Orca's folder and takes its pre-ready name, which picks its
- * Keychain key, after snapshotting that folder once per fork version.
+ * Packaged fork only, before anything reads userData and before the instance locks. Pins userData
+ * to the fork's "Orca Fork" folder and takes the pre-ready name "Orca Fork", which keeps its
+ * Keychain key. With the marker set, points userData at stock Orca's folder and takes its pre-ready
+ * name instead, after snapshotting that folder once per fork version.
  */
 export function configureForkSharedStockData(
   forkApp: ForkApp,
   { platform = process.platform, now = new Date() }: Options = {}
 ): SharedDataResult {
-  const shared = resolveSharedStockData(forkApp, platform)
+  const forkOwnDir = pinForkDataDir(forkApp)
+  if (!forkOwnDir) {
+    return { mode: 'own' }
+  }
+  const shared = resolveSharedStockData(forkApp, forkOwnDir, platform)
   if (!shared) {
+    forkApp.setName(FORK_PRE_READY_APP_NAME)
     return { mode: 'own' }
   }
   const snapshot = snapshotForVersion(shared.forkOwnDir, shared.stockDir, forkApp.getVersion(), now)
