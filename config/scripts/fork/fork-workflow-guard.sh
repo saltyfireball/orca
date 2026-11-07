@@ -20,15 +20,22 @@ disable_workflows() {
 }
 
 cancel_runs() {
-  local sha="$1" pass ids
+  local sha="$1" pass ids out
   # Push-triggered runs can take a few seconds to show up, so look more than once.
   for pass in 1 2 3; do
     ids="$(gh api --paginate "repos/$REPO/actions/runs?head_sha=$sha&per_page=100" \
       --jq ".workflow_runs[] | select(.path != \"$KEEP\") | select(.status != \"completed\") | .id")"
     for id in $ids; do
       echo "Cancelling run $id"
-      # A run that finished in the meantime answers 409; that is not a failure here.
-      gh api -X POST "repos/$REPO/actions/runs/$id/cancel" || echo "Run $id was not cancellable"
+      # Only 409 (the run finished in the meantime) is tolerated. Any other error fails the job.
+      if ! out="$(gh api -X POST "repos/$REPO/actions/runs/$id/cancel" 2>&1)"; then
+        if printf '%s' "$out" | grep -q 'HTTP 409'; then
+          echo "Run $id already finished"
+        else
+          echo "::error::Cancelling run $id failed: $out"
+          exit 1
+        fi
+      fi
     done
     if [ "$pass" != 3 ]; then
       sleep 10
