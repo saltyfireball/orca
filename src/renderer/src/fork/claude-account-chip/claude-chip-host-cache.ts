@@ -3,12 +3,12 @@
 import type { ClaudeRateLimitAccountsState } from '../../../../shared/managed-account-types'
 import type { RateLimitState } from '../../../../shared/rate-limit-types'
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
-import {
-  FORK_CLAUDE_CHAT_HOME_METHOD,
-  type ForkClaudeChatHome
-} from '../../../../shared/fork/claude-account-chip'
+import type { ForkClaudeLaunchHome } from '../../../../shared/fork/claude-account-move'
 import { fetchProviderAccountsSnapshot } from '@/runtime/runtime-provider-accounts-client'
-import { callStructuredAgentSession } from '@/runtime/structured-agent-session-client'
+import {
+  onForkClaudeAccountMoved,
+  readClaudeChatAccounts
+} from '../claude-account-move/claude-account-move-client'
 
 export type ClaudeHostSnapshot = {
   claude: ClaudeRateLimitAccountsState
@@ -16,11 +16,38 @@ export type ClaudeHostSnapshot = {
   rateLimits: RateLimitState | null
 }
 
-export type ChatHomeEntry = ForkClaudeChatHome | 'loading' | 'failed'
+/**
+ * What a chat's host says about its account (`fork.claudeAccount.which`). `pin` is set once the
+ * chat was moved (null is System default); `pending` while that move waits for a turn to end.
+ */
+export type ForkClaudeChatAccount = ForkClaudeLaunchHome & {
+  pin?: string | null
+  pending?: true
+}
+
+export type ChatHomeEntry = ForkClaudeChatAccount | 'loading' | 'failed'
 
 type Reader = {
   readHost: (target: RuntimeClientTarget) => Promise<ClaudeHostSnapshot>
-  readChatHome: (target: RuntimeClientTarget, sessionId: string) => Promise<ForkClaudeChatHome>
+  readChatHome: (target: RuntimeClientTarget, sessionId: string) => Promise<ForkClaudeChatAccount>
+}
+
+const NOT_A_CLAUDE_CHAT: ForkClaudeChatAccount = { home: null, accountId: null }
+
+async function readChatAccount(
+  target: RuntimeClientTarget,
+  sessionId: string
+): Promise<ForkClaudeChatAccount> {
+  const { sessions } = await readClaudeChatAccounts(target, { sessionId })
+  const session = sessions.find((entry) => entry.sessionId === sessionId)
+  if (!session) {
+    return NOT_A_CLAUDE_CHAT
+  }
+  return {
+    ...session.launch,
+    ...(session.pinned ? { pin: session.accountId } : {}),
+    ...(session.pending ? { pending: true } : {})
+  }
 }
 
 const defaultReader: Reader = {
@@ -38,16 +65,18 @@ const defaultReader: Reader = {
     }
     return { claude: snapshot.claude, rateLimits: snapshot.rateLimits }
   },
-  readChatHome: (target, sessionId) =>
-    callStructuredAgentSession<ForkClaudeChatHome>(target, FORK_CLAUDE_CHAT_HOME_METHOD, {
-      sessionId
-    })
+  readChatHome: readChatAccount
 }
 
 let reader = defaultReader
 const hosts = new Map<string, ClaudeHostSnapshot>()
 const hostReads = new Map<string, Promise<void>>()
 const chatHomes = new Map<string, ChatHomeEntry>()
+const chatReads = new Map<string, Promise<void>>()
+/** Chats forced while a read was in flight: that read may predate the move, so read once more. */
+const staleChatReads = new Set<string>()
+/** The chat status a pending chat was last read at; a new status reads it again. */
+const pendingReadAt = new Map<string, string>()
 const listeners = new Set<() => void>()
 let version = 0
 
@@ -77,8 +106,12 @@ export function getClaudeHostSnapshot(target: RuntimeClientTarget): ClaudeHostSn
   return hosts.get(transportKey(target))
 }
 
+function chatKey(target: RuntimeClientTarget, sessionId: string): string {
+  return `${transportKey(target)}|${sessionId}`
+}
+
 export function getChatHome(target: RuntimeClientTarget, sessionId: string): ChatHomeEntry {
-  return chatHomes.get(`${transportKey(target)}|${sessionId}`) ?? 'loading'
+  return chatHomes.get(chatKey(target, sessionId)) ?? 'loading'
 }
 
 /** Reads the host's accounts; `force` reads again even when an answer is cached. */
@@ -103,37 +136,85 @@ export function loadClaudeHost(target: RuntimeClientTarget, force = false): Prom
   return read
 }
 
-/** Reads which home a chat runs on; `force` reads again, e.g. after its account moved. */
+/** Reads which account a chat runs on; `force` reads again, e.g. after its account moved. */
 export function loadChatHome(
   target: RuntimeClientTarget,
   sessionId: string,
   force = false
 ): Promise<void> {
-  const key = `${transportKey(target)}|${sessionId}`
+  const key = chatKey(target, sessionId)
+  const inFlight = chatReads.get(key)
   const current = chatHomes.get(key)
-  if (current === 'loading' || (current && !force)) {
+  if (inFlight) {
+    if (force) {
+      staleChatReads.add(key)
+    }
+    return inFlight
+  }
+  if (current && !force) {
     return Promise.resolve()
   }
   if (!current) {
     chatHomes.set(key, 'loading')
   }
-  return reader.readChatHome(target, sessionId).then(
-    (home) => {
-      chatHomes.set(key, home)
+  // A forced read keeps the last answer on screen until the new one lands.
+  const read = reader
+    .readChatHome(target, sessionId)
+    .then(
+      (home) => {
+        chatHomes.set(key, home)
+      },
+      // An older host without the fork method, or a chat it no longer holds. A failed re-read
+      // keeps the last answer.
+      () => {
+        if (typeof chatHomes.get(key) !== 'object') {
+          chatHomes.set(key, 'failed')
+        }
+      }
+    )
+    .finally(() => {
+      chatReads.delete(key)
+      if (staleChatReads.delete(key)) {
+        void loadChatHome(target, sessionId, true)
+      }
       notify()
-    },
-    // An older host without the fork method, or a chat it no longer holds.
-    () => {
-      chatHomes.set(key, 'failed')
-      notify()
-    }
-  )
+    })
+  chatReads.set(key, read)
+  return read
 }
 
-/** For the account-move menu: the chat's next read names its new account. */
+/**
+ * A queued move settles when the chat's turn ends, which no event reports, so a pending chat is
+ * read again each time its status changes. Chats without a queued move are never re-read here.
+ */
+export function refreshPendingChatHome(
+  target: RuntimeClientTarget,
+  sessionId: string,
+  status: string
+): void {
+  const key = chatKey(target, sessionId)
+  const current = chatHomes.get(key)
+  if (typeof current !== 'object' || !current.pending) {
+    pendingReadAt.delete(key)
+    return
+  }
+  const last = pendingReadAt.get(key)
+  pendingReadAt.set(key, status)
+  if (last !== undefined && last !== status) {
+    void loadChatHome(target, sessionId, true)
+  }
+}
+
+/** After a move: the chat's next read names its new account, or the move waiting on it. */
 export function invalidateForkClaudeChatHome(target: RuntimeClientTarget, sessionId: string): void {
   void loadChatHome(target, sessionId, true)
 }
+
+onForkClaudeAccountMoved((target, results) => {
+  for (const result of results) {
+    invalidateForkClaudeChatHome(target, result.sessionId)
+  }
+})
 
 /** Tests only: swap the host reads and drop every cached answer. */
 export function resetClaudeChipCacheForTests(next: Partial<Reader> = {}): void {
@@ -141,5 +222,8 @@ export function resetClaudeChipCacheForTests(next: Partial<Reader> = {}): void {
   hosts.clear()
   hostReads.clear()
   chatHomes.clear()
+  chatReads.clear()
+  staleChatReads.clear()
+  pendingReadAt.clear()
   notify()
 }
