@@ -12,6 +12,7 @@ import { createAppMenuQuitItems, type AppMenuQuitHandlers } from './app-menu-qui
 import { createAppMenuReloadAndDevToolsItems } from './app-menu-reload-devtools-items'
 import { labeledAppMenuRole } from './labeled-app-menu-role'
 import { createAppWindowMenu } from './app-menu-window'
+import { forkRestartGuardMenuItems } from '../fork/restart-guard/restart-guard-hooks'
 
 export type AppearanceMenuState = {
   showTasksButton: boolean
@@ -132,6 +133,7 @@ function buildAndApplyMenu(options: RegisterAppMenuOptions): void {
     submenu: [
       labeledAppMenuRole('about', 'menu.about', 'About Orca'),
       checkForUpdatesItem,
+      ...forkRestartGuardMenuItems(),
       settingsItem,
       { type: 'separator' },
       labeledAppMenuRole('services', 'menu.services', 'Services'),
@@ -289,7 +291,8 @@ function buildAndApplyMenu(options: RegisterAppMenuOptions): void {
         : ([
             { type: 'separator' },
             labeledAppMenuRole('about', 'menu.about', 'About Orca'),
-            checkForUpdatesItem
+            checkForUpdatesItem,
+            ...forkRestartGuardMenuItems()
           ] satisfies Electron.MenuItemConstructorOptions[]))
     ]
   }
