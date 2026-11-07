@@ -19,6 +19,7 @@ import { translateMain } from '../../i18n/main-i18n'
 import { safelyRevealWindow } from '../../window/focus-existing-window'
 import { isBackgroundLaunch } from '../../window/foreground-activation-policy'
 import type { ForkRestartHeld } from '../../../shared/fork/restart-guard-held'
+import { chatSurviveWillSurvive } from '../chat-survive/chat-survive-detach'
 import { listBusyChats, type BusyChat } from './busy-chats'
 import { askBeforeRestart, askWhileWaiting, waitingLabel } from './restart-guard-dialog'
 import { setForkRestartGuardHooks } from './restart-guard-hooks'
@@ -73,7 +74,10 @@ function readBusyChats(): BusyChat[] {
   if (!host) {
     return []
   }
-  return listBusyChats(host.loadedSessionIds().map((id) => host.readStatusSummary(id)))
+  return listBusyChats(
+    host.loadedSessionIds().map((id) => host.readStatusSummary(id)),
+    chatSurviveWillSurvive
+  )
 }
 
 function showProgress(progress: RestartGuardProgress | null): void {
