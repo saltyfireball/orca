@@ -12,6 +12,7 @@ import { getAdvancedSearchEntry } from './advanced-search'
 import { useTranslate } from '@/i18n/use-translate'
 import { handleForkRestartHeld } from '@/fork/restart-guard-held-toast'
 import { SettingsGroup } from '../section-layout/SettingsGroup'
+import { ForkChatSurviveSetting } from '@/fork/ForkChatSurviveSetting'
 
 type AdvancedPaneProps = {
   settings: GlobalSettings
@@ -146,6 +147,8 @@ export function AdvancedPane({ settings, updateSettings }: AdvancedPaneProps): R
       >
         <AdvancedNetworkSettingsSection settings={settings} updateSettings={updateSettings} />
       </SettingsGroup>
+
+      <ForkChatSurviveSetting settings={settings} updateSettings={updateSettings} />
     </div>
   )
 }
