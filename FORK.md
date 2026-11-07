@@ -1,7 +1,8 @@
-# Orca Fork (saltyfireball/orca)
+# Blackfish (saltyfireball/orca)
 
 This repository is upstream [stablyai/orca](https://github.com/stablyai/orca) at its newest
-stable `vX.Y.Z` tag, plus a short series of fork commits on top. `main` is always
+stable `vX.Y.Z` tag, plus a short series of fork commits on top. The app is Blackfish; it was
+named Orca Fork until SLRM-1367. `main` is always
 `<upstream tag> + fork commits`. Each fork commit message starts with its slrm Jira key
 (`SLRM-1309 ` for the original series).
 
@@ -22,8 +23,8 @@ stable `vX.Y.Z` tag, plus a short series of fork commits on top. `main` is alway
   - The main-process updater rejects any other repository or feed URL. The local build feed
     on `127.0.0.1` is the one exception.
   - The build picker offers only the Stable channel.
-  - It installs as "Orca Fork" (`com.saltyfireball.orca`) next to stock Orca, with its own
-    settings folder.
+  - It installs as "Blackfish" (`Blackfish.app`, `com.saltyfireball.orca`) next to stock Orca,
+    with its own settings folder. See Name and data folder below.
   - It is built for Apple Silicon (arm64) only. Upstream's x64 slice has to boot its terminal
     host under Rosetta to pass packaging checks, and no fork Mac needs it.
 - **Shared mode: the fork can run on stock Orca's data.** See Shared mode below.
@@ -53,6 +54,7 @@ Apply these in this order. Each one is a single commit.
 19. `SLRM-1357 Sign fork builds with a stable self-signed identity`
 20. `SLRM-1357 Accept the self-signed certificate's root requirement`
 21. `SLRM-1351 Shared mode: run Orca Fork on stock Orca's data`
+22. `SLRM-1367 Rename the app to Blackfish, keeping the Orca Fork data folder and Keychain item`
 
 Fork-only code lives in `fork/` folders:
 
@@ -76,12 +78,32 @@ Upstream files only get short hooks, which keeps rebases small:
   `src/shared/fork/testing/fork-release-repo-upstream-policy.ts`, so those tests keep
   covering upstream's channels.
 - The run-button strings in both `en.json` catalogs, from the generators.
-- One call in `configureDevUserDataPath` (`src/main/startup/configure-process.ts`) for shared
-  mode. It runs before anything reads userData or takes the instance locks.
+- One call in `configureDevUserDataPath` (`src/main/startup/configure-process.ts`) for the
+  pinned data folder and shared mode. It runs before anything reads userData or takes the
+  instance locks.
+- The post-ready `app.setName` in `src/main/startup/main-process-ready-foundation.ts` goes
+  through `forkPostReadyAppName` (`src/main/fork/app-name.ts`).
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
 `config/scripts/fork/electron-builder.fork.config.cjs`.
+
+## Name and data folder
+
+The app is named Blackfish (`productName` in the builder overlay), so it builds `Blackfish.app`
+with a `Blackfish` executable, and the window title, menu and About panel say Blackfish. Two
+things keep the names from before the rename, so the rename lost no data:
+
+- **Data folder.** Electron would derive `~/Library/Application Support/Blackfish`; the packaged
+  app pins userData to `~/Library/Application Support/Orca Fork` before anything reads it. There
+  is no migration and no Blackfish folder.
+- **Keychain item.** Saved secrets are encrypted with the Keychain item "Orca Fork Safe Storage",
+  which Electron names from the pre-ready app name. In own mode the app takes the pre-ready name
+  `Orca Fork`, then `Blackfish` after ready, when the Keychain name is already fixed.
+
+The code is `src/main/fork/app-name.ts` and `pinForkDataDir` in `src/main/fork/shared-stock-data.ts`.
+Squirrel.Mac updates the bundle in place, so a copy installed as `/Applications/Orca Fork.app`
+keeps that folder name until it is renamed to `Blackfish.app` by hand (with the app quit).
 
 ## Shared mode
 
@@ -94,7 +116,7 @@ same in both apps, and switching is quit one, open the other. The code is
 - Only one of the two can be open at a time. Electron's instance lock and the desktop profile
   lock live in that folder, so the second app to open just hands off to the first.
 - The fork takes the pre-ready app name `orca`, which is what picks stock's Keychain item.
-  macOS may ask once whether Orca Fork can use "orca Safe Storage": choose Always Allow.
+  macOS may ask once whether Blackfish can use "orca Safe Storage": choose Always Allow.
 - The first launch of each fork version clones (APFS) stock's settings, projects and chats
   into `Orca Fork/stock-data-snapshots/<time>_v<version>` before it opens them, keeping the
   newest 3. Caches, models and logs are left out. The snapshot is skipped while an app holds

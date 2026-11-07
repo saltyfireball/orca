@@ -25,6 +25,7 @@ import { initSshHostKeyStoreFile } from '../ssh/ssh-host-key-store'
 import { initOrcadHeldFenceTokenFile } from '../ssh/orcad-held-fence-tokens'
 import { neutralizeLegacyTerminalShimDir } from '../pty/shell-startup/legacy-terminal-shim-dir'
 import { createWindowsShellPathHydration } from './windows-shell-path-hydration'
+import { forkPostReadyAppName } from '../fork/app-name'
 import {
   configureWindowsHostGitEnvironmentReadiness,
   setDefaultWslDistroOverride
@@ -111,7 +112,7 @@ export async function initializeReadyFoundation(): Promise<void> {
     app.setAppUserModelId(app.isPackaged ? identity.appUserModelId : process.execPath)
   }
   // Post-ready naming preserves packaged Keychain identity; dev already renamed before ready.
-  app.setName(identity.appName)
+  app.setName(forkPostReadyAppName(identity))
   updateGpuAccelerationAboutPanel()
   if (state.isServeMode) {
     // Profile loading can decrypt and hang; fence unreachable keychains first.
