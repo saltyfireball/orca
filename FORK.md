@@ -56,6 +56,7 @@ Apply these in this order. Each one is a single commit.
 21. `SLRM-1351 Shared mode: run Orca Fork on stock Orca's data`
 22. `SLRM-1367 Rename the app to Blackfish, keeping the Orca Fork data folder and Keychain item`
 23. `SLRM-1370 CLI launcher: run the executable Info.plist names`
+24. `SLRM-1338 Sign the commits fork-sync rebases`
 
 Fork-only code lives in `fork/` folders:
 
@@ -161,7 +162,8 @@ runs in `saltyfireball/orca`. Every third-party action is pinned to a full commi
    - Checks out `main` over SSH with that deploy key.
    - Finds the newest stable upstream tag with `git ls-remote --tags` and `sort -V`, and the
      stable tag `main` is on now.
-   - If the two tags differ, it rebases the fork commits (`<old tag>..main`) onto the new tag.
+   - If the two tags differ, it rebases the fork commits (`<old tag>..main`) onto the new tag,
+     SSH-signed when `FORK_GIT_SIGNING_KEY` is set (see Signed rebase commits).
    - **If the rebase conflicts**, it aborts and opens an issue titled
      `fork-sync conflict on <tag>` that lists the conflicting files (or comments on the open
      one), and the run fails. To fix it, rebase by hand, resolve, run the checks below, and
@@ -205,6 +207,25 @@ the fork signs every build with one self-signed certificate, `Orca Fork Code Sig
 - Replacing the certificate changes the requirement: installed copies then need one manual
   install, as the move from ad-hoc did.
 
+### Signed rebase commits
+
+A rebase re-commits every fork commit, so the old signatures are lost. When the Actions secret
+`FORK_GIT_SIGNING_KEY` holds an ed25519 SSH private key, the sync job signs the new commits:
+
+- Before the rebase it writes the key to `$RUNNER_TEMP/git-signing/key` (mode 600), sets
+  `gpg.format ssh`, `user.signingkey` and `commit.gpgsign true`, and commits as the author of
+  the newest fork commit (the fork owner), so the rebased commits stay his on both lines.
+- After the rebase every commit in `<new tag>..HEAD` must show `%G?` = `G` against an
+  allowed-signers file built from the key's public half, or the job fails before the push.
+- An `always()` step deletes the key and unsets the signing config straight after the rebase,
+  before `pnpm install` runs any package script.
+- Committer dates are the rebase time (no `--committer-date-is-author-date`), so the dates
+  say when the signed copy was made; author dates keep the original.
+- Add the public key to the owner's GitHub account as a signing key, so GitHub shows the
+  commits as Verified. Keep the private key in Infisical folder `/orca_fork`.
+- With the secret empty the job prints a notice and commits unsigned as `github-actions[bot]`,
+  as before.
+
 ### Deploy key and tokens
 
 `GITHUB_TOKEN` cannot push commits that change `.github/workflows/`, and upstream changes
@@ -242,7 +263,8 @@ disables fork-sync or cancels its runs. The job needs `actions: write` for it.
 
 ### Notes
 
-- A rebase rewrites the fork commits, so CI's copies are unsigned and committed by
+- A rebase rewrites the fork commits. CI signs its copies only when `FORK_GIT_SIGNING_KEY` is
+  set (see Signed rebase commits); otherwise they are unsigned and committed by
   `github-actions[bot]`.
 - Builds are self-signed, not notarized. On first launch, macOS Gatekeeper asks you to approve
   the app.
