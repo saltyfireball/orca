@@ -1,7 +1,7 @@
 name: Fork sync
 
-# Rebases the fork's own commits onto the newest stable upstream tag, checks them,
-# pushes main, then builds and releases an unsigned macOS app. See FORK.md.
+# Rebases the fork's own commits onto the newest stable upstream tag, checks them, pushes main,
+# keeps upstream workflows disabled, then builds and releases an unsigned macOS app. See FORK.md.
 
 on:
   schedule:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       force_build:
-        description: Build and release even when main is already on the newest upstream tag
+        description: Build and release even when main already has a fork release
         required: false
         default: false
         type: boolean
@@ -27,24 +27,35 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
+      actions: write
       contents: write
       issues: write
     outputs:
       changed: ${{ steps.rebase.outputs.changed }}
+      released: ${{ steps.released.outputs.released }}
       upstream_tag: ${{ steps.tags.outputs.latest }}
       sha: ${{ steps.result.outputs.sha }}
     env:
       UPSTREAM_URL: https://github.com/stablyai/orca.git
       NODE_OPTIONS: --max-old-space-size=4096
     steps:
+      - name: Require the deploy key
+        env:
+          FORK_SYNC_DEPLOY_KEY: ${{ secrets.FORK_SYNC_DEPLOY_KEY }}
+        run: |
+          if [ -z "$FORK_SYNC_DEPLOY_KEY" ]; then
+            echo "::error::Actions secret FORK_SYNC_DEPLOY_KEY is empty. Add a write deploy key to saltyfireball/orca and store its private key as FORK_SYNC_DEPLOY_KEY (FORK.md)."
+            exit 1
+          fi
+
+      # GITHUB_TOKEN cannot push commits that touch .github/workflows; a write deploy key over SSH can.
       - name: Checkout main
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: main
           fetch-depth: 0
           filter: blob:none
-          # GITHUB_TOKEN cannot push commits that touch .github/workflows; FORK_SYNC_TOKEN (workflow scope) can.
-          token: ${{ secrets.FORK_SYNC_TOKEN || github.token }}
+          ssh-key: ${{ secrets.FORK_SYNC_DEPLOY_KEY }}
 
       - name: Find the newest stable upstream tag
         id: tags
@@ -118,13 +129,13 @@ jobs:
       # Mirrors release-mac-build.yml: "Setup pnpm" and "Setup Node.js".
       - name: Setup pnpm
         if: steps.rebase.outputs.changed == 'true'
-        uses: pnpm/setup@v2
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2
         with:
           install: false
 
       - name: Setup Node.js
         if: steps.rebase.outputs.changed == 'true'
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version-file: package.json
           check-latest: true
@@ -143,7 +154,7 @@ jobs:
 
       - name: Fork tests
         if: steps.rebase.outputs.changed == 'true'
-        run: pnpm exec vitest run src/shared/fork src/main/updater --maxWorkers=2
+        run: pnpm test src/shared/fork src/main/updater src/renderer/src/components/native-chat/fork config/scripts/fork --maxWorkers=2
 
       # Mirrors release-mac-build.yml: the install-mobile-dependencies action.
       - name: Install mobile dependencies
@@ -161,13 +172,52 @@ jobs:
           OLD_MAIN: ${{ steps.tags.outputs.old_main }}
         run: git push --force-with-lease="main:$OLD_MAIN" origin HEAD:main
 
+      # Upstream syncs bring new workflow files, which GitHub enables; only fork-sync may run here.
+      - name: Keep upstream workflows disabled
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ids="$(gh api --paginate repos/saltyfireball/orca/actions/workflows \
+            --jq '.workflows[] | select(.path != ".github/workflows/fork-sync.yml") | select(.path | startswith(".github/workflows/")) | select(.state == "active") | .id')"
+          for id in $ids; do
+            echo "Disabling workflow $id"
+            gh api -X PUT "repos/saltyfireball/orca/actions/workflows/$id/disable"
+          done
+          echo "Disabled $(printf '%s\n' "$ids" | grep -c . || true) workflow(s)"
+
       - name: Record the commit to build
         id: result
         run: echo "sha=$(git rev-parse HEAD)" >>"$GITHUB_OUTPUT"
 
+      # A failed or skipped build would otherwise wait for the next upstream tag.
+      - name: Check for a fork release of this commit
+        id: released
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.result.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tags_at_sha="$(git ls-remote --tags origin 'v*' \
+            | awk -v sha="$SHA" '$1 == sha { sub("refs/tags/", "", $2); sub("\\^\\{\\}$", "", $2); print $2 }' \
+            | sort -u)"
+          published="$(gh api --paginate repos/saltyfireball/orca/releases \
+            --jq '.[] | select(.draft == false) | .tag_name' | sort -u)"
+          if [ -n "$tags_at_sha" ] && [ -n "$(comm -12 <(printf '%s\n' "$tags_at_sha") <(printf '%s\n' "$published"))" ]; then
+            echo "released=true" >>"$GITHUB_OUTPUT"
+            echo "$SHA already has a fork release"
+          else
+            echo "released=false" >>"$GITHUB_OUTPUT"
+            echo "$SHA has no fork release yet"
+          fi
+
   build-mac:
     needs: sync
-    if: github.repository == 'saltyfireball/orca' && (needs.sync.outputs.changed == 'true' || inputs.force_build)
+    if: >-
+      github.repository == 'saltyfireball/orca' &&
+      (needs.sync.outputs.changed == 'true' || needs.sync.outputs.released != 'true' || inputs.force_build)
     runs-on: macos-15
     timeout-minutes: 90
     permissions:
@@ -180,18 +230,18 @@ jobs:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ needs.sync.outputs.sha }}
 
       # Mirrors release-mac-build.yml: "Setup pnpm" and "Setup Node.js".
       - name: Setup pnpm
-        uses: pnpm/setup@v2
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2
         with:
           install: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version-file: package.json
           check-latest: true
@@ -207,18 +257,52 @@ jobs:
       # Mirrors release-mac-build.yml: out/mobile-web needs mobile's React Native/Expo install.
       - uses: ./.github/actions/install-mobile-dependencies
 
+      # M.m.(p*1000+N): N counts this upstream base's fork releases (config/scripts/fork/fork-version.mjs).
+      - name: Compute the fork version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          upstream="$(node -p "require('./package.json').version")"
+          version="$(git ls-remote --tags --refs origin 'v*' | sed 's#.*refs/tags/##' \
+            | node config/scripts/fork/fork-version.mjs "$upstream")"
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+          echo "Upstream $upstream, fork release $version"
+
+      # Only this job's build copy: package.json in git keeps the upstream version.
+      - name: Stamp the fork version
+        env:
+          FORK_VERSION: ${{ steps.version.outputs.version }}
+        run: npm pkg set "version=$FORK_VERSION"
+
       - name: Build app
-        run: pnpm run build:mac
+        env:
+          FORK_VERSION: ${{ steps.version.outputs.version }}
+        run: node config/scripts/fork/build-mac-fork.mjs
+
+      - name: Verify the built version
+        env:
+          FORK_VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          feed="$(sed -n 's/^version: //p' dist/latest-mac.yml)"
+          app="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' 'dist/mac-arm64/Orca Fork.app/Contents/Info.plist')"
+          if [ "$feed" != "$FORK_VERSION" ] || [ "$app" != "$FORK_VERSION" ]; then
+            echo "::error::Expected $FORK_VERSION, latest-mac.yml has $feed and the app has $app"
+            exit 1
+          fi
 
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
+          FORK_VERSION: ${{ steps.version.outputs.version }}
           UPSTREAM_TAG: ${{ needs.sync.outputs.upstream_tag }}
           SHA: ${{ needs.sync.outputs.sha }}
         shell: bash
         run: |
           set -euo pipefail
-          tag="${UPSTREAM_TAG}-fork.${GITHUB_RUN_NUMBER}"
+          tag="v${FORK_VERSION}"
           shopt -s nullglob
           # latest-mac.yml names "Orca Fork-*.zip" as "Orca-Fork-*.zip"; upload under the names the feed expects.
           mkdir -p release-assets
@@ -238,5 +322,5 @@ jobs:
           gh release create "$tag" "${assets[@]}" \
             -R saltyfireball/orca \
             --target "$SHA" \
-            --title "Orca Fork $tag" \
+            --title "Orca Fork $FORK_VERSION" \
             --notes "Unsigned macOS build of upstream $UPSTREAM_TAG plus the fork patches in FORK.md."
