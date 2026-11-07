@@ -38,6 +38,7 @@ import {
 } from '@/components/agent-child-row-text'
 import { translate } from '@/i18n/i18n'
 import { useUiLanguageRevision } from '@/i18n/use-ui-language-revision'
+import { ForkClaudeAccountAgentRowChip } from '@/fork/claude-account-chip/ForkClaudeAccountChips'
 
 function formatTimeAgo(ts: number, now: number): string {
   const delta = now - ts
@@ -318,6 +319,7 @@ const DashboardAgentRow = React.memo(function DashboardAgentRow({
             <AgentTypeIcon agentType={agent.agentType} size={14} />
           </span>
         )}
+        {agent.rowSource !== 'subagent' && <ForkClaudeAccountAgentRowChip agent={agent} />}
         {/* Why: interpolate-size:allow-keywords is the only way to animate height to/from auto without measuring in JS; falls back to an instant swap where unsupported. */}
         <span
           className={cn(
