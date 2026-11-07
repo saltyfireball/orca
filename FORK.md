@@ -28,6 +28,8 @@ named Orca Fork until SLRM-1367. `main` is always
   - It is built for Apple Silicon (arm64) only. Upstream's x64 slice has to boot its terminal
     host under Rosetta to pass packaging checks, and no fork Mac needs it.
 - **Shared mode: the fork can run on stock Orca's data.** See Shared mode below.
+- **Restart guard: quitting, restarting or updating waits for busy chats.** See Restart guard
+  below.
 
 ## Patch list
 
@@ -58,6 +60,7 @@ Apply these in this order. Each one is a single commit.
 23. `SLRM-1370 CLI launcher: run the executable Info.plist names`
 24. `SLRM-1338 Sign the commits fork-sync rebases`
 25. `SLRM-1337 Use the fork's own bundle ids for its helpers and macOS checks`
+26. `SLRM-1393 Warn before a quit, restart or update kills busy chats`
 
 Fork-only code lives in `fork/` folders:
 
@@ -103,6 +106,14 @@ Upstream files only get short hooks, which keeps rebases small:
 - The macOS CLI launcher `resources/darwin/bin/orca` reads `CFBundleExecutable` from
   `Info.plist` instead of assuming `MacOS/Orca`, falling back to `Orca`, so `orca` works in
   Blackfish. `src/main/fork/darwin-cli-launcher.test.ts` covers it.
+- The restart guard (SLRM-1393): `installForkRestartGuard()` after
+  `installMainProcessQuitHandlers()` in `src/main/index.ts`; `guardForkRestart` wraps the
+  `app:relaunch` and `app:restart` handlers in `src/main/ipc/app.ts`; `guardForkUpdateInstall`
+  wraps `updater:quitAndInstall` in `src/main/window/main-window-updater.ts`; and
+  `...forkRestartGuardMenuItems()` follows `checkForUpdatesItem` in
+  `src/main/menu/register-app-menu.ts`. The three come from the import-light
+  `src/main/fork/restart-guard/restart-guard-hooks.ts`, which passes through until the guard
+  installs, so upstream tests of those files are unchanged.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
@@ -124,6 +135,34 @@ things keep the names from before the rename, so the rename lost no data:
 The code is `src/main/fork/app-name.ts` and `pinForkDataDir` in `src/main/fork/shared-stock-data.ts`.
 Squirrel.Mac updates the bundle in place, so a copy installed as `/Applications/Orca Fork.app`
 keeps that folder name until it is renamed to `Blackfish.app` by hand (with the app quit).
+
+## Restart guard
+
+Quitting the app stops every native chat's claude or codex process, so a running turn, its
+subagents and its background commands are lost. The guard holds a quit (Cmd-Q, the menu, the
+dock), a restart from the renderer (`app:relaunch`, `app:restart`) and an update install while
+any chat is busy, and asks first. The code is `src/main/fork/restart-guard/`.
+
+- **Busy** means this app owns the chat's provider process (`hostExecutionOwned`) and the chat is
+  working on a turn, waiting on a question, or has a live subagent or background command.
+  Idle chats never hold anything. The dialog lists up to eight busy chats with their workspace
+  and what each is running.
+- **Restart When Idle** (the default) waits, checking every 2 s, and goes ahead on its own once
+  no chat is busy. A chat that starts working during the wait joins the list and is waited for
+  too. The dock icon shows a progress bar and the app menu shows "Restart when idle: N of M
+  chats finished"; clicking it, or quitting again, offers Keep Waiting, Restart Now or Stop
+  Waiting. **Restart Now** goes at once. **Cancel** does nothing.
+- **Update Ready - Restart When Idle** appears in the app menu once an update is downloaded. It
+  skips the first dialog and installs as soon as no chat is busy (at once if none is).
+- **Never held:** macOS logout and shutdown (`powerMonitor` `shutdown`; Windows
+  `query-session-end`), a quit another listener already vetoed, serve mode, and quits another
+  owner committed (signals and the supervisor through `quitProcess`, an update already
+  installing, teardown already started). A Now or a finished wait approves the quit it starts
+  for 2 minutes.
+- **Not covered:** relaunches the main process starts itself (profile switch and transfer, GPU
+  fallback, WSL drive conversion, Windows run-as-administrator) and serve mode's remote update
+  install. A restart or install that runs after a wait skips the renderer's own restart
+  preparation; the main process's cleanup and will-quit flush still run.
 
 ## Shared mode
 

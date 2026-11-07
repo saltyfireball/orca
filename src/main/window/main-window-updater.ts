@@ -26,6 +26,7 @@ import type {
   UpdateInstallMode
 } from '../updater/lifecycle/updater-state'
 import type { UpdaterSetupOptions } from '../updater/lifecycle/updater-setup'
+import { guardForkUpdateInstall } from '../fork/restart-guard/restart-guard-hooks'
 
 const UPDATER_SETUP_FALLBACK_MS = 15_000
 
@@ -161,7 +162,7 @@ export function registerUpdaterHandlers(_store: Store): void {
     return checkForUpdatesFromMenu(options)
   })
   ipcMain.handle('updater:download', () => downloadUpdate())
-  ipcMain.handle('updater:quitAndInstall', () => quitAndInstall())
+  ipcMain.handle('updater:quitAndInstall', () => guardForkUpdateInstall(quitAndInstall))
   ipcMain.handle('updater:dismissNudge', () => dismissNudge())
   ipcMain.handle('updater:dismissAvailableUpdate', () => dismissAvailableUpdate())
   // Package paths/native reveal belong only to the current trusted main renderer; refuse guests, popouts and stale/utility windows.

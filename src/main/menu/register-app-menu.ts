@@ -11,6 +11,7 @@ import { createAppMenuSelectionItem, resolveNativeEditTarget } from './app-menu-
 import { createAppMenuQuitItems, type AppMenuQuitHandlers } from './app-menu-quit-item'
 import { createAppMenuReloadAndDevToolsItems } from './app-menu-reload-devtools-items'
 import { createAppWindowMenu } from './app-menu-window'
+import { forkRestartGuardMenuItems } from '../fork/restart-guard/restart-guard-hooks'
 
 export type AppearanceMenuState = {
   showTasksButton: boolean
@@ -131,6 +132,7 @@ function buildAndApplyMenu(options: RegisterAppMenuOptions): void {
     submenu: [
       { role: 'about' },
       checkForUpdatesItem,
+      ...forkRestartGuardMenuItems(),
       settingsItem,
       { type: 'separator' },
       { role: 'services' },
@@ -288,7 +290,8 @@ function buildAndApplyMenu(options: RegisterAppMenuOptions): void {
         : ([
             { type: 'separator' },
             { role: 'about' },
-            checkForUpdatesItem
+            checkForUpdatesItem,
+            ...forkRestartGuardMenuItems()
           ] satisfies Electron.MenuItemConstructorOptions[]))
     ]
   }
