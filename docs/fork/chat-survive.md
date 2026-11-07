@@ -228,13 +228,17 @@ owner-gone signal, and fences decide who may write).
    (`chat-survive-spawn.ts`): with the setting on, darwin or linux, a provider supervisor spawn,
    a private socket folder and the broker entry on disk, it spawns the broker plan; anything else
    spawns as today. orcad never installs the setting reader, so it is always off there. Each
-   broker gets a record `{v, sessionId, brokerPid, socketPath, token}` at
+   broker gets a record `{v, sessionId, brokerPid, socketPath, token, launch}` at
    `userData/chat-survive/<sessionId>.<brokerPid>.json` (folder 0700, file 0600), removed when the
    broker exits; a stale one after a crash names a dead pid and is harmless. At install the
    setting reader sweeps the folder (`chat-survive-sweep.ts`): it is set to 0700, half-written
    `.json.next` files go, and so does every record whose broker pid is dead, with its socket
    (only a socket in an `orca-chat-survive` folder). The broker entry path is looked up only
-   while the setting is on.
+   while the setting is on. `launch` (`chat-survive-launch-hash.ts`) is the sha256 of the
+   provider command and args after the supervisor's `--` (`--session-id` and `--resume`, spaced
+   or with `=` as the SDK writes them, count as one flag), the cwd, and the env that configures the provider (`ANTHROPIC_*`, `CLAUDE*`,
+   `ORCA_*`, `MCP_*`, `DISABLE_*`, `ENABLE_*`, minus the per-spawn token and the hook runtime keys
+   the structured child never gets). PATH, XPC names and other per-launch noise are left out.
    - The exit-proof ladder needs no change: the managed child (and the lease owner pid) is the
      broker, which relays stdin end and SIGTERM to the supervisor and exits with its code or
      signal. In a forced teardown `killProviderWriter` finds no group-leading direct child (the
@@ -320,6 +324,15 @@ owner-gone signal, and fences decide who may write).
      process is gone. The record is rewritten without the mark, and the child is registered with
      a tracker that continues the saved mark in the broker's offsets, so the chat survives the
      next quit the same way (that hand-off uses a fence above the claim's).
+   - Launch check: a running CLI keeps the model, permission mode, MCP config, settings and env it
+     was started with, and a new SDK query that expects others would drive the wrong provider.
+     So the spawn hook takes a claim only when the new start's `launch` equals the record's; a
+     record without one is never claimed. On a mismatch the claim is stopped and that start throws
+     (the provider is still stopping); the chat's next start spawns as today. Any value that
+     changes between app runs only costs adoption, never correctness: the real-CLI test checks a
+     first launch and its resumes match, but which `ORCA_*` keys and MCP config entries vary in the
+     real app is not measured yet. A Fast chat that resumes a transcript adds `--settings`, so it
+     is never adopted.
    - Fallbacks: a claim nothing takes within 60 s, or whose start settles without taking it, is
      stopped (today's outcome: the chat resumes from saved history). While a claim is held, and
      until its stop has finished, any other provider spawn for the chat is refused (the spawn
@@ -330,18 +343,23 @@ owner-gone signal, and fences decide who may write).
      warns once and does not arm (the broker still stops its group).
    - Real Claude Code (`chat-survive-real-claude.test.ts`, only with `ORCA_CHAT_SURVIVE_E2E=1` on
      macOS; Haiku, the user's login, a temp cwd, no settings files): each app instance is a child
-     process running the SDK through `createClaudeCodeProcessSpawn`. One turn runs
+     process running the SDK through `createClaudeCodeProcessSpawn` and passing each message to
+     the consumed hook, as the stream-json connection does. The first starts the Claude session
+     (`--session-id=`) and the others resume it (`--resume=`, written earlier in the args), so the
+     launch check is exercised on the real SDK's args. One turn runs
      `sleep 15 && ...`: the first instance quits (hook) and is SIGKILLed at the Bash prompt, the
      second adopts, gets the prompt once, allows it and is quit and SIGKILLed mid-command, and
      the third adopts and gets the rest and the result. No message uuid arrives twice across the
      three, there is one tool result, and stdin end leaves no broker or record. Verified on Claude
-     Code 2.1.319 with SDK 0.3.284. A SIGKILL without the quit hook is not adopted (by design).
+     Code 2.1.319 with SDK 0.3.284 (twice, after the launch check landed). A SIGKILL without the quit hook is not adopted (by design).
    - Tests: the replay filter and the continued mark; the recovery hook releases an adopted owner
      without a signal and stops it when the claim fails; a real Claude-shaped provider handed off
      at quit, adopted through `createClaudeCodeProcessSpawn` (same pid, the unanswered request
      replayed, nothing handled replayed, input reaching it), handed off and adopted a second time,
      then ended by stdin end with the broker gone and its record removed; claims refused for an
-     undetached record, another pid, Linux, another session, a forged token and the setting off.
+     undetached record, another pid, Linux, another session, a forged token, no launch hash and
+     the setting off; a start launched otherwise stopping the claimed provider, then spawning as
+     today; the launch hash itself (`chat-survive-launch-hash.test.ts`).
 6. **Codex** (3-4 days). Same hooks in the app-server connection. Its second `initialize` is
    refused, so the client keeps the first `initialize` answer in the session file and the adopter
    skips the handshake, then re-subscribes to the loaded thread. ACP providers after that.
