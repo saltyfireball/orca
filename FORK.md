@@ -23,6 +23,8 @@ stable `vX.Y.Z` tag, plus a short series of fork commits on top. `main` is alway
   - The build picker offers only the Stable channel.
   - It installs as "Orca Fork" (`com.saltyfireball.orca`) next to stock Orca, with its own
     settings folder.
+  - It is built for Apple Silicon (arm64) only. Upstream's x64 slice has to boot its terminal
+    host under Rosetta to pass packaging checks, and no fork Mac needs it.
 
 ## Patch list
 
@@ -43,6 +45,7 @@ Apply these in this order. Each one is a single commit.
 13. `SLRM-1309 ci: disable upstream workflows before the push and cancel their runs`
 14. `SLRM-1309 run: compare the complete host route and pin the launch to the captured host`
 15. `SLRM-1309 ci: fail the guard on any cancel error but 409 and note the residual race`
+16. `SLRM-1309 build: package the fork for arm64 only`
 
 Fork-only code lives in `fork/` folders:
 
@@ -118,9 +121,9 @@ runs in `saltyfireball/orca`. Every third-party action is pinned to a full commi
    yet, or `force_build` is set. The second case retries a failed build without waiting for a
    new upstream tag.
    - Works out the fork version and sets it in the build copy of `package.json`.
-   - Runs `node config/scripts/fork/build-mac-fork.mjs` unsigned.
+   - Installs arm64 natives only and runs `node config/scripts/fork/build-mac-fork.mjs` unsigned.
    - Checks that `latest-mac.yml` and the app both carry the fork version.
-   - Publishes the dmgs, the zips and `latest-mac.yml` as release `v<fork version>`.
+   - Publishes the arm64 dmg, the arm64 zip and `latest-mac.yml` as release `v<fork version>`.
 
 ### Deploy key and tokens
 
