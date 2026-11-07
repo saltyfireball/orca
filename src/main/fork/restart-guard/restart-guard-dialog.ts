@@ -22,7 +22,7 @@ function describeActivity(chat: BusyChat): string {
       : translateMain('fork.restartGuard.activity.turn', 'working on a turn')
   }
   if (activity.kind === 'question') {
-    return translateMain('fork.restartGuard.activity.question', 'waiting for your answer')
+    return translateMain('fork.restartGuard.activity.question', 'waiting for you')
   }
   const parts: string[] = []
   if (activity.subagents > 0) {
@@ -104,12 +104,12 @@ export async function askBeforeRestart(
     title: title(kind),
     message: translateMain(
       'fork.restartGuard.message',
-      '{{count}} chat(s) still working. Stopping now ends what they are running.',
+      '{{count}} chat(s) are busy. Stopping now ends what they are running.',
       { count: chats.length }
     ),
     detail: `${describeBusyChats(chats)}\n\n${translateMain(
       'fork.restartGuard.detail',
-      'Running turns, subagents and background commands stop with the app. Choose "when idle" to wait until every listed chat finishes, then go ahead on its own.'
+      'Running turns, subagents and background commands stop with the app. Choose "when idle" to wait until every listed chat finishes, then go ahead on its own. Chats waiting for you do not hold the wait.'
     )}`
   })
   if (response === WAIT_BUTTON) {
