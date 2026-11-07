@@ -33,6 +33,8 @@ import { PLUGIN_AUTHORING_COMMAND_SPECS, PLUGIN_RUNTIME_COMMAND_SPECS } from './
 import { PAIR_COMMAND_SPECS } from './pair'
 import { PLUGIN_VIEW_COMMAND_SPECS } from './plugin-view'
 import { PLUGIN_INSTALL_COMMAND_SPECS } from './plugin-install'
+// SLRM-1503: orca account which / move (FORK.md).
+import { FORK_ACCOUNT_MOVE_COMMAND_SPECS } from '../fork/account-move-specs'
 
 export const COMMAND_SPECS: CommandSpec[] = [
   ...CORE_COMMAND_SPECS,
@@ -68,5 +70,6 @@ export const COMMAND_SPECS: CommandSpec[] = [
   ...PLUGIN_RUNTIME_COMMAND_SPECS,
   ...PLUGIN_VIEW_COMMAND_SPECS,
   ...PLUGIN_INSTALL_COMMAND_SPECS,
-  ...PAIR_COMMAND_SPECS
+  ...PAIR_COMMAND_SPECS,
+  ...FORK_ACCOUNT_MOVE_COMMAND_SPECS
 ]
