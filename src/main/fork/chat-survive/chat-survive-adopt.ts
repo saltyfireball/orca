@@ -17,6 +17,7 @@ import {
   holdChatSurviveClaim,
   type ChatSurviveClaim
 } from './chat-survive-claims'
+import { isRecord } from './chat-survive-protocol'
 import type { ChatSurviveRecord } from './chat-survive-registry'
 import { chatSurviveConfig, chatSurviveRecordName } from './chat-survive-spawn'
 import type { ChatSurviveStreamMark } from './chat-survive-stream-mark'
@@ -36,23 +37,11 @@ function isOffset(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 }
 
-function fields(value: object, ...keys: string[]): unknown[] {
-  return keys.map((key): unknown => Reflect.get(value, key))
-}
-
 function readMark(value: unknown): (ChatSurviveStreamMark & { fence: number }) | null {
-  if (typeof value !== 'object' || value === null) {
+  if (!isRecord(value)) {
     return null
   }
-  const [out, err, seen, read, pending, fence] = fields(
-    value,
-    'out',
-    'err',
-    'seen',
-    'delivered',
-    'pending',
-    'fence'
-  )
+  const { out, err, seen, delivered: read, pending, fence } = value
   // A mark saved before `delivered` existed had dispatched exactly up to `seen`.
   const delivered = read === undefined ? seen : read
   if (
@@ -77,19 +66,10 @@ function readDetachedRecord(path: string, sessionId: string, pid: number): Detac
   } catch {
     return null
   }
-  if (typeof raw !== 'object' || raw === null) {
+  if (!isRecord(raw)) {
     return null
   }
-  const [v, id, brokerPid, socketPath, token, launch, detached] = fields(
-    raw,
-    'v',
-    'sessionId',
-    'brokerPid',
-    'socketPath',
-    'token',
-    'launch',
-    'detached'
-  )
+  const { v, sessionId: id, brokerPid, socketPath, token, launch, detached } = raw
   const mark = readMark(detached)
   if (
     v !== 1 ||
