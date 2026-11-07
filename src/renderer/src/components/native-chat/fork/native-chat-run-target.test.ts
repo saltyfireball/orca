@@ -4,6 +4,7 @@ import { isNativeChatRunTargetCurrent, type NativeChatRunTarget } from './native
 const captured: NativeChatRunTarget = {
   target: { kind: 'environment', environmentId: 'env-a' },
   worktreeId: 'wt-1',
+  hostId: null,
   groupId: 'group-1'
 }
 const liveOwner = {
