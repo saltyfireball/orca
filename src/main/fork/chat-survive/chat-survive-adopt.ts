@@ -149,7 +149,7 @@ export async function forkChatSurviveAdopt(input: {
     return false
   }
   if (!keepsEverything(connection, record.detached)) {
-    connection.detach()
+    connection.stop()
     return false
   }
   const { detached, ...live } = record
