@@ -10,6 +10,7 @@ import {
 import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
 import { PROVIDER_SUPERVISOR_MAX_STOP_MS } from '../../../provider-process/provider-process-supervisor'
 import type { AgentSessionRecordStore } from '../../../runtime/agent-session/records/agent-session-record-store'
+import { forkChatSurviveAdopt } from '../../../fork/chat-survive/chat-survive-adopt'
 
 export type StructuredSessionRecoveryStopSignal = 'SIGTERM' | 'SIGKILL'
 
@@ -54,7 +55,10 @@ export async function resolveStructuredSessionRecovery(
     if (owner.hostId !== deps.store.hostId) {
       return 'unresolved'
     }
-    if ((deps.platform ?? process.platform) !== 'win32') {
+    const platform = deps.platform ?? process.platform
+    // Fork (SLRM-1394): a Claude chat handed to its broker at quit is adopted, not stopped.
+    const adopted = await forkChatSurviveAdopt({ sessionId, ownerPid: owner.pid, platform })
+    if (!adopted && platform !== 'win32') {
       probe = await stopOwnerAndReprobe(deps, record, owner.pid)
     }
   }
