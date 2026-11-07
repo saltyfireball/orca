@@ -158,7 +158,7 @@ function resultLine(result: ForkClaudeMoveResult): string {
       return `Queued ${chat}: ${BUSY[result.busy ?? 'turn'] ?? 'it is busy'}, so it moves when that ends. Add --now to stop it instead.`
     case 'unchanged':
       return `Unchanged ${chat}: already on that account.`
-    default:
+    case 'cant-move':
       return `Can't move ${chat}: ${result.reason ? REASONS[result.reason] : 'refused'}.`
   }
 }
