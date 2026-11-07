@@ -54,6 +54,73 @@ export function chatSurviveReplayFilter(mark: ChatSurviveStreamMark): Transform 
   })
 }
 
+const CONTROL_RESPONSE = /^\s*\{\s*"type"\s*:\s*"control_response"/
+const REDELIVERED = ['pending_permission_requests', 'pending_user_dialog_requests']
+
+function parsed(line: string): unknown {
+  try {
+    return JSON.parse(line)
+  } catch {
+    return null
+  }
+}
+
+function withoutReplayed(line: string, replayed: ReadonlySet<string>): string {
+  const frame = parsed(line)
+  const response: unknown =
+    typeof frame === 'object' && frame ? Reflect.get(frame, 'response') : null
+  if (typeof response !== 'object' || response === null) {
+    return line
+  }
+  for (const key of REDELIVERED) {
+    const listed: unknown = Reflect.get(response, key)
+    if (Array.isArray(listed)) {
+      const kept = listed.filter((request: unknown) => {
+        const id =
+          typeof request === 'object' && request ? Reflect.get(request, 'request_id') : null
+        return typeof id !== 'string' || !replayed.has(id)
+      })
+      Reflect.set(response, key, kept)
+    }
+  }
+  return `${JSON.stringify(frame)}\n`
+}
+
+/**
+ * Claude Code 2.1.268+ also lists its unanswered prompts in the reply to the new instance's
+ * `initialize`, and the SDK only folds a second delivery into one still in flight: a prompt
+ * answered quickly would be asked twice. Drops from that reply the requests the replay carries.
+ */
+export function chatSurviveRedeliveryFilter(replayed: readonly string[]): Transform {
+  const ids = new Set(replayed)
+  let done = ids.size === 0
+  let partial = Buffer.alloc(0)
+  return new Transform({
+    transform(chunk: Buffer, _encoding, callback: TransformCallback) {
+      if (done) {
+        callback(null, chunk)
+        return
+      }
+      let data = Buffer.concat([partial, chunk])
+      for (
+        let newline = data.indexOf(0x0a);
+        !done && newline !== -1;
+        newline = data.indexOf(0x0a)
+      ) {
+        const line = data.subarray(0, newline + 1).toString('utf8')
+        data = data.subarray(newline + 1)
+        done = CONTROL_RESPONSE.test(line) && line.includes('"pending_')
+        this.push(done ? withoutReplayed(line, ids) : line)
+      }
+      partial = done ? Buffer.alloc(0) : data
+      callback(null, done && data.length > 0 ? data : undefined)
+    },
+    flush(callback: TransformCallback) {
+      callback(null, partial.length > 0 ? partial : undefined)
+    }
+  })
+}
+
 /** The fields the managed provider process and the Claude SDK use of a piped child. */
 function isPiped(child: unknown): child is PipedChildProcess {
   return (
@@ -118,9 +185,9 @@ export function chatSurviveAdoptedChild(input: {
   const { connection, brokerPid, tracker } = input
   // Shaped like a spawned child; node:child_process stays behind @orca/process-host.
   const child = new EventEmitter()
-  const stdout = chatSurviveReplayFilter(input.mark)
+  const stdout = chatSurviveRedeliveryFilter(input.mark.pending)
   connection.stdout.on('data', (chunk: Buffer) => tracker.stdout(chunk))
-  connection.stdout.pipe(stdout)
+  connection.stdout.pipe(chatSurviveReplayFilter(input.mark)).pipe(stdout)
   connection.stderr.on('data', (chunk: Buffer) => tracker.stderr(chunk))
   const stdin = new Writable({
     write(chunk: Buffer, _encoding, callback) {
