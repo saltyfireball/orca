@@ -3,7 +3,6 @@ import { Play } from 'lucide-react'
 import { toast } from 'sonner'
 import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
-import { tryRuntimeTargetForWorktreeOwner } from '@/store/slices/worktrees/listing/worktree-owner-target'
 import { runQuickCommandInNewTab } from '@/lib/run-quick-command-in-new-tab'
 import {
   ConfirmationDialogContext,
@@ -13,10 +12,10 @@ import { commandFromShellFence } from '../../../../../shared/fork/shell-fence'
 import { useNativeChatVisualOwner, type NativeChatVisualOwner } from '../native-chat-visual-owner'
 import {
   isNativeChatRunTargetCurrent,
-  sameRuntimeClientTarget,
+  nativeChatRunLaunchHostId,
   type NativeChatRunTarget
 } from './native-chat-run-target'
-import { findNativeChatRunWorkspace } from './native-chat-run-workspace'
+import { findNativeChatRunWorkspace, readNativeChatRunPlace } from './native-chat-run-workspace'
 
 const LABEL_PREVIEW_LENGTH = 40
 
@@ -43,15 +42,11 @@ function isRunTargetCurrent(
   liveOwner: NativeChatVisualOwner | null
 ): boolean {
   const state = useAppStore.getState()
-  const hostId = captured.hostId ?? undefined
-  // The new tab routes by the unqualified owner, so it must agree with the captured host's owner.
-  const onHost = tryRuntimeTargetForWorktreeOwner(state, captured.worktreeId, hostId)
-  const routed = tryRuntimeTargetForWorktreeOwner(state, captured.worktreeId)
   return isNativeChatRunTargetCurrent({
     captured,
     liveOwner,
-    worktreeExists: findNativeChatRunWorkspace(state, captured.worktreeId, hostId) !== null,
-    resolvedTarget: sameRuntimeClientTarget(onHost, routed) ? onHost : null
+    onHost: readNativeChatRunPlace(state, captured.worktreeId, captured.hostId),
+    selected: readNativeChatRunPlace(state, captured.worktreeId)
   })
 }
 
@@ -96,11 +91,17 @@ function RunButton({
 
   const handleRun = useCallback(async () => {
     // Frozen here so the dialog shows, and the tab runs, exactly this string on exactly this host.
+    const place = readNativeChatRunPlace(useAppStore.getState(), worktreeId)
+    if (!place?.route) {
+      refuseStaleRun()
+      return
+    }
     const captured: Readonly<NativeChatRunTarget & { command: string }> = Object.freeze({
       command,
       target: owner.target,
       worktreeId,
-      hostId: findNativeChatRunWorkspace(useAppStore.getState(), worktreeId)?.hostId ?? null,
+      hostId: place.hostId,
+      route: place.route,
       groupId
     })
     if (!isRunTargetCurrent(captured, liveOwnerRef.current)) {
@@ -135,6 +136,7 @@ function RunButton({
         appendEnter: true
       },
       worktreeId: captured.worktreeId,
+      executionHostId: nativeChatRunLaunchHostId(captured),
       groupId: captured.groupId
     })
   }, [command, confirm, groupId, owner.target, workspaceName, worktreeId])
