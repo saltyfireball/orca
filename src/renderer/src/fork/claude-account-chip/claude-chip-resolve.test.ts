@@ -11,8 +11,8 @@ import type { ChatHomeEntry, ClaudeHostSnapshot } from './claude-chip-host-cache
 vi.mock('@/runtime/runtime-provider-accounts-client', () => ({
   fetchProviderAccountsSnapshot: vi.fn()
 }))
-vi.mock('@/runtime/structured-agent-session-client', () => ({
-  callStructuredAgentSession: vi.fn()
+vi.mock('@/runtime/runtime-rpc-client', () => ({
+  callRuntimeRpc: vi.fn()
 }))
 
 const { accountColourForId, combineResolutions, SYSTEM_DEFAULT_ACCOUNT_ID } =
@@ -157,6 +157,37 @@ describe('account chip resolution', () => {
     expect(label(kifChat('s1'), { s1: { home: '/x', accountId: 'acct-a' } })).toBe('B @ kif')
     const failed = resolveEvidence(kifChat('s1'), localSaved, lookups({ s1: 'failed' }))
     expect(failed).toEqual({ kind: 'unknown', ownerKey: 'environment:env-kif', hostLabel: 'kif' })
+  })
+
+  it('names a moved chat by its pin before it relaunches there', () => {
+    // Launched on kif's System default (C), then moved to acct-a (B).
+    const launched = { home: '/home/j/.claude', accountId: null }
+    expect(label(kifChat('s1'), { s1: { ...launched, pin: 'acct-a' } })).toBe('B @ kif')
+    // Moved back to System default: a null pin.
+    const back = { home: '/home/j/.orca/claude/acct-a', accountId: 'acct-a', pin: null }
+    expect(label(kifChat('s1'), { s1: back })).toBe('C @ kif')
+    // A chat that never launched still names its pin.
+    expect(label(kifChat('s1'), { s1: { home: null, accountId: null, pin: 'acct-a' } })).toBe(
+      'B @ kif'
+    )
+  })
+
+  it('shows a move queued behind a turn as the account it runs on, moving to the pin', () => {
+    const resolution = resolveEvidence(
+      kifChat('s1'),
+      localSaved,
+      lookups({ s1: { home: '/home/j/.claude', accountId: null, pin: 'acct-a', pending: true } })
+    )
+    expect(resolution.kind === 'account' && resolution.account.label).toBe('C @ kif')
+    expect(resolution.kind === 'account' && resolution.movingTo?.label).toBe('B @ kif')
+    // A worktree whose only Claude session is that chat keeps the queued move.
+    expect(
+      resolveAllEvidence(
+        [kifChat('s1')],
+        localSaved,
+        lookups({ s1: { home: '/home/j/.claude', accountId: null, pin: 'acct-a', pending: true } })
+      )
+    ).toEqual(resolution)
   })
 
   it('uses only the saved accounts of a WSL host distro', () => {
