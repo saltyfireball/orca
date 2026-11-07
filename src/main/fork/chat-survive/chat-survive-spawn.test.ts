@@ -10,7 +10,11 @@ import type { PipedChildProcess, PipedProcessSpec } from '@orca/process-host/pro
 import { createProviderSpawnSpec } from '../../provider-process/provider-process-supervisor'
 import { proveClaudeChildExit } from '../../claude/claude-agent-sdk-exit-proof'
 import { createClaudeCodeProcessSpawn } from '../../claude/claude-agent-sdk-process-spawn'
+import { PassThrough } from 'node:stream'
 import { CHAT_SURVIVE_SPEC_ENV } from './chat-survive-broker-spec'
+import { dropChatSurviveClaim, holdChatSurviveClaim } from './chat-survive-claims'
+import type { ChatSurviveConnection } from './chat-survive-client'
+import type { ChatSurviveRecord } from './chat-survive-registry'
 import {
   chatSurviveRecordName,
   forkChatSurviveSpawner,
@@ -136,6 +140,50 @@ describe('chat-survive spawn hook', () => {
     expect(statSync(path).mode & 0o777).toBe(0o600)
     expect(statSync(recordDir).mode & 0o777).toBe(0o700)
     await vi.waitFor(() => expect(existsSync(path)).toBe(false), { timeout: 5000, interval: 20 })
+  })
+
+  it('refuses a spawn of any shape for a chat whose surviving provider is held', () => {
+    const recordDir = join(tempDir(), 'chat-survive')
+    enable(recordDir)
+    const stopped = vi.fn()
+    const connection: ChatSurviveConnection = {
+      welcome: {
+        t: 'welcome',
+        v: 1,
+        pid: 1,
+        fence: 1,
+        out: { first: 0, end: 0, truncated: false },
+        err: { first: 0, end: 0, truncated: false },
+        exit: null
+      },
+      stdout: new PassThrough(),
+      stderr: new PassThrough(),
+      offsets: () => ({ out: 0, err: 0 }),
+      write: () => {},
+      endInput: () => {},
+      stop: stopped,
+      release: () => {},
+      detach: () => {},
+      exited: new Promise(() => {}),
+      ended: new Promise(() => {})
+    }
+    const record: ChatSurviveRecord & { sessionId: string } = {
+      v: 1,
+      sessionId: 'held',
+      brokerPid: 1,
+      socketPath: '',
+      token: ''
+    }
+    const mark = { out: 0, err: 0, seen: 0, delivered: 0, pending: [] }
+    holdChatSurviveClaim({ connection, record, recordPath: join(recordDir, 'x'), mark, fence: 2 })
+    const base = recordingSpawner()
+    const spawn = forkChatSurviveSpawner(base.spawn, 'darwin', { ORCA_AGENT_SESSION_ID: 'held' })
+    expect(() => spawn({ program: 'claude', args: ['--print'] })).toThrow(/held for adoption/)
+    expect(base.specs).toEqual([])
+    dropChatSurviveClaim('held')
+    expect(stopped).toHaveBeenCalled()
+    // Until the dropped provider has stopped, nothing new starts for the chat either.
+    expect(() => spawn({ program: 'claude', args: ['--print'] })).toThrow(/still stopping/)
   })
 
   it('names records only from plain session ids', () => {

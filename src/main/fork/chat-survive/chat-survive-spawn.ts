@@ -2,7 +2,7 @@
 // Off unless the forkChatSurvive setting is on. Any doubt (no config, an unexpected spawn, no
 // private socket folder, no broker entry on disk, a spawn that throws) spawns exactly as today,
 // so there is never a second writer and never a provider without its supervisor.
-import { existsSync, mkdirSync, rmSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import type {
   PipedChildProcess,
@@ -11,7 +11,11 @@ import type {
 } from '@orca/process-host/process-spec'
 import { ORCA_AGENT_SESSION_ID_ENV } from '../../../shared/agent-session/lifecycle/agent-session-caller-env'
 import { chatSurviveAdoptedChild } from './chat-survive-adopted-child'
-import { chatSurviveClaimStopping, takeChatSurviveClaim } from './chat-survive-claims'
+import {
+  chatSurviveClaimStopping,
+  hasChatSurviveClaim,
+  takeChatSurviveClaim
+} from './chat-survive-claims'
 import {
   chatSurviveSocketDir,
   isProviderSupervisorSpawn,
@@ -28,6 +32,7 @@ export type ChatSurviveSpawnConfig = {
   enabled: boolean
   /** Where each broker's socket and token are kept for a later app run (phase 5). */
   recordDir: string
+  /** Read only while the setting is on. */
   entryPath: string
 }
 
@@ -73,6 +78,8 @@ export function chatSurviveRecordName(
 function writeRecord(dir: string, name: string, record: ChatSurviveRecord): string | null {
   try {
     mkdirSync(dir, { recursive: true, mode: 0o700 })
+    // mkdir leaves the mode of a folder that already exists alone; tokens live here.
+    chmodSync(dir, 0o700)
     const path = join(dir, name)
     writeChatSurviveRecord(path, record)
     return path
@@ -92,12 +99,18 @@ function adoptedChild(
   env: Record<string, string | undefined>
 ): PipedChildProcess | null {
   const sessionId = env[ORCA_AGENT_SESSION_ID_ENV]
-  if (!sessionId || !isProviderSupervisorSpawn(spec)) {
+  if (!sessionId) {
     return null
   }
+  // One writer per chat: no fresh provider, of any shape, while a surviving one may still write.
   if (chatSurviveClaimStopping(sessionId)) {
-    // One writer per chat: a fresh provider waits until the dropped one has stopped.
     throw new Error('the chat-survive provider for this chat is still stopping')
+  }
+  if (!isProviderSupervisorSpawn(spec)) {
+    if (hasChatSurviveClaim(sessionId)) {
+      throw new Error('the chat-survive provider for this chat is held for adoption')
+    }
+    return null
   }
   const claim = takeChatSurviveClaim(sessionId)
   if (!claim) {
