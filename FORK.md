@@ -35,7 +35,10 @@ named Orca Fork until SLRM-1367. `main` is always
   offsets, and lets the next app instance reattach by token and lease fence, with an orphan
   timeout when nobody comes back. The broker is built as its own plain-Node entry
   (`out/main/chat-survive-broker-entry.js`) that runs upstream's provider supervisor under it.
-  Nothing in the app starts a broker yet. The design and the remaining phases are in
+  With the `forkChatSurvive` setting on (Settings > Advanced, off by default), new Claude chats
+  run their provider supervisor under a broker; Codex and every other provider spawn as before.
+  A broker that outlives the app is still stopped by the next app start's session recovery, so
+  chats do not yet resume after a restart. The design and the remaining phases are in
   `docs/fork/chat-survive.md`.
 
 ## Patch list
@@ -72,6 +75,7 @@ Apply these in this order. Each one is a single commit.
 28. `SLRM-1393 Fail open, bring the dialog forward and quit normally after a wait`
 29. `SLRM-1394 Chat survive: design and the provider broker transport`
 30. `SLRM-1394 Chat survive: the broker process around the provider supervisor`
+31. `SLRM-1394 Chat survive: the spawn hook for Claude, behind a setting that ships off`
 
 Fork-only code lives in `fork/` folders:
 
@@ -139,6 +143,11 @@ Upstream files only get short hooks, which keeps rebases small:
 - The chat-survive broker entry (SLRM-1394): one entry in `main-build-entry-points.ts`, and in
   `plain-node-entry-guard.ts` it shares the `daemon-entry` line (a two-name `map`, so the file
   stays under max-lines). The builder overlay adds it to `asarUnpack`.
+- Chat survive spawn hook (SLRM-1394): `createClaudeCodeProcessSpawn` passes its `spawnImpl`
+  through `forkChatSurviveSpawner` (`src/main/fork/chat-survive/chat-survive-spawn.ts`);
+  `main-process-ready-foundation.ts` installs the setting reader in one line;
+  `global-settings-types.ts` has the optional `forkChatSurvive`; `AdvancedPane.tsx` renders
+  `src/renderer/src/fork/ForkChatSurviveSetting.tsx`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
