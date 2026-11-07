@@ -5,11 +5,10 @@ const RUNNABLE_SHELL_FENCE_LANGUAGES = new Set(['sh', 'bash', 'zsh', 'shell', 'c
 
 const CONSOLE_PROMPT = '$ '
 
-// C0 controls except TAB and LF, DEL, C1 controls, bidi controls and invisible characters.
-// A bare CR (not followed by LF) also counts, so CRLF fences stay runnable.
+// Controls (TAB and LF aside), format, private-use, surrogate, line and paragraph separators,
+// default-ignorable characters and every space but U+0020. CR only as part of CRLF.
 const UNSAFE_CHARACTER_RE =
-  // eslint-disable-next-line no-control-regex
-  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u00AD\u061C\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]|\r(?!\n)/
+  /[\p{Default_Ignorable_Code_Point}\p{Cf}\p{Co}\p{Cs}\p{Zl}\p{Zp}]|[^\P{Cc}\t\n\r]|\r(?!\n)|[^\P{Zs} ]/u
 
 // Words that open or continue a compound command, which the one-line join would break.
 const COMPOUND_WORDS = new Set([
