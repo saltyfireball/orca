@@ -16,6 +16,8 @@ export type ChatSurviveRecord = {
   brokerPid: number
   socketPath: string
   token: string
+  /** `chatSurviveLaunchHash` of the provider's launch; adoption needs the same one. */
+  launch?: string
   /** Written by the quit hook once the broker carries the provider on alone. */
   detached?: ChatSurviveStreamMark & { fence: number }
 }
