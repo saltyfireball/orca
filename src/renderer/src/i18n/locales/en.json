@@ -20757,7 +20757,14 @@
         "many_one": "Opened {{count}} pull request",
         "many_other": "Opened {{count}} pull requests"
       },
-      "explicitChatWindows": "This agent's chat isn't available on Windows yet. Open it in a terminal instead."
+      "explicitChatWindows": "This agent's chat isn't available on Windows yet. Open it in a terminal instead.",
+      "runCode": {
+        "confirmTitle": "Run in {{name}}?",
+        "confirm": "Run",
+        "cancel": "Cancel",
+        "tabLabel": "Chat: {{command}}",
+        "action": "Run in terminal"
+      }
     },
     "tab": {
       "bar": {
