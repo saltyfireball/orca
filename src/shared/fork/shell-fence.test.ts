@@ -30,6 +30,10 @@ describe('hasUnsafeShellCharacters', () => {
     expect(hasUnsafeShellCharacters('echo "a\tb"\r\nls\n')).toBe(false)
   })
 
+  it('allows non-ASCII letters such as an accented filename', () => {
+    expect(hasUnsafeShellCharacters(`cat caf${char(0xe9)}.txt`)).toBe(false)
+  })
+
   it.each([
     ['NUL', 0x00],
     ['BEL', 0x07],
@@ -46,6 +50,15 @@ describe('hasUnsafeShellCharacters', () => {
     ['arabic letter mark', 0x61c],
     ['zero width space', 0x200b],
     ['zero width joiner', 0x200d],
+    ['invisible separator', 0x2063],
+    ['mongolian vowel separator', 0x180e],
+    ['hangul filler', 0x3164],
+    ['no-break space', 0xa0],
+    ['line separator', 0x2028],
+    ['paragraph separator', 0x2029],
+    ['private use', 0xe000],
+    ['ideographic space', 0x3000],
+    ['lone surrogate', 0xd800],
     ['LRM', 0x200e],
     ['RLM', 0x200f],
     ['LRE', 0x202a],
