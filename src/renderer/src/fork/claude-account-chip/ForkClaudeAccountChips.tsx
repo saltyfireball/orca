@@ -1,8 +1,14 @@
-// SLRM-1503: the chip as each upstream surface places it, one line per hook.
+// SLRM-1503: the chip as each upstream surface places it, one line per hook. Each chip opens
+// "Move to account" on its own host unless the caller passes its own `menu`.
 import React from 'react'
 import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
 import { TAB_LABEL_WIDTH_CLASSES } from '@/components/tab-bar/tab-width-rules'
 import { ForkClaudeAccountChip, type ForkClaudeAccountChipProps } from './ForkClaudeAccountChip'
+import {
+  useAgentRowMoveMenu,
+  useChatTabMoveMenu,
+  useWorktreeMoveMenu
+} from './claude-chip-move-menu'
 import {
   useClaudeAccountForAgentRow,
   useClaudeAccountForTab,
@@ -31,7 +37,10 @@ export function ForkClaudeAccountTabChip({
     unifiedTabId: unified,
     chatSessionId: chat?.sessionId
   })
-  return <ForkClaudeAccountChip resolution={resolution} className={className} {...slot} />
+  const menu = useChatTabMoveMenu(tab.worktreeId, chat?.sessionId, unified)
+  return (
+    <ForkClaudeAccountChip resolution={resolution} className={className} menu={menu} {...slot} />
+  )
 }
 
 type TabChipProps = Parameters<typeof ForkClaudeAccountTabChip>[0]
@@ -55,7 +64,8 @@ export function ForkClaudeAccountWorktreeChip({
   ...slot
 }: SlotProps & { worktreeId: string }): React.JSX.Element | null {
   const resolution = useClaudeAccountForWorktree(worktreeId)
-  return <ForkClaudeAccountChip resolution={resolution} {...slot} />
+  const menu = useWorktreeMoveMenu(worktreeId)
+  return <ForkClaudeAccountChip resolution={resolution} menu={menu} {...slot} />
 }
 
 /** An agent row in the dashboard or a worktree card. */
@@ -66,5 +76,6 @@ export function ForkClaudeAccountAgentRowChip({
   agent: { paneKey: string; tab: { id: string; worktreeId: string } }
 }): React.JSX.Element | null {
   const resolution = useClaudeAccountForAgentRow(agent.tab.worktreeId, agent.tab.id, agent.paneKey)
-  return <ForkClaudeAccountChip resolution={resolution} {...slot} />
+  const menu = useAgentRowMoveMenu(agent.tab.worktreeId, agent.tab.id, agent.paneKey)
+  return <ForkClaudeAccountChip resolution={resolution} menu={menu} {...slot} />
 }

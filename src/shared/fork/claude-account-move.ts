@@ -30,6 +30,15 @@ export const ForkClaudeAccountCancelParams = z.object({ sessionId: Id })
 
 export type ForkClaudeBusyActivity = 'turn' | 'question' | 'children'
 
+/**
+ * The folder the host last launched a chat's Claude under (else its founding home), in the host's
+ * own path syntax. `accountId` is set when the host launched it on a managed account it named.
+ */
+export type ForkClaudeLaunchHome = {
+  home: string | null
+  accountId: string | null
+}
+
 export type ForkClaudeSessionAccount = {
   sessionId: string
   name: string
@@ -42,6 +51,8 @@ export type ForkClaudeSessionAccount = {
   accountLabel: string
   /** Where its live provider runs: null is System default, `undefined` none or unknown. */
   runningAccountId?: string | null
+  /** Where it last launched; the account chip names a chat that has no pin by this folder. */
+  launch: ForkClaudeLaunchHome
   /** True once moved: it no longer follows the account selection. */
   pinned: boolean
   /** A move is waiting for the live provider to finish what it is doing. */
