@@ -1,129 +1,92 @@
 // SLRM-1394: hosts one chat provider so it can outlive the app instance that started it.
 //
 // The broker owns the provider's pipes. It logs stdout and stderr into bounded rings with absolute
-// offsets and serves them over a Unix socket to one owner at a time. When the owner goes (its
-// socket closes, as it does when the app quits or dies), the provider keeps running and the broker
-// arms an orphan timer. A new owner that says hello with the token and a fence at least as high as
-// the last one cancels the timer and gets everything from the offsets it already holds. With no
-// owner by the deadline the broker stops the provider group and leaves.
+// offsets and serves them to one owner at a time. The first owner can be the process that spawned
+// the broker, over the broker's own stdio (`directOwner`); later owners say hello over a Unix
+// socket with the token and a fence at least as high as the last one, and get everything from the
+// offsets they already hold. When the owner goes (its socket closes, or the spawning process dies),
+// the provider keeps running and the broker arms an orphan timer. With no owner by the deadline the
+// broker stops the provider and leaves.
 //
-// This is only the transport. Adopting a broker into a chat session (lease, journal, adapter) is
-// the wiring described in docs/fork/chat-survive.md.
+// Adopting a broker into a chat session (lease, journal, adapter) is described in
+// docs/fork/chat-survive.md.
 import { chmodSync, rmSync } from 'node:fs'
 import { createServer, type Server, type Socket } from 'node:net'
+import type { Readable, Writable } from 'node:stream'
 import { spawnProcess } from '@orca/process-host'
 import type { PipedChildProcess } from '@orca/process-host/process-spec'
 import { ChatSurviveByteRing } from './chat-survive-byte-ring'
+import { checkHello, refusalFrame, welcomeFrames } from './chat-survive-broker-hello'
 import {
   CHAT_SURVIVE_MAX_HELLO_BYTES,
-  CHAT_SURVIVE_PROTOCOL_VERSION,
   createLineDecoder,
   encodeFrame,
-  parseHello,
-  tokensMatch,
   type ChatSurviveBrokerFrame,
   type ChatSurviveExit,
   type ChatSurviveHello,
-  type ChatSurviveRefusalReason,
   type ChatSurviveStream
 } from './chat-survive-protocol'
+import {
+  CHAT_SURVIVE_DEFAULT_ERR_RING_BYTES,
+  CHAT_SURVIVE_DEFAULT_OUT_RING_BYTES,
+  CHAT_SURVIVE_DEFAULT_STOP_GRACE_MS,
+  CHAT_SURVIVE_HELLO_TIMEOUT_MS,
+  EXIT_DRAIN_MS,
+  failedChatSurviveBroker,
+  flushed,
+  signalTarget,
+  type ChatSurviveBroker,
+  type ChatSurviveBrokerEnd,
+  type ChatSurviveBrokerEndReason,
+  type ChatSurviveBrokerOptions,
+  type ChatSurviveBrokerStatus,
+  type ChatSurviveDirectOwner
+} from './chat-survive-broker-types'
+import { unwireDirectOwner, wireDirectOwner } from './chat-survive-direct-owner'
 
-export const CHAT_SURVIVE_DEFAULT_OUT_RING_BYTES = 16 * 1024 * 1024
-export const CHAT_SURVIVE_DEFAULT_ERR_RING_BYTES = 256 * 1024
-export const CHAT_SURVIVE_DEFAULT_STOP_GRACE_MS = 3_000
-export const CHAT_SURVIVE_HELLO_TIMEOUT_MS = 5_000
-/** After the provider exits, how long its pipes get to deliver their last bytes. */
-const EXIT_DRAIN_MS = 1_000
+export type * from './chat-survive-broker-types'
 
-export type ChatSurviveBrokerOptions = {
-  command: string
-  args: readonly string[]
-  cwd?: string
-  env?: NodeJS.ProcessEnv
-  /** Path the broker binds. Its directory should be private to the user. */
-  socketPath: string
-  token: string
-  /** How long the provider may run with no owner attached before the broker stops it. */
-  orphanTimeoutMs: number
-  outRingBytes?: number
-  errRingBytes?: number
-  stopGraceMs?: number
-}
-
-export type ChatSurviveBrokerEndReason = 'orphan-timeout' | 'released' | 'closed' | 'spawn-failed'
-
-export type ChatSurviveBrokerEnd = {
-  reason: ChatSurviveBrokerEndReason
-  exit: ChatSurviveExit | null
-}
-
-export type ChatSurviveBrokerStatus = {
-  attached: boolean
-  /** True while the orphan timer runs: no owner, and the provider stops at the deadline. */
-  orphaned: boolean
-  fence: number
-  exit: ChatSurviveExit | null
-  out: number
-  err: number
-}
-
-export type ChatSurviveBroker = {
-  readonly pid: number
-  status: () => ChatSurviveBrokerStatus
-  /** Settles once the provider is gone and the socket is closed. */
-  readonly done: Promise<ChatSurviveBrokerEnd>
-  /** Stops the provider group and closes the broker. */
-  close: () => Promise<ChatSurviveBrokerEnd>
-}
-
-type Owner = { socket: Socket; fence: number; sent: { out: number; err: number } }
-
-function signalGroup(pid: number, signal: NodeJS.Signals): void {
-  try {
-    process.kill(-pid, signal)
-  } catch {
-    // ESRCH: the group is already gone.
-  }
-}
+type Owner = { socket: Socket; fence: number }
 
 export async function startChatSurviveBroker(
   options: ChatSurviveBrokerOptions
 ): Promise<ChatSurviveBroker> {
   const stopGraceMs = options.stopGraceMs ?? CHAT_SURVIVE_DEFAULT_STOP_GRACE_MS
+  const group = options.detached ?? true
   const rings: Record<ChatSurviveStream, ChatSurviveByteRing> = {
     out: new ChatSurviveByteRing(options.outRingBytes ?? CHAT_SURVIVE_DEFAULT_OUT_RING_BYTES),
     err: new ChatSurviveByteRing(options.errRingBytes ?? CHAT_SURVIVE_DEFAULT_ERR_RING_BYTES)
   }
   const ended = Promise.withResolvers<ChatSurviveBrokerEnd>()
   let owner: Owner | null = null
+  let direct: ChatSurviveDirectOwner | null = options.directOwner ?? null
   let highestFence = 0
   let exit: ChatSurviveExit | null = null
   let orphanTimer: NodeJS.Timeout | null = null
   let killTimer: NodeJS.Timeout | null = null
+  let directPoll: NodeJS.Timeout | null = null
   let finishing: ChatSurviveBrokerEndReason | null = null
 
-  // Its own process group, so a stop reaches the provider's helpers and the app's death does not.
   const child: PipedChildProcess = spawnProcess({
     program: options.command,
     args: options.args,
     ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
     env: options.env ?? process.env,
     stdio: 'pipe',
-    detached: true
+    detached: group
   })
   const spawned = await new Promise<boolean>((resolve) => {
     child.once('spawn', () => resolve(true))
     child.once('error', () => resolve(false))
   })
   if (!spawned || child.pid === undefined) {
-    return {
-      pid: -1,
-      status: () => ({ attached: false, orphaned: false, fence: 0, exit: null, out: 0, err: 0 }),
-      done: Promise.resolve({ reason: 'spawn-failed', exit: null }),
-      close: async () => ({ reason: 'spawn-failed', exit: null })
-    }
+    return failedChatSurviveBroker()
   }
   const pid = child.pid
+  const childStreams: Record<ChatSurviveStream, Readable> = {
+    out: child.stdout,
+    err: child.stderr
+  }
   for (const stream of [child.stdin, child.stdout, child.stderr]) {
     stream.on('error', () => {})
   }
@@ -134,12 +97,23 @@ export async function startChatSurviveBroker(
     }
   }
 
+  const directSink = (stream: ChatSurviveStream): Writable | null =>
+    direct ? (stream === 'out' ? direct.output : direct.errOutput) : null
+
   const relay = (stream: ChatSurviveStream, data: Buffer): void => {
     const offset = rings[stream].end
     rings[stream].append(data)
+    const sink = directSink(stream)
+    if (sink) {
+      // The app reads at its own pace, as it does from a provider it spawned itself.
+      if (!sink.write(data)) {
+        childStreams[stream].pause()
+        sink.once('drain', () => childStreams[stream].resume())
+      }
+      return
+    }
     if (owner) {
       send(owner, { t: 'data', s: stream, o: offset, d: data.toString('base64') })
-      owner.sent[stream] = rings[stream].end
     }
   }
   child.stdout.on('data', (data: Buffer) => relay('out', data))
@@ -155,6 +129,9 @@ export async function startChatSurviveBroker(
     finishing = reason
     if (orphanTimer) {
       clearTimeout(orphanTimer)
+    }
+    if (directPoll) {
+      clearInterval(directPoll)
     }
     const finish = (): void => {
       if (killTimer) {
@@ -173,8 +150,8 @@ export async function startChatSurviveBroker(
       finish()
       return
     }
-    signalGroup(pid, 'SIGTERM')
-    killTimer = setTimeout(() => signalGroup(pid, 'SIGKILL'), stopGraceMs)
+    signalTarget(pid, 'SIGTERM', group)
+    killTimer = setTimeout(() => signalTarget(pid, 'SIGKILL', group), stopGraceMs)
     exitObserved.then(finish, finish)
   }
 
@@ -184,7 +161,7 @@ export async function startChatSurviveBroker(
     }
     orphanTimer = setTimeout(() => {
       orphanTimer = null
-      if (!owner) {
+      if (!owner && !direct) {
         shutdown('orphan-timeout')
       }
     }, options.orphanTimeoutMs)
@@ -202,23 +179,55 @@ export async function startChatSurviveBroker(
           return
         }
         exit = { code, signal }
-        // The provider's helpers die with it.
-        signalGroup(pid, 'SIGKILL')
+        if (group) {
+          // The provider's helpers die with it.
+          signalTarget(pid, 'SIGKILL', true)
+        }
         if (owner) {
           send(owner, { t: 'exit', code, signal })
         }
         resolve()
+        const attached = direct
+        if (attached) {
+          // The direct owner judges the provider by this process's exit, after its last output.
+          void Promise.all([flushed(attached.output), flushed(attached.errOutput)]).then(() =>
+            shutdown('exited')
+          )
+        }
       }
     })
   })
 
-  const refuse = (socket: Socket, reason: ChatSurviveRefusalReason): void => {
-    socket.end(encodeFrame({ t: 'refused', v: CHAT_SURVIVE_PROTOCOL_VERSION, reason }))
+  // The spawning process is gone; whatever it had not read stays in the rings.
+  const loseDirectOwner = (): void => {
+    const lost = direct
+    if (!lost) {
+      return
+    }
+    direct = null
+    if (directPoll) {
+      clearInterval(directPoll)
+      directPoll = null
+    }
+    unwireDirectOwner(lost)
+    child.stdout.resume()
+    child.stderr.resume()
+    armOrphanTimer()
+  }
+
+  if (direct) {
+    const attached = direct
+    directPoll = wireDirectOwner(attached, {
+      stdin: child.stdin,
+      current: () => direct === attached,
+      providerExited: () => exit !== null,
+      lose: loseDirectOwner
+    })
   }
 
   const accept = (socket: Socket, hello: ChatSurviveHello): Owner => {
     const previous = owner
-    const next: Owner = { socket, fence: hello.fence, sent: { out: 0, err: 0 } }
+    const next: Owner = { socket, fence: hello.fence }
     owner = next
     highestFence = hello.fence
     if (orphanTimer) {
@@ -229,28 +238,8 @@ export async function startChatSurviveBroker(
       send(previous, { t: 'superseded', fence: hello.fence })
       previous.socket.end()
     }
-    const out = rings.out.sliceFrom(hello.from.out)
-    const err = rings.err.sliceFrom(hello.from.err)
-    send(next, {
-      t: 'welcome',
-      v: CHAT_SURVIVE_PROTOCOL_VERSION,
-      pid,
-      fence: hello.fence,
-      out: { first: out.first, end: out.end, truncated: out.truncated },
-      err: { first: err.first, end: err.end, truncated: err.truncated },
-      exit
-    })
-    for (const [stream, slice] of [
-      ['err', err],
-      ['out', out]
-    ] as const) {
-      if (slice.data.length > 0) {
-        send(next, { t: 'data', s: stream, o: slice.first, d: slice.data.toString('base64') })
-      }
-      next.sent[stream] = slice.end
-    }
-    if (exit) {
-      send(next, { t: 'exit', ...exit })
+    for (const frame of welcomeFrames(rings, hello, pid, exit)) {
+      send(next, frame)
     }
     return next
   }
@@ -263,18 +252,17 @@ export async function startChatSurviveBroker(
     const decoder = createLineDecoder((frame) => {
       if (!self) {
         clearTimeout(helloTimer)
-        const hello = parseHello(frame)
-        if (!hello) {
-          return refuse(socket, 'malformed')
+        const hello = checkHello(frame, options.token)
+        if (typeof hello === 'string') {
+          return void socket.end(refusalFrame(hello))
         }
-        if (hello.v !== CHAT_SURVIVE_PROTOCOL_VERSION) {
-          return refuse(socket, 'version')
+        // Never two writers: while the spawning process lives, it alone owns the provider.
+        if (direct && !direct.gone()) {
+          return void socket.end(refusalFrame('busy'))
         }
-        if (!tokensMatch(options.token, hello.token)) {
-          return refuse(socket, 'bad-token')
-        }
+        loseDirectOwner()
         if (hello.fence < highestFence || finishing) {
-          return refuse(socket, 'stale-fence')
+          return void socket.end(refusalFrame('stale-fence'))
         }
         self = accept(socket, hello)
         return
@@ -318,12 +306,15 @@ export async function startChatSurviveBroker(
     return { pid, status, done: ended.promise, close: () => ended.promise }
   }
   chmodSync(options.socketPath, 0o600)
-  // The first owner has the same deadline as any later one.
-  armOrphanTimer()
+  if (!direct) {
+    // The first socket owner has the same deadline as any later one.
+    armOrphanTimer()
+  }
 
   function status(): ChatSurviveBrokerStatus {
     return {
-      attached: owner !== null,
+      attached: owner !== null || direct !== null,
+      direct: direct !== null,
       orphaned: orphanTimer !== null,
       fence: highestFence,
       exit,
