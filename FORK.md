@@ -55,6 +55,7 @@ Apply these in this order. Each one is a single commit.
 20. `SLRM-1357 Accept the self-signed certificate's root requirement`
 21. `SLRM-1351 Shared mode: run Orca Fork on stock Orca's data`
 22. `SLRM-1367 Rename the app to Blackfish, keeping the Orca Fork data folder and Keychain item`
+23. `SLRM-1370 CLI launcher: run the executable Info.plist names`
 
 Fork-only code lives in `fork/` folders:
 
@@ -83,6 +84,9 @@ Upstream files only get short hooks, which keeps rebases small:
   instance locks.
 - The post-ready `app.setName` in `src/main/startup/main-process-ready-foundation.ts` goes
   through `forkPostReadyAppName` (`src/main/fork/app-name.ts`).
+- The macOS CLI launcher `resources/darwin/bin/orca` reads `CFBundleExecutable` from
+  `Info.plist` instead of assuming `MacOS/Orca`, falling back to `Orca`, so `orca` works in
+  Blackfish. `src/main/fork/darwin-cli-launcher.test.ts` covers it.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
