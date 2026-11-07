@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  checkEditedRunCommand,
   commandFromShellFence,
   hasUnsafeShellCharacters,
   isRunnableShellFence
@@ -168,5 +169,27 @@ describe('commandFromShellFence', () => {
     expect(commandFromShellFence('  \n\n', 'bash')).toBeNull()
     expect(commandFromShellFence('# just a comment\n', 'bash')).toBeNull()
     expect(commandFromShellFence('echo hi', 'python')).toBeNull()
+  })
+})
+
+describe('checkEditedRunCommand', () => {
+  it('returns the trimmed command as typed', () => {
+    expect(checkEditedRunCommand('  aws s3 ls --profile dev  ')).toEqual({
+      ok: true,
+      command: 'aws s3 ls --profile dev'
+    })
+    expect(checkEditedRunCommand('! echo kept')).toEqual({ ok: true, command: '! echo kept' })
+  })
+
+  it('refuses edits that cannot run safely as one line', () => {
+    expect(checkEditedRunCommand('   ')).toEqual({ ok: false, reason: 'empty' })
+    expect(checkEditedRunCommand('ls\nrm -rf x')).toEqual({ ok: false, reason: 'multiline' })
+    expect(checkEditedRunCommand('ls\rrm -rf x')).toEqual({ ok: false, reason: 'multiline' })
+    expect(checkEditedRunCommand(`echo ${char(0x202e)}cba`)).toEqual({
+      ok: false,
+      reason: 'unsafe'
+    })
+    expect(checkEditedRunCommand('cat <<EOF')).toEqual({ ok: false, reason: 'heredoc' })
+    expect(checkEditedRunCommand('echo a \\')).toEqual({ ok: false, reason: 'continuation' })
   })
 })
