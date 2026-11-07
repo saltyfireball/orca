@@ -166,6 +166,13 @@ jobs:
         working-directory: mobile
         run: pnpm typecheck
 
+      # Disable what is registered now, so the push cannot start an upstream workflow already known.
+      - name: Disable upstream workflows before the push
+        if: steps.rebase.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash config/scripts/fork/fork-workflow-guard.sh disable
+
       - name: Push main
         if: steps.rebase.outputs.changed == 'true'
         env:
@@ -176,16 +183,14 @@ jobs:
       - name: Keep upstream workflows disabled
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          ids="$(gh api --paginate repos/saltyfireball/orca/actions/workflows \
-            --jq '.workflows[] | select(.path != ".github/workflows/fork-sync.yml") | select(.path | startswith(".github/workflows/")) | select(.state == "active") | .id')"
-          for id in $ids; do
-            echo "Disabling workflow $id"
-            gh api -X PUT "repos/saltyfireball/orca/actions/workflows/$id/disable"
-          done
-          echo "Disabled $(printf '%s\n' "$ids" | grep -c . || true) workflow(s)"
+        run: bash config/scripts/fork/fork-workflow-guard.sh disable
+
+      # A workflow added by this push was active when the push landed and may have started.
+      - name: Cancel upstream runs of the pushed commit
+        if: steps.rebase.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash config/scripts/fork/fork-workflow-guard.sh cancel-runs "$(git rev-parse HEAD)"
 
       - name: Record the commit to build
         id: result
