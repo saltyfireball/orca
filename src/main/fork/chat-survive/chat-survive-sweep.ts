@@ -3,6 +3,7 @@
 // Only what a record names is touched: sockets of other Orca builds share the temp folder.
 import { chmodSync, existsSync, lstatSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
+import { isRecord } from './chat-survive-protocol'
 
 const SOCKET_DIR_NAME = 'orca-chat-survive'
 
@@ -19,8 +20,8 @@ function alive(pid: number): boolean {
 function readRecord(path: string): { brokerPid: number | null; socketPath: string | null } {
   try {
     const raw: unknown = JSON.parse(readFileSync(path, 'utf8'))
-    const pid: unknown = typeof raw === 'object' && raw ? Reflect.get(raw, 'brokerPid') : null
-    const socket: unknown = typeof raw === 'object' && raw ? Reflect.get(raw, 'socketPath') : null
+    const pid = isRecord(raw) ? raw.brokerPid : null
+    const socket = isRecord(raw) ? raw.socketPath : null
     return {
       brokerPid: typeof pid === 'number' && Number.isSafeInteger(pid) && pid > 0 ? pid : null,
       socketPath: typeof socket === 'string' ? socket : null
