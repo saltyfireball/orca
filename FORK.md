@@ -54,6 +54,23 @@ named Orca Fork until SLRM-1367. `main` is always
   with the home it last launched the chat under. Settings > Advanced turns it off
   (`forkShowAccountChip`, on by default). Code is in `src/renderer/src/fork/claude-account-chip/`
   and `src/main/fork/claude-account-chip/`.
+- **Move Claude chats to another account (SLRM-1503).** One native Claude chat, or every
+  Claude chat in a worktree, can move to another Claude account of the host that runs it; the
+  other chats stay where they are.
+  - The host keeps a pin per chat (`src/main/fork/claude-account-move/`). The next launch of that
+    chat reads the pin before the selected account, and the stock outgrown-child check stops an
+    idle provider so the next message resumes the same conversation on the new account.
+  - A chat mid-turn is never stopped: its move is queued until the turn ends. A toast offers
+    Move now (stop the turn and move) and Cancel.
+  - Entry points: the native chat tab's right-click menu, the command palette ("Move this
+    chat to account...", "Move this worktree's chats to account..."), and
+    `ForkMoveAccountMenu` for the account chip. Each lists only the chat host's accounts, with
+    5h and weekly usage.
+  - CLI: `orca account which [--session|--worktree]` and
+    `orca account move <account> (--session|--worktree) [--now]`, over runtime RPC
+    (`fork.claudeAccount.which`, `.move`, `.cancel`), so they work on paired hosts too.
+  - A worktree move on this desktop also restarts its Claude terminal panes on that account
+    through the stock account-restart queue, each once it is idle.
 
 ## Patch list
 
@@ -99,6 +116,11 @@ Apply these in this order. Each one is a single commit.
 38. `SLRM-1394 Chat survive: adopt a provider only into the launch that started it`
 39. `SLRM-1394 Put the pinned bun on PATH for tests run outside pnpm`
 40. `SLRM-1503 Account chip: name the Claude account of each tab, agent and worktree`
+41. `SLRM-1503 Move a Claude chat to another account: pins, launch hooks and host RPC`
+42. `SLRM-1503 orca account which / move: the move from the CLI on any paired host`
+43. `SLRM-1503 Exhaustive move result switch and a typed fake session summary`
+44. `SLRM-1503 Move a chat or a worktree's chats to another account from the tab menu and palette`
+45. `SLRM-1503 FORK.md: the account move`
 
 Fork-only code lives in `fork/` folders:
 
@@ -108,6 +130,7 @@ Fork-only code lives in `fork/` folders:
 - `src/main/updater/fork/`
 - `src/renderer/src/components/native-chat/fork/`
 - `src/renderer/src/fork/`
+- `src/cli/fork/`
 - `mobile/src/components/fork/`
 - `config/scripts/fork/`
 - `native/computer-use-macos/Sources/OrcaComputerUseMacOSCore/fork/`
@@ -201,6 +224,26 @@ Upstream files only get short hooks, which keeps rebases small:
   `AdvancedPane.tsx` renders `ForkAccountChipSetting`; `structured-agent-session.ts` spreads
   `FORK_CLAUDE_CHAT_HOME_METHODS` into its methods and `rpc-params-catalog.generated.ts` is
   regenerated for it.
+
+- Account move (SLRM-1503), from `src/main/fork/claude-account-move/` and
+  `src/renderer/src/fork/claude-account-move/`:
+  - `prepareClaudeLaunchAccount` (`claude-launch-account.ts`) takes an optional `sessionId` and
+    returns `forkPinnedClaudeLaunch` first when the chat has a pin;
+    `claude-structured-launch-resolution.ts` passes the record's `sessionId`.
+  - `structured-session-account-home.ts` returns `forkPinnedClaudeAccountHome` first, so the
+    outgrown-child check sees a moved chat as outgrown.
+  - Both `spawn-preflight.ts` files (`ipc/` and `runtime/`) call
+    `forkPinTerminalClaudeAccount`, which turns the `ORCA_FORK_CLAUDE_ACCOUNT` marker of a moved
+    pane into that pane's own account pointer.
+  - `rpc-method-registry.ts` spreads `FORK_CLAUDE_ACCOUNT_MOVE_METHODS` last, and the generated
+    `rpc-params-catalog.generated.ts` lists their params.
+  - `src/cli/specs/index.ts` spreads `FORK_ACCOUNT_MOVE_COMMAND_SPECS` last, and
+    `handler-group-manifest.ts` adds the `fork-account-move` group last.
+  - `buildPaneAccountRestartStartup` (`agent-account-restart-startup.ts`) passes its result
+    through `withForkClaudePaneAccount`, which adds the marker for a moved pane once.
+  - `SortableTabContextMenu.tsx` renders `ForkMoveAccountTabMenuItems` for a native Claude chat,
+    `quick-actions.ts` spreads `getForkClaudeMoveQuickActions()`, and `AppRootSurfaces.tsx`
+    mounts `ForkMoveAccountDialogHost`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
