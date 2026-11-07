@@ -19,7 +19,7 @@ export function resolveTerminalCreatedShell(
   options: Parameters<TerminalActions['createTab']>[3],
   facts: TerminalCreationExecutionFacts | undefined
 ) {
-  const folder = getProjectRuntimeFolder(s, worktreeId, facts?.hostId)
+  const folder = getProjectRuntimeFolder(s, worktreeId, facts?.hostId ?? options?.executionHostId)
   const selectedFolder = folder
     ? {
         ...folder.workspace,
