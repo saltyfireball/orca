@@ -17,7 +17,8 @@ type OutputChunk = Rollup.OutputChunk
 const PLAIN_NODE_ENTRY_NAMES = [
   'backend-entry',
   'browser-extension-native-host-supervisor-entry',
-  'daemon-entry',
+  // Fork (SLRM-1394): chat-survive-broker-entry shares this line to stay under max-lines.
+  ...(['chat-survive-broker', 'daemon'] as const).map((n) => `${n}-entry` as const),
   'parcel-watcher-process-entry',
   // Utility process on desktop, forked child in orcad.
   'stt-worker',
