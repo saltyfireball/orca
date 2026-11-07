@@ -1,16 +1,19 @@
-import { useCallback, useContext } from 'react'
+import { useCallback, useContext, useEffect, useRef } from 'react'
 import { Play } from 'lucide-react'
+import { toast } from 'sonner'
 import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
 import { findWorktreeById } from '@/store/slices/worktree-helpers'
 import { selectWorktreesByRepo } from '@/store/workspace-record-selectors'
+import { tryRuntimeTargetForWorktreeOwner } from '@/store/slices/worktrees/listing/worktree-owner-target'
 import { runQuickCommandInNewTab } from '@/lib/run-quick-command-in-new-tab'
 import {
   ConfirmationDialogContext,
   type ConfirmationDialogContextValue
 } from '@/components/confirmation-dialog-context'
 import { commandFromShellFence } from '../../../../../shared/fork/shell-fence'
-import { useNativeChatVisualOwner } from '../media/visuals/native-chat-visual-owner'
+import { useNativeChatVisualOwner, type NativeChatVisualOwner } from '../media/visuals/native-chat-visual-owner'
+import { isNativeChatRunTargetCurrent, type NativeChatRunTarget } from './native-chat-run-target'
 
 const LABEL_PREVIEW_LENGTH = 40
 
@@ -29,27 +32,49 @@ export function NativeChatRunButton({
   if (!owner || !confirm || !command) {
     return null
   }
-  return (
-    <RunButton
-      command={command}
-      worktreeId={owner.worktreeId}
-      tabId={owner.tabId}
-      confirm={confirm}
-    />
+  return <RunButton command={command} owner={owner} confirm={confirm} />
+}
+
+function isRunTargetCurrent(
+  captured: NativeChatRunTarget,
+  liveOwner: NativeChatVisualOwner | null
+): boolean {
+  const state = useAppStore.getState()
+  return isNativeChatRunTargetCurrent({
+    captured,
+    liveOwner,
+    worktreeExists: Boolean(findWorktreeById(selectWorktreesByRepo(state), captured.worktreeId)),
+    resolvedTarget: tryRuntimeTargetForWorktreeOwner(state, captured.worktreeId)
+  })
+}
+
+function refuseStaleRun(): void {
+  toast.error(
+    translate(
+      'components.native-chat.runCode.staleTarget',
+      'Not run: this chat no longer points at the same workspace and host.'
+    )
   )
 }
 
 function RunButton({
   command,
-  worktreeId,
-  tabId,
+  owner,
   confirm
 }: {
   command: string
-  worktreeId: string
-  tabId?: string
+  owner: NativeChatVisualOwner
   confirm: ConfirmationDialogContextValue
 }): React.JSX.Element {
+  const { worktreeId, tabId } = owner
+  // The confirm compares against the chat's owner at answer time, not at dialog open.
+  const liveOwnerRef = useRef<NativeChatVisualOwner | null>(owner)
+  useEffect(() => {
+    liveOwnerRef.current = owner
+    return () => {
+      liveOwnerRef.current = null
+    }
+  }, [owner])
   const workspaceName = useAppStore(
     (s) => findWorktreeById(selectWorktreesByRepo(s), worktreeId)?.displayName ?? null
   )
@@ -63,11 +88,22 @@ function RunButton({
   )
 
   const handleRun = useCallback(async () => {
+    // Frozen here so the dialog shows, and the tab runs, exactly this string on exactly this host.
+    const captured: Readonly<NativeChatRunTarget & { command: string }> = Object.freeze({
+      command,
+      target: owner.target,
+      worktreeId,
+      groupId
+    })
+    if (!isRunTargetCurrent(captured, liveOwnerRef.current)) {
+      refuseStaleRun()
+      return
+    }
     const confirmed = await confirm({
       title: translate('components.native-chat.runCode.confirmTitle', 'Run in {{name}}?', {
         name: workspaceName ?? worktreeId
       }),
-      description: command,
+      description: captured.command,
       descriptionClassName:
         'max-h-48 overflow-auto whitespace-pre-wrap [overflow-wrap:anywhere] rounded-md border border-border bg-muted p-2 font-mono text-xs text-foreground',
       confirmLabel: translate('components.native-chat.runCode.confirm', 'Run'),
@@ -76,21 +112,24 @@ function RunButton({
     if (!confirmed) {
       return
     }
-    const preview = command.replace(/\s+/g, ' ').trim().slice(0, LABEL_PREVIEW_LENGTH)
+    if (!isRunTargetCurrent(captured, liveOwnerRef.current)) {
+      refuseStaleRun()
+      return
+    }
     runQuickCommandInNewTab({
       command: {
         id: 'fork-chat-run',
         label: translate('components.native-chat.runCode.tabLabel', 'Chat: {{command}}', {
-          command: preview
+          command: captured.command.slice(0, LABEL_PREVIEW_LENGTH)
         }),
         action: 'terminal-command',
-        command,
+        command: captured.command,
         appendEnter: true
       },
-      worktreeId,
-      groupId
+      worktreeId: captured.worktreeId,
+      groupId: captured.groupId
     })
-  }, [command, confirm, groupId, workspaceName, worktreeId])
+  }, [command, confirm, groupId, owner.target, workspaceName, worktreeId])
 
   const label = translate('components.native-chat.runCode.action', 'Run in terminal')
   return (
