@@ -4,9 +4,11 @@
 // offsets and serves them to one owner at a time. The first owner can be the process that spawned
 // the broker, over the broker's own stdio (`directOwner`); later owners say hello over a Unix
 // socket with the token and a fence at least as high as the last one, and get everything from the
-// offsets they already hold. When the owner goes (its socket closes, or the spawning process dies),
-// the provider keeps running and the broker arms an orphan timer. With no owner by the deadline the
-// broker stops the provider and leaves.
+// offsets they already hold. When the owner hands the provider off (a `detach` frame, then its
+// socket closes) the provider keeps running and the broker arms an orphan timer; with no owner by
+// the deadline the broker stops the provider and leaves. An owner lost any other way (a crash, a
+// socket gone without a word, the spawning process dead) stops the provider, as its supervisor
+// would today.
 //
 // Adopting a broker into a chat session (lease, journal, adapter) is described in
 // docs/fork/chat-survive.md.
@@ -16,10 +18,9 @@ import type { Readable, Writable } from 'node:stream'
 import { spawnProcess } from '@orca/process-host'
 import type { PipedChildProcess } from '@orca/process-host/process-spec'
 import { ChatSurviveByteRing } from './chat-survive-byte-ring'
-import { checkHello, refusalFrame, welcomeFrames } from './chat-survive-broker-hello'
+import { serveChatSurviveConnection } from './chat-survive-broker-connection'
+import { welcomeFrames } from './chat-survive-broker-hello'
 import {
-  CHAT_SURVIVE_MAX_HELLO_BYTES,
-  createLineDecoder,
   encodeFrame,
   type ChatSurviveBrokerFrame,
   type ChatSurviveExit,
@@ -30,7 +31,6 @@ import {
   CHAT_SURVIVE_DEFAULT_ERR_RING_BYTES,
   CHAT_SURVIVE_DEFAULT_OUT_RING_BYTES,
   CHAT_SURVIVE_DEFAULT_STOP_GRACE_MS,
-  CHAT_SURVIVE_HELLO_TIMEOUT_MS,
   EXIT_DRAIN_MS,
   failedChatSurviveBroker,
   flushed,
@@ -91,11 +91,9 @@ export async function startChatSurviveBroker(
     stream.on('error', () => {})
   }
 
-  const send = (target: Owner, frame: ChatSurviveBrokerFrame): void => {
-    if (!target.socket.destroyed) {
-      target.socket.write(encodeFrame(frame))
-    }
-  }
+  /** False when the socket is backed up; it says `drain` when it takes more. */
+  const send = (target: Owner, frame: ChatSurviveBrokerFrame): boolean =>
+    target.socket.destroyed || target.socket.write(encodeFrame(frame))
 
   const directSink = (stream: ChatSurviveStream): Writable | null =>
     direct ? (stream === 'out' ? direct.output : direct.errOutput) : null
@@ -112,8 +110,10 @@ export async function startChatSurviveBroker(
       }
       return
     }
-    if (owner) {
-      send(owner, { t: 'data', s: stream, o: offset, d: data.toString('base64') })
+    if (owner && !send(owner, { t: 'data', s: stream, o: offset, d: data.toString('base64') })) {
+      // The same pace over the socket; a socket that closes instead resumes the stream.
+      childStreams[stream].pause()
+      owner.socket.once('drain', () => childStreams[stream].resume())
     }
   }
   child.stdout.on('data', (data: Buffer) => relay('out', data))
@@ -198,8 +198,8 @@ export async function startChatSurviveBroker(
     })
   })
 
-  // The spawning process is gone; whatever it had not read stays in the rings.
-  const loseDirectOwner = (): void => {
+  // The spawning process moved to the socket or is gone; what it had not read stays in the rings.
+  const dropDirectOwner = (): void => {
     const lost = direct
     if (!lost) {
       return
@@ -212,7 +212,14 @@ export async function startChatSurviveBroker(
     unwireDirectOwner(lost)
     child.stdout.resume()
     child.stderr.resume()
-    armOrphanTimer()
+  }
+
+  // Gone without a hand-off (a crash, a forced exit): nobody can resume it, so stop as today.
+  const loseDirectOwner = (): void => {
+    if (direct) {
+      dropDirectOwner()
+      shutdown('closed')
+    }
   }
 
   if (direct) {
@@ -246,55 +253,40 @@ export async function startChatSurviveBroker(
 
   server.on('connection', (socket) => {
     sockets.add(socket)
-    socket.on('error', () => {})
-    let self: Owner | null = null
-    const helloTimer = setTimeout(() => socket.destroy(), CHAT_SURVIVE_HELLO_TIMEOUT_MS)
-    const decoder = createLineDecoder((frame) => {
-      if (!self) {
-        clearTimeout(helloTimer)
-        const hello = checkHello(frame, options.token)
-        if (typeof hello === 'string') {
-          return void socket.end(refusalFrame(hello))
-        }
-        if (hello.fence < highestFence || finishing) {
-          return void socket.end(refusalFrame('stale-fence'))
-        }
-        // Never two writers: while the spawning process lives, it alone owns the provider, and
-        // only it (it holds the token) moves itself to the socket with a takeover.
-        if (direct && !direct.gone() && hello.takeover !== true) {
-          return void socket.end(refusalFrame('busy'))
-        }
-        loseDirectOwner()
-        self = accept(socket, hello)
-        return
-      }
-      if (owner !== self || !frame) {
-        return
-      }
-      if (frame.t === 'in' && typeof frame.d === 'string' && !exit) {
-        child.stdin.write(Buffer.from(frame.d, 'base64'))
-      } else if (frame.t === 'end') {
-        child.stdin.end()
-      } else if (frame.t === 'stop') {
-        shutdown('closed')
-      } else if (frame.t === 'release') {
-        shutdown('released')
-      }
-    })
-    socket.on('data', (chunk: Buffer) => {
-      decoder.push(chunk)
-      if (!self && decoder.pending() > CHAT_SURVIVE_MAX_HELLO_BYTES) {
-        socket.destroy()
-      }
-    })
-    socket.on('close', () => {
-      clearTimeout(helloTimer)
-      sockets.delete(socket)
-      if (self && owner === self) {
-        // The owner went without a word: the app quit or died. The provider carries on.
+    serveChatSurviveConnection<Owner>(socket, {
+      helloState: () => ({
+        token: options.token,
+        highestFence,
+        finishing: finishing !== null,
+        directHeld: direct !== null && !direct.gone()
+      }),
+      accept: (accepted, hello) => {
+        dropDirectOwner()
+        return accept(accepted, hello)
+      },
+      isOwner: (self) => owner === self,
+      actions: {
+        input: (data) => {
+          if (!exit) {
+            child.stdin.write(data)
+          }
+        },
+        end: () => child.stdin.end(),
+        stop: () => shutdown('closed'),
+        release: () => shutdown('released')
+      },
+      lost: (handedOff) => {
         owner = null
-        armOrphanTimer()
-      }
+        child.stdout.resume()
+        child.stderr.resume()
+        // Handed off at quit, the provider waits for the next app; otherwise it stops as today.
+        if (handedOff) {
+          armOrphanTimer()
+        } else {
+          shutdown('closed')
+        }
+      },
+      closed: (closed) => sockets.delete(closed)
     })
   })
 

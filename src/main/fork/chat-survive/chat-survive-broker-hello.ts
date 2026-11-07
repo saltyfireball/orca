@@ -67,3 +67,62 @@ export function welcomeFrames(
   }
   return frames
 }
+
+/** What the broker knows when a hello comes in. */
+export type ChatSurviveHelloState = {
+  token: string
+  highestFence: number
+  finishing: boolean
+  /** The spawning process still owns the provider over the broker's stdio. */
+  directHeld: boolean
+}
+
+/** The hello an owner may be accepted with, or why it is refused. */
+export function admitHello(
+  frame: Record<string, unknown> | null,
+  state: ChatSurviveHelloState
+): ChatSurviveHello | ChatSurviveRefusalReason {
+  const hello = checkHello(frame, state.token)
+  if (typeof hello === 'string') {
+    return hello
+  }
+  // Only the spawning app's own takeover may reuse the fence; any other owner must go higher.
+  const fresh =
+    hello.takeover === true ? hello.fence >= state.highestFence : hello.fence > state.highestFence
+  if (!fresh || state.finishing) {
+    return 'stale-fence'
+  }
+  // Never two writers: while the spawning process lives, it alone owns the provider, and only it
+  // (it holds the token) moves itself to the socket with a takeover.
+  if (state.directHeld && hello.takeover !== true) {
+    return 'busy'
+  }
+  return hello
+}
+
+/** What the current owner can ask of the broker. */
+export type ChatSurviveOwnerActions = {
+  input: (data: Buffer) => void
+  end: () => void
+  stop: () => void
+  release: () => void
+  detach: () => void
+}
+
+export function applyOwnerFrame(
+  frame: Record<string, unknown>,
+  actions: ChatSurviveOwnerActions
+): void {
+  const data = frame.d
+  if (frame.t === 'in' && typeof data === 'string') {
+    actions.input(Buffer.from(data, 'base64'))
+  } else if (frame.t === 'end') {
+    actions.end()
+  } else if (frame.t === 'stop') {
+    actions.stop()
+  } else if (frame.t === 'release') {
+    actions.release()
+  } else if (frame.t === 'detach') {
+    actions.detach()
+  }
+}

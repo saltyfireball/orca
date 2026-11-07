@@ -228,6 +228,8 @@ describe.runIf(process.platform === 'darwin')('chat-survive adoption', () => {
     third.child.stdin.end()
     await exited
     expect(alive(brokerPid)).toBe(false)
+    // Its pid may name another process now: nothing signals it any more.
+    expect(third.child.kill('SIGTERM')).toBe(false)
     expect(readdirSync(recordDir)).toEqual([])
   }, 45_000)
 

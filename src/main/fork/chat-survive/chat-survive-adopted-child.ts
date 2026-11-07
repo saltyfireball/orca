@@ -153,11 +153,20 @@ function gone(pid: number): boolean {
   }
 }
 
-/** Reports the exit once the provider's exit is known and the broker process itself is gone. */
-function reportExit(child: EventEmitter, pid: number, connection: ChatSurviveConnection): void {
+/**
+ * Reports the exit once the provider's exit is known and the broker process itself is gone.
+ * Returns whether that happened: from then on the pid may name some other process.
+ */
+function reportExit(
+  child: EventEmitter,
+  pid: number,
+  connection: ChatSurviveConnection
+): () => boolean {
   let exit: ChatSurviveExit = { code: null, signal: null }
   let watching = false
+  let over = false
   const finish = (): void => {
+    over = true
     Object.defineProperty(child, 'exitCode', { value: exit.code, configurable: true })
     Object.defineProperty(child, 'signalCode', { value: exit.signal, configurable: true })
     child.emit('exit', exit.code, exit.signal)
@@ -185,6 +194,7 @@ function reportExit(child: EventEmitter, pid: number, connection: ChatSurviveCon
   })
   // A connection lost without an exit (a crashed broker) still ends once the broker is gone.
   void connection.ended.then(watch)
+  return () => over
 }
 
 export function chatSurviveAdoptedChild(input: {
@@ -202,8 +212,7 @@ export function chatSurviveAdoptedChild(input: {
   connection.stderr.on('data', (chunk: Buffer) => tracker.stderr(chunk))
   const stdin = new Writable({
     write(chunk: Buffer, _encoding, callback) {
-      connection.write(chunk)
-      callback()
+      connection.write(chunk, () => callback())
     },
     final(callback) {
       // A session provider takes the end of its input as a close request, as over a pipe.
@@ -228,8 +237,13 @@ export function chatSurviveAdoptedChild(input: {
   for (const name of ['ref', 'unref', 'disconnect']) {
     define(name, () => {})
   }
-  // Signals go to the broker itself, the process the earlier instance spawned in this place.
+  // Signals go to the broker itself, the process the earlier instance spawned in this place, and
+  // never once it is gone: its pid may be reused by then.
+  const brokerGone = reportExit(child, brokerPid, connection)
   define('kill', (signal?: NodeJS.Signals | number): boolean => {
+    if (brokerGone()) {
+      return false
+    }
     try {
       process.kill(brokerPid, signal ?? 'SIGTERM')
       return true
@@ -237,7 +251,6 @@ export function chatSurviveAdoptedChild(input: {
       return false
     }
   })
-  reportExit(child, brokerPid, connection)
   if (!isPiped(child)) {
     throw new Error('adopted chat-survive child has no stdio')
   }
