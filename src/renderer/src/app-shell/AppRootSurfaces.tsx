@@ -20,6 +20,7 @@ import { PluginInstallTrustDialogHost } from '../components/plugins/dialogs/Plug
 import { TelemetryFirstLaunchSurface } from '../components/onboarding/telemetry/TelemetryFirstLaunchSurface'
 import { ZoomOverlay } from './chrome/ZoomOverlay'
 import { WslMoveDialogHost } from '../components/wsl-move/WslMoveDialog'
+import { ForkMoveAccountDialogHost } from '../fork/claude-account-move/ForkMoveAccountDialog'
 import { MacosUpdateRequirementHost } from '../components/macos-update-requirement/MacosUpdateRequirementHost'
 import { shouldRenderPetOverlay } from '../components/pet/pet-overlay-visibility'
 import { useAppStore } from '../store/index'
@@ -218,6 +219,8 @@ export const AppRootSurfaces = memo(function AppRootSurfaces(props: {
         ) : null}
         {/* Own store, not activeModal: another modal must never evict a running move. */}
         <WslMoveDialogHost />
+        {/* SLRM-1503: the palette's move-to-account picker (FORK.md). */}
+        <ForkMoveAccountDialogHost />
         {/* Opened by toast, SSH host row and terminal pane. */}
         {activeModal === 'node-dist-mirror' ? (
           <ModalBoundary boundaryId="modal.node-dist-mirror" resetKey>
