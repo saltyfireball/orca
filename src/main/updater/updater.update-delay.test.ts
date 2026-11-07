@@ -150,7 +150,7 @@ describe('updater update delay', () => {
     await vi.waitFor(() => {
       expect(autoUpdaterMock.setFeedURL).toHaveBeenLastCalledWith({
         provider: 'generic',
-        url: 'https://github.com/stablyai/orca/releases/download/v1.4.3'
+        url: 'https://github.com/saltyfireball/orca/releases/download/v1.4.3'
       })
       expect(autoUpdaterMock.checkForUpdates).toHaveBeenCalledTimes(1)
     })
@@ -210,7 +210,7 @@ describe('updater update delay', () => {
     expect(autoUpdaterMock.checkForUpdates).toHaveBeenCalledTimes(1)
     expect(autoUpdaterMock.setFeedURL).toHaveBeenLastCalledWith({
       provider: 'generic',
-      url: 'https://github.com/stablyai/orca/releases/download/v1.4.3'
+      url: 'https://github.com/saltyfireball/orca/releases/download/v1.4.3'
     })
   })
 
@@ -248,7 +248,7 @@ describe('updater update delay', () => {
       })
       expect(autoUpdaterMock.setFeedURL).toHaveBeenLastCalledWith({
         provider: 'generic',
-        url: 'https://github.com/stablyai/orca/releases/download/v1.4.3'
+        url: 'https://github.com/saltyfireball/orca/releases/download/v1.4.3'
       })
     }
   )
