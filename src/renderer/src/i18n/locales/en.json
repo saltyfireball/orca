@@ -22566,6 +22566,13 @@
         "agyItem": "agy's own login",
         "agyHint": "This chat runs the Antigravity CLI on this host. Another method applies to new chats.",
         "confirmSignIn": "Sign in with Google?"
+      },
+      "runCode": {
+        "confirmTitle": "Run in {{name}}?",
+        "confirm": "Run",
+        "cancel": "Cancel",
+        "tabLabel": "Chat: {{command}}",
+        "action": "Run in terminal"
       }
     },
     "tab": {
