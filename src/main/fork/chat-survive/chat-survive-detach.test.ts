@@ -14,19 +14,22 @@ import {
   detachChatSurvive,
   forkChatSurviveQuit
 } from './chat-survive-detach'
+import { forkChatSurviveConsumed } from './chat-survive-registry'
 import { setChatSurviveConfigReader } from './chat-survive-spawn'
 import { createChatSurviveStreamTracker } from './chat-survive-stream-mark'
 
 const ENTRY = join(import.meta.dirname, 'chat-survive-broker-entry.ts')
 const tsxLoader = pathToFileURL(createRequire(import.meta.url).resolve('tsx')).href
 
-// Asks for two permissions, then echoes each input line it gets as {"echo": ...}.
+// Asks for two permissions, then echoes each input line it gets as {"echo": ...}. Messages carry
+// a uuid, as Claude Code's do, so a test can mark them consumed.
 const FAKE_CLAUDE = `
+const { randomUUID } = require('node:crypto')
 const say = (frame) => process.stdout.write(JSON.stringify(frame) + '\\n')
-say({ type: 'system', claude: process.pid })
+say({ type: 'system', claude: process.pid, uuid: randomUUID() })
 say({ type: 'control_request', request_id: 'r1', request: { subtype: 'can_use_tool' } })
 say({ type: 'control_request', request_id: 'r2', request: { subtype: 'can_use_tool' } })
-require('node:readline').createInterface({ input: process.stdin }).on('line', (line) => say({ echo: line }))
+require('node:readline').createInterface({ input: process.stdin }).on('line', (line) => say({ echo: line, uuid: randomUUID() }))
 `
 
 const dirs: string[] = []
@@ -61,6 +64,17 @@ function tempDir(): string {
   return dir
 }
 
+/** What the app's reader does with each message: hands it on, which moves the replay mark. */
+function consume(child: object, out: string): void {
+  const lines = out.split('\n')
+  for (const line of lines) {
+    const uuid = /"uuid":"([^"]+)"/.exec(line)?.[1]
+    if (uuid) {
+      forkChatSurviveConsumed(child, { uuid })
+    }
+  }
+}
+
 function waitFor(check: () => boolean, timeout = 8000): Promise<void> {
   return vi.waitFor(() => expect(check()).toBe(true), { timeout, interval: 20 })
 }
@@ -82,28 +96,34 @@ function readRecord(dir: string): { socketPath: string; token: string } {
 }
 
 describe('chat-survive stream mark', () => {
-  it('marks the last whole line and holds back unanswered control requests', () => {
+  it('moves past consumed messages and holds back unanswered control requests', () => {
     const tracker = createChatSurviveStreamTracker()
-    const first = '{"type":"assistant"}\n'
+    const first = '{"type":"assistant","uuid":"11111111-0001"}\n'
     const request = '{"type":"control_request","request_id":"a","request":{}}\n'
+    const second = '{"type":"control_request","request_id":"b"}\n'
+    const third = '{"type":"user","message":{"uuid":"x"},"uuid":"11111111-0002"}\n'
     tracker.stdout(first)
     // A request split across chunks still counts from its own first byte.
     tracker.stdout(Buffer.from(request.slice(0, 10)))
-    const second = '{"type":"control_request","request_id":"b"}\n'
-    tracker.stdout(Buffer.from(`${request.slice(10)}${second}`))
+    tracker.stdout(Buffer.from(`${request.slice(10)}${second}${third}`))
     tracker.stdout('{"partial":')
     tracker.stderr('oops\n')
-    const seen = Buffer.byteLength(first) + Buffer.byteLength(request) + Buffer.byteLength(second)
-    expect(tracker.mark()).toEqual({
+    const delivered = Buffer.byteLength(`${first}${request}${second}${third}`)
+    // Read is not consumed: every message comes again until the app hands it on.
+    expect(tracker.mark()).toEqual({ out: 0, err: 5, seen: 0, delivered, pending: ['a', 'b'] })
+    tracker.consumed('99999999-0000')
+    expect(tracker.mark().seen).toBe(0)
+    tracker.consumed('11111111-0001')
+    expect(tracker.mark()).toMatchObject({
       out: Buffer.byteLength(first),
-      err: 5,
-      seen,
-      pending: ['a', 'b']
+      seen: Buffer.byteLength(first)
     })
+    tracker.consumed('11111111-0002')
+    expect(tracker.mark()).toMatchObject({ out: Buffer.byteLength(first), seen: delivered })
     tracker.stdin('{"type":"control_response","response":{"subtype":"success","request_id":"a"}}\n')
     tracker.stdout('1}\n{"type":"control_cancel_request","request_id":"b"}\n')
     expect(tracker.mark().pending).toEqual([])
-    expect(tracker.mark().out).toBe(tracker.mark().seen)
+    expect(tracker.mark().out).toBe(delivered)
   })
 })
 
@@ -145,6 +165,7 @@ describe.runIf(process.platform !== 'win32')('chat-survive quit hook', () => {
     pids.add(claude)
     child.stdin.write('{"type":"control_response","response":{"request_id":"r2"}}\n')
     await waitFor(() => out().includes('"echo"'))
+    consume(child, out())
     expect(chatSurviveWillSurvive('sess')).toBe(true)
     await expect(forkChatSurviveQuit('sess', { phase: 'starting', fence: 3 })).resolves.toBe(false)
 
@@ -164,7 +185,13 @@ describe.runIf(process.platform !== 'win32')('chat-survive quit hook', () => {
     expect(record).toMatchObject({
       sessionId: 'sess',
       brokerPid: child.pid,
-      detached: { fence: 3, out: r1Start, seen: Buffer.byteLength(out()), pending: ['r1'] }
+      detached: {
+        fence: 3,
+        out: r1Start,
+        seen: Buffer.byteLength(out()),
+        delivered: Buffer.byteLength(out()),
+        pending: ['r1']
+      }
     })
 
     // The next app instance picks up from the mark with a higher fence.

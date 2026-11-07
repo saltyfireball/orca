@@ -24,6 +24,7 @@ import type { ClaudeStructuredSdkOptions } from './structured/launch/claude-stru
 import { withProviderSpawnAbsence } from '../provider-process/provider-executable-missing'
 import { claudeStreamJsonExitError } from './claude-stream-json-exit-error'
 import { withObservedProviderExit } from '../native-chat/agent-session-wire/startup/structured-agent-session-failure-text'
+import { forkChatSurviveConsumed } from '../fork/chat-survive/chat-survive-registry'
 
 export { ClaudeControlRequestError }
 
@@ -219,6 +220,8 @@ export async function openClaudeStreamJsonConnection(
             throw new Error('claude stream-json yielded a non-object message')
           }
           handlers.onMessage?.(next.value)
+          // Fork (SLRM-1394): a chat-survive replay mark moves past each consumed message.
+          forkChatSurviveConsumed(child, next.value)
         }
       } finally {
         if (!completed) {
