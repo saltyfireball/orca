@@ -93,8 +93,10 @@ through new `createOrAttach`-style RPCs.
 Replace the supervisor, for survivable chats, with a broker that does not die with its owner. The
 broker owns the provider's pipes, logs stdout and stderr into bounded rings with absolute byte
 offsets, and serves them over a private Unix socket to one owner at a time. The owner is
-whichever app instance holds the session's lease; its socket closing is "owner gone". The broker
-then arms an orphan timer instead of killing the provider. A new app instance says hello with the
+whichever app instance holds the session's lease. An owner that hands the provider off at quit
+says `detach` before its socket closes, and the broker then arms an orphan timer instead of
+killing the provider; an owner lost any other way (a crash, a forced exit) stops it, as the
+supervisor does today. A new app instance says hello with the
 token and its lease fence, gets everything after the offsets it persisted, and carries on.
 
 This is option (b) of the brief with two changes: an in-memory ring instead of a spool file (the
@@ -129,14 +131,15 @@ owner-gone signal, and fences decide who may write).
 
 ## Risks and how (b) handles them
 
-- **Two owners.** The broker accepts one owner at a time. A hello must carry a fence at least as
-  high as the last accepted one; a higher fence supersedes the current owner (it gets
-  `superseded` and is closed), a lower one is refused `stale-fence`. The fence is the session
+- **Two owners.** The broker accepts one owner at a time. A hello must carry a fence higher than
+  the last accepted one (only the spawning app's own `takeover` may reuse its fence); it
+  supersedes the current owner (which gets `superseded` and is closed), and anything lower is
+  refused `stale-fence`. The fence is the session
   lease's `runtimeFence`, so the broker enforces the same single-writer rule as the lease store.
   The token (random, per broker, stored only in the app's data folder) keeps other local
   processes out, and the socket is mode 0600 in a 0700 folder.
-- **Orphans when the app is gone for good.** With no owner attached the broker starts its orphan
-  timer; at the deadline it SIGTERMs the provider group, SIGKILLs it after the grace, removes its
+- **Orphans when the app is gone for good.** Only after a hand-off (`detach`) does the broker
+  start its orphan timer; at the deadline it SIGTERMs the provider group, SIGKILLs it after the grace, removes its
   socket and exits. The first owner has the same deadline from spawn. Proposed default 60
   minutes, a fork setting. An idle provider costs only memory, so the default can be generous.
 - **Permission prompts with no UI.** A `can_use_tool` control request that arrives while no owner
@@ -186,8 +189,11 @@ owner-gone signal, and fences decide who may write).
    - `chat-survive-client.ts`: owner side; exposes stdout/stderr streams and input calls, the shape
      a spawn hook needs, and the offsets to persist.
    - `chat-survive-broker.test.ts`: reattach with replay, fencing and bad tokens, ring overflow,
-     orphan timeout, reattach cancelling the timeout, owner process SIGKILLed (provider keeps
-     running and its exit reaches the next owner), owner arriving after exit.
+     orphan timeout, reattach cancelling the timeout, owner dying without `detach` (the provider
+     stops), strict fences and socket backpressure, a welcome in another protocol version
+     refused by the client, owner arriving after exit.
+   - Backpressure both ways: a socket write the kernel will not take pauses the provider's
+     stream until `drain`, and the client's input write calls back only once the socket took it.
 2. **The broker process (done).** `chat-survive-broker-entry.ts` is bundled beside the main
    bundle as `out/main/chat-survive-broker-entry.js` (unpacked from the asar, guarded as a
    plain-Node entry) and runs under `ELECTRON_RUN_AS_NODE`. The app spawns it, detached, in place
@@ -208,12 +214,14 @@ owner-gone signal, and fences decide who may write).
      re-raises its signal, so the app's exit proof and close ladder are unchanged. The broker never
      SIGKILLs the supervisor inside the supervisor's own stop budget.
    - The app is gone when the broker's parent pid changes (100 ms poll). A stdin end counts as a
-     close request only if the app is still there 250 ms later; otherwise it is the app dying and
-     the broker goes orphan: output goes to the rings and the orphan timer runs (default 60 min).
+     close request only if the app is still there 250 ms later; otherwise it is the app dying
+     without a hand-off, and the broker stops the provider (reason `closed`), as the supervisor
+     would. Only a takeover (phase 4) leaves it running for the next app.
    - Single writer: a socket hello is refused `busy` while the app that spawned the broker lives.
    - Tests (`chat-survive-broker-entry.test.ts`, real processes via a stand-in app fixture): pipe
-     and close request, `busy`, stop by signal, app SIGKILLed then a new owner reattaching with
-     replay, broker SIGKILLed taking the provider down; plus the spec and launch-plan checks.
+     and close request, `busy`, stop by signal, app SIGKILLed (the provider stops), the app moving
+     to the socket by takeover, broker SIGKILLed taking the provider down; plus the spec and
+     launch-plan checks.
 3. **Spawn hook, shipped dark (done).** The fork setting `forkChatSurvive` (optional, off unless
    `true`; Settings > Advanced > Chat survive; read on every spawn, so no restart). One hook in
    `createClaudeCodeProcessSpawn` passes its `spawnImpl` through `forkChatSurviveSpawner`
@@ -222,7 +230,11 @@ owner-gone signal, and fences decide who may write).
    spawns as today. orcad never installs the setting reader, so it is always off there. Each
    broker gets a record `{v, sessionId, brokerPid, socketPath, token}` at
    `userData/chat-survive/<sessionId>.<brokerPid>.json` (folder 0700, file 0600), removed when the
-   broker exits; a stale one after a crash names a dead pid and is harmless.
+   broker exits; a stale one after a crash names a dead pid and is harmless. At install the
+   setting reader sweeps the folder (`chat-survive-sweep.ts`): it is set to 0700, half-written
+   `.json.next` files go, and so does every record whose broker pid is dead, with its socket
+   (only a socket in an `orca-chat-survive` folder). The broker entry path is looked up only
+   while the setting is on.
    - The exit-proof ladder needs no change: the managed child (and the lease owner pid) is the
      broker, which relays stdin end and SIGTERM to the supervisor and exits with its code or
      signal. In a forced teardown `killProviderWriter` finds no group-leading direct child (the
@@ -241,7 +253,7 @@ owner-gone signal, and fences decide who may write).
    `forkChatSurviveQuit` (`chat-survive-detach.ts`) runs under the session's serialize, before the
    stop. For a `ready` child with no stop under way, whose provider runs under a live broker this
    instance started, with the setting still on, it hands the provider off; otherwise the stop runs
-   as today.
+   as today. macOS only: elsewhere the hand-off returns false (the adopter refuses Linux anyway).
    - Watching from the spawn (`chat-survive-registry.ts`, `chat-survive-stream-mark.ts`): every
      broker child is registered by session id. Its stdout is counted alongside the SDK's reader
      and each line's head is checked for a provider `control_request` (kept pending with its
@@ -259,8 +271,8 @@ owner-gone signal, and fences decide who may write).
      accepts while the app that spawned it lives; the fence check comes first), within 1 s. The
      welcome must show no exit, no truncation from `out`, and at least `delivered` bytes. Then
      the record is rewritten (whole file, by rename) with `detached: {fence, out, err, seen,
-     delivered, pending}`, the entry is marked detached and the socket dropped, so the broker arms its orphan
-     timer. A failed or late connect returns false (a late one sends `stop`, as the stop that
+     delivered, pending}`, the entry is marked detached, and the app sends `detach` and closes the
+     socket, so the broker arms its orphan timer. A failed or late connect returns false (a late one sends `stop`, as the stop that
      follows does); a bad welcome or a failed record write
      sends `stop` and returns false.
    - After a hand-off nothing in this instance signals the broker: `child.kill` does nothing, and
@@ -273,7 +285,8 @@ owner-gone signal, and fences decide who may write).
      cannot adopt it, it recovers as crash state).
    - Restart guard: `readBusyChats` passes `chatSurviveWillSurvive`, so a busy Claude chat whose
      provider would be handed off does not hold a quit, restart or update. Codex chats always
-     count.
+     count. A hand-off that then fails is not warned about: the guard has already let the quit go,
+     so that chat's provider stops with the app, as it does today without the setting.
    - The CLI resends unanswered `can_use_tool` prompts in the reply to a second `initialize`
      (`pending_permission_requests`, Claude Code 2.1.268+), which the SDK dispatches; the pending
      ids cover other requests and older CLIs. The SDK folds only a delivery still in flight, so
@@ -308,8 +321,10 @@ owner-gone signal, and fences decide who may write).
      a tracker that continues the saved mark in the broker's offsets, so the chat survives the
      next quit the same way (that hand-off uses a fence above the claim's).
    - Fallbacks: a claim nothing takes within 60 s, or whose start settles without taking it, is
-     stopped (today's outcome: the chat resumes from saved history). Until that stop has finished,
-     a new provider for the chat is refused (the spawn throws), so there is never a second writer.
+     stopped (today's outcome: the chat resumes from saved history). While a claim is held, and
+     until its stop has finished, any other provider spawn for the chat is refused (the spawn
+     throws, whatever its shape), so there is never a second writer. Once the adopted broker is
+     gone, `kill` on the adopted child does nothing, so a reused pid is never signalled.
      A crash (no quit hook) leaves a record without a mark, which is never adopted.
    - Known gaps: the adopted child has no supervisor report channel, so the provider-group guard
      warns once and does not arm (the broker still stops its group).
