@@ -91,6 +91,39 @@ jobs:
           echo "old_main=$(git rev-parse HEAD)" >>"$GITHUB_OUTPUT"
           echo "main is on $base, newest upstream is $latest"
 
+      # A rebase re-commits every fork commit; with this key they are SSH-signed by the fork owner.
+      - name: Set up commit signing
+        id: signing
+        if: steps.tags.outputs.base != steps.tags.outputs.latest
+        shell: bash
+        env:
+          FORK_GIT_SIGNING_KEY: ${{ secrets.FORK_GIT_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$FORK_GIT_SIGNING_KEY" ]; then
+            echo "::notice::FORK_GIT_SIGNING_KEY is empty, so the rebased commits stay unsigned (FORK.md)."
+            echo "enabled=false" >>"$GITHUB_OUTPUT"
+            exit 0
+          fi
+          dir="$RUNNER_TEMP/git-signing"
+          mkdir -p "$dir"
+          chmod 700 "$dir"
+          umask 077
+          printf '%s\n' "$FORK_GIT_SIGNING_KEY" | tr -d '\r' >"$dir/key"
+          chmod 600 "$dir/key"
+          # Commit as the author of the newest fork commit, the fork owner, so no address lives here.
+          name="$(git log -1 --format=%an HEAD)"
+          email="$(git log -1 --format=%ae HEAD)"
+          printf '%s namespaces="git" %s\n' "$email" "$(ssh-keygen -y -f "$dir/key")" >"$dir/allowed_signers"
+          git config user.name "$name"
+          git config user.email "$email"
+          git config gpg.format ssh
+          git config user.signingkey "$dir/key"
+          git config gpg.ssh.allowedSignersFile "$dir/allowed_signers"
+          git config commit.gpgsign true
+          echo "enabled=true" >>"$GITHUB_OUTPUT"
+          echo "Rebased commits will be signed and committed by $name."
+
       - name: Rebase fork commits onto the newest tag
         id: rebase
         shell: bash
@@ -98,14 +131,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BASE: ${{ steps.tags.outputs.base }}
           LATEST: ${{ steps.tags.outputs.latest }}
+          SIGNING: ${{ steps.signing.outputs.enabled }}
         run: |
           set -euo pipefail
           if [ "$BASE" = "$LATEST" ]; then
             echo "changed=false" >>"$GITHUB_OUTPUT"
             exit 0
           fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if [ "$SIGNING" != 'true' ]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          fi
           echo "Fork commits:"
           git log --oneline "refs/upstream-tags/$BASE..HEAD"
           if ! git rebase --onto "refs/upstream-tags/$LATEST" "refs/upstream-tags/$BASE" main; then
@@ -124,7 +160,26 @@ jobs:
             echo "::error::$title"
             exit 1
           fi
+          if [ "$SIGNING" = 'true' ]; then
+            unsigned="$(git log --format='%G? %h %s' "refs/upstream-tags/$LATEST..HEAD" | grep -v '^G ' || true)"
+            if [ -n "$unsigned" ]; then
+              printf '%s\n' "$unsigned"
+              echo "::error::Rebased commits without a good signature from FORK_GIT_SIGNING_KEY"
+              exit 1
+            fi
+            echo "Every rebased commit is signed."
+          fi
           echo "changed=true" >>"$GITHUB_OUTPUT"
+
+      # Straight after the rebase, so the key is gone before pnpm install runs package scripts.
+      - name: Remove the signing key
+        if: always()
+        shell: bash
+        run: |
+          rm -rf "$RUNNER_TEMP/git-signing"
+          git config --unset commit.gpgsign || true
+          git config --unset user.signingkey || true
+          git config --unset gpg.ssh.allowedSignersFile || true
 
       # Mirrors release-mac-build.yml: "Setup pnpm" and "Setup Node.js".
       - name: Setup pnpm
