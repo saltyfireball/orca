@@ -5,7 +5,7 @@ import { colors } from '../theme/mobile-theme'
 import { useMobileColorScheme } from '../theme/use-mobile-color-scheme'
 import { useMobileTranslation } from '../i18n/use-mobile-translation'
 import { styles } from './mobile-session-styles'
-import { MobileMarkdownRunProvider } from '../components/fork/mobile-markdown-run-context'
+import { MobileMarkdownRunProvider } from '../components/fork/MobileMarkdownRunProvider'
 
 // Keep the screen importable by the page; native route modules mount the shell.
 export function MobileSessionRouteScreen() {
