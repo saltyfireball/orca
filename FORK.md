@@ -57,6 +57,7 @@ Apply these in this order. Each one is a single commit.
 22. `SLRM-1367 Rename the app to Blackfish, keeping the Orca Fork data folder and Keychain item`
 23. `SLRM-1370 CLI launcher: run the executable Info.plist names`
 24. `SLRM-1338 Sign the commits fork-sync rebases`
+25. `SLRM-1337 Use the fork's own bundle ids for its helpers and macOS checks`
 
 Fork-only code lives in `fork/` folders:
 
@@ -66,6 +67,8 @@ Fork-only code lives in `fork/` folders:
 - `src/renderer/src/components/native-chat/fork/`
 - `mobile/src/components/fork/`
 - `config/scripts/fork/`
+- `native/computer-use-macos/Sources/OrcaComputerUseMacOSCore/fork/`
+- `native/computer-use-macos/Tests/OrcaComputerUseMacOSTests/fork/`
 
 Upstream files only get short hooks, which keeps rebases small:
 
@@ -79,7 +82,19 @@ Upstream files only get short hooks, which keeps rebases small:
 - One `vi.mock` in each of four upstream tests that cover release repos. It swaps in
   `src/shared/fork/testing/fork-release-repo-upstream-policy.ts`, so those tests keep
   covering upstream's channels.
-- The run-button strings in both `en.json` catalogs, from the generators.
+- Fork strings live only as inline `t()` defaults. Upstream's `en.json` files carry no fork
+  keys: `verify-localization-catalog.mjs` and `config/i18next.config.ts` skip the fork folders
+  listed in `config/scripts/fork/fork-localization.mjs`.
+- Fork bundle ids (SLRM-1337). `build-mac-fork.mjs` builds the computer-use helper as
+  `com.saltyfireball.orca.computer-use` and passes `--bundle-id com.saltyfireball.orca` to the
+  notification-status helper. One hook in `TrustedOrcaApplication.swift` makes that helper
+  trust the fork app. At runtime `src/main/fork/fork-app-identity.ts` reads the app's own
+  bundle id, used by one call each in `macos-tcc-prompt-watch.ts`,
+  `macos-press-and-hold-default.ts`, `notification-system-settings-link.ts`,
+  `shipit-leftover-recovery.ts` (so the fork never clears stock's ShipIt cache) and
+  `macos-daemon-launchd.ts`. Left shared on purpose: the `orca://` scheme (macOS picks one
+  app), the serve launchd label prefix and the daemon job label (keyed by data folder, so
+  shared mode shares the daemon).
 - One call in `configureDevUserDataPath` (`src/main/startup/configure-process.ts`) for the
   pinned data folder and shared mode. It runs before anything reads userData or takes the
   instance locks.
