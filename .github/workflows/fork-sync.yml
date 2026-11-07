@@ -1,7 +1,7 @@
 name: Fork sync
 
 # Rebases the fork's own commits onto the newest stable upstream tag, checks them, pushes main,
-# keeps upstream workflows disabled, then builds and releases an unsigned macOS app. See FORK.md.
+# keeps upstream workflows disabled, then builds and releases a self-signed macOS app. See FORK.md.
 
 on:
   schedule:
@@ -231,8 +231,11 @@ jobs:
       ORCA_BACKGROUND_LAUNCH: '1'
       # Mirrors release-mac-build.yml job env: Vite's web build passes Node's default old-space ceiling.
       NODE_OPTIONS: --max-old-space-size=4096
-      # The fork has no Apple signing identity; build unsigned.
+      # No Apple identity: the fork signs with its own self-signed certificate (FORK.md, Signing),
+      # named explicitly, so a stable designated requirement lets Squirrel.Mac accept each update.
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      CSC_NAME: Orca Fork Code Signing
+      FORK_MAC_CERT_SHA1: c5e8485cb550edea627fda93ead7cf1975ed3710
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -280,10 +283,59 @@ jobs:
           FORK_VERSION: ${{ steps.version.outputs.version }}
         run: npm pkg set "version=$FORK_VERSION"
 
+      # A temporary keychain on the search list, trusted for code signing on this runner only:
+      # electron-builder only signs with an identity `security find-identity -v` calls valid.
+      - name: Import the fork signing identity
+        env:
+          CERT_P12_B64: ${{ secrets.FORK_MAC_CERT_P12_B64 }}
+          CERT_PASSWORD: ${{ secrets.FORK_MAC_CERT_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$CERT_P12_B64" ] || [ -z "$CERT_PASSWORD" ]; then
+            echo "::error::FORK_MAC_CERT_P12_B64 and FORK_MAC_CERT_PASSWORD must be set (Infisical /orca_fork)"
+            exit 1
+          fi
+          dir="$RUNNER_TEMP/fork-signing"
+          mkdir -p "$dir"
+          keychain="$dir/fork-signing.keychain-db"
+          keychain_password="$(openssl rand -hex 24)"
+          printf %s "$CERT_P12_B64" | base64 -D >"$dir/cert.p12"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$dir/cert.p12" -k "$keychain" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          security find-certificate -c "$CSC_NAME" -p "$keychain" >"$dir/cert.pem"
+          sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain "$dir/cert.pem"
+          rm -f "$dir/cert.p12"
+          security find-identity -v -p codesigning "$keychain"
+          found="$(security find-identity -v -p codesigning "$keychain" | grep -ci "$FORK_MAC_CERT_SHA1" || true)"
+          if [ "$found" != "1" ]; then
+            echo "::error::The fork signing identity $FORK_MAC_CERT_SHA1 is not a valid code-signing identity"
+            exit 1
+          fi
+
       - name: Build app
         env:
           FORK_VERSION: ${{ steps.version.outputs.version }}
         run: node config/scripts/fork/build-mac-fork.mjs
+
+      # Squirrel.Mac installs an update only when it meets the running app's designated requirement.
+      - name: Verify the signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          app='dist/mac-arm64/Orca Fork.app'
+          codesign --verify --deep --strict "$app"
+          requirement="$(codesign -d -r- "$app" 2>&1 | sed -n 's/^designated => //p')"
+          echo "designated => $requirement"
+          expected="identifier \"com.saltyfireball.orca\" and certificate leaf = H\"$FORK_MAC_CERT_SHA1\""
+          if [ "$requirement" != "$expected" ]; then
+            echo "::error::Expected designated requirement: $expected"
+            exit 1
+          fi
 
       - name: Verify the built version
         env:
@@ -328,4 +380,4 @@ jobs:
             -R saltyfireball/orca \
             --target "$SHA" \
             --title "Orca Fork $FORK_VERSION" \
-            --notes "Unsigned macOS build of upstream $UPSTREAM_TAG plus the fork patches in FORK.md."
+            --notes "Self-signed macOS build of upstream $UPSTREAM_TAG plus the fork patches in FORK.md."
