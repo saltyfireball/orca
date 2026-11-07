@@ -1,0 +1,242 @@
+name: Fork sync
+
+# Rebases the fork's own commits onto the newest stable upstream tag, checks them,
+# pushes main, then builds and releases an unsigned macOS app. See FORK.md.
+
+on:
+  schedule:
+    - cron: '17 9 * * *'
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: Build and release even when main is already on the newest upstream tag
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'saltyfireball/orca'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      issues: write
+    outputs:
+      changed: ${{ steps.rebase.outputs.changed }}
+      upstream_tag: ${{ steps.tags.outputs.latest }}
+      sha: ${{ steps.result.outputs.sha }}
+    env:
+      UPSTREAM_URL: https://github.com/stablyai/orca.git
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          filter: blob:none
+          # GITHUB_TOKEN cannot push commits that touch .github/workflows; FORK_SYNC_TOKEN (workflow scope) can.
+          token: ${{ secrets.FORK_SYNC_TOKEN || github.token }}
+
+      - name: Find the newest stable upstream tag
+        id: tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          git remote add upstream "$UPSTREAM_URL"
+          latest="$(git ls-remote --tags --refs upstream 'v*' \
+            | sed 's#.*refs/tags/##' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V | tail -n 1)"
+          if [ -z "$latest" ]; then
+            echo "::error::No stable vX.Y.Z tag found upstream"
+            exit 1
+          fi
+          git fetch --no-tags --filter=blob:none upstream '+refs/tags/v*:refs/upstream-tags/v*'
+          # The fork's base is the newest stable upstream tag already under main.
+          stable="$(git for-each-ref --format='%(refname:lstrip=2)' 'refs/upstream-tags/' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V -r)"
+          base=''
+          for tag in $stable; do
+            if git merge-base --is-ancestor "refs/upstream-tags/$tag" HEAD; then
+              base="$tag"
+              break
+            fi
+          done
+          if [ -z "$base" ]; then
+            echo "::error::main does not contain any stable upstream tag"
+            exit 1
+          fi
+          echo "latest=$latest" >>"$GITHUB_OUTPUT"
+          echo "base=$base" >>"$GITHUB_OUTPUT"
+          echo "old_main=$(git rev-parse HEAD)" >>"$GITHUB_OUTPUT"
+          echo "main is on $base, newest upstream is $latest"
+
+      - name: Rebase fork commits onto the newest tag
+        id: rebase
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ steps.tags.outputs.base }}
+          LATEST: ${{ steps.tags.outputs.latest }}
+        run: |
+          set -euo pipefail
+          if [ "$BASE" = "$LATEST" ]; then
+            echo "changed=false" >>"$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          echo "Fork commits:"
+          git log --oneline "refs/upstream-tags/$BASE..HEAD"
+          if ! git rebase --onto "refs/upstream-tags/$LATEST" "refs/upstream-tags/$BASE" main; then
+            conflicts="$(git diff --name-only --diff-filter=U)"
+            git rebase --abort
+            title="fork-sync conflict on $LATEST"
+            body="$(printf 'Rebasing the fork commits from %s onto %s stopped on conflicts.\n\nConflicting files:\n\n%s\n\nRun: %s/%s/actions/runs/%s\n' \
+              "$BASE" "$LATEST" "$(printf '%s\n' "$conflicts" | sed 's/^/- /')" \
+              "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")"
+            existing="$(gh issue list -R saltyfireball/orca --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')"
+            if [ -z "$existing" ]; then
+              gh issue create -R saltyfireball/orca --title "$title" --body "$body"
+            else
+              gh issue comment "$existing" -R saltyfireball/orca --body "$body"
+            fi
+            echo "::error::$title"
+            exit 1
+          fi
+          echo "changed=true" >>"$GITHUB_OUTPUT"
+
+      # Mirrors release-mac-build.yml: "Setup pnpm" and "Setup Node.js".
+      - name: Setup pnpm
+        if: steps.rebase.outputs.changed == 'true'
+        uses: pnpm/setup@v2
+        with:
+          install: false
+
+      - name: Setup Node.js
+        if: steps.rebase.outputs.changed == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+          check-latest: true
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            mobile/pnpm-lock.yaml
+
+      - name: Install dependencies
+        if: steps.rebase.outputs.changed == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        if: steps.rebase.outputs.changed == 'true'
+        run: pnpm typecheck
+
+      - name: Fork tests
+        if: steps.rebase.outputs.changed == 'true'
+        run: pnpm exec vitest run src/shared/fork src/main/updater --maxWorkers=2
+
+      # Mirrors release-mac-build.yml: the install-mobile-dependencies action.
+      - name: Install mobile dependencies
+        if: steps.rebase.outputs.changed == 'true'
+        uses: ./.github/actions/install-mobile-dependencies
+
+      - name: Mobile typecheck
+        if: steps.rebase.outputs.changed == 'true'
+        working-directory: mobile
+        run: pnpm typecheck
+
+      - name: Push main
+        if: steps.rebase.outputs.changed == 'true'
+        env:
+          OLD_MAIN: ${{ steps.tags.outputs.old_main }}
+        run: git push --force-with-lease="main:$OLD_MAIN" origin HEAD:main
+
+      - name: Record the commit to build
+        id: result
+        run: echo "sha=$(git rev-parse HEAD)" >>"$GITHUB_OUTPUT"
+
+  build-mac:
+    needs: sync
+    if: github.repository == 'saltyfireball/orca' && (needs.sync.outputs.changed == 'true' || inputs.force_build)
+    runs-on: macos-15
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    env:
+      ORCA_BACKGROUND_LAUNCH: '1'
+      # Mirrors release-mac-build.yml job env: Vite's web build passes Node's default old-space ceiling.
+      NODE_OPTIONS: --max-old-space-size=4096
+      # The fork has no Apple signing identity; build unsigned.
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.sync.outputs.sha }}
+
+      # Mirrors release-mac-build.yml: "Setup pnpm" and "Setup Node.js".
+      - name: Setup pnpm
+        uses: pnpm/setup@v2
+        with:
+          install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+          check-latest: true
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            mobile/pnpm-lock.yaml
+
+      # Mirrors release-mac-build.yml "Install dependencies": build:mac packages x64 and arm64, so both natives are needed.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --cpu=current,x64,arm64
+
+      # Mirrors release-mac-build.yml: out/mobile-web needs mobile's React Native/Expo install.
+      - uses: ./.github/actions/install-mobile-dependencies
+
+      - name: Build app
+        run: pnpm run build:mac
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPSTREAM_TAG: ${{ needs.sync.outputs.upstream_tag }}
+          SHA: ${{ needs.sync.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${UPSTREAM_TAG}-fork.${GITHUB_RUN_NUMBER}"
+          shopt -s nullglob
+          # latest-mac.yml names "Orca Fork-*.zip" as "Orca-Fork-*.zip"; upload under the names the feed expects.
+          mkdir -p release-assets
+          for file in dist/*.dmg dist/*.zip dist/latest-mac.yml; do
+            name="$(basename "$file")"
+            cp "$file" "release-assets/${name// /-}"
+          done
+          assets=(release-assets/*)
+          if [ "${#assets[@]}" -lt 3 ]; then
+            echo "::error::Expected a dmg, a zip and latest-mac.yml in dist/"
+            ls -la dist || true
+            exit 1
+          fi
+          while read -r url; do
+            [ -f "release-assets/$url" ] || { echo "::error::latest-mac.yml names missing asset $url"; exit 1; }
+          done < <(sed -n 's/^ *- url: //p' release-assets/latest-mac.yml)
+          gh release create "$tag" "${assets[@]}" \
+            -R saltyfireball/orca \
+            --target "$SHA" \
+            --title "Orca Fork $tag" \
+            --notes "Unsigned macOS build of upstream $UPSTREAM_TAG plus the fork patches in FORK.md."
