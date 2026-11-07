@@ -33,6 +33,7 @@ import {
   runningRootTurnItemId
 } from './structured-agent-session-orca-stop-row'
 import { structuredAgentSessionFailureWordsContext } from '../operations/structured-agent-session-send-preparation'
+import { forkChatSurviveQuit } from '../../../fork/chat-survive/chat-survive-detach'
 
 import {
   recordStopEvent,
@@ -297,13 +298,23 @@ export async function evictOwnedStructuredAgentSessions(
   await Promise.all(
     ownedSessionIds.map(async (sessionId) => {
       try {
-        await context.serialize(sessionId, () =>
-          stopStructuredAgentSessionAgentUnderSerialize(context, sessionId, {
-            cause: 'evict',
-            quit: trigger
-          })
-        )
-        retainOnFailure.delete(sessionId)
+        let survived = false
+        await context.serialize(sessionId, async () => {
+          // Fork (SLRM-1394): a Claude chat handed to its broker carries on; its journal stays open.
+          survived = await forkChatSurviveQuit(
+            sessionId,
+            context.sessions.get(sessionId)?.child ?? null
+          )
+          if (!survived) {
+            await stopStructuredAgentSessionAgentUnderSerialize(context, sessionId, {
+              cause: 'evict',
+              quit: trigger
+            })
+          }
+        })
+        if (!survived) {
+          retainOnFailure.delete(sessionId)
+        }
       } catch (error) {
         failures.push(error)
       }

@@ -83,12 +83,18 @@ export function readBusyChat(summary: AgentSessionStatusSummary): BusyChat | nul
   }
 }
 
+/**
+ * `survives` (SLRM-1394) says a Claude chat's provider would carry on under its chat-survive
+ * broker through the quit; such a chat loses nothing and is not busy. Codex chats always count.
+ */
 export function listBusyChats(
-  summaries: readonly (AgentSessionStatusSummary | undefined)[]
+  summaries: readonly (AgentSessionStatusSummary | undefined)[],
+  survives: (sessionId: string) => boolean = () => false
 ): BusyChat[] {
   const busy: BusyChat[] = []
   for (const summary of summaries) {
-    const chat = summary ? readBusyChat(summary) : null
+    const carriesOn = summary?.agent === 'claude' && survives(summary.sessionId)
+    const chat = summary && !carriesOn ? readBusyChat(summary) : null
     if (chat) {
       busy.push(chat)
     }
