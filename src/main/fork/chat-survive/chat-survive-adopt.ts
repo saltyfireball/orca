@@ -41,18 +41,30 @@ function readMark(value: unknown): (ChatSurviveStreamMark & { fence: number }) |
   if (typeof value !== 'object' || value === null) {
     return null
   }
-  const [out, err, seen, pending, fence] = fields(value, 'out', 'err', 'seen', 'pending', 'fence')
+  const [out, err, seen, read, pending, fence] = fields(
+    value,
+    'out',
+    'err',
+    'seen',
+    'delivered',
+    'pending',
+    'fence'
+  )
+  // A mark saved before `delivered` existed had dispatched exactly up to `seen`.
+  const delivered = read === undefined ? seen : read
   if (
     !isOffset(out) ||
     !isOffset(err) ||
     !isOffset(seen) ||
+    !isOffset(delivered) ||
+    delivered < seen ||
     !isOffset(fence) ||
     !Array.isArray(pending) ||
     !pending.every((id) => typeof id === 'string')
   ) {
     return null
   }
-  return { out, err, seen, pending, fence }
+  return { out, err, seen, delivered, pending, fence }
 }
 
 function readDetachedRecord(path: string, sessionId: string, pid: number): DetachedRecord | null {
@@ -100,8 +112,8 @@ async function claim(record: DetachedRecord): Promise<ChatSurviveConnection | nu
   const connection = await Promise.race([connecting, timeout.promise])
   clearTimeout(timer)
   if (!connection) {
-    // Too late to adopt; recovery's stop takes the broker down.
-    void connecting.then((late) => late?.detach())
+    // Too late to adopt: stop it outright, so the broker never takes this for a hand-off.
+    void connecting.then((late) => late?.stop())
   }
   return connection
 }
@@ -110,9 +122,9 @@ function keepsEverything(connection: ChatSurviveConnection, mark: ChatSurviveStr
   const { welcome } = connection
   return (
     welcome.exit === null &&
+    // Stderr is diagnostics only: a truncated replay of it costs nothing.
     !welcome.out.truncated &&
-    !welcome.err.truncated &&
-    welcome.out.end >= mark.seen
+    welcome.out.end >= mark.delivered
   )
 }
 
