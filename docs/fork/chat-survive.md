@@ -269,7 +269,9 @@ owner-gone signal, and fences decide who may write).
      count.
    - The CLI resends unanswered `can_use_tool` prompts in the reply to a second `initialize`
      (`pending_permission_requests`, Claude Code 2.1.268+), which the SDK dispatches; the pending
-     ids cover other requests and older CLIs.
+     ids cover other requests and older CLIs. The SDK folds only a delivery still in flight, so
+     the adopted child drops from that first reply the requests its replay already carries
+     (`chatSurviveRedeliveryFilter`); without that a prompt answered quickly was asked twice.
    - Tests: the stream mark (split chunks, answers, cancels); the takeover against a live stand-in
      app (its later input and stdin end no longer reach the provider, a lower fence is refused,
      the next owner gets the provider); a real Claude-shaped provider handed off through
@@ -301,9 +303,15 @@ owner-gone signal, and fences decide who may write).
      a new provider for the chat is refused (the spawn throws), so there is never a second writer.
      A crash (no quit hook) leaves a record without a mark, which is never adopted.
    - Known gaps: the adopted child has no supervisor report channel, so the provider-group guard
-     warns once and does not arm (the broker still stops its group); the SDK's second
-     `initialize` meets a CLI already mid-turn, which is supported by the CLI but has not been run
-     against a real Claude Code yet.
+     warns once and does not arm (the broker still stops its group).
+   - Real Claude Code (`chat-survive-real-claude.test.ts`, only with `ORCA_CHAT_SURVIVE_E2E=1` on
+     macOS; Haiku, the user's login, a temp cwd, no settings files): each app instance is a child
+     process running the SDK through `createClaudeCodeProcessSpawn`. One turn runs
+     `sleep 15 && ...`: the first instance quits (hook) and is SIGKILLed at the Bash prompt, the
+     second adopts, gets the prompt once, allows it and is quit and SIGKILLed mid-command, and
+     the third adopts and gets the rest and the result. No message uuid arrives twice across the
+     three, there is one tool result, and stdin end leaves no broker or record. Verified on Claude
+     Code 2.1.319 with SDK 0.3.284. A SIGKILL without the quit hook is not adopted (by design).
    - Tests: the replay filter and the continued mark; the recovery hook releases an adopted owner
      without a signal and stops it when the claim fails; a real Claude-shaped provider handed off
      at quit, adopted through `createClaudeCodeProcessSpawn` (same pid, the unanswered request
