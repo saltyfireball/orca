@@ -23,7 +23,13 @@ export type ChatSurviveHello = {
   from: { out: number; err: number }
 }
 
-export type ChatSurviveRefusalReason = 'bad-token' | 'version' | 'stale-fence' | 'malformed'
+/** `busy`: the app instance that started the broker is still alive and owns it over stdio. */
+export type ChatSurviveRefusalReason =
+  | 'bad-token'
+  | 'version'
+  | 'stale-fence'
+  | 'malformed'
+  | 'busy'
 
 export type ChatSurviveBrokerFrame =
   | {
@@ -129,7 +135,8 @@ const REFUSAL_REASONS: readonly ChatSurviveRefusalReason[] = [
   'bad-token',
   'version',
   'stale-fence',
-  'malformed'
+  'malformed',
+  'busy'
 ]
 
 function isSignal(value: unknown): value is NodeJS.Signals | null {

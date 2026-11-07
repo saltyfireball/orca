@@ -16,7 +16,8 @@ type OutputChunk = Rollup.OutputChunk
 // Plain-Node processes and CLI modules cannot load Electron's API.
 const PLAIN_NODE_ENTRY_NAMES = [
   'browser-extension-native-host-supervisor-entry',
-  'daemon-entry',
+  // Fork (SLRM-1394): chat-survive-broker-entry shares this line to stay under max-lines.
+  ...(['chat-survive-broker', 'daemon'] as const).map((n) => `${n}-entry` as const),
   'parcel-watcher-process-entry',
   // Utility process on desktop, forked child in orcad.
   'stt-worker',
