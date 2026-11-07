@@ -62,16 +62,18 @@ describe('listBusyChats', () => {
     expect(chats[0]?.activity).toEqual({ kind: 'children', subagents: 1, commands: 1 })
   })
 
-  it('falls back to background tasks, treating a missing state as running', () => {
+  it('falls back to background tasks, not counting one without a state', () => {
     const chats = listBusyChats([
       summary({
         backgroundTasks: [
-          { id: 'a', kind: 'command' },
-          { id: 'b', kind: 'command', state: 'done' }
+          { id: 'a', kind: 'command', state: 'working' },
+          { id: 'b', kind: 'command', state: 'done' },
+          { id: 'c', kind: 'agent' }
         ]
       })
     ])
     expect(chats[0]?.activity).toEqual({ kind: 'children', subagents: 0, commands: 1 })
+    expect(listBusyChats([summary({ backgroundTasks: [{ id: 'c', kind: 'agent' }] })])).toEqual([])
   })
 
   it('names an unnamed chat from its prompt, truncated', () => {

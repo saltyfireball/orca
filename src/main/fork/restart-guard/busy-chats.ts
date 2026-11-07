@@ -17,11 +17,6 @@ export type BusyChat = {
 const LIVE_STATES = new Set(['working', 'monitoring', 'waiting', 'blocked'])
 const NAME_MAX = 60
 
-function isRunningState(state: string | undefined): boolean {
-  // Older hosts omit task state; a listed task without one is still running.
-  return state === undefined || LIVE_STATES.has(state)
-}
-
 function countRunningChildren(
   summary: AgentSessionStatusSummary
 ): { subagents: number; commands: number } | null {
@@ -42,7 +37,8 @@ function countRunningChildren(
     }
   } else {
     for (const task of summary.backgroundTasks ?? []) {
-      if (isRunningState(task.state)) {
+      // A task without a state comes from an older host that cannot say it is running.
+      if (task.state !== undefined && LIVE_STATES.has(task.state)) {
         add(task.kind)
       }
     }

@@ -203,17 +203,26 @@ export function registerAppHandlers(store: Store, options: RegisterAppHandlersOp
   })
 
   ipcMain.handle('app:relaunch', () =>
-    guardForkRestart('restart', async () => {
-      // Delay teardown so the renderer can paint Restarting after cleanup.
-      await runBeforeRelaunchCleanup(options.onBeforeRelaunch)
-      await runBeforeRelaunchCleanup(options.onBeforeRelaunchExit)
-      setTimeout(() => {
-        // app.exit skips before-quit; remove the Windows tray to avoid a stale icon.
-        destroySystemTray()
+    guardForkRestart(
+      'restart',
+      async () => {
+        // Delay teardown so the renderer can paint Restarting after cleanup.
+        await runBeforeRelaunchCleanup(options.onBeforeRelaunch)
+        await runBeforeRelaunchCleanup(options.onBeforeRelaunchExit)
+        setTimeout(() => {
+          // app.exit skips before-quit; remove the Windows tray to avoid a stale icon.
+          destroySystemTray()
+          relaunchApp('renderer-request')
+          app.exit(0)
+        }, 150)
+      },
+      async () => {
+        // A restart run after the restart guard's wait takes the normal quit, so will-quit flushes.
+        await runBeforeRelaunchCleanup(options.onBeforeRelaunch)
         relaunchApp('renderer-request')
-        app.exit(0)
-      }, 150)
-    })
+        quitProcess()
+      }
+    )
   )
 
   ipcMain.handle('app:restart', () =>
