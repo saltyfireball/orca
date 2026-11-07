@@ -5,6 +5,9 @@ const upstream = require('../../electron-builder.config.cjs')
 
 const FORK_RELEASE_OWNER = 'saltyfireball'
 const FORK_PRODUCT_NAME = 'Orca Fork'
+// The fork ships Apple Silicon only: an x64 slice must boot its terminal host under Rosetta,
+// which the fork's runners and Macs do not need.
+const FORK_MAC_ARCH = ['arm64']
 
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
@@ -12,5 +15,13 @@ module.exports = {
   appId: 'com.saltyfireball.orca',
   productName: FORK_PRODUCT_NAME,
   extraMetadata: { ...upstream.extraMetadata, productName: FORK_PRODUCT_NAME },
+  mac: {
+    ...upstream.mac,
+    target: upstream.mac.target.map((entry) =>
+      typeof entry === 'string'
+        ? { target: entry, arch: FORK_MAC_ARCH }
+        : { ...entry, arch: FORK_MAC_ARCH }
+    )
+  },
   publish: { ...upstream.publish, owner: FORK_RELEASE_OWNER }
 }
