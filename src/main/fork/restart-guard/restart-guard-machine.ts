@@ -1,4 +1,5 @@
 // Holds a quit, restart or update install while native chats are busy, then lets it through.
+// Every failure here fails open: a broken guard must never trap the user in the app.
 import type { BusyChat } from './busy-chats'
 
 export type RestartGuardKind = 'quit' | 'restart' | 'update'
@@ -24,11 +25,13 @@ export type RestartGuardDeps = {
   readBusyChats: () => BusyChat[]
   askBeforeRestart: (kind: RestartGuardKind, chats: BusyChat[]) => Promise<RestartGuardChoice>
   askWhileWaiting: (progress: RestartGuardProgress) => Promise<RestartGuardWaitingChoice>
+  /** Reveals the window the dialog sits on; called before asking and on a repeated quit. */
+  bringForward: () => void
   quitApp: () => void
   schedule: (run: () => void, ms: number) => () => void
   onProgress: (progress: RestartGuardProgress | null) => void
   now: () => number
-  onProceedError?: (error: unknown) => void
+  onError: (error: unknown) => void
 }
 
 export const RESTART_GUARD_POLL_MS = 2000
@@ -36,13 +39,17 @@ export const RESTART_GUARD_POLL_MS = 2000
 export const RESTART_GUARD_APPROVAL_MS = 2 * 60 * 1000
 
 type Proceed = () => unknown
+type Intent = { kind: RestartGuardKind; proceed: Proceed }
 
-type Waiting = {
-  kind: RestartGuardKind
-  proceed: Proceed
+type Waiting = Intent & {
   seen: Set<string>
   remaining: BusyChat[]
   cancelTimer: () => void
+}
+
+/** A chat waiting on the user's answer is listed but never holds a "when idle" wait. */
+function holdsWait(chat: BusyChat): boolean {
+  return chat.activity.kind !== 'question'
 }
 
 export class RestartGuard {
@@ -53,29 +60,42 @@ export class RestartGuard {
   constructor(private readonly deps: RestartGuardDeps) {}
 
   getProgress(): RestartGuardProgress | null {
-    return this.waiting ? this.progressOf(this.waiting) : null
+    return this.waiting ? this.progressOf(this.waiting, this.waiting.kind) : null
   }
 
   /** Synchronous before-quit verdict; on 'hold' the caller must preventDefault. */
   onBeforeQuit(signals: BeforeQuitSignals): 'pass' | 'hold' {
-    if (signals.defaultPrevented || signals.systemShutdown || signals.committedElsewhere) {
-      return 'pass'
-    }
-    if (this.isApproved()) {
-      return 'pass'
-    }
-    if (this.prompting) {
-      return 'hold'
-    }
-    if (!this.waiting && this.deps.readBusyChats().length === 0) {
-      return 'pass'
-    }
-    void this.request('quit', this.deps.quitApp).then((result) => {
-      if (result === 'proceed') {
-        this.deps.quitApp()
+    try {
+      if (signals.defaultPrevented || signals.systemShutdown || signals.committedElsewhere) {
+        return 'pass'
       }
-    })
-    return 'hold'
+      if (this.isApproved()) {
+        return 'pass'
+      }
+      if (this.prompting) {
+        this.bringForward()
+        return 'hold'
+      }
+      if (!this.waiting && this.readBusy().length === 0) {
+        return 'pass'
+      }
+      const quit = this.deps.quitApp
+      void this.request('quit', quit)
+        .then((result) => {
+          if (result === 'proceed') {
+            quit()
+          }
+        })
+        .catch((error: unknown) => {
+          this.deps.onError(error)
+          this.approve()
+          quit()
+        })
+      return 'hold'
+    } catch (error) {
+      this.deps.onError(error)
+      return 'pass'
+    }
   }
 
   /**
@@ -84,29 +104,27 @@ export class RestartGuard {
    */
   async request(kind: RestartGuardKind, proceed: Proceed): Promise<RestartGuardRequestResult> {
     if (this.prompting) {
+      this.bringForward()
       return 'cancelled'
     }
     if (this.waiting) {
-      return this.askAboutWaiting()
+      return this.askAboutWaiting({ kind, proceed })
     }
-    const busy = this.deps.readBusyChats()
+    if (this.isApproved()) {
+      return 'proceed'
+    }
+    const busy = this.readBusy()
     if (busy.length === 0) {
       this.approve()
       return 'proceed'
     }
-    this.prompting = true
-    let choice: RestartGuardChoice
-    try {
-      choice = await this.deps.askBeforeRestart(kind, busy)
-    } finally {
-      this.prompting = false
-    }
+    const choice = await this.ask(() => this.deps.askBeforeRestart(kind, busy), 'now')
     if (choice === 'now') {
       this.approve()
       return 'proceed'
     }
     if (choice === 'wait') {
-      return this.startWaiting(kind, proceed, busy)
+      return this.startWaiting({ kind, proceed }, busy)
     }
     return 'cancelled'
   }
@@ -116,37 +134,36 @@ export class RestartGuard {
     if (this.prompting || this.waiting) {
       return 'cancelled'
     }
-    const busy = this.deps.readBusyChats()
-    if (busy.length === 0) {
-      this.approve()
+    const result = this.startWaiting({ kind, proceed }, this.readBusy())
+    if (result === 'proceed') {
       this.run(proceed)
-      return 'proceed'
     }
-    return this.startWaiting(kind, proceed, busy)
+    return result
   }
 
-  /** Shows the waiting status, where the user can keep waiting, go now or stop waiting. */
-  async askAboutWaiting(): Promise<RestartGuardRequestResult> {
+  /**
+   * Shows the waiting status: keep waiting, go now or stop waiting. `intent` is the request that
+   * opened it; Now carries out that latest intent (Cmd-Q during a restart wait quits).
+   */
+  async askAboutWaiting(intent?: Intent): Promise<RestartGuardRequestResult> {
     const waiting = this.waiting
     if (!waiting || this.prompting) {
       return 'cancelled'
     }
-    this.prompting = true
-    let choice: RestartGuardWaitingChoice
-    try {
-      choice = await this.deps.askWhileWaiting(this.progressOf(waiting))
-    } finally {
-      this.prompting = false
-    }
+    const kind = intent?.kind ?? waiting.kind
+    const choice = await this.ask(
+      () => this.deps.askWhileWaiting(this.progressOf(waiting, kind)),
+      'now'
+    )
     // The wait may have finished while the dialog was open.
     if (this.waiting !== waiting) {
       return 'cancelled'
     }
     if (choice === 'now') {
-      this.finish(waiting)
-      return 'cancelled'
-    }
-    if (choice === 'stop') {
+      this.stopWaiting()
+      this.approve()
+      this.run((intent ?? waiting).proceed)
+    } else if (choice === 'stop') {
       this.stopWaiting()
     }
     return 'cancelled'
@@ -162,20 +179,34 @@ export class RestartGuard {
     this.deps.onProgress(null)
   }
 
-  private startWaiting(
-    kind: RestartGuardKind,
-    proceed: Proceed,
-    busy: BusyChat[]
-  ): RestartGuardRequestResult {
+  private async ask<T>(show: () => Promise<T>, onFailure: T): Promise<T> {
+    this.prompting = true
+    try {
+      this.bringForward()
+      return await show()
+    } catch (error) {
+      this.deps.onError(error)
+      return onFailure
+    } finally {
+      this.prompting = false
+    }
+  }
+
+  private startWaiting(intent: Intent, busy: BusyChat[]): RestartGuardRequestResult {
+    const blocking = busy.filter(holdsWait)
+    // Nothing to wait for: the caller goes ahead, as with no busy chats at all.
+    if (blocking.length === 0) {
+      this.approve()
+      return 'proceed'
+    }
     const waiting: Waiting = {
-      kind,
-      proceed,
-      seen: new Set(busy.map((chat) => chat.sessionId)),
-      remaining: busy,
+      ...intent,
+      seen: new Set(blocking.map((chat) => chat.sessionId)),
+      remaining: blocking,
       cancelTimer: () => {}
     }
     this.waiting = waiting
-    this.deps.onProgress(this.progressOf(waiting))
+    this.deps.onProgress(this.progressOf(waiting, waiting.kind))
     this.scheduleCheck(waiting)
     return 'waiting'
   }
@@ -188,32 +219,43 @@ export class RestartGuard {
     if (this.waiting !== waiting) {
       return
     }
-    const busy = this.deps.readBusyChats()
-    if (busy.length === 0) {
-      this.finish(waiting)
+    const blocking = this.readBusy().filter(holdsWait)
+    if (blocking.length === 0) {
+      this.stopWaiting()
+      this.approve()
+      this.run(waiting.proceed)
       return
     }
     // A chat that starts working mid-wait joins the list; the restart waits for it too.
-    for (const chat of busy) {
+    for (const chat of blocking) {
       waiting.seen.add(chat.sessionId)
     }
-    waiting.remaining = busy
-    this.deps.onProgress(this.progressOf(waiting))
+    waiting.remaining = blocking
+    this.deps.onProgress(this.progressOf(waiting, waiting.kind))
     this.scheduleCheck(waiting)
   }
 
-  private finish(waiting: Waiting): void {
-    waiting.cancelTimer()
-    this.waiting = null
-    this.deps.onProgress(null)
-    this.approve()
-    this.run(waiting.proceed)
+  private readBusy(): BusyChat[] {
+    try {
+      return this.deps.readBusyChats()
+    } catch (error) {
+      this.deps.onError(error)
+      return []
+    }
+  }
+
+  private bringForward(): void {
+    try {
+      this.deps.bringForward()
+    } catch (error) {
+      this.deps.onError(error)
+    }
   }
 
   private run(proceed: Proceed): void {
     void Promise.resolve()
       .then(proceed)
-      .catch((error: unknown) => this.deps.onProceedError?.(error))
+      .catch((error: unknown) => this.deps.onError(error))
   }
 
   private approve(): void {
@@ -224,7 +266,7 @@ export class RestartGuard {
     return this.approvedAt !== null && this.deps.now() - this.approvedAt < RESTART_GUARD_APPROVAL_MS
   }
 
-  private progressOf(waiting: Waiting): RestartGuardProgress {
-    return { kind: waiting.kind, total: waiting.seen.size, remaining: waiting.remaining }
+  private progressOf(waiting: Waiting, kind: RestartGuardKind): RestartGuardProgress {
+    return { kind, total: waiting.seen.size, remaining: waiting.remaining }
   }
 }
