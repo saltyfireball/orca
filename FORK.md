@@ -85,6 +85,7 @@ Apply these in this order. Each one is a single commit.
 35. `SLRM-1394 Chat survive: run it against the real Claude Code and ask a resent prompt once`
 36. `SLRM-1394 Chat survive: replay from the last consumed message, stop late claims`
 37. `SLRM-1394 Chat survive: stop a provider lost without a hand-off, and the review nits`
+38. `SLRM-1394 Chat survive: adopt a provider only into the launch that started it`
 
 Fork-only code lives in `fork/` folders:
 
