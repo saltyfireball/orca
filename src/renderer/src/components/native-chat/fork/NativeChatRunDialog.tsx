@@ -96,7 +96,7 @@ export function NativeChatRunDialog({
           value={text}
           aria-invalid={refusal !== null}
           aria-label={translate('components.native-chat.runCode.commandLabel', 'Command')}
-          className="max-h-48 resize-none text-xs [overflow-wrap:anywhere]"
+          className="max-h-48 resize-none [overflow-wrap:anywhere]"
           onFocus={(event) => {
             const end = event.currentTarget.value.length
             event.currentTarget.setSelectionRange(end, end)
