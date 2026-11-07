@@ -6,6 +6,7 @@ import type {
   TerminalTab
 } from '../../../../shared/workspace-layout/terminal-tab-types'
 import type { TuiAgent } from '../../../../shared/agent-launch/catalog/tui-agent'
+import type { ExecutionHostId } from '../../../../shared/execution-host'
 import type { WorkspaceSessionState } from '../../../../shared/workspace-session/workspace-session-state-types'
 import type {
   AgentProviderSessionMetadata,
@@ -77,6 +78,8 @@ export type TerminalActions = {
       pendingActivationSpawn?: boolean
       initialPtyId?: string
       executionFacts?: TerminalCreationExecutionFacts
+      /** The tab's host when the caller pinned one; executionFacts wins when both are given. */
+      executionHostId?: ExecutionHostId
       /** Stable leaf identity: an already-live pane's, or a host launch's pane before its process. */
       initialLeafId?: string
       /** Published atomically with the tab so its first mount cannot spawn a bare shell. */
