@@ -3,6 +3,7 @@ import type { ClaudeManagedAccount } from '../../../../shared/managed-account-ty
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 import {
   NO_ACCOUNT,
+  SYSTEM_DEFAULT_ACCOUNT_ID,
   combineResolutions,
   ownerAccountCount,
   resolveAccountFromConfigPath,
@@ -61,7 +62,7 @@ export function resolveEvidence(
     })
   }
   const home = lookups.chatHome(evidence.transport, evidence.chatSessionId)
-  if (home === 'loading' || (home !== 'failed' && home.home === null)) {
+  if (home === 'loading' || (home !== 'failed' && home.home === null && home.pin === undefined)) {
     return NO_ACCOUNT
   }
   if (home === 'failed') {
@@ -73,10 +74,26 @@ export function resolveEvidence(
         }
       : NO_ACCOUNT
   }
-  return resolveAccountFromConfigPath(owner, {
+  const launched = resolveAccountFromConfigPath(owner, {
     home: home.home ?? undefined,
     accountId: home.accountId
   })
+  if (home.pin === undefined) {
+    return launched
+  }
+  // A moved chat names its pin at once, before it relaunches there.
+  const pinned = resolveAccountFromConfigPath(owner, {
+    accountId: home.pin ?? SYSTEM_DEFAULT_ACCOUNT_ID
+  })
+  if (
+    home.pending &&
+    launched.kind === 'account' &&
+    pinned.kind === 'account' &&
+    launched.account.id !== pinned.account.id
+  ) {
+    return { kind: 'account', account: launched.account, movingTo: pinned.account }
+  }
+  return pinned.kind === 'account' ? pinned : launched
 }
 
 export function resolveAllEvidence(

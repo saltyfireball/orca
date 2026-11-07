@@ -23,10 +23,8 @@ const movedListeners = new Set<ForkClaudeAccountMovedListener>()
 
 /**
  * Told after every move, queued, stopped or cancelled, with the sessions it touched. The account
- * chip subscribes here to drop its cached launch home for those chats.
+ * chip's cache (claude-chip-host-cache.ts) subscribes here and reads those chats again.
  */
-// TODO(SLRM-1503 chip): subscribe `invalidateForkClaudeChatHome(target, sessionId)` from
-// src/renderer/src/fork/claude-account-chip/claude-chip-host-cache.ts once both branches stack.
 export function onForkClaudeAccountMoved(listener: ForkClaudeAccountMovedListener): () => void {
   movedListeners.add(listener)
   return () => {
