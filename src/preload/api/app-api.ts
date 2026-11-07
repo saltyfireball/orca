@@ -16,6 +16,7 @@ import type { WorkspaceSessionState } from '../../shared/workspace-session/works
 import type { KeyboardLayoutSnapshot } from '../../shared/keybindings/keyboard-layout-snapshot'
 import type { KeyboardLayoutChangeEvent } from '../../shared/keybindings/keyboard-layout-events'
 import type { DesktopRelayWrite } from '../../shared/workspace-session/desktop-relay-write'
+import type { ForkRestartHeld } from '../../shared/fork/restart-guard-held'
 
 export type AppApi = {
   getSystemLanguageDetection?: (
@@ -35,9 +36,9 @@ export type AppApi = {
   /** Drops macOS vibrancy while an opaque theme image covers it; no-op otherwise. */
   setWindowMaterialSuppressed: (suppressed: boolean) => Promise<void>
   /** Uses app.exit(0), bypassing normal quit handling. */
-  relaunch: () => Promise<void>
+  relaunch: () => Promise<void | ForkRestartHeld>
   /** Uses normal quit handling so daemon terminals survive for reattachment. */
-  restart: () => Promise<void>
+  restart: () => Promise<void | ForkRestartHeld>
   /** Main classifies teardown before Electron emits process-gone events. */
   reload: () => Promise<void>
   stageBeforeUnloadSync: (args: {
