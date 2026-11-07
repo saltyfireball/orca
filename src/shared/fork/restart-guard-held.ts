@@ -3,9 +3,9 @@
 export type ForkRestartHeld = { forkRestartHeld: 'waiting' | 'cancelled' }
 
 export function isForkRestartHeld(value: unknown): value is ForkRestartHeld {
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== 'object' || value === null || !('forkRestartHeld' in value)) {
     return false
   }
-  const held = (value as Partial<ForkRestartHeld>).forkRestartHeld
+  const held: unknown = value.forkRestartHeld
   return held === 'waiting' || held === 'cancelled'
 }
