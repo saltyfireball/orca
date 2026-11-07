@@ -124,3 +124,14 @@ export function chatSurviveEntryForSession(sessionId: string): ChatSurviveEntry 
 export function chatSurviveEntryForChild(child: object): ChatSurviveEntry | null {
   return byChild.get(child) ?? null
 }
+
+/**
+ * The app consumed one provider message (it reached the chat's journal): the replay mark moves
+ * past it. Called for every Claude message; a child without a broker costs one map lookup.
+ */
+export function forkChatSurviveConsumed(child: object | null | undefined, message: object): void {
+  const uuid: unknown = Reflect.get(message, 'uuid')
+  if (child && typeof uuid === 'string') {
+    byChild.get(child)?.tracker.consumed(uuid)
+  }
+}
