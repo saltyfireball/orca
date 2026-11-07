@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SpawnOptions as SdkSpawnOptions } from '@anthropic-ai/claude-agent-sdk'
 import { spawnProcess } from '@orca/process-host'
 import { createClaudeCodeProcessSpawn } from '../../claude/claude-agent-sdk-process-spawn'
-import { chatSurviveReplayFilter } from './chat-survive-adopted-child'
+import { chatSurviveRedeliveryFilter, chatSurviveReplayFilter } from './chat-survive-adopted-child'
 import { forkChatSurviveAdopt } from './chat-survive-adopt'
 import { hasChatSurviveClaim } from './chat-survive-claims'
 import { forkChatSurviveQuit } from './chat-survive-detach'
@@ -81,6 +81,37 @@ describe('chat-survive replay', () => {
     filter.write(Buffer.from(all.slice(0, 30)))
     filter.write(Buffer.from(all.slice(30)))
     expect(out).toBe(`${lines[0]}${lines[3]}`)
+  })
+
+  it('drops replayed prompts from the CLI redelivery, so each is asked once', () => {
+    const filter = chatSurviveRedeliveryFilter(['a'])
+    const chunks: Buffer[] = []
+    filter.on('data', (chunk: Buffer) => chunks.push(chunk))
+    const reply = {
+      type: 'control_response',
+      response: {
+        subtype: 'success',
+        request_id: 'init',
+        pending_permission_requests: [{ request_id: 'a' }, { request_id: 'b' }],
+        pending_user_dialog_requests: [{ request_id: 'a' }]
+      }
+    }
+    const later = `${JSON.stringify(reply)}\n`
+    const text = `{"type":"control_request","request_id":"a"}\n${later}${later}`
+    // Split inside the reply, and inside a multibyte character after it.
+    const all = Buffer.from(`${text}{"x":"\u00e9"}\n`)
+    filter.write(all.subarray(0, 70))
+    filter.write(all.subarray(70, -4))
+    filter.write(all.subarray(-4))
+    const lines = Buffer.concat(chunks).toString('utf8').split('\n')
+    expect(lines[0]).toBe('{"type":"control_request","request_id":"a"}')
+    expect(JSON.parse(lines[1] ?? '').response).toMatchObject({
+      pending_permission_requests: [{ request_id: 'b' }],
+      pending_user_dialog_requests: []
+    })
+    // Only the first reply, to the new initialize, is rewritten.
+    expect(lines[2]).toBe(JSON.stringify(reply))
+    expect(lines[3]).toBe('{"x":"\u00e9"}')
   })
 
   it('continues a saved mark in the broker offsets', () => {
