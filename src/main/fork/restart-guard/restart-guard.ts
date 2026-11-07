@@ -16,6 +16,7 @@ import { isProcessQuitRequested } from '../../startup/process-quit-request'
 import { quitTeardownStartGate } from '../../startup/quit/quit-teardown-start-gate'
 import { getUpdateStatus, isQuittingForUpdate, quitAndInstall } from '../../updater/updater-service'
 import { translateMain } from '../../i18n/main-i18n'
+import type { ForkRestartHeld } from '../../../shared/fork/restart-guard-held'
 import { listBusyChats, type BusyChat } from './busy-chats'
 import { askBeforeRestart, askWhileWaiting, waitingLabel } from './restart-guard-dialog'
 import { setForkRestartGuardHooks } from './restart-guard-hooks'
@@ -146,19 +147,15 @@ export function installForkRestartGuard(): void {
   })
 }
 
-async function guardRestart(kind: RestartGuardKind, proceed: () => Promise<void>): Promise<void> {
+async function guardRestart(
+  kind: RestartGuardKind,
+  proceed: () => Promise<void>
+): Promise<void | ForkRestartHeld> {
   const result = await getGuard().request(kind, proceed)
   if (result === 'proceed') {
     return proceed()
   }
-  throw new Error(
-    result === 'waiting'
-      ? translateMain(
-          'fork.restartGuard.heldWaiting',
-          'The restart will run once your chats are idle.'
-        )
-      : translateMain('fork.restartGuard.heldCancelled', 'Restart cancelled.')
-  )
+  return { forkRestartHeld: result }
 }
 
 async function guardUpdateInstall(install: () => void): Promise<void> {
