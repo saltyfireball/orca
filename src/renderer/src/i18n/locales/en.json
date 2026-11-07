@@ -21866,6 +21866,13 @@
         "openAgain": "Open again",
         "finished": "Sign-in finished",
         "finishedWith": "Sign-in finished · {{message}}"
+      },
+      "runCode": {
+        "confirmTitle": "Run in {{name}}?",
+        "confirm": "Run",
+        "cancel": "Cancel",
+        "tabLabel": "Chat: {{command}}",
+        "action": "Run in terminal"
       }
     },
     "tab": {
