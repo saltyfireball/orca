@@ -256,14 +256,15 @@ export async function startChatSurviveBroker(
         if (typeof hello === 'string') {
           return void socket.end(refusalFrame(hello))
         }
-        // Never two writers: while the spawning process lives, it alone owns the provider.
-        if (direct && !direct.gone()) {
-          return void socket.end(refusalFrame('busy'))
-        }
-        loseDirectOwner()
         if (hello.fence < highestFence || finishing) {
           return void socket.end(refusalFrame('stale-fence'))
         }
+        // Never two writers: while the spawning process lives, it alone owns the provider, and
+        // only it (it holds the token) moves itself to the socket with a takeover.
+        if (direct && !direct.gone() && hello.takeover !== true) {
+          return void socket.end(refusalFrame('busy'))
+        }
+        loseDirectOwner()
         self = accept(socket, hello)
         return
       }

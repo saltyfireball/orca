@@ -47,6 +47,8 @@ export type ChatSurviveConnectOptions = {
   token: string
   fence: number
   from?: { out: number; err: number }
+  /** Only for the app instance that spawned the broker, moving off its stdio (the quit hook). */
+  takeover?: boolean
 }
 
 export function connectChatSurviveBroker(
@@ -108,7 +110,8 @@ export function connectChatSurviveBroker(
       v: CHAT_SURVIVE_PROTOCOL_VERSION,
       token: options.token,
       fence: options.fence,
-      from: { ...held }
+      from: { ...held },
+      ...(options.takeover === true ? { takeover: true } : {})
     })
   })
   socket.on('data', (chunk: Buffer) => decoder.push(chunk))
