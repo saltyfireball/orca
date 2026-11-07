@@ -7,6 +7,7 @@
 // left running without a record that says how to resume it.
 import type { ManagedProviderProcess } from '../../provider-process/managed-provider-process'
 import type { ProviderProcessCloseResult } from '../../provider-process/provider-process-close'
+import type { ProviderProcessTeardownVerdict } from '../../provider-process/provider-process-teardown'
 import { connectChatSurviveBroker, type ChatSurviveConnection } from './chat-survive-client'
 import {
   chatSurviveEntryForChild,
@@ -106,19 +107,63 @@ const LIVE: ProviderProcessCloseResult = { root: 'live', tree: 'live' }
  */
 export function forkChatSurviveManaged(managed: ManagedProviderProcess): ManagedProviderProcess {
   const handedOff = (): boolean => chatSurviveEntryForChild(managed.child)?.state === 'detached'
-  return new Proxy(managed, {
-    get(target, property) {
-      if (handedOff()) {
-        if (property === 'close' || property === 'closeWriter') {
-          return () => Promise.resolve(LIVE)
-        }
-        if (property === 'terminateTree') {
-          return () => Promise.resolve('live')
-        }
-      }
-      return Reflect.get(target, property, target)
+  const closedLive = (): Promise<ProviderProcessCloseResult> => Promise.resolve(LIVE)
+  // Every read goes through to `managed` at the moment it is made, and writes land on it too.
+  return {
+    get child() {
+      return managed.child
+    },
+    set child(child) {
+      managed.child = child
+    },
+    get supervised() {
+      return managed.supervised
+    },
+    set supervised(supervised) {
+      managed.supervised = supervised
+    },
+    get processless() {
+      return managed.processless
+    },
+    get rootVerdict() {
+      return managed.rootVerdict
+    },
+    get rootExitObserved() {
+      return managed.rootExitObserved
+    },
+    get lastCloseResult() {
+      return managed.lastCloseResult
+    },
+    get exitStatus() {
+      return managed.exitStatus
+    },
+    get exitPromise() {
+      return managed.exitPromise
+    },
+    get executableMissing() {
+      return managed.executableMissing
+    },
+    get spawnAbsence() {
+      return managed.spawnAbsence
+    },
+    get stderrTail() {
+      return managed.stderrTail
+    },
+    get onExit() {
+      return managed.onExit
+    },
+    get terminateTree() {
+      return handedOff()
+        ? (): Promise<ProviderProcessTeardownVerdict> => Promise.resolve('live')
+        : managed.terminateTree
+    },
+    get close() {
+      return handedOff() ? closedLive : managed.close
+    },
+    get closeWriter() {
+      return handedOff() ? closedLive : managed.closeWriter
     }
-  })
+  }
 }
 
 /** The quit hook for one session: true leaves its provider running for the next app instance. */
