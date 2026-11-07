@@ -1,8 +1,8 @@
 # Chat agents survive an app restart (SLRM-1394)
 
-Status: design, the transport (phase 1), the broker process (phase 2) and the spawn hook
-(phase 3, behind `forkChatSurvive`, off by default) built and tested. Claude only for now; Codex
-keeps today's behavior. Chats do not resume after a restart until phase 5.
+Status: phases 1-5 built and tested for Claude (the transport, the broker, the spawn hook, the
+quit hook and adoption at start), behind `forkChatSurvive`, off by default. Adoption is macOS
+only. Codex keeps today's behavior.
 
 ## Problem
 
@@ -276,10 +276,40 @@ owner-gone signal, and fences decide who may write).
      `createClaudeCodeProcessSpawn`, after which the whole exit-proof ladder leaves it running,
      the record holds the mark and the next owner's replay starts at the unanswered request; the
      setting-off and unknown-session fallbacks; the guard filter.
-5. **Adopt at start** (3-5 days). Where restart reconciliation leaves a session `recovering` and
-   its broker file exists, connect with the next fence, open a new SDK `query()` whose spawn hook
-   returns that connection, replay from the persisted offsets with journal de-duplication, and
-   mark the lease held. On refusal, timeout or `truncated`, fall back to today's restart offer.
+5. **Adopt at start (done).** Two hooks, both in `chat-survive-adopt.ts`.
+   - Claim, in `resolveStructuredSessionRecovery`: for a recovering session whose owner is proven
+     alive on this host, before the stop, `forkChatSurviveAdopt` reads the record named for the
+     session and the owner pid. It must hold a `detached` mark, name this session and exactly
+     that pid, and the setting must be on (macOS only: Linux owner probes also read the spawn
+     token from the process, which the next lease cannot match). It says hello with the saved
+     fence plus one and `from` the saved offsets, within 2 s; the welcome must show the provider
+     running, nothing truncated and at least `seen` bytes. Then the claim is held
+     (`chat-survive-claims.ts`) and recovery releases the lease without signalling the owner.
+     Anything else returns false and recovery stops the owner as before.
+   - Start: the host's tab recovery callback goes through `forkChatSurviveRecover`, which starts
+     each chat with a held claim (`startStructuredAgentSessionAgentForOperation`), so the
+     provider is reattached at once. The spawn hook hands that start the claimed broker as its
+     child (`chat-survive-adopted-child.ts`): pid = the broker's (the new lease, exit proof and
+     signals name the real process), stdin to the socket (its end is an `end` frame), stdout
+     through the replay filter (below `seen` only the still-pending control requests, then
+     everything), and `exit`/`close` once the broker reports the provider's exit and the broker
+     process is gone. The record is rewritten without the mark, and the child is registered with
+     a tracker that continues the saved mark in the broker's offsets, so the chat survives the
+     next quit the same way (that hand-off uses a fence above the claim's).
+   - Fallbacks: a claim nothing takes within 60 s, or whose start settles without taking it, is
+     stopped (today's outcome: the chat resumes from saved history). Until that stop has finished,
+     a new provider for the chat is refused (the spawn throws), so there is never a second writer.
+     A crash (no quit hook) leaves a record without a mark, which is never adopted.
+   - Known gaps: the adopted child has no supervisor report channel, so the provider-group guard
+     warns once and does not arm (the broker still stops its group); the SDK's second
+     `initialize` meets a CLI already mid-turn, which is supported by the CLI but has not been run
+     against a real Claude Code yet.
+   - Tests: the replay filter and the continued mark; the recovery hook releases an adopted owner
+     without a signal and stops it when the claim fails; a real Claude-shaped provider handed off
+     at quit, adopted through `createClaudeCodeProcessSpawn` (same pid, the unanswered request
+     replayed, nothing handled replayed, input reaching it), handed off and adopted a second time,
+     then ended by stdin end with the broker gone and its record removed; claims refused for an
+     undetached record, another pid, Linux, another session, a forged token and the setting off.
 6. **Codex** (3-4 days). Same hooks in the app-server connection. Its second `initialize` is
    refused, so the client keeps the first `initialize` answer in the session file and the adopter
    skips the handshake, then re-subscribes to the loaded thread. ACP providers after that.
