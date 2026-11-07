@@ -61,6 +61,7 @@ Apply these in this order. Each one is a single commit.
 24. `SLRM-1338 Sign the commits fork-sync rebases`
 25. `SLRM-1337 Use the fork's own bundle ids for its helpers and macOS checks`
 26. `SLRM-1393 Warn before a quit, restart or update kills busy chats`
+27. `SLRM-1393 A held restart shows a neutral toast, not an error`
 
 Fork-only code lives in `fork/` folders:
 
@@ -68,6 +69,7 @@ Fork-only code lives in `fork/` folders:
 - `src/main/fork/`
 - `src/main/updater/fork/`
 - `src/renderer/src/components/native-chat/fork/`
+- `src/renderer/src/fork/`
 - `mobile/src/components/fork/`
 - `config/scripts/fork/`
 - `native/computer-use-macos/Sources/OrcaComputerUseMacOSCore/fork/`
@@ -113,7 +115,13 @@ Upstream files only get short hooks, which keeps rebases small:
   `...forkRestartGuardMenuItems()` follows `checkForUpdatesItem` in
   `src/main/menu/register-app-menu.ts`. The three come from the import-light
   `src/main/fork/restart-guard/restart-guard-hooks.ts`, which passes through until the guard
-  installs, so upstream tests of those files are unchanged.
+  installs, so upstream tests of those files are unchanged. A held restart resolves
+  `ForkRestartHeld` (`src/shared/fork/restart-guard-held.ts`), not an error: `app-bridge.ts`
+  passes it as `willRestart`'s refusal so the renderer drops its restart state, `app-api.ts`
+  widens the two return types, and one `handleForkRestartHeld` call
+  (`src/renderer/src/fork/restart-guard-held-toast.ts`) in each of `SidebarSettingsHelpMenu.tsx`,
+  `AdvancedPane.tsx`, `WindowMaterialSetting.tsx` and `UpdateCard.tsx` clears its spinner and
+  shows a neutral toast instead of "Couldn't restart Orca."
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
@@ -151,7 +159,8 @@ any chat is busy, and asks first. The code is `src/main/fork/restart-guard/`.
   no chat is busy. A chat that starts working during the wait joins the list and is waited for
   too. The dock icon shows a progress bar and the app menu shows "Restart when idle: N of M
   chats finished"; clicking it, or quitting again, offers Keep Waiting, Restart Now or Stop
-  Waiting. **Restart Now** goes at once. **Cancel** does nothing.
+  Waiting. **Restart Now** goes at once. **Cancel** does nothing. A held restart from the renderer shows "Restart will run once your
+  chats are idle." (nothing on Cancel), not an error.
 - **Update Ready - Restart When Idle** appears in the app menu once an update is downloaded. It
   skips the first dialog and installs as soon as no chat is busy (at once if none is).
 - **Never held:** macOS logout and shutdown (`powerMonitor` `shutdown`; Windows
