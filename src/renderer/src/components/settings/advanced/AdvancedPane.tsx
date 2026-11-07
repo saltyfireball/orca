@@ -16,6 +16,7 @@ import { matchesSettingsSearch } from '../search/settings-search'
 import { useAppStore } from '../../../store/index'
 import { OrcaUninstallSection } from './uninstall/OrcaUninstallSection'
 import { ForkChatSurviveSetting } from '@/fork/ForkChatSurviveSetting'
+import { ForkAccountChipSetting } from '@/fork/claude-account-chip/ForkAccountChipSetting'
 
 type AdvancedPaneProps = {
   settings: GlobalSettings
@@ -165,6 +166,7 @@ export function AdvancedPane({ settings, updateSettings }: AdvancedPaneProps): R
         <OrcaUninstallSection />
       </SettingsGroup>
       <ForkChatSurviveSetting settings={settings} updateSettings={updateSettings} />
+      <ForkAccountChipSetting settings={settings} updateSettings={updateSettings} />
     </div>
   )
 }
