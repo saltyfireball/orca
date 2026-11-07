@@ -7,7 +7,7 @@ import { EventEmitter } from 'node:events'
 import { Transform, Writable, type TransformCallback } from 'node:stream'
 import type { PipedChildProcess } from '@orca/process-host/process-spec'
 import type { ChatSurviveConnection } from './chat-survive-client'
-import type { ChatSurviveExit } from './chat-survive-protocol'
+import { isRecord, type ChatSurviveExit } from './chat-survive-protocol'
 import {
   CONTROL_LINE,
   CONTROL_REQUEST,
@@ -78,20 +78,17 @@ function parsed(line: string): unknown {
 
 function withoutReplayed(line: string, replayed: ReadonlySet<string>): string {
   const frame = parsed(line)
-  const response: unknown =
-    typeof frame === 'object' && frame ? Reflect.get(frame, 'response') : null
-  if (typeof response !== 'object' || response === null) {
+  const response = isRecord(frame) ? frame.response : null
+  if (!isRecord(response)) {
     return line
   }
   for (const key of REDELIVERED) {
-    const listed: unknown = Reflect.get(response, key)
+    const listed = response[key]
     if (Array.isArray(listed)) {
-      const kept = listed.filter((request: unknown) => {
-        const id =
-          typeof request === 'object' && request ? Reflect.get(request, 'request_id') : null
+      response[key] = listed.filter((request: unknown) => {
+        const id = isRecord(request) ? request.request_id : null
         return typeof id !== 'string' || !replayed.has(id)
       })
-      Reflect.set(response, key, kept)
     }
   }
   return `${JSON.stringify(frame)}\n`
@@ -136,11 +133,16 @@ export function chatSurviveRedeliveryFilter(replayed: readonly string[]): Transf
 function isPiped(child: unknown): child is PipedChildProcess {
   return (
     child instanceof EventEmitter &&
-    ['stdin', 'stdout', 'stderr'].every(
-      (name) => Reflect.get(child, name) instanceof EventEmitter
-    ) &&
-    typeof Reflect.get(child, 'pid') === 'number' &&
-    typeof Reflect.get(child, 'kill') === 'function'
+    'stdin' in child &&
+    child.stdin instanceof EventEmitter &&
+    'stdout' in child &&
+    child.stdout instanceof EventEmitter &&
+    'stderr' in child &&
+    child.stderr instanceof EventEmitter &&
+    'pid' in child &&
+    typeof child.pid === 'number' &&
+    'kill' in child &&
+    typeof child.kill === 'function'
   )
 }
 
