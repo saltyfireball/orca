@@ -37,6 +37,10 @@ Apply these in this order. Each one is a single commit.
 7. `SLRM-1309 build: fork version scheme, builder overlay and build wrapper`
 8. `SLRM-1309 ci: deploy key, release retry, fork versions and upstream workflows off`
 9. `SLRM-1309 updater: drop casts in the feed guard and keep UpdateCard on upstream repos`
+10. `SLRM-1309 docs: FORK.md lists the ninth patch and the fourth mocked test`
+11. `SLRM-1309 run: reject invisible characters by Unicode property`
+12. `SLRM-1309 run: resolve folder workspaces on the captured host`
+13. `SLRM-1309 ci: disable upstream workflows before the push and cancel their runs`
 
 Fork-only code lives in `fork/` folders:
 
@@ -101,8 +105,10 @@ runs in `saltyfireball/orca`. Every third-party action is pinned to a full commi
      - root typecheck
      - the fork and updater tests
      - mobile install and typecheck
-   - Then it pushes with `git push --force-with-lease origin HEAD:main`.
-   - It disables every workflow except fork-sync (see below).
+   - It disables every workflow except fork-sync, then pushes with
+     `git push --force-with-lease origin HEAD:main`.
+   - After the push it disables any workflow the push added, and cancels any other workflow's
+     run of the pushed commit (see below).
    - It checks whether a published fork release already has a tag on the `main` commit.
 2. **build-mac** (macos-15) runs in three cases: `main` changed, `main` has no fork release
    yet, or `force_build` is set. The second case retries a failed build without waiting for a
@@ -128,12 +134,20 @@ are `contents: write`, `issues: write` and `actions: write`.
 None of upstream's workflows run on the fork. They would fail without upstream's secrets and
 runners. All of them were disabled by hand once.
 
-An upstream sync can add new workflow files, and GitHub turns new workflows on. So after the
-push, the sync job lists the repo's workflows and disables each active one in
-`.github/workflows/` except `.github/workflows/fork-sync.yml`
-(`gh api -X PUT repos/saltyfireball/orca/actions/workflows/<id>/disable`). Workflows that
-are already disabled are skipped, so the step is safe to run every day. It never disables
-fork-sync.
+An upstream sync can add new workflow files, and GitHub turns new workflows on. A push could
+start one of them before it is disabled. So `config/scripts/fork/fork-workflow-guard.sh` runs
+three times around the push:
+
+1. Before the push, `disable` turns off every active workflow in `.github/workflows/` except
+   `.github/workflows/fork-sync.yml`
+   (`gh api -X PUT repos/saltyfireball/orca/actions/workflows/<id>/disable`).
+2. After the push, `disable` runs again for the workflows the push added.
+3. Then `cancel-runs <sha>` lists the workflow runs of the pushed commit and cancels every
+   unfinished one whose workflow is not fork-sync. It looks three times, 10 seconds apart,
+   because push-triggered runs take a moment to appear.
+
+Disabled workflows and finished runs are skipped, so this is safe to run every day. It never
+disables fork-sync or cancels its runs. The job needs `actions: write` for it.
 
 ### Notes
 
