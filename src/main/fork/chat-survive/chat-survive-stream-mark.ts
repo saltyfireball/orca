@@ -8,8 +8,8 @@ const LINE_HEAD_BYTES = 64 * 1024
 /** How much of each stdin line is kept to recognise a control response. */
 const INPUT_HEAD_BYTES = 4 * 1024
 
-const REQUEST_ID = /"request_id"\s*:\s*"([^"\\]{1,256})"/
-const CONTROL_REQUEST = /^\s*\{\s*"type"\s*:\s*"control_request"/
+export const REQUEST_ID = /"request_id"\s*:\s*"([^"\\]{1,256})"/
+export const CONTROL_REQUEST = /^\s*\{\s*"type"\s*:\s*"control_request"/
 const CONTROL_CANCEL = /^\s*\{\s*"type"\s*:\s*"control_cancel_request"/
 const CONTROL_RESPONSE = /^\s*\{\s*"type"\s*:\s*"control_response"/
 
@@ -37,10 +37,11 @@ function bytes(chunk: Buffer | string): Buffer {
 /** Splits a byte stream into line heads; `onLine` gets each head with its line's start offset. */
 function lineHeads(
   cap: number,
-  onLine: (head: string, start: number) => void
+  onLine: (head: string, start: number) => void,
+  base = 0
 ): { push: (data: Buffer) => void; delivered: () => number; lineEnd: () => number } {
-  let delivered = 0
-  let lineStart = 0
+  let delivered = base
+  let lineStart = base
   let head = ''
   const keep = (part: Buffer): void => {
     const room = cap - head.length
@@ -66,20 +67,33 @@ function lineHeads(
   }
 }
 
-export function createChatSurviveStreamTracker(): ChatSurviveStreamTracker {
-  const pending = new Map<string, number>()
-  let err = 0
-  const out = lineHeads(LINE_HEAD_BYTES, (head, start) => {
-    const id = REQUEST_ID.exec(head)?.[1]
-    if (!id) {
-      return
-    }
-    if (CONTROL_REQUEST.test(head)) {
-      pending.set(id, start)
-    } else if (CONTROL_CANCEL.test(head)) {
-      pending.delete(id)
-    }
-  })
+/**
+ * `from` continues a mark an earlier app instance saved: offsets count from the broker's first
+ * byte, and of the replayed lines it had already handled only its unanswered requests count again.
+ */
+export function createChatSurviveStreamTracker(
+  from?: ChatSurviveStreamMark
+): ChatSurviveStreamTracker {
+  const handled = from?.seen ?? 0
+  const stillPending = new Set(from?.pending)
+  // Until its line comes round again, a carried-over request holds the replay at the old mark.
+  const pending = new Map<string, number>([...stillPending].map((id) => [id, from?.out ?? 0]))
+  let err = from?.err ?? 0
+  const out = lineHeads(
+    LINE_HEAD_BYTES,
+    (head, start) => {
+      const id = REQUEST_ID.exec(head)?.[1]
+      if (!id || (start < handled && !stillPending.has(id))) {
+        return
+      }
+      if (CONTROL_REQUEST.test(head)) {
+        pending.set(id, start)
+      } else if (CONTROL_CANCEL.test(head)) {
+        pending.delete(id)
+      }
+    },
+    from?.out ?? 0
+  )
   const input = lineHeads(INPUT_HEAD_BYTES, (head) => {
     const id = CONTROL_RESPONSE.test(head) ? REQUEST_ID.exec(head)?.[1] : undefined
     if (id) {
@@ -93,7 +107,7 @@ export function createChatSurviveStreamTracker(): ChatSurviveStreamTracker {
     },
     stdin: (chunk) => input.push(bytes(chunk)),
     mark: () => {
-      const seen = out.lineEnd()
+      const seen = Math.max(out.lineEnd(), handled)
       return {
         out: Math.min(seen, ...pending.values()),
         err,
