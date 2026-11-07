@@ -9,6 +9,7 @@ export const FORK_LOCALIZED_SOURCE_DIRS = [
   'src/main/fork',
   'src/main/updater/fork',
   'src/renderer/src/components/native-chat/fork',
+  'src/renderer/src/fork',
   'mobile/src/components/fork'
 ]
 
