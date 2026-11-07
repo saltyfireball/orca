@@ -86,6 +86,7 @@ Apply these in this order. Each one is a single commit.
 36. `SLRM-1394 Chat survive: replay from the last consumed message, stop late claims`
 37. `SLRM-1394 Chat survive: stop a provider lost without a hand-off, and the review nits`
 38. `SLRM-1394 Chat survive: adopt a provider only into the launch that started it`
+39. `SLRM-1394 Put the pinned bun on PATH for tests run outside pnpm`
 
 Fork-only code lives in `fork/` folders:
 
@@ -170,6 +171,11 @@ Upstream files only get short hooks, which keeps rebases small:
 - Chat survive consumed hook (SLRM-1394): `openClaudeStreamJsonConnection` calls
   `forkChatSurviveConsumed` after each `onMessage`, so the replay mark moves past messages the
   chat consumed (`src/main/fork/chat-survive/chat-survive-registry.ts`).
+- Test runner PATH (SLRM-1394): `run-vitest.mjs` puts `node_modules/.bin` first on the Vitest
+  PATH when it runs the pinned Bun. Under Bun the Claude SDK runs a script CLI with `bun`, and the
+  pinned binary is `bun.exe`, so without the shim `claude-stop-ack-race.test.ts` and
+  `structured-claude-thinking-display-refusal.test.ts` failed with `spawn bun ENOENT` when the
+  runner ran outside `pnpm run`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
