@@ -3,8 +3,6 @@ import { Play } from 'lucide-react'
 import { toast } from 'sonner'
 import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
-import { findWorktreeById } from '@/store/slices/worktree-helpers'
-import { selectWorktreesByRepo } from '@/store/workspace-record-selectors'
 import { tryRuntimeTargetForWorktreeOwner } from '@/store/slices/worktrees/listing/worktree-owner-target'
 import { runQuickCommandInNewTab } from '@/lib/run-quick-command-in-new-tab'
 import {
@@ -12,8 +10,13 @@ import {
   type ConfirmationDialogContextValue
 } from '@/components/confirmation-dialog-context'
 import { commandFromShellFence } from '../../../../../shared/fork/shell-fence'
-import { useNativeChatVisualOwner, type NativeChatVisualOwner } from '../media/visuals/native-chat-visual-owner'
-import { isNativeChatRunTargetCurrent, type NativeChatRunTarget } from './native-chat-run-target'
+import { useNativeChatVisualOwner, type NativeChatVisualOwner } from '../native-chat-visual-owner'
+import {
+  isNativeChatRunTargetCurrent,
+  sameRuntimeClientTarget,
+  type NativeChatRunTarget
+} from './native-chat-run-target'
+import { findNativeChatRunWorkspace } from './native-chat-run-workspace'
 
 const LABEL_PREVIEW_LENGTH = 40
 
@@ -40,11 +43,15 @@ function isRunTargetCurrent(
   liveOwner: NativeChatVisualOwner | null
 ): boolean {
   const state = useAppStore.getState()
+  const hostId = captured.hostId ?? undefined
+  // The new tab routes by the unqualified owner, so it must agree with the captured host's owner.
+  const onHost = tryRuntimeTargetForWorktreeOwner(state, captured.worktreeId, hostId)
+  const routed = tryRuntimeTargetForWorktreeOwner(state, captured.worktreeId)
   return isNativeChatRunTargetCurrent({
     captured,
     liveOwner,
-    worktreeExists: Boolean(findWorktreeById(selectWorktreesByRepo(state), captured.worktreeId)),
-    resolvedTarget: tryRuntimeTargetForWorktreeOwner(state, captured.worktreeId)
+    worktreeExists: findNativeChatRunWorkspace(state, captured.worktreeId, hostId) !== null,
+    resolvedTarget: sameRuntimeClientTarget(onHost, routed) ? onHost : null
   })
 }
 
@@ -76,7 +83,7 @@ function RunButton({
     }
   }, [owner])
   const workspaceName = useAppStore(
-    (s) => findWorktreeById(selectWorktreesByRepo(s), worktreeId)?.displayName ?? null
+    (s) => findNativeChatRunWorkspace(s, worktreeId)?.displayName ?? null
   )
   // A chat in a terminal pane is keyed by its terminal tab; a chat tab by its own id.
   const groupId = useAppStore((s) =>
@@ -93,6 +100,7 @@ function RunButton({
       command,
       target: owner.target,
       worktreeId,
+      hostId: findNativeChatRunWorkspace(useAppStore.getState(), worktreeId)?.hostId ?? null,
       groupId
     })
     if (!isRunTargetCurrent(captured, liveOwnerRef.current)) {
