@@ -34,7 +34,7 @@ export type ChatSurviveEntry = {
 }
 
 const bySession = new Map<string, ChatSurviveEntry>()
-const byChild = new WeakMap<object, ChatSurviveEntry>()
+const byChild = new WeakMap<PipedChildProcess, ChatSurviveEntry>()
 
 /** Writes a record whole or not at all, so a reader never sees half of one. */
 export function writeChatSurviveRecord(path: string, record: ChatSurviveRecord): void {
@@ -58,22 +58,27 @@ function watchWithReader(
   stream.on('newListener', onSubscribe)
 }
 
-/** Replaces one method on one object, calling through unless `skip` says otherwise. */
-function interpose(
-  target: object,
-  name: string,
-  before: (args: unknown[]) => { skip: true; value: unknown } | null
+type Method = (...args: never[]) => unknown
+
+/** Whatever has a method called `name`: a child process or its stdin. */
+type MethodOwner<Name extends string, Fn extends Method> = Record<Name, Fn>
+
+/** Replaces one method on its owner, calling through unless `skip` says otherwise. */
+function interpose<Name extends string, Fn extends Method>(
+  target: MethodOwner<Name, Fn>,
+  name: Name,
+  before: (args: Parameters<Fn>) => { skip: true; value: unknown } | null
 ): void {
-  const original: unknown = Reflect.get(target, name)
+  const original: Fn = target[name]
   if (typeof original !== 'function') {
     return
   }
   Object.defineProperty(target, name, {
     configurable: true,
     writable: true,
-    value: (...args: unknown[]): unknown => {
+    value: (...args: Parameters<Fn>): unknown => {
       const verdict = before(args)
-      return verdict ? verdict.value : Reflect.apply(original, target, args)
+      return verdict ? verdict.value : original.apply(target, args)
     }
   })
 }
@@ -123,16 +128,22 @@ export function chatSurviveEntryForSession(sessionId: string): ChatSurviveEntry 
   return bySession.get(sessionId) ?? null
 }
 
-export function chatSurviveEntryForChild(child: object): ChatSurviveEntry | null {
+export function chatSurviveEntryForChild(child: PipedChildProcess): ChatSurviveEntry | null {
   return byChild.get(child) ?? null
 }
+
+/** A provider message as the app's reader hands it on; only its `uuid` matters here. */
+type ConsumedMessage = { readonly uuid?: unknown }
 
 /**
  * The app consumed one provider message (it reached the chat's journal): the replay mark moves
  * past it. Called for every Claude message; a child without a broker costs one map lookup.
  */
-export function forkChatSurviveConsumed(child: object | null | undefined, message: object): void {
-  const uuid: unknown = Reflect.get(message, 'uuid')
+export function forkChatSurviveConsumed(
+  child: PipedChildProcess | null | undefined,
+  message: ConsumedMessage
+): void {
+  const { uuid } = message
   if (child && typeof uuid === 'string') {
     byChild.get(child)?.tracker.consumed(uuid)
   }
