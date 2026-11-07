@@ -14,8 +14,10 @@ import { chatSurviveAdoptedChild } from './chat-survive-adopted-child'
 import {
   chatSurviveClaimStopping,
   hasChatSurviveClaim,
+  stopChatSurviveClaim,
   takeChatSurviveClaim
 } from './chat-survive-claims'
+import { chatSurviveLaunchHash } from './chat-survive-launch-hash'
 import {
   chatSurviveSocketDir,
   isProviderSupervisorSpawn,
@@ -75,6 +77,10 @@ export function chatSurviveRecordName(
   return `${prefix}.${brokerPid}.json`
 }
 
+function launchField(launch: string | null): { launch?: string } {
+  return launch === null ? {} : { launch }
+}
+
 function writeRecord(dir: string, name: string, record: ChatSurviveRecord): string | null {
   try {
     mkdirSync(dir, { recursive: true, mode: 0o700 })
@@ -115,6 +121,11 @@ function adoptedChild(
   const claim = takeChatSurviveClaim(sessionId)
   if (!claim) {
     return null
+  }
+  // A provider started otherwise (model, permissions, MCP, cwd) is not the one this start expects.
+  if (!claim.record.launch || claim.record.launch !== chatSurviveLaunchHash(spec, env)) {
+    stopChatSurviveClaim(claim)
+    throw new Error('the chat-survive provider for this chat is still stopping')
   }
   const tracker = createChatSurviveStreamTracker(claim.mark)
   const child = chatSurviveAdoptedChild({
@@ -176,7 +187,8 @@ export function forkChatSurviveSpawner(
       sessionId,
       brokerPid,
       socketPath: plan.socketPath,
-      token: plan.token
+      token: plan.token,
+      ...launchField(chatSurviveLaunchHash(spec, env))
     }
     const recordPath = writeRecord(config.recordDir, chatSurviveRecordName(env, brokerPid), record)
     if (recordPath) {
