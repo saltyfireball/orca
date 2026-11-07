@@ -43,6 +43,17 @@ named Orca Fork until SLRM-1367. `main` is always
   socket, replaying from where the quitting app left off, so the turn carries on; anything it
   cannot prove stops the broker as before. The design and the remaining phases (Codex next) are
   in `docs/fork/chat-survive.md`.
+- **Claude account chip (SLRM-1503).** Native chat tabs, terminal tabs running Claude, agent rows
+  and sidebar worktree rows show a small dot and short label (`B`, or `B @ kif` on another host)
+  naming the Claude account the session runs on; a worktree whose sessions use several shows
+  `Mixed`. Hovering shows the email and 5h and weekly usage. Each session resolves against the
+  host that runs it: this desktop, a WSL host's distro (through this desktop's saved accounts) or
+  a paired remote host (its own accounts, read once over runtime RPC); direct SSH shows nothing.
+  Nothing shows when that host has one account or none. Terminal panes are named by their hook
+  transcript path; native chats by `agentSession.forkClaudeHome`, a fork RPC each host answers
+  with the home it last launched the chat under. Settings > Advanced turns it off
+  (`forkShowAccountChip`, on by default). Code is in `src/renderer/src/fork/claude-account-chip/`
+  and `src/main/fork/claude-account-chip/`.
 
 ## Patch list
 
@@ -87,6 +98,7 @@ Apply these in this order. Each one is a single commit.
 37. `SLRM-1394 Chat survive: stop a provider lost without a hand-off, and the review nits`
 38. `SLRM-1394 Chat survive: adopt a provider only into the launch that started it`
 39. `SLRM-1394 Put the pinned bun on PATH for tests run outside pnpm`
+40. `SLRM-1503 Account chip: name the Claude account of each tab, agent and worktree`
 
 Fork-only code lives in `fork/` folders:
 
@@ -157,7 +169,7 @@ Upstream files only get short hooks, which keeps rebases small:
 - Chat survive spawn hook (SLRM-1394): `createClaudeCodeProcessSpawn` passes its `spawnImpl`
   through `forkChatSurviveSpawner` (`src/main/fork/chat-survive/chat-survive-spawn.ts`);
   `main-process-ready-foundation.ts` installs the setting reader in one line;
-  `global-settings-types.ts` has the optional `forkChatSurvive`; `AdvancedPane.tsx` renders
+  `forkChatSurvive` is in `src/shared/fork/fork-global-settings.ts`; `AdvancedPane.tsx` renders
   `src/renderer/src/fork/ForkChatSurviveSetting.tsx`.
 - Chat survive quit hook (SLRM-1394): `createClaudeCodeProcessSpawn` wraps the managed process in
   `forkChatSurviveManaged` (one line), and `evictOwnedStructuredAgentSessions` calls
@@ -176,6 +188,19 @@ Upstream files only get short hooks, which keeps rebases small:
   pinned binary is `bun.exe`, so without the shim `claude-stop-ack-race.test.ts` and
   `structured-claude-thinking-display-refusal.test.ts` failed with `spawn bun ENOENT` when the
   runner ran outside `pnpm run`.
+- Fork settings (SLRM-1503): `global-settings-types.ts` builds `GlobalSettings` on
+  `WithForkSettings<GlobalSettingsBase>` (`src/shared/fork/fork-global-settings.ts`, one import
+  and one changed line), which adds `forkChatSurvive` and `forkShowAccountChip`; the file is at
+  max-lines.
+- Account chip hooks (SLRM-1503): `SortableTab.tsx` renders its title through `ForkTabTitle`
+  (the stock title span plus the chip, one line, swapping the `TAB_LABEL_WIDTH_CLASSES` import
+  so the file stays at max-lines); `DashboardAgentRow.tsx` renders
+  `ForkClaudeAccountAgentRowChip` after the agent icon for non-subagent rows (worktree card
+  inline rows use it too; the compact row does not); the template `Title` part in
+  `card-identity-parts.tsx` adds `ForkClaudeAccountWorktreeChip` after the title;
+  `AdvancedPane.tsx` renders `ForkAccountChipSetting`; `structured-agent-session.ts` spreads
+  `FORK_CLAUDE_CHAT_HOME_METHODS` into its methods and `rpc-params-catalog.generated.ts` is
+  regenerated for it.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
