@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SpawnOptions as SdkSpawnOptions } from '@anthropic-ai/claude-agent-sdk'
 import { spawnProcess } from '@orca/process-host'
+import type { PipedChildProcess } from '@orca/process-host/process-spec'
 import { proveClaudeChildExit } from '../../claude/claude-agent-sdk-exit-proof'
 import { createClaudeCodeProcessSpawn } from '../../claude/claude-agent-sdk-process-spawn'
 import { connectChatSurviveBroker } from './chat-survive-client'
@@ -65,7 +66,7 @@ function tempDir(): string {
 }
 
 /** What the app's reader does with each message: hands it on, which moves the replay mark. */
-function consume(child: object, out: string): void {
+function consume(child: PipedChildProcess, out: string): void {
   const lines = out.split('\n')
   for (const line of lines) {
     const uuid = /"uuid":"([^"]+)"/.exec(line)?.[1]
