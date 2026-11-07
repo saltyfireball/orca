@@ -1410,7 +1410,15 @@
         "tabLabel": "Chat: {{command}}",
         "confirmTitle": "Run in a new terminal?",
         "confirm": "Run",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "editHint": "Edit the command if you need to.",
+        "commandLabel": "Command",
+        "reset": "Reset",
+        "refuseEmpty": "Enter a command to run.",
+        "refuseMultiline": "Keep the command on one line.",
+        "refuseUnsafe": "The command has a hidden or control character.",
+        "refuseHeredoc": "Heredocs cannot run from here.",
+        "refuseContinuation": "Remove the trailing backslash."
       }
     },
     "markdownCallout": {
