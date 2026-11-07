@@ -15,6 +15,7 @@ import {
   invokeRendererRequestedReload,
   startupDiagnosticsEnabled
 } from '../renderer/renderer-runtime'
+import { isForkRestartHeld, type ForkRestartHeld } from '../../shared/fork/restart-guard-held'
 import type { PreloadApi } from '../api-types'
 
 export const appApi = {
@@ -43,17 +44,19 @@ export const appApi = {
     ipcRenderer.invoke('app:getFeatureWallAssetBaseUrl'),
   setWindowMaterialSuppressed: (suppressed: boolean): Promise<void> =>
     ipcRenderer.invoke('app:setWindowMaterialSuppressed', suppressed),
-  relaunch: (): Promise<void> =>
+  relaunch: (): Promise<void | ForkRestartHeld> =>
     prepareAndInvokeAppRestart(
       window,
       () => ipcRenderer.invoke('app:relaunch'),
-      awaitBeforeUnloadCheckpoint
+      awaitBeforeUnloadCheckpoint,
+      (result) => !isForkRestartHeld(result)
     ),
-  restart: (): Promise<void> =>
+  restart: (): Promise<void | ForkRestartHeld> =>
     prepareAndInvokeAppRestart(
       window,
       () => ipcRenderer.invoke('app:restart'),
-      awaitBeforeUnloadCheckpoint
+      awaitBeforeUnloadCheckpoint,
+      (result) => !isForkRestartHeld(result)
     ),
   reload: (): Promise<void> => invokeRendererRequestedReload(),
   stageBeforeUnloadSync: (args: Parameters<PreloadApi['app']['stageBeforeUnloadSync']>[0]) => {
