@@ -261,5 +261,11 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'ports',
     keys: ['ports'],
     load: async () => (await import('./handlers/ports.js')).PORTS_HANDLERS
+  },
+  // SLRM-1503: move Claude chats between accounts (FORK.md).
+  {
+    name: 'fork-account-move',
+    keys: ['account which', 'account move'],
+    load: async () => (await import('./fork/account-move-handlers.js')).FORK_ACCOUNT_MOVE_HANDLERS
   }
 ]
