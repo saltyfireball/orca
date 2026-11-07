@@ -82,6 +82,7 @@ Apply these in this order. Each one is a single commit.
 32. `SLRM-1393 Drop the type casts the code-quality gate flags in the restart guard`
 33. `SLRM-1394 Chat survive: hand a Claude chat to its broker at quit`
 34. `SLRM-1394 Chat survive: adopt a surviving broker at start so the chat carries on`
+35. `SLRM-1394 Chat survive: run it against the real Claude Code and ask a resent prompt once`
 
 Fork-only code lives in `fork/` folders:
 
