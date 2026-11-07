@@ -34,6 +34,7 @@ import { useSetupGuideProgress } from '../setup-guide/use-setup-guide-progress'
 import { lazyWithRetry } from '@/lib/lazy-with-retry'
 import type * as SidebarFeedbackDialogModule from './sidebar-feedback/SidebarFeedbackDialog'
 import { useTranslate } from '@/i18n/use-translate'
+import { handleForkRestartHeld } from '@/fork/restart-guard-held-toast'
 import { getUpdateCheckClickOptions, getUpdateCheckHint } from '@/lib/update-check-click-options'
 import { openAppHttpLink } from '@/lib/browser/navigation/app-http-link-open'
 
@@ -143,17 +144,27 @@ export function SidebarSettingsHelpMenu(): React.JSX.Element {
     }
     setIsRestartingOrca(true)
     toast.info(t('auto.components.sidebar.SidebarSettingsHelpMenu.5161eef55d', 'Restarting Orca…'))
-    void window.api.app.restart().catch((error) => {
-      if (mountedRef.current) {
-        setIsRestartingOrca(false)
-        toast.error(
-          t('auto.components.sidebar.SidebarSettingsHelpMenu.4e8f5710d3', "Couldn't restart Orca."),
-          {
-            description: error instanceof Error ? error.message : undefined
-          }
-        )
-      }
-    })
+    void window.api.app
+      .restart()
+      .then((result) => {
+        if (handleForkRestartHeld(result) && mountedRef.current) {
+          setIsRestartingOrca(false)
+        }
+      })
+      .catch((error) => {
+        if (mountedRef.current) {
+          setIsRestartingOrca(false)
+          toast.error(
+            t(
+              'auto.components.sidebar.SidebarSettingsHelpMenu.4e8f5710d3',
+              "Couldn't restart Orca."
+            ),
+            {
+              description: error instanceof Error ? error.message : undefined
+            }
+          )
+        }
+      })
   }
 
   const openShortcutsSettings = (): void => {
