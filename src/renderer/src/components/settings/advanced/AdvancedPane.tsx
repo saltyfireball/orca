@@ -15,6 +15,7 @@ import { SettingsGroup } from '../section-layout/SettingsGroup'
 import { matchesSettingsSearch } from '../search/settings-search'
 import { useAppStore } from '../../../store/index'
 import { OrcaUninstallSection } from './uninstall/OrcaUninstallSection'
+import { ForkChatSurviveSetting } from '@/fork/ForkChatSurviveSetting'
 
 type AdvancedPaneProps = {
   settings: GlobalSettings
@@ -163,6 +164,7 @@ export function AdvancedPane({ settings, updateSettings }: AdvancedPaneProps): R
       >
         <OrcaUninstallSection />
       </SettingsGroup>
+      <ForkChatSurviveSetting settings={settings} updateSettings={updateSettings} />
     </div>
   )
 }
