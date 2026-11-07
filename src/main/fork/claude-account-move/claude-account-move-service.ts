@@ -7,6 +7,7 @@ import { agentSessionAccountHomePath } from '../../../shared/agent-session/lifec
 import type { AgentSessionRecord } from '../../../shared/agent-session/lifecycle/agent-session-record'
 import type {
   ForkClaudeBusyActivity,
+  ForkClaudeLaunchHome,
   ForkClaudeMoveResponse,
   ForkClaudeMoveResult,
   ForkClaudeSessionAccount,
@@ -26,6 +27,8 @@ export type ClaudeAccountMoveDeps = {
   summary(sessionId: string): AgentSessionStatusSummary | undefined
   /** The account folder the chat's live provider runs under; undefined when none runs. */
   runningHome(sessionId: string): string | undefined
+  /** Where the chat last launched, else its founding home. */
+  launchHome(record: AgentSessionRecord): ForkClaudeLaunchHome
   accountLabel(accountId: string): string | undefined
   /** Null when the account is not saved on this host. */
   route(pin: ClaudeSessionPin): PinnedClaudeRoute | null
@@ -121,6 +124,7 @@ export class ClaudeAccountMoveService {
       accountId,
       accountLabel: this.label(accountId),
       ...(runningAccountId === undefined ? {} : { runningAccountId }),
+      launch: this.deps.launchHome(record),
       pinned,
       pending: this.settlePending(record.sessionId),
       busy: busyActivity(summary)
