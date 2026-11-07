@@ -7,44 +7,90 @@ stable `vX.Y.Z` tag, plus a short series of fork commits on top. `main` is alway
 ## What the fork changes
 
 - **Run button on chat shell code blocks.** In a chat transcript, fenced blocks tagged `sh`,
-  `bash`, `zsh`, `shell` or `console` get a Run button next to Copy. It asks for confirmation
-  and shows the exact command first, then opens a new terminal tab in the chat's workspace and
-  runs the command there. For `console` fences, only the `$ ` prompt lines are run.
-  This works on desktop and in the mobile and iOS session.
-- **Its own updates and its own app identity.** The fork updates from
-  `https://github.com/saltyfireball/orca/releases`, never from upstream. It installs as
-  "Orca Fork" (`com.saltyfireball.orca`) next to stock Orca, with its own settings folder.
+  `bash`, `zsh`, `shell` or `console` get a Run button next to Copy.
+  - The button flattens the fence to the one-line command that quick commands run.
+  - The confirm shows that exact string, and the new terminal tab runs that same string.
+  - It runs in the chat's workspace, on the host the chat had when the confirm opened.
+  - For `console` fences, only the `$ ` prompt lines are run.
+  - Run is hidden for fences that flattening would change, such as heredocs, compound
+    commands, or lines that continue onto the next. It is also hidden for fences with control,
+    bidi or invisible characters. The policy is in `src/shared/fork/shell-fence.ts`.
+  - This works on desktop and in the mobile and iOS session.
+- **Its own updates and its own app identity.**
+  - The fork lists builds and updates only from `https://github.com/saltyfireball/orca/releases`.
+  - The main-process updater rejects any other repository or feed URL. The local build feed
+    on `127.0.0.1` is the one exception.
+  - The build picker offers only the Stable channel.
+  - It installs as "Orca Fork" (`com.saltyfireball.orca`) next to stock Orca, with its own
+    settings folder.
 
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
 
 1. `SLRM-1309 fork: update from saltyfireball/orca and install beside stock Orca`
-   - Repoints the updater feed and the publish target, and sets the app id and product name.
-   - Fork code: `src/shared/fork/fork-release-repo.ts`.
 2. `SLRM-1309 desktop: Run button on chat shell code blocks`
-   - Fork code: `src/shared/fork/shell-fence.ts` and
-     `src/renderer/src/components/native-chat/fork/NativeChatRunButton.tsx`.
-   - Upstream hook: one line in `NativeChatCodeBlock.tsx`.
 3. `SLRM-1309 mobile: Run button on chat shell code blocks`
-   - Fork code: `mobile/src/components/fork/`.
-   - Upstream hooks: one line in `MobileMarkdownCodeBlock.tsx`, and one provider wrap in
-     `MobileSessionRouteScreen.tsx`.
 4. `SLRM-1309 ci: fork sync workflow and FORK.md`
-   - `.github/workflows/fork-sync.yml` and this file.
+5. `SLRM-1309 run: confirm and run one captured command on the captured host`
+6. `SLRM-1309 updater: allow only saltyfireball/orca releases`
+7. `SLRM-1309 build: fork version scheme, builder overlay and build wrapper`
+8. `SLRM-1309 ci: deploy key, release retry, fork versions and upstream workflows off`
 
-Fork-only code lives in `fork/` folders. Upstream files only get short hooks, which keeps
-rebases small.
+Fork-only code lives in `fork/` folders:
+
+- `src/shared/fork/`
+- `src/main/updater/fork/`
+- `src/renderer/src/components/native-chat/fork/`
+- `mobile/src/components/fork/`
+- `config/scripts/fork/`
+
+Upstream files only get short hooks, which keeps rebases small:
+
+- One line each in `NativeChatCodeBlock.tsx` and `MobileMarkdownCodeBlock.tsx`.
+- One provider wrap in `MobileSessionRouteScreen.tsx`.
+- The updater feed repoints.
+- One call each in `release-channel.ts`, `updater-release-builds.ts` and
+  `electron-updater-loader.ts`.
+- One `vi.mock` line in each of three upstream updater tests. It swaps in
+  `src/shared/fork/testing/fork-release-repo-upstream-policy.ts`, so those tests keep
+  covering upstream's channels.
+- The run-button strings in both `en.json` catalogs, from the generators.
+
+`config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
+it, so the series leaves it as upstream has it. The fork identity is in
+`config/scripts/fork/electron-builder.fork.config.cjs`.
+
+## Versions
+
+A fork release is `M.m.(p*1000+N)`. Here `M.m.p` is the upstream base, and N runs from 1 to 999
+for each base and starts again at 1 on a new base. For example, upstream `1.4.252` with fork
+release 1 is `1.4.252001`, tagged `v1.4.252001`. A fork release on a newer base always sorts
+above one on an older base. A base that would need N 1000 fails the build.
+
+`package.json` keeps the upstream version in git. The release job works out the next version
+with `config/scripts/fork/fork-version.mjs`, then sets it in its own build copy only. The app
+version, `latest-mac.yml` and the tag all match it, and the release is a normal release
+(not a prerelease).
+
+## Building locally
+
+`node config/scripts/fork/build-mac-fork.mjs` runs the steps that come before packaging in
+upstream's `build:mac`, then electron-builder with the fork overlay. Without `FORK_VERSION` it
+makes a local build, `<version>-local.<time>.<sha>`. With `FORK_VERSION` set it needs
+`package.json` to hold that version, and builds exactly that version.
 
 ## How sync works
 
 `.github/workflows/fork-sync.yml` runs every day at 09:17 UTC. You can also run it by hand
-(Actions, Fork sync, Run workflow). Set `force_build` to rebuild without an upstream change.
-It only runs in `saltyfireball/orca`.
+(Actions, Fork sync, Run workflow). Set `force_build` to rebuild and release anyway. It only
+runs in `saltyfireball/orca`. Every third-party action is pinned to a full commit SHA.
 
 1. **sync** (ubuntu-latest):
-   - Finds the newest stable upstream tag with `git ls-remote --tags` and `sort -V`.
-   - Finds the stable tag `main` is on now.
+   - Fails at once, with a message, if the `FORK_SYNC_DEPLOY_KEY` secret is empty.
+   - Checks out `main` over SSH with that deploy key.
+   - Finds the newest stable upstream tag with `git ls-remote --tags` and `sort -V`, and the
+     stable tag `main` is on now.
    - If the two tags differ, it rebases the fork commits (`<old tag>..main`) onto the new tag.
    - **If the rebase conflicts**, it aborts and opens an issue titled
      `fork-sync conflict on <tag>` that lists the conflicting files (or comments on the open
@@ -55,18 +101,38 @@ It only runs in `saltyfireball/orca`.
      - the fork and updater tests
      - mobile install and typecheck
    - Then it pushes with `git push --force-with-lease origin HEAD:main`.
-2. **build-mac** (macos-15) runs after a successful sync that changed `main`, or when
-   `force_build` is set:
-   - Builds an unsigned `pnpm run build:mac`.
-   - Publishes the dmg, the zip and `latest-mac.yml` as release
-     `<upstream tag>-fork.<run number>`.
+   - It disables every workflow except fork-sync (see below).
+   - It checks whether a published fork release already has a tag on the `main` commit.
+2. **build-mac** (macos-15) runs in three cases: `main` changed, `main` has no fork release
+   yet, or `force_build` is set. The second case retries a failed build without waiting for a
+   new upstream tag.
+   - Works out the fork version and sets it in the build copy of `package.json`.
+   - Runs `node config/scripts/fork/build-mac-fork.mjs` unsigned.
+   - Checks that `latest-mac.yml` and the app both carry the fork version.
+   - Publishes the dmgs, the zips and `latest-mac.yml` as release `v<fork version>`.
 
-### Token
+### Deploy key and tokens
 
 `GITHUB_TOKEN` cannot push commits that change `.github/workflows/`, and upstream changes
-those often. Add a repository secret `FORK_SYNC_TOKEN` holding a fine-grained token with
-Contents and Workflows write on this repo. The workflow uses it when it is set, and falls back
-to `GITHUB_TOKEN` otherwise.
+those often. So the sync job checks out and pushes over SSH with a write deploy key:
+
+1. Add a deploy key with write access to `saltyfireball/orca`.
+2. Store its private key as the Actions secret `FORK_SYNC_DEPLOY_KEY`.
+
+`GITHUB_TOKEN` is still used for the issue, release and workflow API calls. Its permissions
+are `contents: write`, `issues: write` and `actions: write`.
+
+### Upstream workflows stay off
+
+None of upstream's workflows run on the fork. They would fail without upstream's secrets and
+runners. All of them were disabled by hand once.
+
+An upstream sync can add new workflow files, and GitHub turns new workflows on. So after the
+push, the sync job lists the repo's workflows and disables each active one in
+`.github/workflows/` except `.github/workflows/fork-sync.yml`
+(`gh api -X PUT repos/saltyfireball/orca/actions/workflows/<id>/disable`). Workflows that
+are already disabled are skipped, so the step is safe to run every day. It never disables
+fork-sync.
 
 ### Notes
 
@@ -74,33 +140,3 @@ to `GITHUB_TOKEN` otherwise.
   `github-actions[bot]`.
 - Builds are not signed or notarized. On first launch, macOS Gatekeeper asks you to approve
   the app.
-
-## Upstream scheduled workflows to disable
-
-Upstream's cron workflows would run here too and fail without upstream's secrets and runners.
-Disable them once (this has not been run):
-
-```sh
-for wf in \
-  ci-branch-cache-sweep.yml \
-  ci-cache-warmup.yml \
-  ci-runner-demand.yml \
-  ci-xterm-cache.yml \
-  computer-e2e.yml \
-  computer-macos-native.yml \
-  daily-mac-build.yml \
-  e2e.yml \
-  hourly-mac-build.yml \
-  node-next-compat.yml \
-  node-server-tests.yml \
-  packaged-browser-e2e.yml \
-  performance-contracts.yml \
-  readme-downloads-badge.yml \
-  terminal-ime-e2e.yml \
-  wsl-orcad-e2e.yml; do
-  gh workflow disable "$wf" -R saltyfireball/orca
-done
-```
-
-`daily-mac-build.yml`, `hourly-mac-build.yml` and `readme-downloads-badge.yml` already check
-for `stablyai/orca`, so disabling them only removes skipped runs from the list.
