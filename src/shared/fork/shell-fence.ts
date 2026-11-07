@@ -5,6 +5,10 @@ const RUNNABLE_SHELL_FENCE_LANGUAGES = new Set(['sh', 'bash', 'zsh', 'shell', 'c
 
 const CONSOLE_PROMPT = '$ '
 
+// Agents mark "run this yourself" commands with a leading `! ` (Claude Code's shell prefix).
+// In zsh and bash it would negate the exit status, so it is never part of the command.
+const AGENT_RUN_PREFIX_RE = /^!\s+/
+
 // Controls (TAB and LF aside), format, private-use, surrogate, line and paragraph separators,
 // default-ignorable characters and every space but U+0020. CR only as part of CRLF.
 const UNSAFE_CHARACTER_RE =
@@ -125,7 +129,7 @@ export function commandFromShellFence(
   }
   const lines = source
     .split('\n')
-    .map((line) => line.trim())
+    .map((line) => line.trim().replace(AGENT_RUN_PREFIX_RE, ''))
     .filter((line) => line.length > 0 && !line.startsWith('#'))
   if (lines.length === 0 || lines.some(hasHeredoc) || lines.at(-1)?.endsWith('\\')) {
     return null
