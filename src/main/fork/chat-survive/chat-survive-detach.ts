@@ -68,7 +68,8 @@ function undo(entry: ChatSurviveEntry): false {
  */
 export async function detachChatSurvive(sessionId: string, fence: number): Promise<boolean> {
   const entry = chatSurviveEntryForSession(sessionId)
-  if (!chatSurviveEnabled() || !entry || entry.state !== 'live') {
+  // Only macOS adopts at start (chat-survive-adopt.ts); elsewhere a hand-off would only orphan it.
+  if (process.platform !== 'darwin' || !chatSurviveEnabled() || !entry || entry.state !== 'live') {
     return false
   }
   entry.state = 'detaching'
