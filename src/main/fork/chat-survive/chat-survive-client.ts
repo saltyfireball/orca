@@ -25,11 +25,12 @@ export type ChatSurviveConnection = {
   readonly stderr: PassThrough
   /** Offsets just past the last byte this connection delivered; persist them to reattach. */
   offsets: () => { out: number; err: number }
-  write: (data: Buffer | string) => void
+  /** `done` runs once the socket took the bytes (or closed), so a writer can keep the pace. */
+  write: (data: Buffer | string, done?: () => void) => void
   endInput: () => void
   stop: () => void
   release: () => void
-  /** Drops the connection only; the provider keeps running and the broker arms its orphan timer. */
+  /** Hands the provider on: the broker keeps it running and arms its orphan timer. */
   detach: () => void
   /** Settles when the broker reports the provider's exit. */
   readonly exited: Promise<ChatSurviveExit>
@@ -65,10 +66,22 @@ export function connectChatSurviveBroker(
   let welcome: ChatSurviveWelcome | null = null
   let superseded = false
 
-  const send = (frame: ChatSurviveClientFrame): void => {
-    if (!socket.destroyed) {
-      socket.write(encodeFrame(frame))
+  /** False when the socket is backed up. */
+  const send = (frame: ChatSurviveClientFrame): boolean =>
+    socket.destroyed || socket.write(encodeFrame(frame))
+
+  const write = (data: Buffer | string, done?: () => void): void => {
+    if (send({ t: 'in', d: Buffer.from(data).toString('base64') }) || !done) {
+      done?.()
+      return
     }
+    const finish = (): void => {
+      socket.off('drain', finish)
+      socket.off('close', finish)
+      done()
+    }
+    socket.on('drain', finish)
+    socket.on('close', finish)
   }
 
   const deliver = (stream: ChatSurviveStream, offset: number, data: Buffer): void => {
@@ -87,7 +100,11 @@ export function connectChatSurviveBroker(
       return
     }
     if (!welcome) {
-      if (frame.t === 'welcome') {
+      if (frame.t === 'welcome' && frame.v !== CHAT_SURVIVE_PROTOCOL_VERSION) {
+        // A broker from another build: never guess at its frames.
+        opened.reject(new ChatSurviveRefusedError('version'))
+        socket.destroy()
+      } else if (frame.t === 'welcome') {
         welcome = frame
         opened.resolve(connection(frame))
       } else if (frame.t === 'refused') {
@@ -131,11 +148,14 @@ export function connectChatSurviveBroker(
       stdout,
       stderr,
       offsets: () => ({ ...held }),
-      write: (data) => send({ t: 'in', d: Buffer.from(data).toString('base64') }),
+      write,
       endInput: () => send({ t: 'end' }),
       stop: () => send({ t: 'stop' }),
       release: () => send({ t: 'release' }),
-      detach: () => socket.destroy(),
+      detach: () => {
+        send({ t: 'detach' })
+        socket.end()
+      },
       exited: exited.promise,
       ended: ended.promise
     }

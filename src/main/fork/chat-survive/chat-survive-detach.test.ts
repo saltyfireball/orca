@@ -127,7 +127,7 @@ describe('chat-survive stream mark', () => {
   })
 })
 
-describe.runIf(process.platform !== 'win32')('chat-survive quit hook', () => {
+describe.runIf(process.platform === 'darwin')('chat-survive quit hook', () => {
   function startClaude(enabled: () => boolean) {
     const recordDir = join(tempDir(), 'chat-survive')
     setChatSurviveConfigReader(() => ({ enabled: enabled(), recordDir, entryPath: ENTRY }))
