@@ -82,6 +82,21 @@ describe('commandFromShellFence', () => {
     expect(commandFromShellFence('echo hi # note\n', 'bash')).toBe('echo hi # note')
   })
 
+  it('drops the agent "run this yourself" prefix from each line', () => {
+    expect(commandFromShellFence('! echo hello from the fork\n', 'sh')).toBe(
+      'echo hello from the fork'
+    )
+    expect(commandFromShellFence('  !  git status\n! git log -1\n', 'bash')).toBe(
+      'git status; git log -1'
+    )
+    expect(commandFromShellFence('$ ! ls\noutput\n', 'console')).toBe('ls')
+  })
+
+  it('keeps `!` that is not a separate prefix word', () => {
+    expect(commandFromShellFence('!!\n', 'zsh')).toBe('!!')
+    expect(commandFromShellFence('echo hi!\n', 'sh')).toBe('echo hi!')
+  })
+
   it('joins independent lines with the same separator quick commands run', () => {
     expect(commandFromShellFence('git status\n  git log -1\n', 'bash')).toBe(
       'git status; git log -1'
