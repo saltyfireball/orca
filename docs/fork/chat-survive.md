@@ -1,6 +1,7 @@
 # Chat agents survive an app restart (SLRM-1394)
 
-Status: design, plus the transport (phase 1) built and tested. Nothing in the app uses it yet.
+Status: design, the transport (phase 1) and the broker process (phase 2) built and tested.
+Nothing in the app starts a broker yet. Claude only for now; Codex keeps today's behavior.
 
 ## Problem
 
@@ -166,8 +167,10 @@ owner-gone signal, and fences decide who may write).
   finds it alive and leaves the session `recovering`, which is exactly the state that blocks a
   second writer. The fork adopter turns `recovering` into a re-acquisition with the next fence.
 - **Crash of the broker itself.** Same as today's supervisor dying: the provider's pipes close,
-  its next write fails with EPIPE and it most likely exits (phase 2 should also make the provider
-  group die with the broker). The lease probe then finds the pid gone and the restart offer appears.
+  its next write fails with EPIPE and it most likely exits. Since phase 2 the broker runs
+  upstream's supervisor and names itself its owner, so the supervisor stops the provider group
+  within 100 ms of the broker dying. The lease probe then finds the pid gone and the restart offer
+  appears.
 - **Windows.** Out of scope; the fork builds for macOS arm64 only. The broker uses POSIX process
   groups.
 
@@ -183,14 +186,38 @@ owner-gone signal, and fences decide who may write).
    - `chat-survive-broker.test.ts`: reattach with replay, fencing and bad tokens, ring overflow,
      orphan timeout, reattach cancelling the timeout, owner process SIGKILLed (provider keeps
      running and its exit reaches the next owner), owner arriving after exit.
-2. **Launch the broker detached** (1 day). Bundle a small dependency-free entry beside the main
-   bundle (as `daemon-entry.ts` is), run it with `ELECTRON_RUN_AS_NODE`, detached, and record
-   `{socketPath, token, brokerPid, offsets}` per session in `userData/chat-survive/<sessionId>.json`
-   (0600). Add the fork setting `forkChatSurvive` (default on) here, the first phase that changes
-   behavior.
-3. **Spawn hook** (1-2 days). One hook in `createClaudeCodeProcessSpawn`: with the setting on,
-   return a `PipedChildProcess` backed by a broker connection instead of the managed supervisor.
-   Teach the exit-proof ladder that the broker pid is the provider's identity.
+2. **The broker process (done).** `chat-survive-broker-entry.ts` is bundled beside the main
+   bundle as `out/main/chat-survive-broker-entry.js` (unpacked from the asar, guarded as a
+   plain-Node entry) and runs under `ELECTRON_RUN_AS_NODE`. The app spawns it, detached, in place
+   of upstream's provider supervisor, which then runs unchanged under the broker:
+
+       app -> broker -> provider supervisor -> provider
+
+   - `chat-survive-launch.ts` turns a supervisor spawn into the broker spawn: same env, cwd and
+     stdio, plus `ORCA_CHAT_SURVIVE_SPEC` (socket path, 64-hex token, owner pid, orphan timeout).
+     Sockets live in `$TMPDIR/orca-chat-survive/` (0700, owner checked, path under 104 bytes). Any
+     check failing returns null and the caller spawns as today.
+   - The broker rewrites the supervisor's `ownerPid` to its own pid, so the provider dies with the
+     broker and never with the app. It closes its IPC channel at once, so the app's group guard
+     ends unproven and sweeps nothing.
+   - While the app lives the broker is a transparent pipe (`directOwner`): stdin, stdout and
+     stderr with backpressure, the close request (stdin end) and SIGTERM, SIGINT and SIGHUP reach
+     the supervisor as they would directly, and the broker exits with the supervisor's code or
+     re-raises its signal, so the app's exit proof and close ladder are unchanged. The broker never
+     SIGKILLs the supervisor inside the supervisor's own stop budget.
+   - The app is gone when the broker's parent pid changes (100 ms poll). A stdin end counts as a
+     close request only if the app is still there 250 ms later; otherwise it is the app dying and
+     the broker goes orphan: output goes to the rings and the orphan timer runs (default 60 min).
+   - Single writer: a socket hello is refused `busy` while the app that spawned the broker lives.
+   - Tests (`chat-survive-broker-entry.test.ts`, real processes via a stand-in app fixture): pipe
+     and close request, `busy`, stop by signal, app SIGKILLed then a new owner reattaching with
+     replay, broker SIGKILLed taking the provider down; plus the spec and launch-plan checks.
+3. **Spawn hook, shipped dark** (1-2 days). The fork setting `forkChatSurvive` (default off; John
+   turns it on per machine). One hook in `createClaudeCodeProcessSpawn` wraps its `spawnImpl`: with
+   the setting on and a supervisor spawn, spawn the broker plan instead; on any null plan, spawn as
+   today. Record `{socketPath, token, brokerPid}` per session in
+   `userData/chat-survive/<sessionId>.json` (0600), keyed by `ORCA_AGENT_SESSION_ID` from the
+   spawn env. Teach the exit-proof ladder that the broker pid is the provider's identity.
 4. **Quit hook** (2 days). One hook in `evictOwnedStructuredAgentSessions` for trigger `quit`:
    flush the journal, persist offsets, detach instead of stopping, and skip the turn cut and the
    restart offer for chats that are now surviving. Coordinate with the restart guard so a
@@ -205,11 +232,12 @@ owner-gone signal, and fences decide who may write).
 
 Estimate: phases 2-5 for Claude about 8-10 working days including tests on the scripted CLI
 fixtures (`src/main/claude/__fixtures__/claude-agent-sdk-scripted-cli.mjs`); Codex 3-4 more.
-Phases 3-5 each add one hook in an upstream file, listed in FORK.md as they land.
+Phase 2 adds two build hooks (entry point and plain-Node guard) and one line in the fork's
+builder overlay. Phases 3-5 each add one hook in an upstream file, listed in FORK.md as they land.
 
-## Why this stopped at phase 1
+## Single writer first
 
 Phases 3-5 change who may write to a provider session, the part of Orca that fails closed on
-purpose (two writers corrupt a conversation). Getting adoption wrong would lose or duplicate turns
-in John's live chats, so it needs its own card and review rather than a same-session build. The
-transport is self-contained, tested, and reached by nothing yet, so it is safe to land now.
+purpose (two writers corrupt a conversation). So every step that is unsure (no plan, a refused or
+timed-out hello, a truncated ring, an unreadable record) falls back to today's path, where the
+supervisor stops the provider with the app, and the feature ships dark behind `forkChatSurvive`.
