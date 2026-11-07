@@ -17,6 +17,7 @@ import {
   readActiveProfileId,
   readPersistedHttp1CompatibilityMode
 } from './http1-compatibility-profile-state'
+import { configureForkSharedStockData } from '../fork/shared-stock-data'
 
 const DEV_PARENT_SHUTDOWN_GRACE_MS = 3000
 const HTTP1_COMPATIBILITY_ENV_VAR = 'ORCA_DISABLE_HTTP2'
@@ -204,6 +205,7 @@ export function configureDevUserDataPath(isDev: boolean): void {
   }
 
   if (!isDev) {
+    configureForkSharedStockData(app)
     return
   }
   const overrideUserDataPath = process.env.ORCA_DEV_USER_DATA_PATH
