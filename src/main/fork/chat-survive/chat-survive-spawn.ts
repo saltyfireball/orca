@@ -4,14 +4,25 @@
 // so there is never a second writer and never a provider without its supervisor.
 import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import type { PipedProcessSpawner } from '@orca/process-host/process-spec'
+import type {
+  PipedChildProcess,
+  PipedProcessSpawner,
+  PipedProcessSpec
+} from '@orca/process-host/process-spec'
 import { ORCA_AGENT_SESSION_ID_ENV } from '../../../shared/agent-session/lifecycle/agent-session-caller-env'
-import { chatSurviveSocketDir, planChatSurviveBrokerSpawn } from './chat-survive-launch'
+import { chatSurviveAdoptedChild } from './chat-survive-adopted-child'
+import { chatSurviveClaimStopping, takeChatSurviveClaim } from './chat-survive-claims'
+import {
+  chatSurviveSocketDir,
+  isProviderSupervisorSpawn,
+  planChatSurviveBrokerSpawn
+} from './chat-survive-launch'
 import {
   registerChatSurviveBroker,
   writeChatSurviveRecord,
   type ChatSurviveRecord
 } from './chat-survive-registry'
+import { createChatSurviveStreamTracker } from './chat-survive-stream-mark'
 
 export type ChatSurviveSpawnConfig = {
   enabled: boolean
@@ -31,10 +42,11 @@ export function setChatSurviveConfigReader(
 
 /** True while the setting is on; a hand-off checks it again at quit, not only at spawn. */
 export function chatSurviveEnabled(): boolean {
-  return currentConfig() !== null
+  return chatSurviveConfig() !== null
 }
 
-function currentConfig(): ChatSurviveSpawnConfig | null {
+/** The config while the setting is on, else null. */
+export function chatSurviveConfig(): ChatSurviveSpawnConfig | null {
   try {
     const config = readConfig?.() ?? null
     return config?.enabled === true ? config : null
@@ -71,6 +83,50 @@ function writeRecord(dir: string, name: string, record: ChatSurviveRecord): stri
 }
 
 /**
+ * The provider child for a chat whose broker startup recovery claimed (phase 5): the broker's
+ * socket in place of a new spawn. Taken once; null when there is no claim for this chat. A claim
+ * is taken even if the setting went off since, because its provider is running either way.
+ */
+function adoptedChild(
+  spec: PipedProcessSpec,
+  env: Record<string, string | undefined>
+): PipedChildProcess | null {
+  const sessionId = env[ORCA_AGENT_SESSION_ID_ENV]
+  if (!sessionId || !isProviderSupervisorSpawn(spec)) {
+    return null
+  }
+  if (chatSurviveClaimStopping(sessionId)) {
+    // One writer per chat: a fresh provider waits until the dropped one has stopped.
+    throw new Error('the chat-survive provider for this chat is still stopping')
+  }
+  const claim = takeChatSurviveClaim(sessionId)
+  if (!claim) {
+    return null
+  }
+  const tracker = createChatSurviveStreamTracker(claim.mark)
+  const child = chatSurviveAdoptedChild({
+    connection: claim.connection,
+    brokerPid: claim.record.brokerPid,
+    mark: claim.mark,
+    tracker
+  })
+  // Without its record the broker could not be adopted again; it still stops as today then.
+  try {
+    writeChatSurviveRecord(claim.recordPath, claim.record)
+    child.once('exit', () => rmSync(claim.recordPath, { force: true }))
+    registerChatSurviveBroker({
+      child,
+      record: claim.record,
+      recordPath: claim.recordPath,
+      adopted: { tracker, fenceFloor: claim.fence }
+    })
+  } catch {
+    // The record is gone or unwritable: this run owns the provider and stops it at quit.
+  }
+  return child
+}
+
+/**
  * Wraps the spawner given to the managed provider process. Spawns of anything but the POSIX
  * provider supervisor pass through untouched.
  */
@@ -81,7 +137,11 @@ export function forkChatSurviveSpawner(
   socketDir: () => string | null = chatSurviveSocketDir
 ): PipedProcessSpawner {
   return (spec) => {
-    const config = platform === 'darwin' || platform === 'linux' ? currentConfig() : null
+    const adopted = adoptedChild(spec, env)
+    if (adopted) {
+      return adopted
+    }
+    const config = platform === 'darwin' || platform === 'linux' ? chatSurviveConfig() : null
     if (!config || !existsSync(config.entryPath)) {
       return base(spec)
     }

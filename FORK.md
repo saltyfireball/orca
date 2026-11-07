@@ -38,9 +38,11 @@ named Orca Fork until SLRM-1367. `main` is always
   With the `forkChatSurvive` setting on (Settings > Advanced, off by default), new Claude chats
   run their provider supervisor under a broker; Codex and every other provider spawn as before.
   At quit (or an update install) such a chat's provider is handed to its broker instead of being
-  stopped, and the restart guard does not count it as busy; the next app start's session
-  recovery still stops that broker, so chats do not yet resume after a restart. The design and the remaining phases are in
-  `docs/fork/chat-survive.md`.
+  stopped, and the restart guard does not count it as busy. On macOS the next app start's session
+  recovery adopts that broker instead of stopping it and starts the chat over the broker's
+  socket, replaying from where the quitting app left off, so the turn carries on; anything it
+  cannot prove stops the broker as before. The design and the remaining phases (Codex next) are
+  in `docs/fork/chat-survive.md`.
 
 ## Patch list
 
@@ -79,6 +81,7 @@ Apply these in this order. Each one is a single commit.
 31. `SLRM-1394 Chat survive: the spawn hook for Claude, behind a setting that ships off`
 32. `SLRM-1393 Drop the type casts the code-quality gate flags in the restart guard`
 33. `SLRM-1394 Chat survive: hand a Claude chat to its broker at quit`
+34. `SLRM-1394 Chat survive: adopt a surviving broker at start so the chat carries on`
 
 Fork-only code lives in `fork/` folders:
 
@@ -155,6 +158,11 @@ Upstream files only get short hooks, which keeps rebases small:
   `forkChatSurviveManaged` (one line), and `evictOwnedStructuredAgentSessions` calls
   `forkChatSurviveQuit` before the stop and skips the stop when it returns true
   (`src/main/fork/chat-survive/chat-survive-detach.ts`).
+- Chat survive adopt hooks (SLRM-1394): `resolveStructuredSessionRecovery` asks
+  `forkChatSurviveAdopt` before it stops a proven-alive local owner and skips the stop when it
+  returns true; `StructuredAgentSessionHost`'s tab recovery callback goes through
+  `forkChatSurviveRecover`, which starts each adopted chat
+  (`src/main/fork/chat-survive/chat-survive-adopt.ts`).
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
