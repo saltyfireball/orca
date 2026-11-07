@@ -24,6 +24,7 @@ import { WorktreeCardSshHostControl } from '../host/WorktreeCardSshHostControl'
 import { WorktreeHostContextBadge } from '../host/WorktreeHostContextBadge'
 import { WorktreeTitleInlineRename } from '../identity/WorktreeTitleInlineRename'
 import { cardElement } from './card-template-compiler'
+import { ForkClaudeAccountWorktreeChip } from '@/fork/claude-account-chip/ForkClaudeAccountChips'
 
 type Card = WorktreeCardController
 const part = cardElement<Card>
@@ -90,7 +91,12 @@ function sidebarLabel(text: string, tooltip: unknown): React.ReactNode {
 }
 
 export const CARD_IDENTITY_PARTS = {
-  Title: part(['dimWhenRead', 'tooltip'], (props, _children, card) => title(props, card)),
+  Title: part(['dimWhenRead', 'tooltip'], (props, _children, card) => (
+    <>
+      {title(props, card)}
+      <ForkClaudeAccountWorktreeChip worktreeId={card.worktree.id} />
+    </>
+  )),
   RepoChip: part([], (_props, _children, { repo }) =>
     repo ? <WorktreeCardRepoChip repo={repo} /> : null
   ),
