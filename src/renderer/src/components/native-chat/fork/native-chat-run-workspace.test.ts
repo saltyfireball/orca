@@ -4,7 +4,7 @@ import {
   makeFolderWorkspace,
   makeWorktree
 } from '@/store/slices/worktrees-slice-test-fixtures'
-import { findNativeChatRunWorkspace } from './native-chat-run-workspace'
+import { findNativeChatRunWorkspace, readNativeChatRunPlace } from './native-chat-run-workspace'
 
 function makeState(overrides: Record<string, unknown> = {}) {
   return {
@@ -52,6 +52,30 @@ describe('findNativeChatRunWorkspace', () => {
       displayName: 'remote notes'
     })
     expect(findNativeChatRunWorkspace(state, 'folder:remote', 'local')).toBeNull()
+  })
+
+  it('reads a different place once the selected folder twin swaps from local to SSH', () => {
+    const twins = {
+      folderWorkspaces: [
+        makeFolderWorkspace({ id: 'twin', name: 'twin', executionHostId: 'local' }),
+        makeFolderWorkspace({ id: 'twin', name: 'twin', projectGroupId: 'remote-group' })
+      ],
+      activeWorktreeId: 'folder:twin'
+    }
+    const onLocal = makeState({ ...twins, activeWorkspaceExecutionHostId: 'local' })
+    const onSsh = makeState({ ...twins, activeWorkspaceExecutionHostId: 'ssh:box' })
+    expect(readNativeChatRunPlace(onLocal, 'folder:twin')).toEqual({
+      hostId: 'local',
+      route: { target: { kind: 'local' }, at: 'local' }
+    })
+    expect(readNativeChatRunPlace(onSsh, 'folder:twin')).toEqual({
+      hostId: 'ssh:box',
+      route: { target: { kind: 'local' }, at: 'ssh:box' }
+    })
+    expect(readNativeChatRunPlace(onSsh, 'folder:twin', 'local')).toEqual({
+      hostId: 'local',
+      route: { target: { kind: 'local' }, at: 'local' }
+    })
   })
 
   it('answers null once the workspace is gone', () => {
