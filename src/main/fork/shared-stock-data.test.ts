@@ -65,11 +65,11 @@ function share(): void {
 }
 
 describe('configureForkSharedStockData', () => {
-  it('keeps the fork on its own data without the marker', () => {
+  it('keeps the fork on its own data and Keychain name without the marker', () => {
     const forkApp = fakeApp()
     expect(configureForkSharedStockData(forkApp, darwin)).toEqual({ mode: 'own' })
     expect(forkApp.setPath).not.toHaveBeenCalled()
-    expect(forkApp.setName).not.toHaveBeenCalled()
+    expect(forkApp.setName).toHaveBeenCalledWith('Orca Fork')
     expect(existsSync(join(forkDir, SNAPSHOTS_DIR_NAME))).toBe(false)
   })
 
@@ -82,6 +82,39 @@ describe('configureForkSharedStockData', () => {
     })
     expect(forkApp.setPath).toHaveBeenCalledWith('userData', stockDir)
     expect(forkApp.setName).toHaveBeenCalledWith('orca')
+  })
+
+  it('pins the Blackfish default userData to the Orca Fork folder and its Keychain name', () => {
+    const forkApp = fakeApp({ userData: join(appData, 'Blackfish') })
+    expect(configureForkSharedStockData(forkApp, darwin)).toEqual({ mode: 'own' })
+    expect(forkApp.setPath).toHaveBeenCalledWith('userData', forkDir)
+    expect(forkApp.getPath('userData')).toBe(forkDir)
+    expect(forkApp.setName).toHaveBeenCalledWith('Orca Fork')
+  })
+
+  it('reads the shared marker from the pinned Orca Fork folder', () => {
+    share()
+    const forkApp = fakeApp({ userData: join(appData, 'Blackfish') })
+    expect(configureForkSharedStockData(forkApp, darwin)).toMatchObject({
+      mode: 'shared',
+      stockDir
+    })
+    expect(forkApp.setPath).toHaveBeenNthCalledWith(1, 'userData', forkDir)
+    expect(forkApp.setPath).toHaveBeenLastCalledWith('userData', stockDir)
+    expect(forkApp.setName).toHaveBeenCalledTimes(1)
+    expect(forkApp.setName).toHaveBeenCalledWith('orca')
+    expect(existsSync(join(forkDir, SNAPSHOT_STATE_FILE))).toBe(true)
+  })
+
+  it('leaves unpackaged and non-fork folders untouched', () => {
+    const dev = fakeApp({ isPackaged: false, userData: join(appData, 'Blackfish') })
+    configureForkSharedStockData(dev, darwin)
+    const other = fakeApp({ userData: join(appData, 'orca-dev') })
+    configureForkSharedStockData(other, darwin)
+    for (const forkApp of [dev, other]) {
+      expect(forkApp.setPath).not.toHaveBeenCalled()
+      expect(forkApp.setName).not.toHaveBeenCalled()
+    }
   })
 
   it('ignores the marker unpackaged, off macOS, outside the fork, or with no stock data', () => {
