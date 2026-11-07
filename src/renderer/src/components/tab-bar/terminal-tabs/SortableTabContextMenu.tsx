@@ -16,6 +16,7 @@ import type { NativeChatTabSession } from '../session-actions/tab-session-histor
 import { CopyTabIdMenuItem } from '../pane-actions/CopyTabIdMenuItem'
 import { useAllowAutoClose } from './use-allow-auto-close'
 import { CloseSplitPaneMenuItem } from '../pane-actions/CloseSplitPaneMenuItem'
+import { ForkMoveAccountTabMenuItems } from '@/fork/claude-account-move/ForkMoveAccountMenu'
 
 const TAB_COLORS = [
   {
@@ -197,6 +198,10 @@ export function SortableTabContextMenu({
           leadingSeparator={!showTerminalViewSwitch}
           onComplete={onSessionSwitchComplete}
         />
+      ) : null}
+      {/* SLRM-1503: move a native Claude chat to another account (FORK.md). */}
+      {nativeChat?.agent === 'claude' ? (
+        <ForkMoveAccountTabMenuItems worktreeId={tab.worktreeId} sessionId={nativeChat.sessionId} />
       ) : null}
       <ContextMenuSeparator />
       {closable && (canPin || isPinned) ? (
