@@ -7,6 +7,7 @@ import { OrcaRuntimeWithStructuredSessionCliWriterHost } from './structured-sess
 import type { AgentSessionAccountHome } from '../../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
 import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
 import { botOfHomeWorkspace } from '../../../../shared/bots/bot-homes'
+import { forkPinnedClaudeAccountHome } from '../../../fork/claude-account-move/claude-pinned-launch'
 
 export abstract class OrcaRuntimeWithStructuredSessionAccountHome extends OrcaRuntimeWithStructuredSessionCliWriterHost {
   /** Resolve account home through this host's agent registration; null means unregistered and create refuses. */
@@ -71,6 +72,11 @@ export abstract class OrcaRuntimeWithStructuredSessionAccountHome extends OrcaRu
     }
     const read = this.structuredAgentAccountHomeResolver(provider, '', purpose)
     const launchEnv = this.structuredAgentLaunchEnv(provider, this.requireStore().getSettings())
+    // SLRM-1503: a moved chat reads its pin, so the stock outgrown-child check moves it (FORK.md).
+    const pinned = forkPinnedClaudeAccountHome(record, launchEnv)
+    if (pinned) {
+      return pinned
+    }
     return (await read?.({ launchEnv, location })) ?? null
   }
 
