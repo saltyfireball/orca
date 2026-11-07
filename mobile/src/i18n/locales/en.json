@@ -1402,22 +1402,7 @@
       "copyCode": "Copy code",
       "openImage": "Open image",
       "wrapLines": "Wrap lines",
-      "disableLineWrap": "Disable line wrap",
-      "runCode": {
-        "action": "Run in terminal",
-        "tabLabel": "Chat: {{command}}",
-        "confirmTitle": "Run in a new terminal?",
-        "confirm": "Run",
-        "cancel": "Cancel",
-        "editHint": "Edit the command if you need to.",
-        "commandLabel": "Command",
-        "reset": "Reset",
-        "refuseEmpty": "Enter a command to run.",
-        "refuseMultiline": "Keep the command on one line.",
-        "refuseUnsafe": "The command has a hidden or control character.",
-        "refuseHeredoc": "Heredocs cannot run from here.",
-        "refuseContinuation": "Remove the trailing backslash."
-      }
+      "disableLineWrap": "Disable line wrap"
     },
     "markdownCallout": {
       "note": "Note",
