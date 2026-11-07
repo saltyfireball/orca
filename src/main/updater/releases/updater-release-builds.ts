@@ -10,6 +10,7 @@ import {
   type ReleaseChannel
 } from '../../../shared/updater/release-channel'
 import { parseRetryAfterHeaderMs } from '../../../shared/network/retry-after-header'
+import * as fork from '../../../shared/fork/fork-release-repo'
 import {
   getGhRateLimitBlockedUntilMs,
   recordGhPrimaryRateLimit
@@ -163,7 +164,7 @@ async function fetchReleaseBuildsPage(
   platform: NodeJS.Platform,
   page: ReleasePage
 ): Promise<{ builds: ReleaseBuild[]; isLastPage: boolean }> {
-  const repo = getReleaseRepoForChannel(channel)
+  const repo = fork.assertForkReleaseRepo(getReleaseRepoForChannel(channel))
   // Skip a known-exhausted token bucket and try the separate per-IP quota.
   const credential = await resolveReleaseApiToken()
   const tokenBucketBlocked =
@@ -239,6 +240,6 @@ export function resolveTargetBuild(channel: ReleaseChannel, tag: string): Resolv
   if (!isValidVersion(version)) {
     throw new UpdaterCodedError('invalidReleaseTag', { tag })
   }
-  const repo = getReleaseRepoForChannel(channel)
+  const repo = fork.assertForkReleaseRepo(getReleaseRepoForChannel(channel))
   return { tag, version, feedUrl: getReleaseDownloadUrlForRepo(repo, tag) }
 }
