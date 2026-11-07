@@ -327,7 +327,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          app='dist/mac-arm64/Orca Fork.app'
+          app='dist/mac-arm64/Blackfish.app'
           codesign --verify --deep --strict "$app"
           requirement="$(codesign -d -r- "$app" 2>&1 | sed -n 's/^designated => //p')"
           echo "designated => $requirement"
@@ -346,7 +346,7 @@ jobs:
         run: |
           set -euo pipefail
           feed="$(sed -n 's/^version: //p' dist/latest-mac.yml)"
-          app="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' 'dist/mac-arm64/Orca Fork.app/Contents/Info.plist')"
+          app="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' 'dist/mac-arm64/Blackfish.app/Contents/Info.plist')"
           if [ "$feed" != "$FORK_VERSION" ] || [ "$app" != "$FORK_VERSION" ]; then
             echo "::error::Expected $FORK_VERSION, latest-mac.yml has $feed and the app has $app"
             exit 1
@@ -363,7 +363,8 @@ jobs:
           set -euo pipefail
           tag="v${FORK_VERSION}"
           shopt -s nullglob
-          # latest-mac.yml names "Orca Fork-*.zip" as "Orca-Fork-*.zip"; upload under the names the feed expects.
+          # The zip is "Blackfish-<version>-arm64-mac.zip", as latest-mac.yml names it. Spaces become
+          # dashes, as in the feed, should the product name ever hold one.
           mkdir -p release-assets
           for file in dist/*.dmg dist/*.zip dist/latest-mac.yml; do
             name="$(basename "$file")"
@@ -381,5 +382,5 @@ jobs:
           gh release create "$tag" "${assets[@]}" \
             -R saltyfireball/orca \
             --target "$SHA" \
-            --title "Orca Fork $FORK_VERSION" \
+            --title "Blackfish $FORK_VERSION" \
             --notes "Self-signed macOS build of upstream $UPSTREAM_TAG plus the fork patches in FORK.md."
