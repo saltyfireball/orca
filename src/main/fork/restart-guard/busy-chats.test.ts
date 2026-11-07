@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AgentSessionStatusSummary } from '../../../shared/agent-session/agent-session-wire'
+import type { AgentChildWorkView } from '../../../shared/agent-status/child-work/agent-status-child-work-view'
 import { listBusyChats } from './busy-chats'
 
 function summary(overrides: Partial<AgentSessionStatusSummary>): AgentSessionStatusSummary {
@@ -12,7 +13,19 @@ function summary(overrides: Partial<AgentSessionStatusSummary>): AgentSessionSta
     latestPrompt: 'Fix the build',
     updatedAt: 1,
     ...overrides
-  } as AgentSessionStatusSummary
+  }
+}
+
+function child(
+  view: Pick<AgentChildWorkView, 'id' | 'kind' | 'state' | 'membership'>
+): AgentChildWorkView {
+  return {
+    ...view,
+    firstObservedAt: 1,
+    observedAt: 1,
+    stoppable: false,
+    invocation: { invocationId: 'i', generation: 1 }
+  }
 }
 
 describe('listBusyChats', () => {
@@ -52,11 +65,11 @@ describe('listBusyChats', () => {
     const chats = listBusyChats([
       summary({
         children: [
-          { id: 'a', kind: 'agent', state: 'working', membership: 'live' },
-          { id: 'b', kind: 'command', state: 'monitoring', membership: 'live' },
-          { id: 'c', kind: 'agent', state: 'working', membership: 'settled' },
-          { id: 'd', kind: 'agent', state: 'done', membership: 'live' }
-        ] as AgentSessionStatusSummary['children']
+          child({ id: 'a', kind: 'agent', state: 'working', membership: 'live' }),
+          child({ id: 'b', kind: 'command', state: 'monitoring', membership: 'live' }),
+          child({ id: 'c', kind: 'agent', state: 'working', membership: 'settled' }),
+          child({ id: 'd', kind: 'agent', state: 'done', membership: 'live' })
+        ]
       })
     ])
     expect(chats[0]?.activity).toEqual({ kind: 'children', subagents: 1, commands: 1 })
