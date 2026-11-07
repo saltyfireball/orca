@@ -7,6 +7,7 @@ import {
   type ManagedProviderProcess
 } from '../provider-process/managed-provider-process'
 import { claudeChildClosePolicy, claudeChildCloseProven } from './claude-child-exit-proof-ladder'
+import { forkChatSurviveSpawner } from '../fork/chat-survive/chat-survive-spawn'
 
 export type ClaudeCodeProcessSpawn = {
   /** SDK spawn hook; Orca retains process ownership. */
@@ -68,7 +69,8 @@ export function createClaudeCodeProcessSpawn(
           ...(options.cwd === undefined ? {} : { cwd: options.cwd })
         },
         {
-          spawnImpl,
+          // Fork (SLRM-1394): a chat-survive broker around the supervisor when switched on.
+          spawnImpl: forkChatSurviveSpawner(spawnImpl, platform, options.env),
           platform,
           inheritedEnv: definedEnv(options.env),
           site: 'claude-stream-json-teardown',

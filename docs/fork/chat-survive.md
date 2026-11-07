@@ -1,7 +1,8 @@
 # Chat agents survive an app restart (SLRM-1394)
 
-Status: design, the transport (phase 1) and the broker process (phase 2) built and tested.
-Nothing in the app starts a broker yet. Claude only for now; Codex keeps today's behavior.
+Status: design, the transport (phase 1), the broker process (phase 2) and the spawn hook
+(phase 3, behind `forkChatSurvive`, off by default) built and tested. Claude only for now; Codex
+keeps today's behavior. Chats do not resume after a restart until phase 5.
 
 ## Problem
 
@@ -212,12 +213,29 @@ owner-gone signal, and fences decide who may write).
    - Tests (`chat-survive-broker-entry.test.ts`, real processes via a stand-in app fixture): pipe
      and close request, `busy`, stop by signal, app SIGKILLed then a new owner reattaching with
      replay, broker SIGKILLed taking the provider down; plus the spec and launch-plan checks.
-3. **Spawn hook, shipped dark** (1-2 days). The fork setting `forkChatSurvive` (default off; John
-   turns it on per machine). One hook in `createClaudeCodeProcessSpawn` wraps its `spawnImpl`: with
-   the setting on and a supervisor spawn, spawn the broker plan instead; on any null plan, spawn as
-   today. Record `{socketPath, token, brokerPid}` per session in
-   `userData/chat-survive/<sessionId>.json` (0600), keyed by `ORCA_AGENT_SESSION_ID` from the
-   spawn env. Teach the exit-proof ladder that the broker pid is the provider's identity.
+3. **Spawn hook, shipped dark (done).** The fork setting `forkChatSurvive` (optional, off unless
+   `true`; Settings > Advanced > Chat survive; read on every spawn, so no restart). One hook in
+   `createClaudeCodeProcessSpawn` passes its `spawnImpl` through `forkChatSurviveSpawner`
+   (`chat-survive-spawn.ts`): with the setting on, darwin or linux, a provider supervisor spawn,
+   a private socket folder and the broker entry on disk, it spawns the broker plan; anything else
+   spawns as today. orcad never installs the setting reader, so it is always off there. Each
+   broker gets a record `{v, sessionId, brokerPid, socketPath, token}` at
+   `userData/chat-survive/<sessionId>.<brokerPid>.json` (folder 0700, file 0600), removed when the
+   broker exits; a stale one after a crash names a dead pid and is harmless.
+   - The exit-proof ladder needs no change: the managed child (and the lease owner pid) is the
+     broker, which relays stdin end and SIGTERM to the supervisor and exits with its code or
+     signal. In a forced teardown `killProviderWriter` finds no group-leading direct child (the
+     supervisor shares the broker's group), but the descendant snapshot and the root-group kill
+     still take the supervisor and the provider down, and the tree reaper proves it.
+   - Reconciliation: the spawn-token process scan is Linux only (null on macOS). At the next app
+     start, `resolveStructuredSessionRecovery` finds a `recovering` session whose owner (the
+     broker, by pid and start time) is alive and stops it (`stopOwnerAndReprobe`: SIGTERM, then
+     SIGKILL); the broker stops the supervisor and provider either way. So until phase 5 a
+     surviving broker lives only until the next app start (or the orphan timeout), never as a
+     second writer.
+   - Tests (`chat-survive-spawn.test.ts`): every fallback case spawns the original spec, the
+     broker plan and record (modes, removal on exit), record names, and a real Claude-shaped
+     provider closed through the broker by `proveClaudeChildExit` with `{root, tree}` exited.
 4. **Quit hook** (2 days). One hook in `evictOwnedStructuredAgentSessions` for trigger `quit`:
    flush the journal, persist offsets, detach instead of stopping, and skip the turn cut and the
    restart offer for chats that are now surviving. Coordinate with the restart guard so a

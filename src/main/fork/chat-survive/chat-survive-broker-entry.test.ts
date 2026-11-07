@@ -212,6 +212,7 @@ describe('chat-survive launch plan', () => {
 })
 
 describe('chat-survive broker process', () => {
+  // Real processes: tsx compiles the owner and broker on first start, which can take seconds.
   it('is a transparent pipe while the app lives and ends with the provider', async () => {
     const chain = await startChain()
     chain.owner.stdin?.write('hi\n')
@@ -229,6 +230,7 @@ describe('chat-survive broker process', () => {
     expect(alive(chain.providerPid)).toBe(false)
   }, 30_000)
 
+  // Real processes: tsx compiles the owner and broker on first start, which can take seconds.
   it('stops the provider on a stop signal and reports it as the exit', async () => {
     const chain = await startChain()
     process.kill(chain.broker.brokerPid, 'SIGTERM')
@@ -237,6 +239,7 @@ describe('chat-survive broker process', () => {
     expect(alive(chain.providerPid)).toBe(false)
   }, 30_000)
 
+  // Real processes: tsx compiles the owner and broker on first start, which can take seconds.
   it('keeps the provider when the app dies and lets the next app take it over', async () => {
     const chain = await startChain()
     chain.owner.stdin?.write('before\n')
@@ -268,6 +271,7 @@ describe('chat-survive broker process', () => {
     await waitFor(() => !alive(chain.providerPid) && !alive(chain.broker.brokerPid))
   }, 30_000)
 
+  // Real processes: tsx compiles the owner and broker on first start, which can take seconds.
   it('takes the provider down with it when the broker itself dies', async () => {
     const chain = await startChain()
     process.kill(chain.broker.brokerPid, 'SIGKILL')
