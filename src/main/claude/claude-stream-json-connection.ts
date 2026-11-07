@@ -25,6 +25,7 @@ import { withProviderSpawnAbsence } from '../provider-process/provider-executabl
 import { claudeStreamJsonExitError } from './sdk-transport/claude-stream-json-exit-error'
 import { withObservedProviderExit } from '../native-chat/agent-session-wire/startup/structured-agent-session-failure-text'
 import type { ProviderProcessCloseOptions } from '../provider-process/provider-process-close'
+import { forkChatSurviveConsumed } from '../fork/chat-survive/chat-survive-registry'
 
 /** Bound output draining after proven exit so inherited pipes cannot hold close open. */
 export const CLAUDE_READER_DRAIN_AFTER_EXIT_MS = 2_000
@@ -218,6 +219,8 @@ export async function openClaudeStreamJsonConnection(
             throw new Error('claude stream-json yielded a non-object message')
           }
           handlers.onMessage?.(next.value)
+          // Fork (SLRM-1394): a chat-survive replay mark moves past each consumed message.
+          forkChatSurviveConsumed(child, next.value)
         }
       } finally {
         if (!completed) {
