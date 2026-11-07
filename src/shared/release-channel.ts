@@ -1,4 +1,5 @@
 import { compareAppVersions, isValidAppVersion } from './app-version'
+import * as fork from './fork/fork-release-repo'
 
 export type ReleaseChannel = 'stable' | 'rc' | 'hourly' | 'daily' | 'adhoc'
 
@@ -62,6 +63,9 @@ export function isChannelSupportedOnPlatform(
   channel: ReleaseChannel,
   platform: NodeJS.Platform
 ): boolean {
+  if (!fork.isForkReleaseChannel(channel)) {
+    return false
+  }
   if (!hasDedicatedReleaseRepo(channel)) {
     return true
   }
@@ -84,7 +88,7 @@ export function requiresManualDevChannelInstall(options: {
 }
 
 export function getReleaseRepoForChannel(channel: ReleaseChannel): string {
-  return CHANNEL_RELEASE_REPOS[channel]
+  return fork.forkReleaseRepoForChannel(channel, CHANNEL_RELEASE_REPOS[channel])
 }
 
 export function normalizeTagToVersion(tag: string): string {

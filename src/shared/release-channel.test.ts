@@ -1,4 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { vi } from 'vitest'
+vi.mock('./fork/fork-release-repo', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  ...(await import('./fork/testing/fork-release-repo-upstream-policy'))
+}))
 import {
   isAdhocVersion,
   isDailyVersion,
