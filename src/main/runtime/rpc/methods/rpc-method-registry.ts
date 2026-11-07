@@ -63,6 +63,7 @@ import { MOBILE_RELAY_HOSTS_METHODS } from './pairing/mobile-relay-hosts'
 import { MOBILE_PROJECT_SECTIONS_METHODS } from './mobile-delivery/mobile-project-sections'
 import { UPDATER_METHODS } from './updater/updater'
 import { AUTOMATIC_WORK_METHODS } from './automations/automatic-work'
+import { FORK_CLAUDE_ACCOUNT_MOVE_METHODS } from './fork/fork-claude-account-move'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
 import { STRUCTURED_AGENT_SESSION_ATTACHMENT_METHODS } from './structured-sessions/attachments/structured-agent-session-attachments'
@@ -161,5 +162,7 @@ export const ALL_RPC_METHODS = [
   // Switch point: a window-fed build publishes no sidebar input.
   ...(ORCA_SIDEBAR_INPUTS_IS_MAIN ? SIDEBAR_INPUT_METHODS : []),
   ...UPDATER_METHODS,
-  ...AUTOMATIC_WORK_METHODS
+  ...AUTOMATIC_WORK_METHODS,
+  // SLRM-1503: move Claude chats between this host's accounts (FORK.md).
+  ...FORK_CLAUDE_ACCOUNT_MOVE_METHODS
 ]
