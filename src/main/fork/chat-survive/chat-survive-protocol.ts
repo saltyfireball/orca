@@ -21,6 +21,11 @@ export type ChatSurviveHello = {
   fence: number
   /** Offsets the client already holds; the broker replays from there. */
   from: { out: number; err: number }
+  /**
+   * Set only by the app instance that spawned the broker, to move itself from the broker's stdio
+   * to this socket (the quit hook). Without it a hello is refused while that instance lives.
+   */
+  takeover?: true
 }
 
 /** `busy`: the app instance that started the broker is still alive and owns it over stdio. */
@@ -120,7 +125,8 @@ export function parseHello(frame: Record<string, unknown> | null): ChatSurviveHe
     v: frame.v,
     token: frame.token,
     fence: frame.fence,
-    from: { out: from.out, err: from.err }
+    from: { out: from.out, err: from.err },
+    ...(frame.takeover === true ? { takeover: true } : {})
   }
 }
 
