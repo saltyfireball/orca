@@ -12,6 +12,7 @@ import { colors, pressedStyle } from '../theme/mobile-theme'
 import { useMobileColorScheme } from '../theme/use-mobile-color-scheme'
 import { MobileSyntaxSegments } from './MobileSyntaxSegments'
 import { MobileSourceCopyButton } from './MobileSourceCopyButton'
+import { MobileMarkdownRunButton } from './fork/MobileMarkdownRunButton'
 import { scaledMarkdownText, styles } from './mobile-markdown-styles'
 import { MarkdownText } from './mobile-markdown-text'
 
@@ -86,6 +87,7 @@ export const MobileMarkdownCodeBlock = memo(function MobileMarkdownCodeBlock({
               accessibilityLabel={t('components.markdownBlocks.copyCode', 'Copy code')}
             />
           ) : null}
+          <MobileMarkdownRunButton code={code} language={language} />
         </View>
       </View>
       <View style={styles.codeBody}>
