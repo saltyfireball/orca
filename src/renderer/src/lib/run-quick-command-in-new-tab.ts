@@ -8,6 +8,7 @@ import {
   supportsTerminalAgentQuickCommand
 } from '../../../shared/terminal/quick-commands/terminal-quick-commands'
 import type { TerminalQuickCommand } from '../../../shared/terminal/quick-commands/terminal-quick-command-types'
+import type { ExecutionHostId } from '../../../shared/execution-host'
 
 export type RunQuickCommandInNewTabArgs = {
   command: TerminalQuickCommand
@@ -16,6 +17,8 @@ export type RunQuickCommandInNewTabArgs = {
   /** Tab group the user clicked from. Keeps the spawned terminal in the
    *  pane the user initiated from when available. */
   groupId?: string | null
+  /** Pins the terminal tab to this host instead of the copy selected at launch. */
+  executionHostId?: ExecutionHostId
 }
 
 function resolveQuickCommandGroupId(
@@ -46,6 +49,7 @@ export function runQuickCommandInNewTab({
   command,
   worktreeId,
   groupId,
+  executionHostId,
   historyId = command.id
 }: RunQuickCommandInNewTabArgs): { tabId: string } | null {
   const targetGroupId = groupId ?? undefined
@@ -94,7 +98,8 @@ export function runQuickCommandInNewTab({
   const store = useAppStore.getState()
   const tab = store.createTab(worktreeId, targetGroupId, undefined, {
     quickCommandLabel: command.label,
-    pendingStartup: { command: flattenTerminalQuickCommand(command).command }
+    pendingStartup: { command: flattenTerminalQuickCommand(command).command },
+    ...(executionHostId ? { executionHostId } : {})
   })
 
   // Switch to terminal view like the + button; otherwise an editor keeps the new tab invisible.
