@@ -9,6 +9,7 @@ import {
 } from '../provider-process/managed-provider-process'
 import { claudeChildClosePolicy, claudeChildCloseProven } from './claude-child-exit-proof-ladder'
 import { forkChatSurviveSpawner } from '../fork/chat-survive/chat-survive-spawn'
+import { forkChatSurviveManaged } from '../fork/chat-survive/chat-survive-detach'
 
 export type ClaudeCodeProcessSpawn = {
   /** SDK spawn hook; Orca retains process ownership. */
@@ -79,6 +80,8 @@ export function createClaudeCodeProcessSpawn(
           acceptClose: claudeChildCloseProven
         }
       )
+      // Fork (SLRM-1394): closes leave a provider handed to its broker at quit alone.
+      managed = forkChatSurviveManaged(managed)
       if (onStdout) {
         observeStdoutWithReader(managed.child.stdout, onStdout)
       }

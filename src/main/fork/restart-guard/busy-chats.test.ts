@@ -95,4 +95,16 @@ describe('listBusyChats', () => {
       `${'x'.repeat(57)}...`
     )
   })
+
+  it('leaves out a Claude chat that survives the quit, never a Codex one', () => {
+    const chats = listBusyChats(
+      [
+        summary({ sessionId: 'kept', status: 'working' }),
+        summary({ sessionId: 'codex', agent: 'codex', status: 'working' }),
+        summary({ sessionId: 'cut', status: 'working' })
+      ],
+      (sessionId) => sessionId !== 'cut'
+    )
+    expect(chats.map((chat) => chat.sessionId)).toEqual(['codex', 'cut'])
+  })
 })
