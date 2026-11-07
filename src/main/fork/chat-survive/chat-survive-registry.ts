@@ -26,6 +26,8 @@ export type ChatSurviveEntry = {
   readonly record: ChatSurviveRecord
   readonly recordPath: string
   readonly tracker: ChatSurviveStreamTracker
+  /** The broker refuses a fence at or below the last one it accepted; a hand-off must go higher. */
+  readonly fenceFloor: number
   state: 'live' | 'detaching' | 'detached' | 'exited'
 }
 
@@ -78,19 +80,24 @@ export function registerChatSurviveBroker(input: {
   child: PipedChildProcess
   record: ChatSurviveRecord & { sessionId: string }
   recordPath: string
+  /** An adopted broker's tracker, which its caller feeds with the broker's own offsets. */
+  adopted?: { tracker: ChatSurviveStreamTracker; fenceFloor: number }
 }): ChatSurviveEntry {
-  const tracker = createChatSurviveStreamTracker()
+  const tracker = input.adopted?.tracker ?? createChatSurviveStreamTracker()
   const entry: ChatSurviveEntry = {
     sessionId: input.record.sessionId,
     child: input.child,
     record: input.record,
     recordPath: input.recordPath,
     tracker,
+    fenceFloor: input.adopted?.fenceFloor ?? 0,
     state: 'live'
   }
   const { child } = input
-  watchWithReader(child.stdout, tracker.stdout)
-  watchWithReader(child.stderr, tracker.stderr)
+  if (!input.adopted) {
+    watchWithReader(child.stdout, tracker.stdout)
+    watchWithReader(child.stderr, tracker.stderr)
+  }
   interpose(child.stdin, 'write', ([chunk]) => {
     if (typeof chunk === 'string' || Buffer.isBuffer(chunk)) {
       tracker.stdin(chunk)
