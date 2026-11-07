@@ -24,7 +24,6 @@ import { SortableTabCloseButton } from './SortableTabCloseButton'
 import { useSortableTabContextMenu } from './use-sortable-tab-context-menu'
 import { useSortableTabDrag } from './use-sortable-tab-drag'
 import { useTranslate } from '@/i18n/use-translate'
-import { TAB_LABEL_WIDTH_CLASSES } from '../strip/tab-width-rules'
 import { useTabStripSlotProps } from '../strip/use-tab-strip-slot-props'
 import { useTabStripPointerActivation } from '../strip/tab-strip-pointer-activation'
 import { useTabContextMenuOpening } from '../strip/tab-context-menu-opening'
@@ -43,6 +42,7 @@ import {
 } from '../session-actions/NativeChatNamingFailure'
 import { ForkMarkedName } from '../../native-chat/fork/ForkMarkedName'
 import { BOT_HOME_TAB_LABEL_CLASSES, BotHomeTabAccent } from '../../bots/home-chat/BotHomeTabAccent'
+import { ForkTabTitle } from '@/fork/claude-account-chip/ForkClaudeAccountChips'
 
 export default function SortableTab({
   tab,
@@ -276,11 +276,13 @@ export default function SortableTab({
           spellCheck={false}
         />
       ) : (
-        <span
-          className={`${TAB_LABEL_WIDTH_CLASSES} mr-1 ${isBotHome ? BOT_HOME_TAB_LABEL_CLASSES : ''}`}
-        >
-          {titleNode}
-        </span>
+        <ForkTabTitle
+          title={titleNode}
+          labelClassName={isBotHome ? BOT_HOME_TAB_LABEL_CLASSES : ''}
+          tab={tab}
+          unified={unifiedTabId}
+          chat={nativeChat}
+        />
       )}
       {tab.color && !isEditing && (
         <span
