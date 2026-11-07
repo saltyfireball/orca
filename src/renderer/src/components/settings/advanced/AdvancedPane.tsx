@@ -11,6 +11,7 @@ import { SettingsSubsectionHeader, SettingsSwitch } from '../form-controls/Setti
 import { getAdvancedSearchEntry } from './advanced-search'
 import { translate } from '@/i18n/i18n'
 import { handleForkRestartHeld } from '@/fork/restart-guard-held-toast'
+import { ForkChatSurviveSetting } from '@/fork/ForkChatSurviveSetting'
 
 type AdvancedPaneProps = {
   settings: GlobalSettings
@@ -153,6 +154,8 @@ export function AdvancedPane({ settings, updateSettings }: AdvancedPaneProps): R
         />
         <AdvancedNetworkSettingsSection settings={settings} updateSettings={updateSettings} />
       </section>
+
+      <ForkChatSurviveSetting settings={settings} updateSettings={updateSettings} />
     </div>
   )
 }

@@ -189,6 +189,8 @@ export type GlobalSettings = GlobalSettingsBase & {
   httpProxyBypassRules?: string
   /** Optional mirror of nodejs.org/dist for the Node runtime Orca installs on SSH and WSL servers. */
   nodeDistMirrorUrl?: string
+  /** Fork (SLRM-1394): Claude chats keep running through an app restart. Off unless true. */
+  forkChatSurvive?: boolean
   /** Why: corporate TLS-intercepting proxies can break HTTP/2 downloads; opt-in Chromium process-wide HTTP/1.1 switch. */
   electronHttp1CompatibilityMode?: boolean
   /** Opt-in in-app browsing (isolated guest surface); default keeps links opening in the system browser. */
