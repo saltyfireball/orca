@@ -1,4 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+vi.mock('../../../shared/fork/fork-release-repo', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  ...(await import('../../../shared/fork/testing/fork-release-repo-upstream-policy'))
+}))
 
 const fetchMock = vi.fn()
 vi.mock('electron', () => ({ net: { fetch: (...args: unknown[]) => fetchMock(...args) } }))
