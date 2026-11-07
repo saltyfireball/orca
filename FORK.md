@@ -32,8 +32,8 @@ named Orca Fork until SLRM-1367. `main` is always
   below.
 - **Groundwork for chats that survive a restart (SLRM-1394).** `src/main/fork/chat-survive/` holds
   a broker that hosts one chat provider outside the app, keeps its output in a ring with byte
-  offsets, and lets the next app instance reattach by token and lease fence, with an orphan
-  timeout when nobody comes back. The broker is built as its own plain-Node entry
+  offsets, and lets the next app instance reattach by token and lease fence after a hand-off at
+  quit, with an orphan timeout when nobody comes back (a crash still stops the provider). The broker is built as its own plain-Node entry
   (`out/main/chat-survive-broker-entry.js`) that runs upstream's provider supervisor under it.
   With the `forkChatSurvive` setting on (Settings > Advanced, off by default), new Claude chats
   run their provider supervisor under a broker; Codex and every other provider spawn as before.
@@ -84,6 +84,7 @@ Apply these in this order. Each one is a single commit.
 34. `SLRM-1394 Chat survive: adopt a surviving broker at start so the chat carries on`
 35. `SLRM-1394 Chat survive: run it against the real Claude Code and ask a resent prompt once`
 36. `SLRM-1394 Chat survive: replay from the last consumed message, stop late claims`
+37. `SLRM-1394 Chat survive: stop a provider lost without a hand-off, and the review nits`
 
 Fork-only code lives in `fork/` folders:
 

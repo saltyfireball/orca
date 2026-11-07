@@ -240,34 +240,12 @@ describe('chat-survive broker process', () => {
   }, 30_000)
 
   // Real processes: tsx compiles the owner and broker on first start, which can take seconds.
-  it('keeps the provider when the app dies and lets the next app take it over', async () => {
+  it('stops the provider when the app dies without handing it off', async () => {
     const chain = await startChain()
     chain.owner.stdin?.write('before\n')
     await waitFor(() => chain.out().includes('echo:before'))
+    // A crash or a forced exit: no hand-off, so nobody could resume it.
     chain.owner.kill('SIGKILL')
-    // The broker notices within its owner poll and opens the chat to a new owner.
-    const connection = await vi.waitFor(
-      () =>
-        connectChatSurviveBroker({
-          socketPath: chain.broker.socketPath,
-          token: chain.broker.token,
-          fence: 1
-        }),
-      { timeout: 8000, interval: 50 }
-    )
-    let text = ''
-    connection.stdout.on('data', (chunk: Buffer) => {
-      text += chunk.toString('utf8')
-    })
-    await waitFor(() => text.includes('echo:before'))
-    expect(alive(chain.providerPid)).toBe(true)
-    connection.write('after\n')
-    await waitFor(() => text.includes('echo:after'))
-    connection.endInput()
-    await connection.exited
-    expect(alive(chain.providerPid)).toBe(false)
-    // The broker keeps the exit for a reattach until the owner lets it go.
-    connection.release()
     await waitFor(() => !alive(chain.providerPid) && !alive(chain.broker.brokerPid))
   }, 30_000)
 
