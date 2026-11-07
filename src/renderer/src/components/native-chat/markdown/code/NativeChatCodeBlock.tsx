@@ -7,6 +7,7 @@ import { getCodeFenceLanguageLabel } from './code-fence-language-label'
 import { NativeChatCopyButton } from '../../messages/actions/NativeChatCopyButton'
 import { NativeChatMarkdownRowKeyContext } from '../native-chat-markdown-row-identity'
 import { useNativeChatDisclosure } from '../../messages/disclosure/native-chat-disclosure-store'
+import { NativeChatRunButton } from '../../fork/NativeChatRunButton'
 import { NativeChatHighlightedCode } from './NativeChatHighlightedCode'
 
 /** Code fences need their own copy target rather than the whole chat message. */
@@ -35,6 +36,7 @@ export function NativeChatCodeBlock({
     <>
       <NativeChatCodeWrapButton wrapped={wrapped} onToggle={() => setWrapped(!wrapped)} />
       <NativeChatCopyButton text={code} label={t('components.native-chat.copyCode', 'Copy code')} />
+      <NativeChatRunButton code={code} language={language} />
     </>
   ) : null
 
