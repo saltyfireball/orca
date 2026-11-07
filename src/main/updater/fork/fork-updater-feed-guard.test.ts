@@ -14,8 +14,8 @@ describe('guardForkUpdaterFeed', () => {
       url: 'https://github.com/saltyfireball/orca/releases/latest/download'
     }
     const local = { provider: 'generic', url: 'http://127.0.0.1:50000/feed' }
-    updater.setFeedURL(release as never)
-    updater.setFeedURL(local as never)
+    updater.setFeedURL(release)
+    updater.setFeedURL(local)
     expect(setFeedURL).toHaveBeenNthCalledWith(1, release)
     expect(setFeedURL).toHaveBeenNthCalledWith(2, local)
   })
@@ -30,7 +30,7 @@ describe('guardForkUpdaterFeed', () => {
     { provider: 'generic' }
   ])('refuses %j without reaching electron-updater', (options) => {
     const { updater, setFeedURL } = makeUpdater()
-    expect(() => updater.setFeedURL(options as never)).toThrow(/refuse update feed/)
+    expect(() => updater.setFeedURL(options)).toThrow(/refuse update feed/)
     expect(setFeedURL).not.toHaveBeenCalled()
   })
 
@@ -40,7 +40,7 @@ describe('guardForkUpdaterFeed', () => {
     updater.setFeedURL({
       provider: 'generic',
       url: 'https://github.com/saltyfireball/orca/releases/latest/download'
-    } as never)
+    })
     expect(setFeedURL).toHaveBeenCalledTimes(1)
   })
 })
