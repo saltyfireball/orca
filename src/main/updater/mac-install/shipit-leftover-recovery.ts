@@ -12,6 +12,7 @@ import {
 } from '../../../shared/desktop-distribution/macos/shipit-process-listing'
 import { LOCAL_BUILD_COMPATIBILITY_CONTRACT } from '../../../shared/remote-runtime/orcad-distribution/local-build-compatibility-contract'
 import { recordUpdaterLifecycle } from '../updater-lifecycle-diagnostics'
+import { runningForkBundleId } from '../../fork/fork-app-identity'
 
 export type ShipItStagingDeps = {
   bundleId: string
@@ -157,7 +158,7 @@ export function prepareThisProcessShipItStaging(): Promise<void> | null {
     return null
   }
   const home = homedir()
-  const bundleId = LOCAL_BUILD_COMPATIBILITY_CONTRACT.appId
+  const bundleId = runningForkBundleId() ?? LOCAL_BUILD_COMPATIBILITY_CONTRACT.appId
   return prepareShipItStaging({
     bundleId,
     cacheDir: join(home, 'Library', 'Caches', `${bundleId}.ShipIt`),
