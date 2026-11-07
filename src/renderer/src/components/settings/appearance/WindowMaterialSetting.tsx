@@ -16,6 +16,7 @@ import { useMountedRef } from '@/hooks/useMountedRef'
 import { readPrefersReducedTransparency } from '@/hooks/use-reduce-visual-effects'
 import { activeWindowMaterial, rendererWindowMaterialHost } from '@/lib/window-material-runtime'
 import { translate } from '@/i18n/i18n'
+import { handleForkRestartHeld } from '@/fork/restart-guard-held-toast'
 
 type WindowMaterialSettingProps = {
   settings: GlobalSettings
@@ -78,7 +79,9 @@ function RestartBanner(): React.JSX.Element {
     }
     setRelaunching(true)
     try {
-      await window.api.app.relaunch()
+      if (handleForkRestartHeld(await window.api.app.relaunch()) && mountedRef.current) {
+        setRelaunching(false)
+      }
     } catch {
       if (mountedRef.current) {
         setRelaunching(false)

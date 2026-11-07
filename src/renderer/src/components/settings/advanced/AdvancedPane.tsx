@@ -10,6 +10,7 @@ import { SearchableSetting } from '../section-layout/SearchableSetting'
 import { SettingsSubsectionHeader, SettingsSwitch } from '../form-controls/SettingsFormControls'
 import { getAdvancedSearchEntry } from './advanced-search'
 import { translate } from '@/i18n/i18n'
+import { handleForkRestartHeld } from '@/fork/restart-guard-held-toast'
 
 type AdvancedPaneProps = {
   settings: GlobalSettings
@@ -30,12 +31,19 @@ export function AdvancedPane({ settings, updateSettings }: AdvancedPaneProps): R
 
   const handleHttp1CompatibilityRelaunch = (): void => {
     setHttp1CompatibilityRelaunching(true)
-    void window.api.app.relaunch().catch((error) => {
-      console.error('[settings] failed to relaunch for HTTP/1.1 compatibility:', error)
-      if (mountedRef.current) {
-        setHttp1CompatibilityRelaunching(false)
-      }
-    })
+    void window.api.app
+      .relaunch()
+      .then((result) => {
+        if (handleForkRestartHeld(result) && mountedRef.current) {
+          setHttp1CompatibilityRelaunching(false)
+        }
+      })
+      .catch((error) => {
+        console.error('[settings] failed to relaunch for HTTP/1.1 compatibility:', error)
+        if (mountedRef.current) {
+          setHttp1CompatibilityRelaunching(false)
+        }
+      })
   }
 
   return (

@@ -10,6 +10,7 @@ import {
   type KeyboardLayoutChangeEvent
 } from '../../shared/keyboard-layout-events'
 import { prepareAndInvokeAppRestart } from '../renderer-restart-wiring'
+import { isForkRestartHeld, type ForkRestartHeld } from '../../shared/fork/restart-guard-held'
 import { awaitBeforeUnloadCheckpoint, startupDiagnosticsEnabled } from '../preload-runtime-support'
 import type { PreloadApi } from '../api-types'
 
@@ -39,17 +40,19 @@ export const appApi = {
     ipcRenderer.invoke('app:getFeatureWallAssetBaseUrl'),
   setWindowMaterialSuppressed: (suppressed: boolean): Promise<void> =>
     ipcRenderer.invoke('app:setWindowMaterialSuppressed', suppressed),
-  relaunch: (): Promise<void> =>
+  relaunch: (): Promise<void | ForkRestartHeld> =>
     prepareAndInvokeAppRestart(
       window,
       () => ipcRenderer.invoke('app:relaunch'),
-      awaitBeforeUnloadCheckpoint
+      awaitBeforeUnloadCheckpoint,
+      (result) => !isForkRestartHeld(result)
     ),
-  restart: (): Promise<void> =>
+  restart: (): Promise<void | ForkRestartHeld> =>
     prepareAndInvokeAppRestart(
       window,
       () => ipcRenderer.invoke('app:restart'),
-      awaitBeforeUnloadCheckpoint
+      awaitBeforeUnloadCheckpoint,
+      (result) => !isForkRestartHeld(result)
     ),
   reload: (): Promise<void> =>
     prepareAndInvokeAppRestart(
