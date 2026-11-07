@@ -11,6 +11,7 @@ import { resolvePtySpawnStartupTarget } from '../spawn-startup-target'
 import type { PtyIpcSpawnState } from './spawn-state'
 import { localPtySpawnCwd } from '../host-env/spawn-cwd'
 import { getConnectionExecutionHostId } from '../../../../shared/execution-host'
+import { forkPinTerminalClaudeAccount } from '../../../fork/claude-account-move/claude-terminal-account-pin'
 
 export async function preparePtyIpcSpawnPreflight(ctx: PtyIpcSpawnState): Promise<void> {
   const args = ctx.args
@@ -121,5 +122,11 @@ export async function preparePtyIpcSpawnPreflight(ctx: PtyIpcSpawnState): Promis
     ctx.isClaudeLaunch && ctx.deps.prepareClaudeAuth
       ? await ctx.deps.prepareClaudeAuth(ctx.codexSelectionTarget)
       : null
+  // SLRM-1503: a pane restarted by an account move runs that account (FORK.md).
+  ;({ env: args.env, auth: ctx.claudeAuth } = forkPinTerminalClaudeAccount(
+    args.env,
+    ctx.codexSelectionTarget,
+    ctx.claudeAuth
+  ))
   ctx.spawnTiming.mark('auth')
 }
