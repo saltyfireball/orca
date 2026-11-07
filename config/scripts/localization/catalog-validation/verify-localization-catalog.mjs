@@ -15,6 +15,7 @@ import {
   resolveLocaleSourceKey,
   syncLocalePluralForms
 } from '../../locale-catalog/locale-plural-forms.mjs'
+import { isForkLocalizedSource } from '../../fork/fork-localization.mjs'
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts'])
 const SKIP_PATH_PARTS = new Set(['.git', 'dist', 'node_modules', 'out', '__snapshots__', 'assets'])
@@ -39,7 +40,8 @@ function isSkippedFile(root, filePath) {
     relative.includes('.generated.') ||
     relative.includes('.test.') ||
     relative.includes('.spec.') ||
-    relative.includes('/__tests__/')
+    relative.includes('/__tests__/') ||
+    isForkLocalizedSource(relative)
   ) {
     return true
   }
