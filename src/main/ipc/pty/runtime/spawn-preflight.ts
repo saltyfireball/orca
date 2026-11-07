@@ -24,6 +24,7 @@ import {
   ensureJcodeRuntimeDir,
   JCODE_RUNTIME_DIR_ENV_KEY
 } from '../../../../shared/jcode-runtime-dir'
+import { forkPinTerminalClaudeAccount } from '../../../fork/claude-account-move/claude-terminal-account-pin'
 
 export async function prepareRuntimePtySpawn(
   ctx: RuntimePtySpawnState
@@ -105,6 +106,12 @@ export async function prepareRuntimePtySpawn(
     ctx.isClaudeLaunch && ctx.deps.prepareClaudeAuth
       ? await ctx.deps.prepareClaudeAuth(ctx.codexSelectionTarget)
       : null
+  // SLRM-1503: a pane restarted by an account move runs that account (FORK.md).
+  ;({ env: args.env, auth: ctx.claudeAuth } = forkPinTerminalClaudeAccount(
+    args.env,
+    ctx.codexSelectionTarget,
+    ctx.claudeAuth
+  ))
 
   ctx.shouldPersistHostSessionBinding = args.persistHostSessionBinding === true
   if (ctx.shouldPersistHostSessionBinding) {
