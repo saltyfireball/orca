@@ -38,7 +38,8 @@ export type ForkClaudeAccountResolution =
   /** Not a Claude session, or its host has one account or none: the chip draws nothing. */
   | { kind: 'none' }
   | { kind: 'unknown'; ownerKey: string; hostLabel: string | null }
-  | { kind: 'account'; account: ForkClaudeAccount }
+  /** `movingTo` while a move to another account waits for the chat's turn to end. */
+  | { kind: 'account'; account: ForkClaudeAccount; movingTo?: ForkClaudeAccount }
   | { kind: 'mixed'; accounts: ForkClaudeAccount[] }
 
 export const NO_ACCOUNT: ForkClaudeAccountResolution = { kind: 'none' }
@@ -174,6 +175,11 @@ export function resolveAccountFromConfigPath(
 export function combineResolutions(
   resolutions: readonly ForkClaudeAccountResolution[]
 ): ForkClaudeAccountResolution {
+  const known = resolutions.filter((resolution) => resolution.kind !== 'none')
+  if (known.length === 1) {
+    // One session keeps its own resolution, a move waiting on its turn included.
+    return known[0]
+  }
   const accounts = new Map<string, ForkClaudeAccount>()
   let unknown: ForkClaudeAccountResolution | null = null
   for (const resolution of resolutions) {

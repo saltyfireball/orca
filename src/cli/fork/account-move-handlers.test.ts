@@ -98,6 +98,7 @@ describe('formatWhich', () => {
           accountId: 'r2',
           accountLabel: 'r2@example.test',
           runningAccountId: 'r1',
+          launch: { home: '/fake/accounts/r1', accountId: 'r1' },
           pinned: true,
           pending: true,
           busy: 'turn'
