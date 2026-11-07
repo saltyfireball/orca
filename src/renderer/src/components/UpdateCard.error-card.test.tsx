@@ -8,6 +8,10 @@ import type {
 import { useAppStore } from '../store'
 import { UpdateCard } from './UpdateCard'
 import { NotificationCardStack } from './NotificationCardStack'
+vi.mock('../../../shared/fork/fork-release-repo', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  ...(await import('../../../shared/fork/testing/fork-release-repo-upstream-policy'))
+}))
 
 const openUrl = vi.fn()
 const download = vi.fn()
