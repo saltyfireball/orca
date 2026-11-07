@@ -272,6 +272,33 @@ describe('chat-survive broker process', () => {
   }, 30_000)
 
   // Real processes: tsx compiles the owner and broker on first start, which can take seconds.
+  it('lets the app that spawned it move to the socket and leave the provider running', async () => {
+    const chain = await startChain()
+    chain.owner.stdin?.write('before\n')
+    await waitFor(() => chain.out().includes('echo:before'))
+    const socket = { socketPath: chain.broker.socketPath, token: chain.broker.token }
+    const quitting = await connectChatSurviveBroker({ ...socket, fence: 4, takeover: true })
+    // The old stdio is cut off: its input and its end no longer reach the provider.
+    chain.owner.stdin?.write('ignored\n')
+    chain.owner.stdin?.end()
+    await expect(connectChatSurviveBroker({ ...socket, fence: 3 })).rejects.toThrow(
+      ChatSurviveRefusedError
+    )
+    quitting.detach()
+    const next = await connectChatSurviveBroker({ ...socket, fence: 5 })
+    let text = ''
+    next.stdout.on('data', (chunk: Buffer) => {
+      text += chunk.toString('utf8')
+    })
+    next.write('after\n')
+    await waitFor(() => text.includes('echo:after'))
+    expect(text).not.toContain('echo:ignored')
+    expect(alive(chain.providerPid)).toBe(true)
+    next.stop()
+    await waitFor(() => !alive(chain.providerPid) && !alive(chain.broker.brokerPid))
+  }, 30_000)
+
+  // Real processes: tsx compiles the owner and broker on first start, which can take seconds.
   it('takes the provider down with it when the broker itself dies', async () => {
     const chain = await startChain()
     process.kill(chain.broker.brokerPid, 'SIGKILL')
