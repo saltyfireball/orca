@@ -2,11 +2,16 @@
 // Off unless the forkChatSurvive setting is on. Any doubt (no config, an unexpected spawn, no
 // private socket folder, no broker entry on disk, a spawn that throws) spawns exactly as today,
 // so there is never a second writer and never a provider without its supervisor.
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import type { PipedProcessSpawner } from '@orca/process-host/process-spec'
 import { ORCA_AGENT_SESSION_ID_ENV } from '../../../shared/agent-session/lifecycle/agent-session-caller-env'
 import { chatSurviveSocketDir, planChatSurviveBrokerSpawn } from './chat-survive-launch'
+import {
+  registerChatSurviveBroker,
+  writeChatSurviveRecord,
+  type ChatSurviveRecord
+} from './chat-survive-registry'
 
 export type ChatSurviveSpawnConfig = {
   enabled: boolean
@@ -22,6 +27,11 @@ export function setChatSurviveConfigReader(
   reader: (() => ChatSurviveSpawnConfig | null) | null
 ): void {
   readConfig = reader
+}
+
+/** True while the setting is on; a hand-off checks it again at quit, not only at spawn. */
+export function chatSurviveEnabled(): boolean {
+  return currentConfig() !== null
 }
 
 function currentConfig(): ChatSurviveSpawnConfig | null {
@@ -48,11 +58,11 @@ export function chatSurviveRecordName(
   return `${prefix}.${brokerPid}.json`
 }
 
-function writeRecord(dir: string, name: string, body: object): string | null {
+function writeRecord(dir: string, name: string, record: ChatSurviveRecord): string | null {
   try {
     mkdirSync(dir, { recursive: true, mode: 0o700 })
     const path = join(dir, name)
-    writeFileSync(path, `${JSON.stringify(body)}\n`, { mode: 0o600 })
+    writeChatSurviveRecord(path, record)
     return path
   } catch {
     // Without a record the broker cannot be adopted later; it still stops on the next app start.
@@ -87,15 +97,20 @@ export function forkChatSurviveSpawner(
     if (brokerPid === undefined) {
       return child
     }
-    const record = writeRecord(config.recordDir, chatSurviveRecordName(env, brokerPid), {
+    const sessionId = env[ORCA_AGENT_SESSION_ID_ENV] ?? null
+    const record: ChatSurviveRecord = {
       v: 1,
-      sessionId: env[ORCA_AGENT_SESSION_ID_ENV] ?? null,
+      sessionId,
       brokerPid,
       socketPath: plan.socketPath,
       token: plan.token
-    })
-    if (record) {
-      child.once('exit', () => rmSync(record, { force: true }))
+    }
+    const recordPath = writeRecord(config.recordDir, chatSurviveRecordName(env, brokerPid), record)
+    if (recordPath) {
+      child.once('exit', () => rmSync(recordPath, { force: true }))
+      if (sessionId !== null) {
+        registerChatSurviveBroker({ child, record: { ...record, sessionId }, recordPath })
+      }
     }
     return child
   }
