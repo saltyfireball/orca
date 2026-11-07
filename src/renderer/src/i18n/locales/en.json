@@ -20991,7 +20991,8 @@
         "confirm": "Run",
         "cancel": "Cancel",
         "tabLabel": "Chat: {{command}}",
-        "action": "Run in terminal"
+        "action": "Run in terminal",
+        "staleTarget": "Not run: this chat no longer points at the same workspace and host."
       }
     },
     "tab": {
