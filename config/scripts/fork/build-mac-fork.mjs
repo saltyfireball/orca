@@ -59,8 +59,10 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
   for (const script of buildMacPrerequisiteScripts(packageJson.scripts['build:mac'])) {
     execFileSync(PNPM, ['run', script], { stdio: 'inherit' })
   }
-  execFileSync(PNPM, ['exec', 'electron-builder', '--config', FORK_BUILDER_CONFIG, '--mac'], {
-    env,
-    stdio: 'inherit'
-  })
+  // Why never: under CI electron-builder publishes on its own, but the workflow uploads the assets.
+  execFileSync(
+    PNPM,
+    ['exec', 'electron-builder', '--config', FORK_BUILDER_CONFIG, '--mac', '--publish', 'never'],
+    { env, stdio: 'inherit' }
+  )
 }
