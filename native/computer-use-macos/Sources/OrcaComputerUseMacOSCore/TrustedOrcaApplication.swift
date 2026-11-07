@@ -6,6 +6,7 @@ public enum TrustedOrcaApplication {
         bundleId == "com.stablyai.orca" ||
             bundleId == "com.stablyai.orca.dev" ||
             bundleId.hasPrefix("com.stablyai.orca.dev.") ||
-            bundleId == "com.github.Electron"
+            bundleId == "com.github.Electron" ||
+            ForkTrustedOrcaApplication.isTrusted(bundleId: bundleId)
     }
 }
