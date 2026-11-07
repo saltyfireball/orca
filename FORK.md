@@ -36,6 +36,7 @@ Apply these in this order. Each one is a single commit.
 6. `SLRM-1309 updater: allow only saltyfireball/orca releases`
 7. `SLRM-1309 build: fork version scheme, builder overlay and build wrapper`
 8. `SLRM-1309 ci: deploy key, release retry, fork versions and upstream workflows off`
+9. `SLRM-1309 updater: drop casts in the feed guard and keep UpdateCard on upstream repos`
 
 Fork-only code lives in `fork/` folders:
 
@@ -52,7 +53,7 @@ Upstream files only get short hooks, which keeps rebases small:
 - The updater feed repoints.
 - One call each in `release-channel.ts`, `updater-release-builds.ts` and
   `electron-updater-loader.ts`.
-- One `vi.mock` line in each of three upstream updater tests. It swaps in
+- One `vi.mock` in each of four upstream tests that cover release repos. It swaps in
   `src/shared/fork/testing/fork-release-repo-upstream-policy.ts`, so those tests keep
   covering upstream's channels.
 - The run-button strings in both `en.json` catalogs, from the generators.
