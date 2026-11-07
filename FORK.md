@@ -2,7 +2,8 @@
 
 This repository is upstream [stablyai/orca](https://github.com/stablyai/orca) at its newest
 stable `vX.Y.Z` tag, plus a short series of fork commits on top. `main` is always
-`<upstream tag> + fork commits`. Each fork commit message starts with `SLRM-1309 `.
+`<upstream tag> + fork commits`. Each fork commit message starts with its slrm Jira key
+(`SLRM-1309 ` for the original series).
 
 ## What the fork changes
 
@@ -25,6 +26,7 @@ stable `vX.Y.Z` tag, plus a short series of fork commits on top. `main` is alway
     settings folder.
   - It is built for Apple Silicon (arm64) only. Upstream's x64 slice has to boot its terminal
     host under Rosetta to pass packaging checks, and no fork Mac needs it.
+- **Shared mode: the fork can run on stock Orca's data.** See Shared mode below.
 
 ## Patch list
 
@@ -46,10 +48,16 @@ Apply these in this order. Each one is a single commit.
 14. `SLRM-1309 run: compare the complete host route and pin the launch to the captured host`
 15. `SLRM-1309 ci: fail the guard on any cancel error but 409 and note the residual race`
 16. `SLRM-1309 build: package the fork for arm64 only`
+17. `SLRM-1309 Run drops the agent's leading '! ' prefix`
+18. `SLRM-1353 Let the Run confirm edit the command before it runs`
+19. `SLRM-1357 Sign fork builds with a stable self-signed identity`
+20. `SLRM-1357 Accept the self-signed certificate's root requirement`
+21. `SLRM-1351 Shared mode: run Orca Fork on stock Orca's data`
 
 Fork-only code lives in `fork/` folders:
 
 - `src/shared/fork/`
+- `src/main/fork/`
 - `src/main/updater/fork/`
 - `src/renderer/src/components/native-chat/fork/`
 - `mobile/src/components/fork/`
@@ -68,10 +76,34 @@ Upstream files only get short hooks, which keeps rebases small:
   `src/shared/fork/testing/fork-release-repo-upstream-policy.ts`, so those tests keep
   covering upstream's channels.
 - The run-button strings in both `en.json` catalogs, from the generators.
+- One call in `configureDevUserDataPath` (`src/main/startup/configure-process.ts`) for shared
+  mode. It runs before anything reads userData or takes the instance locks.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
 `config/scripts/fork/electron-builder.fork.config.cjs`.
+
+## Shared mode
+
+With an empty marker file `~/Library/Application Support/Orca Fork/use-stock-data`, the
+packaged fork runs on stock Orca's folder, `~/Library/Application Support/orca`, and its
+Keychain key, "orca Safe Storage". Settings, projects, chats and agent sessions are then the
+same in both apps, and switching is quit one, open the other. The code is
+`src/main/fork/shared-stock-data.ts`.
+
+- Only one of the two can be open at a time. Electron's instance lock and the desktop profile
+  lock live in that folder, so the second app to open just hands off to the first.
+- The fork takes the pre-ready app name `orca`, which is what picks stock's Keychain item.
+  macOS may ask once whether Orca Fork can use "orca Safe Storage": choose Always Allow.
+- The first launch of each fork version clones (APFS) stock's settings, projects and chats
+  into `Orca Fork/stock-data-snapshots/<time>_v<version>` before it opens them, keeping the
+  newest 3. Caches, models and logs are left out. The snapshot is skipped while an app holds
+  the folder, and a failed snapshot never stops the launch.
+- Without the marker, unpackaged, or with no stock folder, the fork uses its own folder.
+- Dotfiles' `orca-switch` drives it: `orca-switch fork|stock` quits one app and opens the
+  other, `share` and `separate` set and clear the marker, and `restore` puts a snapshot back.
+- Stock Orca opening data a newer fork wrote is the one risk; let stock update itself first,
+  or restore the snapshot from before that fork version.
 
 ## Versions
 
@@ -186,5 +218,5 @@ disables fork-sync or cancels its runs. The job needs `actions: write` for it.
 
 - A rebase rewrites the fork commits, so CI's copies are unsigned and committed by
   `github-actions[bot]`.
-- Builds are not signed or notarized. On first launch, macOS Gatekeeper asks you to approve
+- Builds are self-signed, not notarized. On first launch, macOS Gatekeeper asks you to approve
   the app.
