@@ -41,6 +41,8 @@ Apply these in this order. Each one is a single commit.
 11. `SLRM-1309 run: reject invisible characters by Unicode property`
 12. `SLRM-1309 run: resolve folder workspaces on the captured host`
 13. `SLRM-1309 ci: disable upstream workflows before the push and cancel their runs`
+14. `SLRM-1309 run: compare the complete host route and pin the launch to the captured host`
+15. `SLRM-1309 ci: fail the guard on any cancel error but 409 and note the residual race`
 
 Fork-only code lives in `fork/` folders:
 
@@ -53,6 +55,8 @@ Fork-only code lives in `fork/` folders:
 Upstream files only get short hooks, which keeps rebases small:
 
 - One line each in `NativeChatCodeBlock.tsx` and `MobileMarkdownCodeBlock.tsx`.
+- An optional `executionHostId` on `runQuickCommandInNewTab` and `createTab`, so a Run tab
+  opens on the host captured at confirm.
 - One provider wrap in `MobileSessionRouteScreen.tsx`.
 - The updater feed repoints.
 - One call each in `release-channel.ts`, `updater-release-builds.ts` and
@@ -146,6 +150,10 @@ three times around the push:
    unfinished one whose workflow is not fork-sync. It looks three times, 10 seconds apart,
    because push-triggered runs take a moment to appear.
 
+A small race remains: a newly added workflow can start, and run briefly, before step 3 cancels it.
+Most upstream workflows only run when `github.repository == 'stablyai/orca'`, so they skip on the fork.
+
+Cancelling a run that already finished (HTTP 409) is fine. Any other API error fails the job.
 Disabled workflows and finished runs are skipped, so this is safe to run every day. It never
 disables fork-sync or cancels its runs. The job needs `actions: write` for it.
 
