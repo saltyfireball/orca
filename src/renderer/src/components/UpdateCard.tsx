@@ -6,6 +6,7 @@ import { useAppStore } from '../store/index'
 import { Card } from './ui/card'
 import { Button } from './ui/button'
 import { useTranslate } from '@/i18n/use-translate'
+import { handleForkRestartHeld } from '@/fork/restart-guard-held-toast'
 import { updaterMessageText } from '@/app-shell/updates/updater-message-copy'
 import { UpdateCardStateContent } from './maintenance/update-card/UpdateCardStateContent'
 import { buildUpdateCardErrorModel } from './maintenance/update-card/update-card-error-model'
@@ -142,6 +143,11 @@ export function UpdateCard(): React.JSX.Element | null {
     void window.api.settings
       .set({ electronHttp1CompatibilityMode: true })
       .then(() => window.api.app.relaunch())
+      .then((result) => {
+        if (handleForkRestartHeld(result)) {
+          setCompatibilityRelaunching(false)
+        }
+      })
       .catch((error) => {
         const message = String((error as Error)?.message ?? error)
         console.error('[updates] failed to enable HTTP/1.1 compatibility:', error)
