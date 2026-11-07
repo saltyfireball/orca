@@ -1,10 +1,14 @@
 // The upstream hook points. Kept free of app imports so the menu, IPC and updater modules can
 // use them without loading the guard (or an import cycle); until it installs they pass through.
+import type { ForkRestartHeld } from '../../../shared/fork/restart-guard-held'
 import type { RestartGuardKind } from './restart-guard-machine'
 
 export type ForkRestartGuardHooks = {
   menuItems: () => Electron.MenuItemConstructorOptions[]
-  guardRestart: (kind: RestartGuardKind, proceed: () => Promise<void>) => Promise<void>
+  guardRestart: (
+    kind: RestartGuardKind,
+    proceed: () => Promise<void>
+  ) => Promise<void | ForkRestartHeld>
   guardUpdateInstall: (install: () => void) => Promise<void>
 }
 
@@ -19,11 +23,11 @@ export function forkRestartGuardMenuItems(): Electron.MenuItemConstructorOptions
   return hooks?.menuItems() ?? []
 }
 
-/** Wraps a renderer restart; throws when held so the renderer drops its restart state. */
+/** Wraps a renderer restart; resolves a ForkRestartHeld (not an error) when the guard holds it. */
 export function guardForkRestart(
   kind: RestartGuardKind,
   proceed: () => Promise<void>
-): Promise<void> {
+): Promise<void | ForkRestartHeld> {
   return hooks ? hooks.guardRestart(kind, proceed) : proceed()
 }
 
