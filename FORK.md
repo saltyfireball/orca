@@ -62,6 +62,7 @@ Apply these in this order. Each one is a single commit.
 25. `SLRM-1337 Use the fork's own bundle ids for its helpers and macOS checks`
 26. `SLRM-1393 Warn before a quit, restart or update kills busy chats`
 27. `SLRM-1393 A held restart shows a neutral toast, not an error`
+28. `SLRM-1393 Fail open, bring the dialog forward and quit normally after a wait`
 
 Fork-only code lives in `fork/` folders:
 
@@ -111,9 +112,12 @@ Upstream files only get short hooks, which keeps rebases small:
 - The restart guard (SLRM-1393): `installForkRestartGuard()` after
   `installMainProcessQuitHandlers()` in `src/main/index.ts`; `guardForkRestart` wraps the
   `app:relaunch` and `app:restart` handlers in `src/main/ipc/app.ts`; `guardForkUpdateInstall`
-  wraps `updater:quitAndInstall` in `src/main/window/main-window-updater.ts`; and
+  wraps `updater:quitAndInstall` in `src/main/window/main-window-updater.ts`;
   `...forkRestartGuardMenuItems()` follows `checkForUpdatesItem` in
-  `src/main/menu/register-app-menu.ts`. The three come from the import-light
+  `src/main/menu/register-app-menu.ts`; and one `notifyForkRestartGuardUpdaterStatus()` call
+  after the status send in `src/main/updater/lifecycle/updater-status.ts` refreshes the menu row.
+  `app:relaunch` passes a third, deferred callback (cleanup, `relaunchApp`, `quitProcess`) for a
+  relaunch that runs after a wait. These come from the import-light
   `src/main/fork/restart-guard/restart-guard-hooks.ts`, which passes through until the guard
   installs, so upstream tests of those files are unchanged. A held restart resolves
   `ForkRestartHeld` (`src/shared/fork/restart-guard-held.ts`), not an error: `app-bridge.ts`
@@ -152,26 +156,36 @@ dock), a restart from the renderer (`app:relaunch`, `app:restart`) and an update
 any chat is busy, and asks first. The code is `src/main/fork/restart-guard/`.
 
 - **Busy** means this app owns the chat's provider process (`hostExecutionOwned`) and the chat is
-  working on a turn, waiting on a question, or has a live subagent or background command.
-  Idle chats never hold anything. The dialog lists up to eight busy chats with their workspace
-  and what each is running.
+  working on a turn, waiting on a question, or has a live subagent or background command (a
+  background task with no state does not count). Idle chats never hold anything. The dialog lists up to eight busy chats with their workspace
+  and what each is running. A chat waiting on an answer is listed as "waiting for you" but does
+  not hold a "when idle" wait.
+- **Dialog:** the main window is revealed (as Quit Completely does) and, on macOS, the app takes
+  focus before the dialog shows. Quitting again while it is open brings it forward again.
 - **Restart When Idle** (the default) waits, checking every 2 s, and goes ahead on its own once
   no chat is busy. A chat that starts working during the wait joins the list and is waited for
   too. The dock icon shows a progress bar and the app menu shows "Restart when idle: N of M
   chats finished"; clicking it, or quitting again, offers Keep Waiting, Restart Now or Stop
-  Waiting. **Restart Now** goes at once. **Cancel** does nothing. A held restart from the renderer shows "Restart will run once your
+  Waiting. Now carries out the latest request, so Cmd-Q then Now during a restart wait quits.
+  **Restart Now** goes at once. **Cancel** does nothing. A held restart from the renderer shows "Restart will run once your
   chats are idle." (nothing on Cancel), not an error.
 - **Update Ready - Restart When Idle** appears in the app menu once an update is downloaded. It
-  skips the first dialog and installs as soon as no chat is busy (at once if none is).
+  skips the first dialog and installs as soon as no chat is busy (at once if none is). It is
+  hidden while the install runs, and refreshes on every updater status.
 - **Never held:** macOS logout and shutdown (`powerMonitor` `shutdown`; Windows
-  `query-session-end`), a quit another listener already vetoed, serve mode, and quits another
+  `query-session-end`, `session-end`), a quit another listener already vetoed, serve mode, and quits another
   owner committed (signals and the supervisor through `quitProcess`, an update already
   installing, teardown already started). A Now or a finished wait approves the quit it starts
-  for 2 minutes.
+  for 2 minutes. The shutdown flag clears after 60 s or on `powerMonitor` `resume`, so a
+  cancelled logout does not turn the guard off for the session.
+- **Fails open:** an error reading chats, showing the dialog or in the before-quit listener is
+  logged ("[restart-guard] failing open") and the quit, restart or install goes ahead.
 - **Not covered:** relaunches the main process starts itself (profile switch and transfer, GPU
   fallback, WSL drive conversion, Windows run-as-administrator) and serve mode's remote update
-  install. A restart or install that runs after a wait skips the renderer's own restart
-  preparation; the main process's cleanup and will-quit flush still run.
+  install. A restart or install that runs after a wait takes the normal quit path, so the main
+  process's cleanup and the will-quit flush run, but it skips the renderer's own restart
+  preparation (as a plain Cmd-Q does). Startup recovery screens do not wait for the relaunch
+  result, so a held relaunch there shows no toast.
 
 ## Shared mode
 
