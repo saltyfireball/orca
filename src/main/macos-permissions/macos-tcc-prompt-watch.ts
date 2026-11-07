@@ -1,6 +1,7 @@
 import { spawn, type ChildProcessByStdio } from 'node:child_process'
 import { createInterface, type Interface } from 'node:readline'
 import type { Readable, Writable } from 'node:stream'
+import { isForkTccResponsibleIdentifier } from '../fork/fork-app-identity'
 
 /** Stdin EOF tells the wrapper that Orca died. */
 export type LogStreamChild = ChildProcessByStdio<Writable, Readable, Readable>
@@ -58,7 +59,8 @@ export function parseTccPromptEvent(line: string): TccPromptEvent | null {
 
 export function isOrcaAttributedPrompt(event: TccPromptEvent): boolean {
   return (
-    ORCA_RESPONSIBLE_IDENTIFIERS.has(event.responsibleIdentifier) &&
+    (ORCA_RESPONSIBLE_IDENTIFIERS.has(event.responsibleIdentifier) ||
+      isForkTccResponsibleIdentifier(event.responsibleIdentifier)) &&
     WATCHED_SERVICES.has(event.service)
   )
 }
