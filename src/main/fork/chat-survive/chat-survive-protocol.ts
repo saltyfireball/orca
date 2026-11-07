@@ -61,6 +61,11 @@ export type ChatSurviveClientFrame =
   | { t: 'stop' }
   /** The owner has what it needs (normally after `exit`); the broker may go. */
   | { t: 'release' }
+  /**
+   * The owner hands the provider on (the quit hook): when this connection closes the provider keeps
+   * running for a later owner. A connection that closes without it stops the provider.
+   */
+  | { t: 'detach' }
 
 export function encodeFrame(frame: ChatSurviveBrokerFrame | ChatSurviveClientFrame): string {
   return `${JSON.stringify(frame)}\n`
