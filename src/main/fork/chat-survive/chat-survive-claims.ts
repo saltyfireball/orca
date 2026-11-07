@@ -53,13 +53,20 @@ export function takeChatSurviveClaim(sessionId: string): ChatSurviveClaim | null
 
 /** Stops a claimed provider nothing took, as recovery does today. */
 export function dropChatSurviveClaim(sessionId: string): void {
-  const connection = takeChatSurviveClaim(sessionId)?.connection
-  if (connection) {
-    stopping.add(sessionId)
-    connection.stop()
-    void connection.exited.then(() => connection.release())
-    void connection.ended.then(() => stopping.delete(sessionId))
+  const claim = takeChatSurviveClaim(sessionId)
+  if (claim) {
+    stopChatSurviveClaim(claim)
   }
+}
+
+/** Stops a taken claim's provider; until it is gone no other provider may start for the chat. */
+export function stopChatSurviveClaim(claim: ChatSurviveClaim): void {
+  const { connection } = claim
+  const sessionId = claim.record.sessionId
+  stopping.add(sessionId)
+  connection.stop()
+  void connection.exited.then(() => connection.release())
+  void connection.ended.then(() => stopping.delete(sessionId))
 }
 
 /** True while a dropped claim's provider may still write; no second provider may start then. */

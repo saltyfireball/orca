@@ -24,6 +24,9 @@ import type { ChatSurviveStreamMark } from './chat-survive-stream-mark'
 /** How long recovery waits for a surviving broker to answer before stopping it as today. */
 const CLAIM_TIMEOUT_MS = 2_000
 
+/** A record without the hash of its launch is never adopted. */
+const LAUNCH_HASH = /^[0-9a-f]{64}$/
+
 type DetachedRecord = ChatSurviveRecord & {
   sessionId: string
   detached: ChatSurviveStreamMark & { fence: number }
@@ -77,13 +80,14 @@ function readDetachedRecord(path: string, sessionId: string, pid: number): Detac
   if (typeof raw !== 'object' || raw === null) {
     return null
   }
-  const [v, id, brokerPid, socketPath, token, detached] = fields(
+  const [v, id, brokerPid, socketPath, token, launch, detached] = fields(
     raw,
     'v',
     'sessionId',
     'brokerPid',
     'socketPath',
     'token',
+    'launch',
     'detached'
   )
   const mark = readMark(detached)
@@ -93,11 +97,13 @@ function readDetachedRecord(path: string, sessionId: string, pid: number): Detac
     brokerPid !== pid ||
     typeof socketPath !== 'string' ||
     typeof token !== 'string' ||
+    typeof launch !== 'string' ||
+    !LAUNCH_HASH.test(launch) ||
     !mark
   ) {
     return null
   }
-  return { v: 1, sessionId, brokerPid: pid, socketPath, token, detached: mark }
+  return { v: 1, sessionId, brokerPid: pid, socketPath, token, launch, detached: mark }
 }
 
 async function claim(record: DetachedRecord): Promise<ChatSurviveConnection | null> {
