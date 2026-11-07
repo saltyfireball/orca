@@ -7,6 +7,7 @@ import { StructuredConversationCommandController as CommandController } from '..
 
 import type { AgentSessionSubscribeInput } from '../publication/subscribers/agent-session-subscribe-input'
 import { createStartupRecovery } from '../recovery/structured-agent-session-restart-reconcile'
+import { forkChatSurviveRecover } from '../../../fork/chat-survive/chat-survive-adopt'
 import { StructuredAgentSessionTaskQueue } from './structured-agent-session-task-queue'
 import { StructuredAgentSessionHostRuntimeState } from './structured-agent-session-host-runtime-state'
 import { structuredAgentSessionEntryDelegates } from '../acquisition/structured-agent-session-create'
@@ -205,8 +206,9 @@ export class StructuredAgentSessionHost {
   agentDefinitions = this.reads.agentDefinitions
   knownAgentIds = this.reads.knownAgentIds
 
+  // Fork (SLRM-1394): a chat whose broker recovery adopted is started at once to reattach it.
   private readonly tabs = createTabs(this, this.sessions, this.clientDelivery, (ids) =>
-    this.startup.recover(ids)
+    forkChatSurviveRecover(this.startup.recover(ids), ids, this.attachContext)
   )
   listSessionTabs = this.tabs.listSessionTabs
   isSessionTabVisible = this.tabs.isSessionTabVisible
