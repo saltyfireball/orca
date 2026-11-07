@@ -33,17 +33,21 @@ function fakeHost(input: {
     inView: () => true,
     summary: (id) => {
       const record = input.records.find((entry) => entry.sessionId === id)
-      return record
-        ? {
-            sessionId: id,
-            workspaceId: record.location.workspaceId,
-            agent: 'claude',
-            status: status.get(id) ?? 'idle',
-            hostExecutionOwned: running.has(id),
-            latestPrompt: '',
-            updatedAt: 1
-          }
-        : undefined
+      if (!record) {
+        return undefined
+      }
+      const summary: AgentSessionStatusSummary = {
+        sessionId: id,
+        workspaceId: record.location.workspaceId,
+        agent: 'claude',
+        status: status.get(id) ?? 'idle',
+        latestPrompt: '',
+        updatedAt: 1
+      }
+      if (running.has(id)) {
+        summary.hostExecutionOwned = true
+      }
+      return summary
     },
     runningHome: (id) => running.get(id),
     accountLabel: (id) => (input.accounts.includes(id) ? `${id}@example.test` : undefined),
