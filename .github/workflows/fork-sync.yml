@@ -154,7 +154,7 @@ jobs:
 
       - name: Fork tests
         if: steps.rebase.outputs.changed == 'true'
-        run: pnpm test src/shared/fork src/main/updater src/renderer/src/components/native-chat/fork config/scripts/fork --maxWorkers=2
+        run: pnpm test src/shared/fork src/main/fork src/main/updater src/renderer/src/components/native-chat/fork config/scripts/fork --maxWorkers=2
 
       # Mirrors release-mac-build.yml: the install-mobile-dependencies action.
       - name: Install mobile dependencies
@@ -331,9 +331,11 @@ jobs:
           codesign --verify --deep --strict "$app"
           requirement="$(codesign -d -r- "$app" 2>&1 | sed -n 's/^designated => //p')"
           echo "designated => $requirement"
-          expected="identifier \"com.saltyfireball.orca\" and certificate leaf = H\"$FORK_MAC_CERT_SHA1\""
-          if [ "$requirement" != "$expected" ]; then
-            echo "::error::Expected designated requirement: $expected"
+          # A self-signed certificate is its own root, so codesign writes "root" where a CA chain says "leaf".
+          root="identifier \"com.saltyfireball.orca\" and certificate root = H\"$FORK_MAC_CERT_SHA1\""
+          leaf="identifier \"com.saltyfireball.orca\" and certificate leaf = H\"$FORK_MAC_CERT_SHA1\""
+          if [ "$requirement" != "$root" ] && [ "$requirement" != "$leaf" ]; then
+            echo "::error::Expected designated requirement: $root"
             exit 1
           fi
 
