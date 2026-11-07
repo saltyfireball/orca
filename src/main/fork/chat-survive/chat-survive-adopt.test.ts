@@ -149,7 +149,8 @@ describe('chat-survive replay', () => {
 })
 
 describe.runIf(process.platform === 'darwin')('chat-survive adoption', () => {
-  function spawnClaude() {
+  // `extraArgs` stand in for launch flags; Node would take a real `--flag` as its own.
+  function spawnClaude(cwd: string, extraArgs: string[] = []) {
     // The test runs the broker entry from source, so Node needs the tsx loader in front of it.
     const spawner = createClaudeCodeProcessSpawn((spec) =>
       spawnProcess(
@@ -158,8 +159,8 @@ describe.runIf(process.platform === 'darwin')('chat-survive adoption', () => {
     )
     const options: SdkSpawnOptions = {
       command: process.execPath,
-      args: ['-e', FAKE_CLAUDE],
-      cwd: tempDir(),
+      args: ['-e', FAKE_CLAUDE, ...extraArgs],
+      cwd,
       env: { ...process.env, ORCA_AGENT_SESSION_ID: 'sess' },
       signal: new AbortController().signal
     }
@@ -184,7 +185,8 @@ describe.runIf(process.platform === 'darwin')('chat-survive adoption', () => {
   // Real processes: tsx compiles the broker on first start, which can take seconds.
   it('reattaches a handed-off chat at the next start, twice, and ends it as a pipe would', async () => {
     const recordDir = setup()
-    const first = spawnClaude()
+    const cwd = tempDir()
+    const first = spawnClaude(cwd)
     await waitFor(() => first.out().includes('"r2"'), 15_000)
     pids.add(Number(/"claude":(\d+)/.exec(first.out())?.[1]))
     first.child.stdin.write('{"type":"control_response","response":{"request_id":"r2"}}\n')
@@ -197,7 +199,7 @@ describe.runIf(process.platform === 'darwin')('chat-survive adoption', () => {
     const adopt = { sessionId: 'sess', ownerPid: brokerPid, platform: 'darwin' as const }
     await expect(forkChatSurviveAdopt(adopt)).resolves.toBe(true)
     expect(hasChatSurviveClaim('sess')).toBe(true)
-    const second = spawnClaude()
+    const second = spawnClaude(cwd)
     expect(hasChatSurviveClaim('sess')).toBe(false)
     expect(second.child.pid).toBe(brokerPid)
     second.child.stdin.write('hello\nworld\n')
@@ -218,7 +220,7 @@ describe.runIf(process.platform === 'darwin')('chat-survive adoption', () => {
     // A second restart works the same way, from the adopted child's own mark.
     await expect(forkChatSurviveQuit('sess', { phase: 'ready', fence: 1 })).resolves.toBe(true)
     await expect(forkChatSurviveAdopt(adopt)).resolves.toBe(true)
-    const third = spawnClaude()
+    const third = spawnClaude(cwd)
     expect(third.child.pid).toBe(brokerPid)
     await waitFor(() => third.out().includes('"r1"') && third.out().includes('world'))
     expect(third.out()).not.toContain('hello')
@@ -237,7 +239,7 @@ describe.runIf(process.platform === 'darwin')('chat-survive adoption', () => {
   it('claims nothing it cannot prove, so recovery stops the owner as today', async () => {
     let enabled = true
     const recordDir = setup(() => enabled)
-    const live = spawnClaude()
+    const live = spawnClaude(tempDir())
     await waitFor(() => live.out().includes('"r2"'), 15_000)
     pids.add(Number(/"claude":(\d+)/.exec(live.out())?.[1]))
     const brokerPid = live.child.pid ?? -1
@@ -255,10 +257,37 @@ describe.runIf(process.platform === 'darwin')('chat-survive adoption', () => {
     await expect(forkChatSurviveAdopt(adopt)).resolves.toBe(false)
     writeFileSync(path, saved.replace(/"token":"[^"]+"/, '"token":"forged"'))
     await expect(forkChatSurviveAdopt(adopt)).resolves.toBe(false)
+    // So is one that does not say what its provider was launched with.
+    writeFileSync(path, saved.replace(/,"launch":"[0-9a-f]{64}"/, ''))
+    await expect(forkChatSurviveAdopt(adopt)).resolves.toBe(false)
     writeFileSync(path, saved)
     enabled = false
     await expect(forkChatSurviveAdopt(adopt)).resolves.toBe(false)
     expect(hasChatSurviveClaim('sess')).toBe(false)
     expect(alive(brokerPid)).toBe(true)
+  }, 30_000)
+
+  // Real processes: tsx compiles the broker on first start, which can take seconds.
+  it('stops a surviving provider launched otherwise than the next start would', async () => {
+    setup()
+    const cwd = tempDir()
+    const first = spawnClaude(cwd, ['model-old'])
+    await waitFor(() => first.out().includes('"r2"'), 15_000)
+    pids.add(Number(/"claude":(\d+)/.exec(first.out())?.[1]))
+    await expect(forkChatSurviveQuit('sess', { phase: 'ready', fence: 3 })).resolves.toBe(true)
+    const brokerPid = first.child.pid ?? -1
+    const adopt = { sessionId: 'sess', ownerPid: brokerPid, platform: 'darwin' as const }
+    await expect(forkChatSurviveAdopt(adopt)).resolves.toBe(true)
+    // Another model: the start is refused while the old provider stops, then spawns as today.
+    expect(() => spawnClaude(cwd, ['model-new'])).toThrow('still stopping')
+    expect(hasChatSurviveClaim('sess')).toBe(false)
+    await waitFor(() => !alive(brokerPid))
+    await waitFor(() => {
+      try {
+        return spawnClaude(cwd, ['model-new']).child.pid !== brokerPid
+      } catch {
+        return false
+      }
+    })
   }, 30_000)
 })

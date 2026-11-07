@@ -4,6 +4,7 @@
 // It writes one JSON event per stdout line and takes commands on stdin: `quit <fence>` runs the
 // quit hook, `end` ends the chat's input. A first instance never answers a permission prompt, so
 // the next instance has to.
+import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { createInterface } from 'node:readline'
@@ -13,11 +14,18 @@ import { spawnProcess } from '@orca/process-host'
 import { createClaudeCodeProcessSpawn } from '../../claude/claude-agent-sdk-process-spawn'
 import { forkChatSurviveAdopt } from './chat-survive-adopt'
 import { forkChatSurviveQuit } from './chat-survive-detach'
+import { forkChatSurviveConsumed } from './chat-survive-registry'
 import { setChatSurviveConfigReader } from './chat-survive-spawn'
 
 const [mode, sessionId = '', recordDir = '', cwd = '', claude = '', last = ''] =
   process.argv.slice(2)
 const debugFile = process.env.ORCA_CHAT_SURVIVE_E2E_DEBUG
+// The Claude session id, the same in every instance: the first starts it, later ones resume it, as
+// Orca does, so the adopter's launch-spec check sees `--session-id` and `--resume` both.
+const claudeSession = createHash('sha256')
+  .update(sessionId)
+  .digest('hex')
+  .replace(/^(.{8})(.{4}).(.{3}).(.{3})(.{12}).*$/, '$1-$2-4$3-8$4-$5')
 const entryPath = join(import.meta.dirname, 'chat-survive-broker-entry.ts')
 const say = (event: Record<string, unknown>): void => {
   process.stdout.write(`${JSON.stringify(event)}\n`)
@@ -87,6 +95,7 @@ async function main(): Promise<void> {
       },
       permissionMode: 'default',
       model: 'haiku',
+      ...(mode === 'first' ? { sessionId: claudeSession } : { resume: claudeSession }),
       cwd,
       env: { ...process.env, ORCA_AGENT_SESSION_ID: sessionId },
       pathToClaudeCodeExecutable: claude,
@@ -101,6 +110,8 @@ async function main(): Promise<void> {
   })
   for await (const message of session) {
     say({ ev: 'msg', message })
+    // As claude-stream-json-connection.ts does once the chat has a message.
+    forkChatSurviveConsumed(spawner.managed?.child, message)
   }
   say({ ev: 'done' })
 }
