@@ -27,6 +27,7 @@ import type { AccountRestartAgent } from '@/store/terminals/terminal-contracts'
 import type { ProjectExecutionRuntimeResolution } from '../../../shared/project-execution-runtime'
 import { resolveAgentLaunchCommand } from '../../../shared/agent-launch/startup/tui-agent-launch-command'
 import { resolveStartupShell } from '../../../shared/agent-launch/startup/tui-agent-startup-shell'
+import { withForkClaudePaneAccount } from '@/fork/claude-account-move/claude-pane-account-move'
 
 export type AgentAccountRestartStartup = {
   command: string
@@ -152,7 +153,12 @@ export function buildPaneAccountRestartStartup(
   ) {
     return null
   }
-  return resume ?? (agent === 'codex' ? buildCodexAccountRestartStartup(args) : null)
+  // SLRM-1503: a pane moved to another Claude account restarts on that account (FORK.md).
+  return withForkClaudePaneAccount(
+    resume ?? (agent === 'codex' ? buildCodexAccountRestartStartup(args) : null),
+    agent,
+    makePaneKey(args.tabId, args.leafId)
+  )
 }
 
 export function buildCodexAccountRestartStartup(
