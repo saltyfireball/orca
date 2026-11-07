@@ -4,7 +4,9 @@
 const upstream = require('../../electron-builder.config.cjs')
 
 const FORK_RELEASE_OWNER = 'saltyfireball'
-const FORK_PRODUCT_NAME = 'Orca Fork'
+// Keep in sync with src/main/fork/app-name.ts. The app's data folder and Keychain item stay
+// "Orca Fork" (pinned at startup), so the rename from Orca Fork kept all data.
+const FORK_PRODUCT_NAME = 'Blackfish'
 // The fork ships Apple Silicon only: an x64 slice must boot its terminal host under Rosetta,
 // which the fork's runners and Macs do not need.
 const FORK_MAC_ARCH = ['arm64']
