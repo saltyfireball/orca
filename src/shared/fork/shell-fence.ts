@@ -144,3 +144,31 @@ export function commandFromShellFence(
     appendEnter: true
   }).command
 }
+
+export type EditedRunCommandCheck =
+  | { ok: true; command: string }
+  | { ok: false; reason: 'empty' | 'multiline' | 'unsafe' | 'heredoc' | 'continuation' }
+
+/**
+ * Checks a command the user edited in the Run confirm. It runs as typed (trimmed), so it must be
+ * one line with no unsafe characters and nothing that would leave the shell waiting for input.
+ */
+export function checkEditedRunCommand(text: string): EditedRunCommandCheck {
+  const command = text.trim()
+  if (command.length === 0) {
+    return { ok: false, reason: 'empty' }
+  }
+  if (/[\r\n]/.test(command)) {
+    return { ok: false, reason: 'multiline' }
+  }
+  if (hasUnsafeShellCharacters(command)) {
+    return { ok: false, reason: 'unsafe' }
+  }
+  if (hasHeredoc(command)) {
+    return { ok: false, reason: 'heredoc' }
+  }
+  if (command.endsWith('\\')) {
+    return { ok: false, reason: 'continuation' }
+  }
+  return { ok: true, command }
+}
