@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { createServer } from 'node:net'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ChatSurviveByteRing } from './chat-survive-byte-ring'
@@ -195,7 +196,7 @@ describe('chat-survive broker', () => {
     await waitFor(() => text().includes('echo:still\n'))
   })
 
-  it('keeps the provider running when the owning process dies, and hands its exit to the next owner', async () => {
+  it('stops the provider when its owner dies without handing it off', async () => {
     const { path, broker: host } = await broker()
     const owner = spawn(process.execPath, ['-e', OWNER, path, TOKEN], {
       stdio: ['ignore', 'pipe', 'ignore']
@@ -206,18 +207,39 @@ describe('chat-survive broker', () => {
       ownerText += chunk.toString('utf8')
     })
     await waitFor(() => ownerText.includes('attached') && host.status().attached)
-    // SIGKILL: the app gets no chance to say goodbye, as in a crash or a forced update.
+    // SIGKILL: no hand-off, as in a crash. Nobody could resume it, so it stops as today.
     owner.kill('SIGKILL')
-    await waitFor(() => !host.status().attached)
-    expect(alive(host.pid)).toBe(true)
+    expect((await host.done).reason).toBe('closed')
+    expect(alive(host.pid)).toBe(false)
+  })
 
-    const next = await connectChatSurviveBroker({ socketPath: path, token: TOKEN, fence: 2 })
+  it('takes a new owner only with a higher fence, and its input at the socket pace', async () => {
+    const { path } = await broker()
+    const first = await connectChatSurviveBroker({ socketPath: path, token: TOKEN, fence: 2 })
+    const done = Promise.withResolvers<void>()
+    first.write('paced\n', done.resolve)
+    await done.promise
+    first.detach()
+    await expect(
+      connectChatSurviveBroker({ socketPath: path, token: TOKEN, fence: 2 })
+    ).rejects.toThrow(ChatSurviveRefusedError)
+    const next = await connectChatSurviveBroker({ socketPath: path, token: TOKEN, fence: 3 })
     const text = collect(next)
-    next.write('quit\n')
-    expect(await next.exited).toEqual({ code: 3, signal: null })
-    expect(text()).toBe('')
-    next.release()
-    expect(await host.done).toEqual({ reason: 'released', exit: { code: 3, signal: null } })
+    await waitFor(() => text().includes('echo:paced\n'))
+  })
+
+  it('refuses a broker that welcomes in another protocol version', async () => {
+    const path = socketPath()
+    const server = createServer((socket) => {
+      const ring = { first: 0, end: 0, truncated: false }
+      const welcome = { t: 'welcome', pid: 1, fence: 1, out: ring, err: ring, exit: null }
+      socket.write(`${JSON.stringify({ ...welcome, v: CHAT_SURVIVE_PROTOCOL_VERSION + 1 })}\n`)
+    })
+    await new Promise<void>((resolve) => server.listen(path, resolve))
+    await expect(
+      connectChatSurviveBroker({ socketPath: path, token: TOKEN, fence: 1 })
+    ).rejects.toMatchObject({ reason: 'version' })
+    await new Promise((resolve) => server.close(resolve))
   })
 
   it('tells an owner that arrives after the provider exited how it ended', async () => {
