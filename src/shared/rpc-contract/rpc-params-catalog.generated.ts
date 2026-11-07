@@ -31,6 +31,11 @@ import {
   DesktopBrowserBridgeAttachParams,
   DesktopBrowserBridgeResultParams
 } from '../desktop-browser-bridge-protocol'
+import {
+  ForkClaudeAccountCancelParams,
+  ForkClaudeAccountMoveParams,
+  ForkClaudeAccountWhichParams
+} from '../fork/claude-account-move'
 import { MobileWebBundleChunkParamsSchema } from '../mobile-web-bundle/bundle-rpc-contract'
 import { MobileWebBundleLocaleCatalogParamsSchema } from '../mobile-web-bundle/locale-catalog-contract'
 import { OrcadMigrationBlobChunkRequestSchema } from '../orcad-migration/orcad-migration-blob-transfer'
@@ -1104,6 +1109,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'folderWorkspace.getPathStatus': FolderWorkspacePathStatus,
   'folderWorkspace.list': null,
   'folderWorkspace.update': FolderWorkspaceUpdate,
+  'fork.claudeAccount.cancel': ForkClaudeAccountCancelParams,
+  'fork.claudeAccount.move': ForkClaudeAccountMoveParams,
+  'fork.claudeAccount.which': ForkClaudeAccountWhichParams,
   'git.abortMerge': WorktreeSelectorOfGitParams,
   'git.abortRebase': WorktreeSelectorOfGitParams,
   'git.branchCompare': GitBranchCompare,
