@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { isRecord } from './chat-survive-protocol'
 
 const FIXTURE = join(import.meta.dirname, 'chat-survive-real-claude.test-fixture.ts')
 const CLAUDE =
@@ -34,8 +35,7 @@ function alive(pid: number): boolean {
 function field(value: unknown, ...path: string[]): unknown {
   let current = value
   for (const key of path) {
-    current =
-      typeof current === 'object' && current !== null ? Reflect.get(current, key) : undefined
+    current = isRecord(current) ? current[key] : undefined
   }
   return current
 }
