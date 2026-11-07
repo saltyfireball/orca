@@ -7,6 +7,7 @@ import { NODE_RUNTIME_DARWIN_MINIMUM_OS } from '../../../../shared/node-runtime-
 import { runProcess } from '@orca/process-host'
 import { rm } from '../../../filesystem/asar-transparent-fs'
 import { compareDottedVersions } from '../../../orcad/native-host-abi'
+import { runningForkBundleId } from '../../../fork/fork-app-identity'
 import { DaemonClient } from '../../transport/client/daemon-client'
 import {
   DaemonEndpointOwnershipError,
@@ -80,7 +81,9 @@ function buildMacDaemonLaunchJob(
     KeepAlive: false,
     AbandonProcessGroup: true,
     // Associate plist-launched jobs with Orca for Local Network access.
-    AssociatedBundleIdentifiers: [LOCAL_BUILD_COMPATIBILITY_CONTRACT.appId],
+    AssociatedBundleIdentifiers: [
+      runningForkBundleId() ?? LOCAL_BUILD_COMPATIBILITY_CONTRACT.appId
+    ],
     ProcessType: 'Interactive',
     // launchd disables cloud-file downloads for jobs unless asked; shells need them like Terminal.app.
     MaterializeDatalessFiles: true,

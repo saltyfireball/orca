@@ -20985,22 +20985,6 @@
         "questionNotSentDetail": "Your question is still in this chat. Send /btw again to retry.",
         "questionUnconfirmed": "{{agent}} couldn't confirm the side chat got your question",
         "questionUnconfirmedDetail": "Check the side chat before asking again. Your question is still in this chat."
-      },
-      "runCode": {
-        "confirmTitle": "Run in {{name}}?",
-        "confirm": "Run",
-        "cancel": "Cancel",
-        "tabLabel": "Chat: {{command}}",
-        "action": "Run in terminal",
-        "staleTarget": "Not run: this chat no longer points at the same workspace and host.",
-        "editHint": "Edit the command if you need to. Enter runs it.",
-        "commandLabel": "Command",
-        "reset": "Reset",
-        "refuseEmpty": "Enter a command to run.",
-        "refuseMultiline": "Keep the command on one line.",
-        "refuseUnsafe": "The command has a hidden or control character.",
-        "refuseHeredoc": "Heredocs cannot run from here.",
-        "refuseContinuation": "Remove the trailing backslash."
       }
     },
     "tab": {
