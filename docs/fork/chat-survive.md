@@ -236,10 +236,46 @@ owner-gone signal, and fences decide who may write).
    - Tests (`chat-survive-spawn.test.ts`): every fallback case spawns the original spec, the
      broker plan and record (modes, removal on exit), record names, and a real Claude-shaped
      provider closed through the broker by `proveClaudeChildExit` with `{root, tree}` exited.
-4. **Quit hook** (2 days). One hook in `evictOwnedStructuredAgentSessions` for trigger `quit`:
-   flush the journal, persist offsets, detach instead of stopping, and skip the turn cut and the
-   restart offer for chats that are now surviving. Coordinate with the restart guard so a
-   surviving chat no longer counts as a reason to delay a restart.
+4. **Quit hook (done).** One hook in `evictOwnedStructuredAgentSessions` (quit and update):
+   `forkChatSurviveQuit` (`chat-survive-detach.ts`) runs under the session's serialize, before the
+   stop. For a `ready` child with no stop under way, whose provider runs under a live broker this
+   instance started, with the setting still on, it hands the provider off; otherwise the stop runs
+   as today.
+   - Watching from the spawn (`chat-survive-registry.ts`, `chat-survive-stream-mark.ts`): every
+     broker child is registered by session id. Its stdout is counted alongside the SDK's reader
+     (bytes handed to the app, the end of the last whole line) and each line's head is checked
+     for a provider `control_request` (kept pending with its line's offset until a
+     `control_response` for its id goes in on stdin, or a `control_cancel_request` comes out).
+   - Hand-off: the replay mark is `out` = the last whole line, or the earliest pending request
+     before it; `seen` = the last whole line; `pending` = the ids. The app says hello on the
+     socket with `takeover: true` and the chat's fence (a takeover is the only hello the broker
+     accepts while the app that spawned it lives; the fence check comes first), within 1 s. The
+     welcome must show no exit, no truncation from `out`, and at least `seen` bytes. Then the
+     record is rewritten (whole file, by rename) with `detached: {fence, out, err, seen,
+     pending}`, the entry is marked detached and the socket dropped, so the broker arms its orphan
+     timer. A failed or late connect returns false (a late one is dropped, and the stop that
+     follows signals the broker, which stops the provider); a bad welcome or a failed record write
+     sends `stop` and returns false.
+   - After a hand-off nothing in this instance signals the broker: `child.kill` does nothing, and
+     `forkChatSurviveManaged` (a Proxy on the managed process, the second line of the spawn hook)
+     answers `close`, `closeWriter` and `terminateTree` with `live` without signalling. That is
+     the truth, so the lease stays held and the adapter's `closeAll` logs that it could not prove
+     the child stopped (a teardown failure the quit already tolerates). The session stays in
+     `retainOnFailure`, so its journal is not closed under a child that is still live, and its
+     stop event, restart witness and shutdown cut are skipped (no resume offer; if the next start
+     cannot adopt it, it recovers as crash state).
+   - Restart guard: `readBusyChats` passes `chatSurviveWillSurvive`, so a busy Claude chat whose
+     provider would be handed off does not hold a quit, restart or update. Codex chats always
+     count.
+   - The CLI resends unanswered `can_use_tool` prompts in the reply to a second `initialize`
+     (`pending_permission_requests`, Claude Code 2.1.268+), which the SDK dispatches; the pending
+     ids cover other requests and older CLIs.
+   - Tests: the stream mark (split chunks, answers, cancels); the takeover against a live stand-in
+     app (its later input and stdin end no longer reach the provider, a lower fence is refused,
+     the next owner gets the provider); a real Claude-shaped provider handed off through
+     `createClaudeCodeProcessSpawn`, after which the whole exit-proof ladder leaves it running,
+     the record holds the mark and the next owner's replay starts at the unanswered request; the
+     setting-off and unknown-session fallbacks; the guard filter.
 5. **Adopt at start** (3-5 days). Where restart reconciliation leaves a session `recovering` and
    its broker file exists, connect with the next fence, open a new SDK `query()` whose spawn hook
    returns that connection, replay from the persisted offsets with journal de-duplication, and
