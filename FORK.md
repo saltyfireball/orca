@@ -83,6 +83,7 @@ Apply these in this order. Each one is a single commit.
 33. `SLRM-1394 Chat survive: hand a Claude chat to its broker at quit`
 34. `SLRM-1394 Chat survive: adopt a surviving broker at start so the chat carries on`
 35. `SLRM-1394 Chat survive: run it against the real Claude Code and ask a resent prompt once`
+36. `SLRM-1394 Chat survive: replay from the last consumed message, stop late claims`
 
 Fork-only code lives in `fork/` folders:
 
@@ -164,6 +165,9 @@ Upstream files only get short hooks, which keeps rebases small:
   returns true; `StructuredAgentSessionHost`'s tab recovery callback goes through
   `forkChatSurviveRecover`, which starts each adopted chat
   (`src/main/fork/chat-survive/chat-survive-adopt.ts`).
+- Chat survive consumed hook (SLRM-1394): `openClaudeStreamJsonConnection` calls
+  `forkChatSurviveConsumed` after each `onMessage`, so the replay mark moves past messages the
+  chat consumed (`src/main/fork/chat-survive/chat-survive-registry.ts`).
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
