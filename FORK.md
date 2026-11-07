@@ -33,8 +33,10 @@ named Orca Fork until SLRM-1367. `main` is always
 - **Groundwork for chats that survive a restart (SLRM-1394).** `src/main/fork/chat-survive/` holds
   a broker that hosts one chat provider outside the app, keeps its output in a ring with byte
   offsets, and lets the next app instance reattach by token and lease fence, with an orphan
-  timeout when nobody comes back. Nothing in the app uses it yet and it has no upstream hooks. The
-  design and the remaining phases are in `docs/fork/chat-survive.md`.
+  timeout when nobody comes back. The broker is built as its own plain-Node entry
+  (`out/main/chat-survive-broker-entry.js`) that runs upstream's provider supervisor under it.
+  Nothing in the app starts a broker yet. The design and the remaining phases are in
+  `docs/fork/chat-survive.md`.
 
 ## Patch list
 
@@ -69,6 +71,7 @@ Apply these in this order. Each one is a single commit.
 27. `SLRM-1393 A held restart shows a neutral toast, not an error`
 28. `SLRM-1393 Fail open, bring the dialog forward and quit normally after a wait`
 29. `SLRM-1394 Chat survive: design and the provider broker transport`
+30. `SLRM-1394 Chat survive: the broker process around the provider supervisor`
 
 Fork-only code lives in `fork/` folders:
 
@@ -133,6 +136,9 @@ Upstream files only get short hooks, which keeps rebases small:
   (`src/renderer/src/fork/restart-guard-held-toast.ts`) in each of `SidebarSettingsHelpMenu.tsx`,
   `AdvancedPane.tsx`, `WindowMaterialSetting.tsx` and `UpdateCard.tsx` clears its spinner and
   shows a neutral toast instead of "Couldn't restart Orca."
+- The chat-survive broker entry (SLRM-1394): one entry in `main-build-entry-points.ts`, and in
+  `plain-node-entry-guard.ts` it shares the `daemon-entry` line (a two-name `map`, so the file
+  stays under max-lines). The builder overlay adds it to `asarUnpack`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

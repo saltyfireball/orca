@@ -17,6 +17,8 @@ module.exports = {
   appId: 'com.saltyfireball.orca',
   productName: FORK_PRODUCT_NAME,
   extraMetadata: { ...upstream.extraMetadata, productName: FORK_PRODUCT_NAME },
+  // The chat-survive broker runs as plain Node, which cannot read app.asar (SLRM-1394).
+  asarUnpack: [...upstream.asarUnpack, 'out/main/chat-survive-broker-entry.js'],
   mac: {
     ...upstream.mac,
     target: upstream.mac.target.map((entry) =>
