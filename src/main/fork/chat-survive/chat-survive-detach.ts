@@ -73,7 +73,8 @@ export async function detachChatSurvive(sessionId: string, fence: number): Promi
   }
   entry.state = 'detaching'
   const mark = entry.tracker.mark()
-  const connection = await takeOver(entry, fence, { out: mark.out, err: mark.err })
+  const fenceAbove = Math.max(fence, entry.fenceFloor + 1)
+  const connection = await takeOver(entry, fenceAbove, { out: mark.out, err: mark.err })
   if (!connection) {
     return undo(entry)
   }
@@ -82,7 +83,10 @@ export async function detachChatSurvive(sessionId: string, fence: number): Promi
     return undo(entry)
   }
   try {
-    writeChatSurviveRecord(entry.recordPath, { ...entry.record, detached: { ...mark, fence } })
+    writeChatSurviveRecord(entry.recordPath, {
+      ...entry.record,
+      detached: { ...mark, fence: fenceAbove }
+    })
   } catch {
     connection.stop()
     return undo(entry)
