@@ -117,10 +117,7 @@ const devChannelRepo = isHourlyChannel
     : isAdhocChannel
       ? 'orca-adhoc'
       : null
-// Fork identity: own bundle id, name and userData so it installs beside stock Orca (FORK.md).
-const FORK_RELEASE_OWNER = 'saltyfireball'
-const forkProductName = 'Orca Fork'
-const appId = 'com.saltyfireball.orca'
+const appId = 'com.stablyai.orca'
 const featureWallResources = {
   from: 'resources/onboarding/feature-wall',
   to: 'onboarding/feature-wall'
@@ -261,17 +258,14 @@ const ORCA_MAC_TEAM_ID = '6CX3WHS9HZ'
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
   appId,
-  productName: forkProductName,
+  productName: 'Orca',
   protocols: [{ name: 'Orca', schemes: ['orca'] }],
   toolsets: { appimage: '1.0.3' },
-  extraMetadata: {
-    productName: forkProductName,
-    ...(devChannelBuildVersion
-      ? { version: devChannelBuildVersion }
-      : localBuildVersion
-        ? { version: localBuildVersion }
-        : {})
-  },
+  ...(devChannelBuildVersion
+    ? { extraMetadata: { version: devChannelBuildVersion } }
+    : localBuildVersion
+      ? { extraMetadata: { version: localBuildVersion } }
+      : {}),
   directories: {
     buildResources: 'resources/build'
   },
@@ -774,7 +768,7 @@ module.exports = {
   npmRebuild: true,
   publish: {
     provider: 'github',
-    owner: FORK_RELEASE_OWNER,
+    owner: 'stablyai',
     repo: devChannelRepo ?? 'orca',
     // Keep main-repo releases draft until release-cut verifies all assets; early --publish always would expose missing Windows installers.
     releaseType: devChannelRepo ? 'prerelease' : 'draft'
