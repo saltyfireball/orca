@@ -121,9 +121,31 @@ runs in `saltyfireball/orca`. Every third-party action is pinned to a full commi
    yet, or `force_build` is set. The second case retries a failed build without waiting for a
    new upstream tag.
    - Works out the fork version and sets it in the build copy of `package.json`.
-   - Installs arm64 natives only and runs `node config/scripts/fork/build-mac-fork.mjs` unsigned.
+   - Imports the fork signing identity (see Signing) and installs arm64 natives only, then runs
+     `node config/scripts/fork/build-mac-fork.mjs`.
+   - Checks the app's designated requirement is the fork certificate, so Squirrel.Mac accepts it
+     as an update.
    - Checks that `latest-mac.yml` and the app both carry the fork version.
    - Publishes the arm64 dmg, the arm64 zip and `latest-mac.yml` as release `v<fork version>`.
+
+### Signing
+
+Squirrel.Mac installs an update only when the new app meets the running app's designated
+requirement. An ad-hoc signature's requirement is its own cdhash, which no later build meets, so
+the fork signs every build with one self-signed certificate, `Orca Fork Code Signing` (SHA-1
+`c5e8485cb550edea627fda93ead7cf1975ed3710`, valid to 2046). Its requirement,
+`identifier "com.saltyfireball.orca" and certificate leaf = H"c5e8...3710"`, holds for every build.
+
+- The PKCS#12 and its password live in Infisical folder `/orca_fork`
+  (`ORCA_FORK_MAC_CERT_P12_B64`, `ORCA_FORK_MAC_CERT_PASSWORD`, `ORCA_FORK_MAC_CERT_SHA1`) and as
+  the Actions secrets `FORK_MAC_CERT_P12_B64` and `FORK_MAC_CERT_PASSWORD`.
+- build-mac imports it into a temporary keychain and trusts it for code signing on that runner
+  only, because electron-builder signs only with an identity `security find-identity -v` lists.
+  `CSC_NAME` picks it for the app and the helpers afterPack signs.
+- There is no hardened runtime or notarization; Gatekeeper still treats a downloaded dmg as from
+  an unidentified developer.
+- Replacing the certificate changes the requirement: installed copies then need one manual
+  install, as the move from ad-hoc did.
 
 ### Deploy key and tokens
 
