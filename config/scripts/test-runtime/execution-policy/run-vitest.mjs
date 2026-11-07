@@ -1,5 +1,5 @@
 import os from 'node:os'
-import { resolve } from 'node:path'
+import { delimiter, resolve } from 'node:path'
 import { runProcess, runProcessSync, spawnProcess } from '@orca/process-host'
 import { hasNoChangedFiles } from './vitest-changed-precheck.mjs'
 import { RUN_ARGS_ENV } from './vitest-run-filters.mjs'
@@ -17,6 +17,12 @@ const root = resolve(import.meta.dirname, '../../../..')
 const vitestArgs = process.argv.slice(2)
 
 const FORWARDED_SIGNALS = ['SIGINT', 'SIGTERM', 'SIGHUP']
+
+// Fork (SLRM-1394): the pinned binary is `bun.exe`, so expose its `bun` shim the way `pnpm run` does.
+function pathWithPinnedBun(path) {
+  const bin = resolve(root, 'node_modules', '.bin')
+  return path ? `${bin}${delimiter}${path}` : bin
+}
 
 function waitForVitest(spec) {
   return new Promise((resolve, reject) => {
@@ -75,6 +81,11 @@ async function runVitest() {
       cwd: root,
       env: {
         ...process.env,
+        // Fork (SLRM-1394): tests run under Bun, so the Claude SDK runs script CLIs with `bun`.
+        // Windows keys it `Path`; the fork builds and tests on macOS only.
+        ...(pinnedBun && process.platform !== 'win32'
+          ? { PATH: pathWithPinnedBun(process.env.PATH) }
+          : {}),
         ...runTemp?.env,
         ...moduleCacheEnv,
         ORCA_BACKGROUND_LAUNCH: '1',
