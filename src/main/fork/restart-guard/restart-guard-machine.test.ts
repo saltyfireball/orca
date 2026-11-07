@@ -11,6 +11,10 @@ function chat(sessionId: string): BusyChat {
   return { sessionId, name: sessionId, workspace: 'ws', activity: { kind: 'turn' } }
 }
 
+function asking(sessionId: string): BusyChat {
+  return { sessionId, name: sessionId, workspace: 'ws', activity: { kind: 'question' } }
+}
+
 const quiet = { defaultPrevented: false, systemShutdown: false, committedElsewhere: false }
 
 function setup(options: {
@@ -22,9 +26,10 @@ function setup(options: {
   let clock = 0
   const timers: (() => void)[] = []
   const deps: RestartGuardDeps = {
-    readBusyChats: () => busy,
+    readBusyChats: vi.fn(() => busy),
     askBeforeRestart: vi.fn(async () => options.choice ?? 'cancel'),
     askWhileWaiting: vi.fn(async () => options.waitingChoice ?? 'keep'),
+    bringForward: vi.fn(),
     quitApp: vi.fn(),
     schedule: (run) => {
       timers.push(run)
@@ -36,7 +41,8 @@ function setup(options: {
       }
     },
     onProgress: vi.fn(),
-    now: () => clock
+    now: () => clock,
+    onError: vi.fn()
   }
   return {
     deps,
@@ -187,5 +193,78 @@ describe('RestartGuard', () => {
     busy.tick()
     await flush()
     expect(later).toHaveBeenCalledTimes(1)
+  })
+
+  it('fails open when reading the chats throws', async () => {
+    const { guard, deps } = setup({ busy: [] })
+    vi.mocked(deps.readBusyChats).mockImplementation(() => {
+      throw new Error('host gone')
+    })
+    expect(guard.onBeforeQuit(quiet)).toBe('pass')
+    expect(await guard.request('restart', vi.fn())).toBe('proceed')
+    expect(deps.onError).toHaveBeenCalled()
+  })
+
+  it('goes ahead when the dialog itself fails', async () => {
+    const { guard, deps } = setup({ busy: [chat('a')] })
+    vi.mocked(deps.askBeforeRestart).mockRejectedValueOnce(new Error('no dialog'))
+    expect(await guard.request('restart', vi.fn())).toBe('proceed')
+  })
+
+  it('quits when the dialog fails during a held quit', async () => {
+    const { guard, deps } = setup({ busy: [chat('a')] })
+    vi.mocked(deps.askBeforeRestart).mockRejectedValueOnce(new Error('no dialog'))
+    expect(guard.onBeforeQuit(quiet)).toBe('hold')
+    await flush()
+    expect(deps.quitApp).toHaveBeenCalledTimes(1)
+  })
+
+  it('brings the dialog forward before asking and again on a repeated quit', () => {
+    const { guard, deps } = setup({ busy: [chat('a')], choice: 'wait' })
+    guard.onBeforeQuit(quiet)
+    expect(deps.bringForward).toHaveBeenCalledTimes(1)
+    guard.onBeforeQuit(quiet)
+    expect(deps.bringForward).toHaveBeenCalledTimes(2)
+  })
+
+  it('quits on Cmd-Q then Now during a restart wait, keeping the latest intent', async () => {
+    const { guard, deps } = setup({ busy: [chat('a')], choice: 'wait', waitingChoice: 'now' })
+    const restart = vi.fn()
+    await guard.request('restart', restart)
+    expect(guard.onBeforeQuit(quiet)).toBe('hold')
+    await flush()
+    await flush()
+    expect(deps.askWhileWaiting).toHaveBeenCalledWith({
+      kind: 'quit',
+      total: 1,
+      remaining: [chat('a')]
+    })
+    expect(deps.quitApp).toHaveBeenCalledTimes(1)
+    expect(restart).not.toHaveBeenCalled()
+    expect(guard.getProgress()).toBeNull()
+  })
+
+  it('lists chats waiting for an answer but does not wait for them', async () => {
+    const { guard, deps, setBusy, tick } = setup({
+      busy: [asking('q'), chat('a')],
+      choice: 'wait'
+    })
+    expect(deps.readBusyChats()).toHaveLength(2)
+    const restart = vi.fn()
+    expect(await guard.request('restart', restart)).toBe('waiting')
+    expect(deps.askBeforeRestart).toHaveBeenCalledWith('restart', [asking('q'), chat('a')])
+    expect(guard.getProgress()).toEqual({ kind: 'restart', total: 1, remaining: [chat('a')] })
+    setBusy([asking('q')])
+    tick()
+    await flush()
+    expect(restart).toHaveBeenCalledTimes(1)
+  })
+
+  it('goes ahead at once on "when idle" when only answer-waiting chats are open', async () => {
+    const { guard } = setup({ busy: [asking('q')], choice: 'wait' })
+    const restart = vi.fn()
+    expect(await guard.request('restart', restart)).toBe('proceed')
+    await flush()
+    expect(restart).not.toHaveBeenCalled()
   })
 })

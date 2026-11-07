@@ -16,10 +16,13 @@ import { isProcessQuitRequested } from '../../startup/process-quit-request'
 import { quitTeardownStartGate } from '../../startup/quit/quit-teardown-start-gate'
 import { getUpdateStatus, isQuittingForUpdate, quitAndInstall } from '../../updater/updater-service'
 import { translateMain } from '../../i18n/main-i18n'
+import { safelyRevealWindow } from '../../window/focus-existing-window'
+import { isBackgroundLaunch } from '../../window/foreground-activation-policy'
 import type { ForkRestartHeld } from '../../../shared/fork/restart-guard-held'
 import { listBusyChats, type BusyChat } from './busy-chats'
 import { askBeforeRestart, askWhileWaiting, waitingLabel } from './restart-guard-dialog'
 import { setForkRestartGuardHooks } from './restart-guard-hooks'
+import { createSystemShutdownLatch } from './system-shutdown-latch'
 import {
   RestartGuard,
   type RestartGuardKind,
@@ -28,7 +31,11 @@ import {
 
 const MENU_REFRESH_MS = 30_000
 
-let systemShutdown = false
+const schedule = (run: () => void, ms: number): (() => void) => {
+  const timer = setTimeout(run, ms)
+  return () => clearTimeout(timer)
+}
+const systemShutdown = createSystemShutdownLatch(schedule)
 let guard: RestartGuard | null = null
 let menuKey = ''
 
@@ -45,16 +52,28 @@ function showMessageBox(options: MessageBoxOptions): Promise<MessageBoxReturnVal
     : dialog.showMessageBox(options)
 }
 
+function logError(error: unknown): void {
+  console.error('[restart-guard] failing open', error)
+}
+
+/** Reveal the window the sheet sits on, as Quit Completely does; a hidden one never shows it. */
+function bringForward(): void {
+  const window = liveMainWindow()
+  if (window) {
+    safelyRevealWindow(window)
+  }
+  // Background (agent and test) launches must never take focus.
+  if (process.platform === 'darwin' && !isBackgroundLaunch()) {
+    app.focus({ steal: true })
+  }
+}
+
 function readBusyChats(): BusyChat[] {
   const host = getStructuredAgentSessionHost()
   if (!host) {
     return []
   }
   return listBusyChats(host.loadedSessionIds().map((id) => host.readStatusSummary(id)))
-}
-
-function markSystemShutdown(): void {
-  systemShutdown = true
 }
 
 function showProgress(progress: RestartGuardProgress | null): void {
@@ -68,12 +87,21 @@ function showProgress(progress: RestartGuardProgress | null): void {
 }
 
 function menuItems(): Electron.MenuItemConstructorOptions[] {
+  try {
+    return buildMenuItems()
+  } catch (error) {
+    logError(error)
+    return []
+  }
+}
+
+function buildMenuItems(): Electron.MenuItemConstructorOptions[] {
   const current = getGuard()
   const progress = current.getProgress()
   if (progress) {
     return [{ label: `${waitingLabel(progress)}...`, click: () => void current.askAboutWaiting() }]
   }
-  if (getUpdateStatus().state !== 'downloaded') {
+  if (getUpdateStatus().state !== 'downloaded' || isQuittingForUpdate()) {
     return []
   }
   return [
@@ -88,13 +116,17 @@ function menuItems(): Electron.MenuItemConstructorOptions[] {
 }
 
 function refreshMenu(): void {
-  const progress = guard?.getProgress()
-  const key = progress
-    ? `wait:${progress.total}:${progress.remaining.length}`
-    : `update:${getUpdateStatus().state}`
-  if (key !== menuKey) {
-    menuKey = key
-    rebuildAppMenu()
+  try {
+    const progress = guard?.getProgress()
+    const key = progress
+      ? `wait:${progress.kind}:${progress.total}:${progress.remaining.length}`
+      : `update:${getUpdateStatus().state}:${isQuittingForUpdate()}`
+    if (key !== menuKey) {
+      menuKey = key
+      rebuildAppMenu()
+    }
+  } catch (error) {
+    logError(error)
   }
 }
 
@@ -103,55 +135,70 @@ function getGuard(): RestartGuard {
     readBusyChats,
     askBeforeRestart: (kind, chats) => askBeforeRestart(showMessageBox, kind, chats),
     askWhileWaiting: (progress) => askWhileWaiting(showMessageBox, progress),
+    bringForward,
     quitApp: () => app.quit(),
-    schedule: (run, ms) => {
-      const timer = setTimeout(run, ms)
-      return () => clearTimeout(timer)
-    },
+    schedule,
     onProgress: showProgress,
     now: () => Date.now(),
-    onProceedError: (error) => console.error('[restart-guard] deferred restart failed', error)
+    onError: logError
   })
   return guard
 }
 
 /** Call once, before other before-quit listeners are added, so a held quit tears nothing down. */
 export function installForkRestartGuard(): void {
-  setForkRestartGuardHooks({ menuItems, guardRestart, guardUpdateInstall })
+  setForkRestartGuardHooks({
+    menuItems,
+    guardRestart,
+    guardUpdateInstall,
+    onUpdaterStatus: refreshMenu
+  })
   app.prependListener('before-quit', (event: Event) => {
-    const verdict = getGuard().onBeforeQuit({
-      defaultPrevented: event.defaultPrevented,
-      systemShutdown,
-      committedElsewhere:
-        mainProcessState.isServeMode ||
-        isProcessQuitRequested() ||
-        isQuittingForUpdate() ||
-        quitTeardownStartGate.hasStarted()
-    })
-    if (verdict === 'hold') {
-      event.preventDefault()
-      // Window close handlers read this to tell a quit from a close.
-      mainProcessState.isQuitting = false
+    try {
+      const verdict = getGuard().onBeforeQuit({
+        defaultPrevented: event.defaultPrevented,
+        systemShutdown: systemShutdown.isSet(),
+        committedElsewhere:
+          mainProcessState.isServeMode ||
+          isProcessQuitRequested() ||
+          isQuittingForUpdate() ||
+          quitTeardownStartGate.hasStarted()
+      })
+      if (verdict === 'hold') {
+        event.preventDefault()
+        // Window close handlers read this to tell a quit from a close.
+        mainProcessState.isQuitting = false
+      }
+    } catch (error) {
+      logError(error)
     }
   })
   if (process.platform === 'win32') {
     app.on('browser-window-created', (_event, window) => {
-      window.on('query-session-end', markSystemShutdown)
-      window.on('session-end', markSystemShutdown)
+      window.on('query-session-end', systemShutdown.mark)
+      window.on('session-end', systemShutdown.mark)
     })
   }
   void app.whenReady().then(() => {
     // macOS logout and shutdown arrive as a native quit; this fires first and lets it through.
-    powerMonitor.on('shutdown', markSystemShutdown)
+    powerMonitor.on('shutdown', systemShutdown.mark)
+    powerMonitor.on('resume', systemShutdown.reset)
     setInterval(refreshMenu, MENU_REFRESH_MS).unref()
   })
 }
 
 async function guardRestart(
   kind: RestartGuardKind,
-  proceed: () => Promise<void>
+  proceed: () => Promise<void>,
+  deferred: () => Promise<void>
 ): Promise<void | ForkRestartHeld> {
-  const result = await getGuard().request(kind, proceed)
+  let result: Awaited<ReturnType<RestartGuard['request']>>
+  try {
+    result = await getGuard().request(kind, deferred)
+  } catch (error) {
+    logError(error)
+    result = 'proceed'
+  }
   if (result === 'proceed') {
     return proceed()
   }
@@ -159,7 +206,13 @@ async function guardRestart(
 }
 
 async function guardUpdateInstall(install: () => void): Promise<void> {
-  const result = await getGuard().request('update', install)
+  let result: Awaited<ReturnType<RestartGuard['request']>>
+  try {
+    result = await getGuard().request('update', install)
+  } catch (error) {
+    logError(error)
+    result = 'proceed'
+  }
   if (result === 'proceed') {
     install()
     return

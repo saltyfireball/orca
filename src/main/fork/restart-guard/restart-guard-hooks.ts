@@ -7,9 +7,11 @@ export type ForkRestartGuardHooks = {
   menuItems: () => Electron.MenuItemConstructorOptions[]
   guardRestart: (
     kind: RestartGuardKind,
-    proceed: () => Promise<void>
+    proceed: () => Promise<void>,
+    deferred: () => Promise<void>
   ) => Promise<void | ForkRestartHeld>
   guardUpdateInstall: (install: () => void) => Promise<void>
+  onUpdaterStatus: () => void
 }
 
 let hooks: ForkRestartGuardHooks | null = null
@@ -23,12 +25,16 @@ export function forkRestartGuardMenuItems(): Electron.MenuItemConstructorOptions
   return hooks?.menuItems() ?? []
 }
 
-/** Wraps a renderer restart; resolves a ForkRestartHeld (not an error) when the guard holds it. */
+/**
+ * Wraps a renderer restart; resolves a ForkRestartHeld (not an error) when the guard holds it.
+ * `deferred` is what runs once a wait finishes, when the renderer is no longer preparing.
+ */
 export function guardForkRestart(
   kind: RestartGuardKind,
-  proceed: () => Promise<void>
+  proceed: () => Promise<void>,
+  deferred: () => Promise<void> = proceed
 ): Promise<void | ForkRestartHeld> {
-  return hooks ? hooks.guardRestart(kind, proceed) : proceed()
+  return hooks ? hooks.guardRestart(kind, proceed, deferred) : proceed()
 }
 
 /** Wraps updater:quitAndInstall; a held install tells the renderer the install was aborted. */
@@ -37,4 +43,9 @@ export async function guardForkUpdateInstall(install: () => void): Promise<void>
     return hooks.guardUpdateInstall(install)
   }
   install()
+}
+
+/** The updater published a new status; the "Update Ready" menu row may change. */
+export function notifyForkRestartGuardUpdaterStatus(): void {
+  hooks?.onUpdaterStatus()
 }
