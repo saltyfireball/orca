@@ -1326,7 +1326,14 @@
       "copyCode": "Copy code",
       "openImage": "Open image",
       "wrapLines": "Wrap lines",
-      "disableLineWrap": "Disable line wrap"
+      "disableLineWrap": "Disable line wrap",
+      "runCode": {
+        "action": "Run in terminal",
+        "tabLabel": "Chat: {{command}}",
+        "confirmTitle": "Run in a new terminal?",
+        "confirm": "Run",
+        "cancel": "Cancel"
+      }
     },
     "markdownCallout": {
       "note": "Note",
