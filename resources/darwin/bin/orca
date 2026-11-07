@@ -19,7 +19,10 @@ if [ -z "$APP_PATH" ]; then
 fi
 
 CONTENTS="$APP_PATH/Contents"
-ELECTRON="$CONTENTS/MacOS/Orca"
+# The executable is named after productName (Orca, or a fork's own name): read it from Info.plist.
+EXECUTABLE_NAME="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$CONTENTS/Info.plist" 2>/dev/null || true)"
+case "$EXECUTABLE_NAME" in '' | */* | .*) EXECUTABLE_NAME=Orca ;; esac
+ELECTRON="$CONTENTS/MacOS/$EXECUTABLE_NAME"
 # The unpacked entrypoint runs directly in Electron's Node mode.
 CLI="$CONTENTS/Resources/app.asar.unpacked/out/cli/index.js"
 
