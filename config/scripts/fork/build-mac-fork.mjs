@@ -9,6 +9,15 @@ import { getLocalBuildIdentity } from '../desktop-distribution/macos/build-mac-l
 const UPSTREAM_PACKAGE_STEP = 'node config/scripts/desktop-distribution/macos/build-mac-local.mjs'
 const FORK_BUILDER_CONFIG = 'config/scripts/fork/electron-builder.fork.config.cjs'
 const PNPM = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
+// Keep in sync with appId in electron-builder.fork.config.cjs and src/main/fork/fork-app-identity.ts.
+export const FORK_APP_BUNDLE_ID = 'com.saltyfireball.orca'
+// Its own id keeps the fork helper's Accessibility and Screen Recording grants apart from stock's,
+// and is what makes the helper trust the fork app (ForkTrustedOrcaApplication.swift).
+export const FORK_COMPUTER_USE_BUNDLE_ID = `${FORK_APP_BUNDLE_ID}.computer-use`
+// The notification helper reads the authorization record of the bundle id it embeds.
+const FORK_STEP_ARGS = {
+  'build:notification-status-macos': ['--bundle-id', FORK_APP_BUNDLE_ID]
+}
 
 function readPackageJson() {
   return JSON.parse(readFileSync(resolve('package.json'), 'utf8'))
@@ -27,6 +36,16 @@ export function buildMacPrerequisiteScripts(buildMacScript) {
     }
     return match[1]
   })
+}
+
+/** `pnpm run` arguments for one build:mac step, with the fork's bundle ids where a helper embeds one. */
+export function forkPrerequisiteStepArgs(script) {
+  return ['run', script, ...(FORK_STEP_ARGS[script] ?? [])]
+}
+
+/** The env every build:mac step runs with: the fork's computer-use helper id. */
+export function forkPrerequisiteEnv(baseEnv = process.env) {
+  return { ...baseEnv, ORCA_COMPUTER_MACOS_BUNDLE_ID: FORK_COMPUTER_USE_BUNDLE_ID }
 }
 
 function commitIdentity() {
@@ -56,8 +75,9 @@ function packagingEnv(packageVersion) {
 if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
   const packageJson = readPackageJson()
   const env = packagingEnv(packageJson.version)
+  const stepEnv = forkPrerequisiteEnv()
   for (const script of buildMacPrerequisiteScripts(packageJson.scripts['build:mac'])) {
-    execFileSync(PNPM, ['run', script], { stdio: 'inherit' })
+    execFileSync(PNPM, forkPrerequisiteStepArgs(script), { env: stepEnv, stdio: 'inherit' })
   }
   // Why never: under CI electron-builder publishes on its own, but the workflow uploads the assets.
   execFileSync(
