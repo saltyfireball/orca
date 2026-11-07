@@ -17,6 +17,7 @@ import { ensureWindowsRendererRuntimeFiles } from './startup/windows-renderer-ru
 import { registerMainProcessIpcHandlers } from './startup/main-process-ipc-bootstrap'
 import { initializeMainProcessReady } from './startup/main-process-ready'
 import { installMainProcessQuitHandlers } from './startup/main-process-quit'
+import { installForkRestartGuard } from './fork/restart-guard/restart-guard'
 import { shouldActivateDesktopForSecondInstance } from './startup/single-instance-lock'
 import { resolveOsOpenedDocuments } from './startup/os-opened-documents'
 import {
@@ -167,6 +168,7 @@ if (preflightReady) {
   state.osOpenedDocuments.capture(process.argv)
   registerMainProcessIpcHandlers()
   installMainProcessQuitHandlers()
+  installForkRestartGuard()
   void app.whenReady().then(async () => {
     try {
       await initializeMainProcessReady({

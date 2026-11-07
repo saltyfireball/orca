@@ -13,6 +13,7 @@ import { setWindowMaterialSuppressed } from '../window/window-material-suppressi
 import { isTrustedUIRenderer } from './ui'
 import { prepareWindowsAdministratorRestart } from '../windows/windows-administrator-restart'
 import { quitProcess } from '../startup/process-quit-request'
+import { guardForkRestart } from '../fork/restart-guard/restart-guard-hooks'
 import type { Store } from '../persistence/loading-store/store'
 import { getDevInstanceIdentity } from '../startup/dev-instance-identity'
 import { isPwshAvailableAsync } from '../pty/shell-startup/pwsh'
@@ -201,26 +202,30 @@ export function registerAppHandlers(store: Store, options: RegisterAppHandlersOp
     }
   })
 
-  ipcMain.handle('app:relaunch', async () => {
-    // Delay teardown so the renderer can paint Restarting after cleanup.
-    await runBeforeRelaunchCleanup(options.onBeforeRelaunch)
-    await runBeforeRelaunchCleanup(options.onBeforeRelaunchExit)
-    setTimeout(() => {
-      // app.exit skips before-quit; remove the Windows tray to avoid a stale icon.
-      destroySystemTray()
-      relaunchApp('renderer-request')
-      app.exit(0)
-    }, 150)
-  })
+  ipcMain.handle('app:relaunch', () =>
+    guardForkRestart('restart', async () => {
+      // Delay teardown so the renderer can paint Restarting after cleanup.
+      await runBeforeRelaunchCleanup(options.onBeforeRelaunch)
+      await runBeforeRelaunchCleanup(options.onBeforeRelaunchExit)
+      setTimeout(() => {
+        // app.exit skips before-quit; remove the Windows tray to avoid a stale icon.
+        destroySystemTray()
+        relaunchApp('renderer-request')
+        app.exit(0)
+      }, 150)
+    })
+  )
 
-  ipcMain.handle('app:restart', async () => {
-    // Normal quit flushes daemon checkpoints and telemetry.
-    await runBeforeRelaunchCleanup(options.onBeforeRelaunch)
-    setTimeout(() => {
-      relaunchApp('admin-restart')
-      quitProcess()
-    }, 150)
-  })
+  ipcMain.handle('app:restart', () =>
+    guardForkRestart('restart', async () => {
+      // Normal quit flushes daemon checkpoints and telemetry.
+      await runBeforeRelaunchCleanup(options.onBeforeRelaunch)
+      setTimeout(() => {
+        relaunchApp('admin-restart')
+        quitProcess()
+      }, 150)
+    })
+  )
 
   ipcMain.handle('app:restartAsAdministrator', async () => {
     const relaunchOptions = prepareWindowsAdministratorRestart()
