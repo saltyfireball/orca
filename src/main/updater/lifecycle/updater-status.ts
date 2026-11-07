@@ -2,6 +2,7 @@ import { loadElectronAutoUpdater, type ElectronAutoUpdater } from '../electron-u
 import { statusesEqual } from '../releases/updater-fallback'
 import type { UpdateCheckOptions, UpdateStatus } from '../../../shared/update-status-types'
 import { UpdaterState as BaseUpdaterState } from './updater-state'
+import { notifyForkRestartGuardUpdaterStatus } from '../../fork/restart-guard/restart-guard-hooks'
 
 export abstract class UpdaterStatus extends BaseUpdaterState {
   protected getAutoUpdater(): ElectronAutoUpdater {
@@ -180,6 +181,7 @@ export abstract class UpdaterStatus extends BaseUpdaterState {
     }
     this.currentStatus = decoratedStatus
     this.sendToMainWindow('updater:status', decoratedStatus)
+    notifyForkRestartGuardUpdaterStatus()
   }
 
   protected abstract finishActiveUpdateCheckAttempt(): void
