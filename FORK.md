@@ -50,10 +50,13 @@ named Orca Fork until SLRM-1367. `main` is always
   host that runs it: this desktop, a WSL host's distro (through this desktop's saved accounts) or
   a paired remote host (its own accounts, read once over runtime RPC); direct SSH shows nothing.
   Nothing shows when that host has one account or none. Terminal panes are named by their hook
-  transcript path; native chats by `agentSession.forkClaudeHome`, a fork RPC each host answers
-  with the home it last launched the chat under. Settings > Advanced turns it off
-  (`forkShowAccountChip`, on by default). Code is in `src/renderer/src/fork/claude-account-chip/`
-  and `src/main/fork/claude-account-chip/`.
+  transcript path; native chats by `fork.claudeAccount.which` (the move RPC below), which each
+  host answers with the home it last launched the chat under and the chat's pin, so a moved chat
+  shows its new account at once and a move queued behind a turn shows as `A -> B`. Clicking a
+  chip opens the move menu on the chip's own host: a native chat tab or agent row moves that
+  chat, a worktree row its chats; terminal-pane chips, WSL distro chats, direct SSH and hosts
+  without the fork RPC have no menu. Settings > Advanced turns it off (`forkShowAccountChip`, on
+  by default). Code is in `src/renderer/src/fork/claude-account-chip/`.
 - **Move Claude chats to another account (SLRM-1503).** One native Claude chat, or every
   Claude chat in a worktree, can move to another Claude account of the host that runs it; the
   other chats stay where they are.
@@ -121,6 +124,7 @@ Apply these in this order. Each one is a single commit.
 43. `SLRM-1503 Exhaustive move result switch and a typed fake session summary`
 44. `SLRM-1503 Move a chat or a worktree's chats to another account from the tab menu and palette`
 45. `SLRM-1503 FORK.md: the account move`
+46. `SLRM-1503 Account chip opens the move menu and reads chats through fork.claudeAccount.which`
 
 Fork-only code lives in `fork/` folders:
 
@@ -221,10 +225,8 @@ Upstream files only get short hooks, which keeps rebases small:
   `ForkClaudeAccountAgentRowChip` after the agent icon for non-subagent rows (worktree card
   inline rows use it too; the compact row does not); the template `Title` part in
   `card-identity-parts.tsx` adds `ForkClaudeAccountWorktreeChip` after the title;
-  `AdvancedPane.tsx` renders `ForkAccountChipSetting`; `structured-agent-session.ts` spreads
-  `FORK_CLAUDE_CHAT_HOME_METHODS` into its methods and `rpc-params-catalog.generated.ts` is
-  regenerated for it.
-
+  `AdvancedPane.tsx` renders `ForkAccountChipSetting`. The chip reads chats through the move
+  RPC, so it adds no RPC hook of its own.
 - Account move (SLRM-1503), from `src/main/fork/claude-account-move/` and
   `src/renderer/src/fork/claude-account-move/`:
   - `prepareClaudeLaunchAccount` (`claude-launch-account.ts`) takes an optional `sessionId` and
