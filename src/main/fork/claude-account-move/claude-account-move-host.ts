@@ -12,6 +12,7 @@ import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-w
 import type { StructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-host'
 import { mintAgentSessionOperationId } from '../../runtime/orchestration/mailbox/structured-pointer/structured-pointer-operation-id'
 import { ClaudeAccountMoveService, type ClaudeAccountMoveDeps } from './claude-account-move-service'
+import { claudeChatLaunchHome } from './claude-chat-launch-home'
 import { pinnedClaudeRoute } from './claude-pinned-route'
 import { claudeSessionAccountPins } from './claude-session-account-pins'
 
@@ -70,6 +71,7 @@ function hostDeps(
     summary: (sessionId) => host.readStatusSummary(sessionId),
     runningHome: (sessionId) =>
       agentSessionAccountHomePath(host.childAccountHome(sessionId) ?? null) ?? undefined,
+    launchHome: (record) => claudeChatLaunchHome(record, store.hostId),
     accountLabel: (accountId) => router.savedAccount(accountId)?.email,
     route: (pin) => pinnedClaudeRoute(router, pin),
     systemHome: () => router.systemDefaultHome(),

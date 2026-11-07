@@ -50,6 +50,7 @@ function fakeHost(input: {
       return summary
     },
     runningHome: (id) => running.get(id),
+    launchHome: (record) => ({ home: running.get(record.sessionId) ?? SYSTEM, accountId: null }),
     accountLabel: (id) => (input.accounts.includes(id) ? `${id}@example.test` : undefined),
     route: (pin) => {
       if (pin === null) {

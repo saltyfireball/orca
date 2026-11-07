@@ -44,6 +44,15 @@ describe('ForkClaudeAccountChip', () => {
     ])
   })
 
+  it('labels a move queued behind a turn as from -> to', () => {
+    const from = { ...account('C @ kif'), hostLabel: 'kif' }
+    const to = { ...account('B @ kif'), id: 'B', colour: 'blue', hostLabel: 'kif' }
+    const view = render(
+      <ForkClaudeAccountChip resolution={{ kind: 'account', account: from, movingTo: to }} />
+    )
+    expect(view.getByTestId('fork-account-chip').textContent).toBe('C -> B @ kif')
+  })
+
   it('lets clicks through unless a menu is attached', () => {
     const parentClick = vi.fn()
     const onOpenMenu = vi.fn()
