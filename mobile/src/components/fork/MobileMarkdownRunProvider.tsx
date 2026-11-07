@@ -1,11 +1,12 @@
 import { useCallback, useRef, useState } from 'react'
 import type { TerminalQuickCommand } from '../../../../src/shared/terminal/quick-commands/terminal-quick-command-types'
 import { useMobileTranslation } from '../../i18n/use-mobile-translation'
-import { ConfirmModal } from '../ConfirmModal'
+import { BottomDrawer } from '../bottom-drawer/BottomDrawer'
 import {
   MobileMarkdownRunContext,
   type RequestMobileMarkdownRun
 } from './mobile-markdown-run-context'
+import { MobileMarkdownRunSheet } from './MobileMarkdownRunSheet'
 
 type LaunchQuickCommand = (command: TerminalQuickCommand) => boolean
 
@@ -31,14 +32,16 @@ export function MobileMarkdownRunProvider({
   const requestRun = useCallback<RequestMobileMarkdownRun>((command) => {
     setPending(Object.freeze({ command, launch: latest.current }))
   }, [])
-  const run = (captured: PendingRun) => {
+  // Runs the text the user confirmed (checked by the sheet) with the launcher captured at press.
+  const run = (captured: PendingRun, command: string) => {
+    setPending(null)
     captured.launch({
       id: 'fork-chat-run',
       label: t('components.markdownBlocks.runCode.tabLabel', 'Chat: {{command}}', {
-        command: captured.command.slice(0, LABEL_PREVIEW_LENGTH)
+        command: command.slice(0, LABEL_PREVIEW_LENGTH)
       }),
       action: 'terminal-command',
-      command: captured.command,
+      command,
       appendEnter: true
     })
   }
@@ -47,15 +50,13 @@ export function MobileMarkdownRunProvider({
       {children}
       {/* In-page confirm: Alert.alert is a no-op on web, and the iOS session is the web page. */}
       {pending ? (
-        <ConfirmModal
-          visible
-          title={t('components.markdownBlocks.runCode.confirmTitle', 'Run in a new terminal?')}
-          message={pending.command}
-          confirmLabel={t('components.markdownBlocks.runCode.confirm', 'Run')}
-          cancelLabel={t('components.markdownBlocks.runCode.cancel', 'Cancel')}
-          onConfirm={() => run(pending)}
-          onCancel={() => setPending(null)}
-        />
+        <BottomDrawer visible onClose={() => setPending(null)}>
+          <MobileMarkdownRunSheet
+            original={pending.command}
+            onRun={(command) => run(pending, command)}
+            onCancel={() => setPending(null)}
+          />
+        </BottomDrawer>
       ) : null}
     </MobileMarkdownRunContext.Provider>
   )
