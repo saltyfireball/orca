@@ -16,6 +16,10 @@ const {
 )
 
 vi.mock('electron', () => moduleFactories.electron())
+vi.mock('../../shared/fork/fork-release-repo', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  ...(await import('../../shared/fork/testing/fork-release-repo-upstream-policy'))
+}))
 vi.mock('electron-updater', () => moduleFactories.electronUpdater())
 vi.mock('./electron-updater-loader', () => moduleFactories.electronUpdaterLoader())
 vi.mock('../ipc/pty/kill-all', () => moduleFactories.ptyKillAll())
