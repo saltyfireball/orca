@@ -267,4 +267,62 @@ describe('RestartGuard', () => {
     await flush()
     expect(restart).not.toHaveBeenCalled()
   })
+
+  it('goes now or stops from the update card without a dialog, reporting how the wait ended', async () => {
+    const now = setup({ busy: [chat('a')], choice: 'wait' })
+    const onWaitEnded = vi.fn()
+    now.deps.onWaitEnded = onWaitEnded
+    const install = vi.fn()
+    await now.guard.request('update', install)
+    now.guard.resolveWaiting('now')
+    await flush()
+    expect(install).toHaveBeenCalledTimes(1)
+    expect(now.deps.askWhileWaiting).not.toHaveBeenCalled()
+    expect(onWaitEnded).toHaveBeenCalledWith('update', 'proceeded')
+    expect(now.guard.onBeforeQuit(quiet)).toBe('pass')
+
+    const stop = setup({ busy: [chat('a')], choice: 'wait' })
+    stop.deps.onWaitEnded = vi.fn()
+    const later = vi.fn()
+    await stop.guard.request('update', later)
+    stop.guard.resolveWaiting('stop')
+    expect(stop.deps.onProgress).toHaveBeenLastCalledWith(null)
+    expect(stop.deps.onWaitEnded).toHaveBeenCalledWith('update', 'stopped')
+    stop.setBusy([])
+    stop.tick()
+    await flush()
+    expect(later).not.toHaveBeenCalled()
+  })
+
+  it('reports a wait that finishes on its own as proceeded', async () => {
+    const { guard, deps, setBusy, tick } = setup({
+      busy: [chat('a')],
+      choice: 'wait'
+    })
+    deps.onWaitEnded = vi.fn()
+    await guard.request('update', vi.fn())
+    setBusy([])
+    tick()
+    expect(deps.onWaitEnded).toHaveBeenCalledTimes(1)
+    expect(deps.onWaitEnded).toHaveBeenCalledWith('update', 'proceeded')
+  })
+
+  it('ignores the update card while a guard dialog is open', async () => {
+    const { guard, deps } = setup({ busy: [chat('a')], choice: 'wait' })
+    const install = vi.fn()
+    await guard.request('update', install)
+    let answer: (choice: RestartGuardWaitingChoice) => void = () => {}
+    vi.mocked(deps.askWhileWaiting).mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve
+      })
+    )
+    const asking = guard.askAboutWaiting()
+    guard.resolveWaiting('now')
+    await flush()
+    expect(install).not.toHaveBeenCalled()
+    expect(guard.getProgress()).not.toBeNull()
+    answer('keep')
+    await asking
+  })
 })
