@@ -93,6 +93,7 @@ import { e2eApi } from './api/diagnostics/e2e-bridge'
 import { mobileApi } from './api/mobile/mobile-bridge'
 import { agentStatusApi } from './api/agent-status/agent-status-bridge'
 import { speechApi } from './api/speech/speech-bridge'
+import { forkUpdateInstallWaitApi } from './fork/update-install-wait-bridge'
 
 installBrowserFindListener()
 
@@ -174,6 +175,7 @@ const api = {
   cache: cacheApi,
   session: sessionApi,
   updater: updaterApi,
+  forkUpdateInstallWait: forkUpdateInstallWaitApi,
   docPreview: docPreviewApi,
   notebook: notebookApi,
   fs: fsApi,
