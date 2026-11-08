@@ -62,6 +62,7 @@ import { ephemeralVmApi } from './api/ephemeral-vm-bridge'
 import { cacheApi } from './api/cache-bridge'
 import { sessionApi } from './api/session-bridge'
 import { updaterApi } from './api/updater-bridge'
+import { forkUpdateInstallWaitApi } from './fork/update-install-wait-bridge'
 import { docPreviewApi } from './api/doc-preview-bridge'
 import { notebookApi } from './api/notebook-bridge'
 import { fsApi } from './api/fs-bridge'
@@ -167,6 +168,7 @@ const api = {
   cache: cacheApi,
   session: sessionApi,
   updater: updaterApi,
+  forkUpdateInstallWait: forkUpdateInstallWaitApi,
   docPreview: docPreviewApi,
   notebook: notebookApi,
   fs: fsApi,

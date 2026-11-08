@@ -7,6 +7,8 @@ import { Card } from './ui/card'
 import { Button } from './ui/button'
 import { translate } from '@/i18n/i18n'
 import { handleForkRestartHeld } from '@/fork/restart-guard-held-toast'
+import { forkUpdateWaitingCard } from '@/fork/update-install-wait/ForkUpdateWaitingContent'
+import { useForkUpdateInstallWait } from '@/fork/update-install-wait/use-fork-update-install-wait'
 import { updaterMessageText } from '@/lib/updater-message-copy'
 import { UpdateCardStateContent } from './maintenance/update-card/UpdateCardStateContent'
 import { buildUpdateCardErrorModel } from './maintenance/update-card/update-card-error-model'
@@ -29,6 +31,9 @@ export function UpdateCard(): React.JSX.Element | null {
   const reassuranceSeen = useAppStore((state) => state.updateReassuranceSeen)
   const markReassuranceSeen = useAppStore((state) => state.markUpdateReassuranceSeen)
   const hasStartedDownload = useRef(false)
+  const forkUpdateWait = useForkUpdateInstallWait(() => {
+    hasStartedDownload.current = false
+  })
   const dismissAnimationTimerRef = useRef<number | null>(null)
   const collapseAnimationTimerRef = useRef<number | null>(null)
   const [mediaFailed, setMediaFailed] = useState(false)
@@ -222,7 +227,11 @@ export function UpdateCard(): React.JSX.Element | null {
     }
   }
 
-  const cardContent = (
+  const cardContent = forkUpdateWaitingCard(
+    status,
+    forkUpdateWait,
+    handleCollapseWithAnimation
+  ) ?? (
     <UpdateCardStateContent
       status={status}
       changelog={changelog}
