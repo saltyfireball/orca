@@ -6,6 +6,8 @@ export type RestartGuardKind = 'quit' | 'restart' | 'update'
 export type RestartGuardChoice = 'wait' | 'now' | 'cancel'
 export type RestartGuardWaitingChoice = 'keep' | 'now' | 'stop'
 export type RestartGuardRequestResult = 'proceed' | 'waiting' | 'cancelled'
+/** How a wait ended: its intent ran ('proceeded') or the user stopped it ('stopped'). */
+export type RestartGuardWaitEnd = 'proceeded' | 'stopped'
 
 export type RestartGuardProgress = {
   kind: RestartGuardKind
@@ -30,6 +32,8 @@ export type RestartGuardDeps = {
   quitApp: () => void
   schedule: (run: () => void, ms: number) => () => void
   onProgress: (progress: RestartGuardProgress | null) => void
+  /** Called once per wait, after onProgress(null), with the wait's kind (SLRM-1569). */
+  onWaitEnded?: (kind: RestartGuardKind, end: RestartGuardWaitEnd) => void
   now: () => number
   onError: (error: unknown) => void
 }
@@ -160,23 +164,57 @@ export class RestartGuard {
       return 'cancelled'
     }
     if (choice === 'now') {
-      this.stopWaiting()
-      this.approve()
-      this.run((intent ?? waiting).proceed)
+      this.goNow(waiting, (intent ?? waiting).proceed)
     } else if (choice === 'stop') {
-      this.stopWaiting()
+      this.endWaiting(waiting, 'stopped')
     }
     return 'cancelled'
   }
 
-  stopWaiting(): void {
+  /**
+   * The waiting dialog's Now and Stop Waiting without the dialog, for the update card
+   * (SLRM-1569). Ignored while a guard dialog is open, which is brought forward instead.
+   */
+  resolveWaiting(choice: 'now' | 'stop'): void {
     const waiting = this.waiting
     if (!waiting) {
+      return
+    }
+    if (this.prompting) {
+      this.bringForward()
+      return
+    }
+    if (choice === 'now') {
+      this.goNow(waiting, waiting.proceed)
+    } else {
+      this.endWaiting(waiting, 'stopped')
+    }
+  }
+
+  stopWaiting(): void {
+    if (this.waiting) {
+      this.endWaiting(this.waiting, 'stopped')
+    }
+  }
+
+  private goNow(waiting: Waiting, proceed: Proceed): void {
+    this.endWaiting(waiting, 'proceeded')
+    this.approve()
+    this.run(proceed)
+  }
+
+  private endWaiting(waiting: Waiting, end: RestartGuardWaitEnd): void {
+    if (this.waiting !== waiting) {
       return
     }
     waiting.cancelTimer()
     this.waiting = null
     this.deps.onProgress(null)
+    try {
+      this.deps.onWaitEnded?.(waiting.kind, end)
+    } catch (error) {
+      this.deps.onError(error)
+    }
   }
 
   private async ask<T>(show: () => Promise<T>, onFailure: T): Promise<T> {
@@ -221,9 +259,7 @@ export class RestartGuard {
     }
     const blocking = this.readBusy().filter(holdsWait)
     if (blocking.length === 0) {
-      this.stopWaiting()
-      this.approve()
-      this.run(waiting.proceed)
+      this.goNow(waiting, waiting.proceed)
       return
     }
     // A chat that starts working mid-wait joins the list; the restart waits for it too.
