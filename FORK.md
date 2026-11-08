@@ -126,6 +126,7 @@ Apply these in this order. Each one is a single commit.
 45. `SLRM-1503 FORK.md: the account move`
 46. `SLRM-1503 Account chip opens the move menu and reads chats through fork.claudeAccount.which`
 47. `SLRM-1758 Ship the orcad template in fork builds so SSH hosts get the fork's server`
+48. `SLRM-1569 The update card shows the restart guard's wait instead of staying on Installing`
 
 Fork-only code lives in `fork/` folders:
 
@@ -133,6 +134,7 @@ Fork-only code lives in `fork/` folders:
 - `src/main/fork/`
 - `docs/fork/`
 - `src/main/updater/fork/`
+- `src/preload/fork/`
 - `src/renderer/src/components/native-chat/fork/`
 - `src/renderer/src/fork/`
 - `src/cli/fork/`
@@ -191,6 +193,12 @@ Upstream files only get short hooks, which keeps rebases small:
   (`src/renderer/src/fork/restart-guard-held-toast.ts`) in each of `SidebarSettingsHelpMenu.tsx`,
   `AdvancedPane.tsx`, `WindowMaterialSetting.tsx` and `UpdateCard.tsx` clears its spinner and
   shows a neutral toast instead of "Couldn't restart Orca."
+- The update card's wait view (SLRM-1569): `src/preload/index.ts` adds
+  `forkUpdateInstallWait` (`src/preload/fork/update-install-wait-bridge.ts`) and `api-types.ts`
+  types it as optional (one import and one line each), so the web preload needs nothing.
+  `UpdateCard.tsx` calls `useForkUpdateInstallWait` (which resets `hasStartedDownload` when the
+  guard drops the install) and renders `forkUpdateWaitingCard(...) ??` before its stock
+  content (`src/renderer/src/fork/update-install-wait/`).
 - The chat-survive broker entry (SLRM-1394): one entry in `main-build-entry-points.ts`, and in
   `plain-node-entry-guard.ts` it shares the `daemon-entry` line (a two-name `map`, so the file
   stays under max-lines). The builder overlay adds it to `asarUnpack`.
@@ -292,6 +300,15 @@ any chat is busy, and asks first. The code is `src/main/fork/restart-guard/`.
   Waiting. Now carries out the latest request, so Cmd-Q then Now during a restart wait quits.
   **Restart Now** goes at once. **Cancel** does nothing. A held restart from the renderer shows "Restart will run once your
   chats are idle." (nothing on Cancel), not an error.
+- **Update card (SLRM-1569):** while an update install waits, the update card next to the chat
+  composer shows "Waiting for N chats" (the chats still busy), "D of M chats finished", and
+  Restart Now and Stop Waiting, the waiting dialog's choices without the dialog (ignored while a
+  guard dialog is open, which comes forward instead). It counts down as chats finish. Cancel in
+  the first dialog, or Stop Waiting from the card, the dialog or the menu row, puts the card
+  back to "Ready to Install" with its Restart to Update button; a wait that finishes, or Restart
+  Now, installs and the card shows "Installing..." as before. Main pushes the wait over
+  `fork:updateInstallWait:*` (`src/main/fork/restart-guard/update-install-wait.ts`, from the
+  guard's `onProgress` and `onWaitEnded`); a restart or quit wait never shows on the card.
 - **Update Ready - Restart When Idle** appears in the app menu once an update is downloaded. It
   skips the first dialog and installs as soon as no chat is busy (at once if none is). It is
   hidden while the install runs, and refreshes on every updater status.
