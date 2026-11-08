@@ -3,6 +3,7 @@
 import {
   app,
   dialog,
+  ipcMain,
   powerMonitor,
   type BrowserWindow,
   type Event,
@@ -19,6 +20,7 @@ import { translateMain } from '../../i18n/main-i18n'
 import { safelyRevealWindow } from '../../window/focus-existing-window'
 import { isBackgroundLaunch } from '../../window/foreground-activation-policy'
 import type { ForkRestartHeld } from '../../../shared/fork/restart-guard-held'
+import { FORK_UPDATE_INSTALL_WAIT_CHANNELS } from '../../../shared/fork/update-install-wait'
 import { chatSurviveWillSurvive } from '../chat-survive/chat-survive-detach'
 import { listBusyChats, type BusyChat } from './busy-chats'
 import { askBeforeRestart, askWhileWaiting, waitingLabel } from './restart-guard-dialog'
@@ -29,6 +31,7 @@ import {
   type RestartGuardKind,
   type RestartGuardProgress
 } from './restart-guard-machine'
+import { createUpdateInstallWait } from './update-install-wait'
 
 const MENU_REFRESH_MS = 30_000
 
@@ -56,6 +59,12 @@ function showMessageBox(options: MessageBoxOptions): Promise<MessageBoxReturnVal
 function logError(error: unknown): void {
   console.error('[restart-guard] failing open', error)
 }
+
+const updateWait = createUpdateInstallWait({
+  send: (channel, ...args) => liveMainWindow()?.webContents.send(channel, ...args),
+  getGuard: () => getGuard(),
+  onError: logError
+})
 
 /** Reveal the window the sheet sits on, as Quit Completely does; a hidden one never shows it. */
 function bringForward(): void {
@@ -142,7 +151,11 @@ function getGuard(): RestartGuard {
     bringForward,
     quitApp: () => app.quit(),
     schedule,
-    onProgress: showProgress,
+    onProgress: (progress) => {
+      showProgress(progress)
+      updateWait.progressChanged(progress)
+    },
+    onWaitEnded: updateWait.waitEnded,
     now: () => Date.now(),
     onError: logError
   })
@@ -154,9 +167,10 @@ export function installForkRestartGuard(): void {
   setForkRestartGuardHooks({
     menuItems,
     guardRestart,
-    guardUpdateInstall,
+    guardUpdateInstall: updateWait.guardInstall,
     onUpdaterStatus: refreshMenu
   })
+  registerUpdateInstallWaitIpc()
   app.prependListener('before-quit', (event: Event) => {
     try {
       const verdict = getGuard().onBeforeQuit({
@@ -209,17 +223,21 @@ async function guardRestart(
   return { forkRestartHeld: result }
 }
 
-async function guardUpdateInstall(install: () => void): Promise<void> {
-  let result: Awaited<ReturnType<RestartGuard['request']>>
-  try {
-    result = await getGuard().request('update', install)
-  } catch (error) {
-    logError(error)
-    result = 'proceed'
-  }
-  if (result === 'proceed') {
-    install()
-    return
-  }
-  liveMainWindow()?.webContents.send('updater:quitAndInstallAborted')
+/** The update card's wait view and its Restart Now and Stop Waiting buttons (SLRM-1569). */
+function registerUpdateInstallWaitIpc(): void {
+  const fromMainWindow = (event: Electron.IpcMainInvokeEvent): boolean =>
+    event.sender === liveMainWindow()?.webContents
+  ipcMain.handle(FORK_UPDATE_INSTALL_WAIT_CHANNELS.get, (event) =>
+    fromMainWindow(event) ? updateWait.current() : null
+  )
+  ipcMain.handle(FORK_UPDATE_INSTALL_WAIT_CHANNELS.now, (event) => {
+    if (fromMainWindow(event)) {
+      updateWait.installNow()
+    }
+  })
+  ipcMain.handle(FORK_UPDATE_INSTALL_WAIT_CHANNELS.stop, (event) => {
+    if (fromMainWindow(event)) {
+      updateWait.stopWaiting()
+    }
+  })
 }
