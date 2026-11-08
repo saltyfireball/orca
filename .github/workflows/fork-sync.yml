@@ -273,10 +273,26 @@ jobs:
             echo "$SHA has no fork release yet"
           fi
 
-  build-mac:
+  # As upstream's release-cut does: every SSH host runs orcad, deployed from the template the app
+  # ships. Without it the app has no server to install on an SSH host (SLRM-1758).
+  orcad-template:
     needs: sync
     if: >-
       github.repository == 'saltyfireball/orca' &&
+      (needs.sync.outputs.changed == 'true' || needs.sync.outputs.released != 'true' || inputs.force_build)
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/qualified-orcad-template.yml
+    with:
+      ref: ${{ needs.sync.outputs.sha }}
+      fast_runners: false
+
+  build-mac:
+    needs: [sync, orcad-template]
+    if: >-
+      github.repository == 'saltyfireball/orca' &&
+      needs.orcad-template.result == 'success' &&
       (needs.sync.outputs.changed == 'true' || needs.sync.outputs.released != 'true' || inputs.force_build)
     runs-on: macos-15
     timeout-minutes: 90
@@ -372,10 +388,30 @@ jobs:
             exit 1
           fi
 
+      # electron-builder ships out/orcad-template as Contents/Resources/orcad-template.
+      - name: Download the orcad deployment template
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: orcad-template
+          path: out/orcad-template
+
       - name: Build app
         env:
           FORK_VERSION: ${{ steps.version.outputs.version }}
+          # beforePack fails the build when the template manifest is missing.
+          ORCA_REQUIRE_ORCAD_TEMPLATE: '1'
         run: node config/scripts/fork/build-mac-fork.mjs
+
+      - name: Verify the shipped orcad template
+        shell: bash
+        run: |
+          set -euo pipefail
+          template='dist/mac-arm64/Blackfish.app/Contents/Resources/orcad-template'
+          test -f "$template/orcad-template.json"
+          for target in darwin-arm64 linux-x64-glibc linux-arm64-glibc; do
+            test -d "$template/targets/$target" || { echo "::error::orcad template lacks $target"; exit 1; }
+          done
+          ls "$template/targets"
 
       # Squirrel.Mac installs an update only when it meets the running app's designated requirement.
       - name: Verify the signature
