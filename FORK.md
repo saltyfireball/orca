@@ -125,6 +125,7 @@ Apply these in this order. Each one is a single commit.
 44. `SLRM-1503 Move a chat or a worktree's chats to another account from the tab menu and palette`
 45. `SLRM-1503 FORK.md: the account move`
 46. `SLRM-1503 Account chip opens the move menu and reads chats through fork.claudeAccount.which`
+47. `SLRM-1758 Ship the orcad template in fork builds so SSH hosts get the fork's server`
 
 Fork-only code lives in `fork/` folders:
 
@@ -376,12 +377,27 @@ runs in `saltyfireball/orca`. Every third-party action is pinned to a full commi
    - After the push it disables any workflow the push added, and cancels any other workflow's
      run of the pushed commit (see below).
    - It checks whether a published fork release already has a tag on the `main` commit.
-2. **build-mac** (macos-15) runs in three cases: `main` changed, `main` has no fork release
+2. **orcad-template** runs in the same three cases as build-mac (below). It calls upstream's
+   `qualified-orcad-template.yml` at the commit sync recorded, with `fast_runners: false`, as
+   upstream's release-cut does: `node-server-tests.yml` builds and tests orcad on every
+   platform lane (hosted Linux, macOS, Windows, glibc 2.28 and 2.17, musl) and merges their
+   slots into the `orcad-template` artifact. A qualified template of the same tree and day is
+   reused from the Actions cache. These reusable workflows are upstream's, so their actions
+   are pinned by tag, not SHA. Being disabled does not stop a workflow being called this way,
+   and their jobs run inside the fork-sync run, so the guard never cancels them.
+   - Without the template the app ships no server: Settings, SSH hosts says the build "has no
+     server for this host" and never updates a host's orcad (SLRM-1758).
+3. **build-mac** (macos-15) runs in three cases: `main` changed, `main` has no fork release
    yet, or `force_build` is set. The second case retries a failed build without waiting for a
-   new upstream tag.
+   new upstream tag. It waits for orcad-template and runs only when that succeeded.
    - Works out the fork version and sets it in the build copy of `package.json`.
-   - Imports the fork signing identity (see Signing) and installs arm64 natives only, then runs
-     `node config/scripts/fork/build-mac-fork.mjs`.
+   - Imports the fork signing identity (see Signing) and installs arm64 natives only.
+   - Downloads `orcad-template` to `out/orcad-template`, then runs
+     `node config/scripts/fork/build-mac-fork.mjs` with `ORCA_REQUIRE_ORCAD_TEMPLATE=1`, so the
+     build fails if the template is missing. electron-builder ships it as
+     `Contents/Resources/orcad-template`, and afterPack signs its Mach-O files with the fork
+     identity. A step then checks the app has the template and its darwin-arm64,
+     linux-x64-glibc and linux-arm64-glibc targets.
    - Checks the app's designated requirement is the fork certificate, so Squirrel.Mac accepts it
      as an update.
    - Checks that `latest-mac.yml` and the app both carry the fork version.
