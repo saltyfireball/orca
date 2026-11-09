@@ -3,7 +3,7 @@ import {
   type ExecutionHostId
 } from '../../../../../shared/execution-host'
 import type { RuntimeClientTarget } from '../../../../../shared/runtime-client-target'
-import type { HostRoute } from '@/runtime/runtime-client-target'
+import type { HostRoute } from '@/runtime/rpc/targets/runtime-client-target'
 
 /** Where a workspace runs right now: its row's host and its owner's transport plus place. */
 export type NativeChatRunPlace = { hostId: ExecutionHostId | null; route: HostRoute | null }
