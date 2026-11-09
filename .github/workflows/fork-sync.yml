@@ -35,6 +35,7 @@ jobs:
       released: ${{ steps.released.outputs.released }}
       upstream_tag: ${{ steps.tags.outputs.latest }}
       sha: ${{ steps.result.outputs.sha }}
+      version: ${{ steps.version.outputs.version }}
     env:
       UPSTREAM_URL: https://github.com/stablyai/orca.git
       NODE_OPTIONS: --max-old-space-size=4096
@@ -251,6 +252,19 @@ jobs:
         id: result
         run: echo "sha=$(git rev-parse HEAD)" >>"$GITHUB_OUTPUT"
 
+      # M.m.(p*1000+N): N counts this upstream base's fork releases (config/scripts/fork/fork-version.mjs).
+      # Worked out once here, so the app and the orcad template it ships carry the same version.
+      - name: Compute the fork version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          upstream="$(node -p "require('./package.json').version")"
+          version="$(git ls-remote --tags --refs origin 'v*' | sed 's#.*refs/tags/##' \
+            | node config/scripts/fork/fork-version.mjs "$upstream")"
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+          echo "Upstream $upstream, fork release $version"
+
       # A failed or skipped build would otherwise wait for the next upstream tag.
       - name: Check for a fork release of this commit
         id: released
@@ -273,8 +287,9 @@ jobs:
             echo "$SHA has no fork release yet"
           fi
 
-  # As upstream's release-cut does: every SSH host runs orcad, deployed from the template the app
-  # ships. Without it the app has no server to install on an SSH host (SLRM-1758).
+  # As upstream's daily build does: every SSH host runs orcad, deployed from the template the app
+  # ships. Without it the app has no server to install on an SSH host (SLRM-1758). This qualifies
+  # every platform lane and keeps each lane's slot as an artifact of this run.
   orcad-template:
     needs: sync
     if: >-
@@ -283,16 +298,95 @@ jobs:
     permissions:
       contents: read
       actions: read
-    uses: ./.github/workflows/qualified-orcad-template.yml
+    uses: ./.github/workflows/node-server-tests.yml
     with:
       ref: ${{ needs.sync.outputs.sha }}
+      build_template: true
       fast_runners: false
 
-  build-mac:
+  # Upstream's desktop_template assembles the template with upstream's package.json version, so a
+  # host would report 1.4.253 under a 1.4.253NNN app and look out of date. This assembles it again
+  # from the same qualified lane slots, as desktop_template does, with the fork version stamped.
+  orcad-template-fork:
     needs: [sync, orcad-template]
+    if: github.repository == 'saltyfireball/orca' && needs.orcad-template.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      ORCA_BACKGROUND_LAUNCH: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.sync.outputs.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/install-node-dependencies
+      # Only this job's copy: build-orcad.mjs writes this version into the template's out/package.json.
+      - name: Stamp the fork version
+        env:
+          FORK_VERSION: ${{ needs.sync.outputs.version }}
+        run: npm pkg set "version=$FORK_VERSION"
+      - name: Collect every lane's slot
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: orcad-prebuild-*
+          path: ${{ runner.temp }}/orcad-prebuild-lanes
+      - name: Collect the Windows process-table addons
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: orcad-windows-process-tree
+          path: .build/windows-process-tree
+      - name: Collect the Windows CLI launchers
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: orcad-windows-cli-launcher
+          path: .build/windows-cli-launcher
+      - name: Collect the Windows security addons
+        if: hashFiles('config/scripts/native-build/windows/build-windows-security-addon.mjs', 'config/scripts/build-windows-security-addon.mjs') != ''
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: orcad-windows-security
+          path: .build/windows-security
+      - name: Merge the lanes and gate the full slot matrix
+        shell: bash
+        run: |
+          node config/scripts/orcad-distribution/prebuilds/merge-orcad-prebuilds.mjs "$RUNNER_TEMP"/orcad-prebuild-lanes/*
+          pnpm build:orcad-prebuilds --require-slots
+          pnpm build:orcad-prebuilds --require-slots linux-x64-glibc217
+      # The page the qualification lanes tested, not a rebuild.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: orcad-mobile-web-bundle
+          path: out/mobile-web
+      - run: pnpm build:orcad-template
+      - name: Check the template carries the fork version
+        env:
+          FORK_VERSION: ${{ needs.sync.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          got="$(node -p "require('./out/orcad-template/out/package.json').version")"
+          if [ "$got" != "$FORK_VERSION" ]; then
+            echo "::error::orcad template has version $got, expected $FORK_VERSION"
+            exit 1
+          fi
+          echo "orcad template version $got"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: orcad-template-fork
+          path: out/orcad-template/
+          # The per-target .server-target and .runtime-node markers are dotfiles.
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+
+  build-mac:
+    needs: [sync, orcad-template-fork]
     if: >-
       github.repository == 'saltyfireball/orca' &&
-      needs.orcad-template.result == 'success' &&
+      needs.orcad-template-fork.result == 'success' &&
       (needs.sync.outputs.changed == 'true' || needs.sync.outputs.released != 'true' || inputs.force_build)
     runs-on: macos-15
     timeout-minutes: 90
@@ -336,22 +430,10 @@ jobs:
       # Mirrors release-mac-build.yml: out/mobile-web needs mobile's React Native/Expo install.
       - uses: ./.github/actions/install-mobile-dependencies
 
-      # M.m.(p*1000+N): N counts this upstream base's fork releases (config/scripts/fork/fork-version.mjs).
-      - name: Compute the fork version
-        id: version
-        shell: bash
-        run: |
-          set -euo pipefail
-          upstream="$(node -p "require('./package.json').version")"
-          version="$(git ls-remote --tags --refs origin 'v*' | sed 's#.*refs/tags/##' \
-            | node config/scripts/fork/fork-version.mjs "$upstream")"
-          echo "version=$version" >>"$GITHUB_OUTPUT"
-          echo "Upstream $upstream, fork release $version"
-
       # Only this job's build copy: package.json in git keeps the upstream version.
       - name: Stamp the fork version
         env:
-          FORK_VERSION: ${{ steps.version.outputs.version }}
+          FORK_VERSION: ${{ needs.sync.outputs.version }}
         run: npm pkg set "version=$FORK_VERSION"
 
       # A temporary keychain on the search list, trusted for code signing on this runner only:
@@ -392,22 +474,29 @@ jobs:
       - name: Download the orcad deployment template
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: orcad-template
+          name: orcad-template-fork
           path: out/orcad-template
 
       - name: Build app
         env:
-          FORK_VERSION: ${{ steps.version.outputs.version }}
+          FORK_VERSION: ${{ needs.sync.outputs.version }}
           # beforePack fails the build when the template manifest is missing.
           ORCA_REQUIRE_ORCAD_TEMPLATE: '1'
         run: node config/scripts/fork/build-mac-fork.mjs
 
       - name: Verify the shipped orcad template
+        env:
+          FORK_VERSION: ${{ needs.sync.outputs.version }}
         shell: bash
         run: |
           set -euo pipefail
           template='dist/mac-arm64/Blackfish.app/Contents/Resources/orcad-template'
           test -f "$template/orcad-template.json"
+          got="$(node -p "require(process.argv[1]).version" "$PWD/$template/out/package.json")"
+          if [ "$got" != "$FORK_VERSION" ]; then
+            echo "::error::Shipped orcad template has version $got, expected $FORK_VERSION"
+            exit 1
+          fi
           for target in darwin-arm64 linux-x64-glibc linux-arm64-glibc; do
             test -d "$template/targets/$target" || { echo "::error::orcad template lacks $target"; exit 1; }
           done
@@ -432,7 +521,7 @@ jobs:
 
       - name: Verify the built version
         env:
-          FORK_VERSION: ${{ steps.version.outputs.version }}
+          FORK_VERSION: ${{ needs.sync.outputs.version }}
         shell: bash
         run: |
           set -euo pipefail
@@ -446,7 +535,7 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-          FORK_VERSION: ${{ steps.version.outputs.version }}
+          FORK_VERSION: ${{ needs.sync.outputs.version }}
           UPSTREAM_TAG: ${{ needs.sync.outputs.upstream_tag }}
           SHA: ${{ needs.sync.outputs.sha }}
         shell: bash
