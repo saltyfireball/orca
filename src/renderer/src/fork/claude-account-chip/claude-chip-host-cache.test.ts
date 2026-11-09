@@ -6,8 +6,8 @@ import type {
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 
 const { callRuntimeRpc } = vi.hoisted(() => ({ callRuntimeRpc: vi.fn() }))
-vi.mock('@/runtime/runtime-rpc-client', () => ({ callRuntimeRpc }))
-vi.mock('@/runtime/runtime-provider-accounts-client', () => ({
+vi.mock('@/runtime/rpc/calls/runtime-rpc-call', () => ({ callRuntimeRpc }))
+vi.mock('@/runtime/provider-accounts/observations/runtime-provider-accounts-client', () => ({
   fetchProviderAccountsSnapshot: vi.fn()
 }))
 vi.mock('sonner', () => ({

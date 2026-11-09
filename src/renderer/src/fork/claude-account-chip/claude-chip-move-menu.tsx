@@ -2,7 +2,8 @@
 // The menu is left out where that host cannot move the chats: direct SSH (no runtime), a WSL
 // distro (its chats follow the distro's own selection) and a host without the fork move RPC.
 import React from 'react'
-import { useAppStore, type AppState } from '@/store'
+import { useAppStore } from '@/store'
+import type { AppState } from '@/store/types'
 import { getLocalProjectExecutionRuntimeContext } from '@/lib/local-preflight-context'
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 import type { ForkClaudeMoveScope } from '../claude-account-move/claude-account-move-client'
