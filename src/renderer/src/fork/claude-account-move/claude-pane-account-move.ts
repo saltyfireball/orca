@@ -2,7 +2,7 @@
 // its own conversation, through the stock account-restart queue (which waits for an open turn).
 // The restart carries a marker main turns into a pointer for that pane alone (FORK.md), so the
 // other panes keep following the selected account.
-import type { AppState } from '@/store'
+import type { AppState } from '@/store/types'
 import { getExecutionHostIdForWorktree } from '@/lib/workspace/ownership/worktree-runtime-owner'
 import { getLocalProjectExecutionRuntimeContext } from '@/lib/local-preflight-context'
 import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host'

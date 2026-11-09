@@ -3,7 +3,7 @@
 // its turn; the toast offers to stop the turn now or drop the move.
 import { toast } from 'sonner'
 import { translate } from '@/i18n/i18n'
-import { callRuntimeRpc } from '@/runtime/runtime-rpc-client'
+import { callRuntimeRpc } from '@/runtime/rpc/calls/runtime-rpc-call'
 import type {
   ForkClaudeCantMoveReason,
   ForkClaudeMoveResponse,
