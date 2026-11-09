@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import {
-  TEST_REPO,
-  makeFolderWorkspace,
-  makeWorktree
-} from '@/store/slices/worktrees-slice-test-fixtures'
+import { TEST_REPO } from '@/store/repos/repo.test-fixture'
+import { makeFolderWorkspace } from '@/store/folder-workspaces/folder-workspace.test-fixture'
+import { makeWorktree } from '@/store/slices/worktrees/worktree.test-fixture'
 import { findNativeChatRunWorkspace, readNativeChatRunPlace } from './native-chat-run-workspace'
 
 function makeState(overrides: Record<string, unknown> = {}) {

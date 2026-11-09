@@ -4,7 +4,10 @@ import type {
   ClaudeManagedAccount,
   ClaudeRateLimitAccountsState
 } from '../../../../shared/managed-account-types'
-import { isClaudePaneOnAccount, resolveClaudePaneFolder } from '@/lib/claude-pane-account-folder'
+import {
+  isClaudePaneOnAccount,
+  resolveClaudePaneFolder
+} from '@/lib/agent-session/accounts/claude/claude-pane-account-folder'
 import { signedInClaudeAccountCount } from '@/components/status-bar/status-bar-claude-accounts'
 import { translate } from '@/i18n/i18n'
 

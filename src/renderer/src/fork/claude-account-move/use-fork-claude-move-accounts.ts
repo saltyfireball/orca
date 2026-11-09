@@ -7,7 +7,7 @@ import {
   fetchProviderAccountsSnapshot,
   getProviderAccountsOwnerKey,
   type ProviderAccountsSnapshot
-} from '@/runtime/runtime-provider-accounts-client'
+} from '@/runtime/provider-accounts/observations/runtime-provider-accounts-client'
 import type { ClaudeRateLimitAccountsState } from '../../../../shared/managed-account-types'
 import type {
   ProviderRateLimits,

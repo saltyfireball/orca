@@ -126,8 +126,9 @@ Apply these in this order. Each one is a single commit.
 45. `SLRM-1503 FORK.md: the account move`
 46. `SLRM-1503 Account chip opens the move menu and reads chats through fork.claudeAccount.which`
 47. `SLRM-1758 Ship the orcad template in fork builds so SSH hosts get the fork's server`
-48. `SLRM-1758 Stamp the fork version into the shipped orcad template`
 48. `SLRM-1569 The update card shows the restart guard's wait instead of staying on Installing`
+49. `SLRM-1758 Stamp the fork version into the shipped orcad template`
+50. `SLRM-1758 Follow upstream 1.4.255's moved renderer modules in fork code`
 
 Fork-only code lives in `fork/` folders:
 
