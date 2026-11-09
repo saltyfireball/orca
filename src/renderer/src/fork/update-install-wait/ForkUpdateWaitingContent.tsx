@@ -30,7 +30,7 @@ export function ForkUpdateWaitingContent({
           size="icon"
           className="size-7 shrink-0 min-w-[44px] min-h-[44px] -m-2"
           onClick={onCollapse}
-          aria-label={translate('auto.components.UpdateCard.8acbdd3961', 'Minimize to status bar')}
+          aria-label={translate('fork.restartGuard.card.minimize', 'Minimize to status bar')}
         >
           <Minus className="size-3.5" />
         </Button>

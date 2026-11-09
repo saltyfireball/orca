@@ -1,15 +1,15 @@
 // SLRM-1503: what the store says about where each Claude session runs, and which folder it uses.
 // Terminal panes report their transcript path through agent hooks, the same evidence the
 // account switch uses (claude-session-account-move.ts); native chats are asked through the fork RPC.
-import type { AppState } from '@/store'
+import type { AppState } from '@/store/types'
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 import type { ExecutionHostId } from '../../../../shared/execution-host'
 import { normalizeAgentProviderSession } from '../../../../shared/agent-session/lifecycle/agent-session-resume'
 import { structuredAgentSessionPaneKey } from '../../../../shared/agent-session/view/structured-agent-session-projection'
 import { isTerminalLeafId, makePaneKey } from '../../../../shared/workspace-layout/stable-pane-id'
 import { getExecutionHostIdForWorktree } from '@/lib/workspace/ownership/worktree-runtime-owner'
-import { runtimeRpcTargetForAuthorityKey } from '@/runtime/runtime-client-target'
-import { resolveAccountOwner } from '@/lib/wsl-host-account-owner'
+import { runtimeRpcTargetForAuthorityKey } from '@/runtime/rpc/targets/runtime-client-target'
+import { resolveAccountOwner } from '@/runtime/provider-accounts/ownership/wsl-host-account-owner'
 
 /** One Claude session, as the chip resolves it. Plain data so a selector can compare it as text. */
 export type ClaudeChipEvidence = {

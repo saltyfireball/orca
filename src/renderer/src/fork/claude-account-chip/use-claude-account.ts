@@ -1,6 +1,7 @@
 // SLRM-1503: renderer hooks that name the Claude account of a pane, tab, chat, agent row or worktree.
 import { useEffect, useMemo, useSyncExternalStore } from 'react'
-import { useAppStore, type AppState } from '@/store'
+import { useAppStore } from '@/store'
+import type { AppState } from '@/store/types'
 import type { ClaudeManagedAccount } from '../../../../shared/managed-account-types'
 import { NO_ACCOUNT, type ForkClaudeAccountResolution } from './claude-account-identity'
 import {

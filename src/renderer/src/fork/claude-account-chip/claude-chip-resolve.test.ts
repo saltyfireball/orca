@@ -8,10 +8,10 @@ import type { RuntimeClientTarget } from '../../../../shared/runtime-client-targ
 import type { ClaudeChipEvidence } from './claude-chip-evidence'
 import type { ChatHomeEntry, ClaudeHostSnapshot } from './claude-chip-host-cache'
 
-vi.mock('@/runtime/runtime-provider-accounts-client', () => ({
+vi.mock('@/runtime/provider-accounts/observations/runtime-provider-accounts-client', () => ({
   fetchProviderAccountsSnapshot: vi.fn()
 }))
-vi.mock('@/runtime/runtime-rpc-client', () => ({
+vi.mock('@/runtime/rpc/calls/runtime-rpc-call', () => ({
   callRuntimeRpc: vi.fn()
 }))
 
