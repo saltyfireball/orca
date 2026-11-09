@@ -126,6 +126,7 @@ Apply these in this order. Each one is a single commit.
 45. `SLRM-1503 FORK.md: the account move`
 46. `SLRM-1503 Account chip opens the move menu and reads chats through fork.claudeAccount.which`
 47. `SLRM-1758 Ship the orcad template in fork builds so SSH hosts get the fork's server`
+48. `SLRM-1758 Stamp the fork version into the shipped orcad template`
 48. `SLRM-1569 The update card shows the restart guard's wait instead of staying on Installing`
 
 Fork-only code lives in `fork/` folders:
@@ -356,9 +357,10 @@ for each base and starts again at 1 on a new base. For example, upstream `1.4.25
 release 1 is `1.4.252001`, tagged `v1.4.252001`. A fork release on a newer base always sorts
 above one on an older base. A base that would need N 1000 fails the build.
 
-`package.json` keeps the upstream version in git. The release job works out the next version
-with `config/scripts/fork/fork-version.mjs`, then sets it in its own build copy only. The app
-version, `latest-mac.yml` and the tag all match it, and the release is a normal release
+`package.json` keeps the upstream version in git. The sync job works out the next version
+with `config/scripts/fork/fork-version.mjs`, and the template and app jobs set it in their own
+build copies only. The app version, the orcad template's `out/package.json`, `latest-mac.yml`
+and the tag all match it, and the release is a normal release
 (not a prerelease).
 
 ## Building locally
@@ -394,27 +396,35 @@ runs in `saltyfireball/orca`. Every third-party action is pinned to a full commi
    - After the push it disables any workflow the push added, and cancels any other workflow's
      run of the pushed commit (see below).
    - It checks whether a published fork release already has a tag on the `main` commit.
+   - It works out the fork version once (see Versions), for both the app and its orcad template.
 2. **orcad-template** runs in the same three cases as build-mac (below). It calls upstream's
-   `qualified-orcad-template.yml` at the commit sync recorded, with `fast_runners: false`, as
-   upstream's release-cut does: `node-server-tests.yml` builds and tests orcad on every
-   platform lane (hosted Linux, macOS, Windows, glibc 2.28 and 2.17, musl) and merges their
-   slots into the `orcad-template` artifact. A qualified template of the same tree and day is
-   reused from the Actions cache. These reusable workflows are upstream's, so their actions
+   `node-server-tests.yml` at the commit sync recorded, with `build_template: true` and
+   `fast_runners: false`, as upstream's daily build does: it builds and tests orcad on every
+   platform lane (hosted Linux, macOS, Windows, glibc 2.28 and 2.17, musl) and keeps each
+   lane's slot as an artifact of the run. This reusable workflow is upstream's, so its actions
    are pinned by tag, not SHA. Being disabled does not stop a workflow being called this way,
-   and their jobs run inside the fork-sync run, so the guard never cancels them.
+   and its jobs run inside the fork-sync run, so the guard never cancels them.
    - Without the template the app ships no server: Settings, SSH hosts says the build "has no
      server for this host" and never updates a host's orcad (SLRM-1758).
-3. **build-mac** (macos-15) runs in three cases: `main` changed, `main` has no fork release
+3. **orcad-template-fork** (ubuntu-latest) assembles the template again from those lane slots,
+   with the steps of upstream's `desktop_template` job, after stamping the fork version into
+   its copy of `package.json`. `build-orcad.mjs` writes that version into the template's
+   `out/package.json`, which the host's orcad reports as its app version. Upstream's own
+   template carries the upstream version (1.4.253 under a 1.4.253NNN app), so Settings,
+   Remote Orca Servers would call every host out of date. The job fails unless the template
+   has the fork version, and uploads it as `orcad-template-fork`.
+4. **build-mac** (macos-15) runs in three cases: `main` changed, `main` has no fork release
    yet, or `force_build` is set. The second case retries a failed build without waiting for a
-   new upstream tag. It waits for orcad-template and runs only when that succeeded.
-   - Works out the fork version and sets it in the build copy of `package.json`.
+   new upstream tag. It waits for orcad-template-fork and runs only when that succeeded.
+   - Sets the fork version from sync in the build copy of `package.json`.
    - Imports the fork signing identity (see Signing) and installs arm64 natives only.
-   - Downloads `orcad-template` to `out/orcad-template`, then runs
+   - Downloads `orcad-template-fork` to `out/orcad-template`, then runs
      `node config/scripts/fork/build-mac-fork.mjs` with `ORCA_REQUIRE_ORCAD_TEMPLATE=1`, so the
      build fails if the template is missing. electron-builder ships it as
      `Contents/Resources/orcad-template`, and afterPack signs its Mach-O files with the fork
-     identity. A step then checks the app has the template and its darwin-arm64,
-     linux-x64-glibc and linux-arm64-glibc targets.
+     identity. A step then checks the app has the template, its darwin-arm64,
+     linux-x64-glibc and linux-arm64-glibc targets, and the fork version in its
+     `out/package.json`.
    - Checks the app's designated requirement is the fork certificate, so Squirrel.Mac accepts it
      as an update.
    - Checks that `latest-mac.yml` and the app both carry the fork version.
