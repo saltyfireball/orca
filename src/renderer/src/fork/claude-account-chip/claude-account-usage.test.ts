@@ -3,10 +3,10 @@ import type { ProviderRateLimits, RateLimitState } from '../../../../shared/rate
 import type { ClaudeHostSnapshot } from './claude-chip-host-cache'
 
 vi.mock('@/store', () => ({ useAppStore: vi.fn() }))
-vi.mock('@/runtime/runtime-provider-accounts-client', () => ({
+vi.mock('@/runtime/provider-accounts/observations/runtime-provider-accounts-client', () => ({
   fetchProviderAccountsSnapshot: vi.fn()
 }))
-vi.mock('@/runtime/structured-agent-session-client', () => ({
+vi.mock('@/runtime/native-chat/requests/structured-agent-session-call', () => ({
   callStructuredAgentSession: vi.fn()
 }))
 
@@ -36,6 +36,7 @@ function state(overrides: Partial<RateLimitState>): RateLimitState {
     grok: null,
     cursor: null,
     zcode: null,
+    muse: null,
     minimaxCookieConfigured: false,
     minimaxApiKeyConfigured: false,
     opencodeGoApiKeyConfigured: false,
