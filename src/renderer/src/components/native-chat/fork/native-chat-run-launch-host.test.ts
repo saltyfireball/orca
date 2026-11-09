@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createTestStore, seedStore } from '@/store/slices/store-test-helpers'
-import { createStoreCascadesMockApi } from '@/store/slices/store-cascades-test-harness'
+import { createTestStore, seedStore } from '@/store/testing/app-store-test-fixture'
+import { createStoreCascadesMockApi } from '@/store/testing/app-store-cascade-api.test-fixture'
 import {
   MIXED_FOLDER,
   MIXED_GROUP
 } from '../../../../../shared/folder-workspaces/folder-workspace-host-routing.test-fixture'
-import { resolveTerminalPaneOwnerContext } from '@/components/terminal-pane/terminal-pane-owner-context'
+import { resolveTerminalPaneOwnerContext } from '@/components/terminal-pane/host-state/terminal-pane-owner-context'
 
 vi.mock('sonner', () => ({
   toast: { info: vi.fn(), success: vi.fn(), error: vi.fn(), warning: vi.fn() }

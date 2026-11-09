@@ -56,10 +56,10 @@ vi.mock('./claude-account-usage', () => ({
 vi.mock('@/components/status-bar/InlineProviderUsage', () => ({
   InlineUsageBars: () => null
 }))
-vi.mock('@/runtime/runtime-provider-accounts-client', () => ({
+vi.mock('@/runtime/provider-accounts/observations/runtime-provider-accounts-client', () => ({
   fetchProviderAccountsSnapshot: vi.fn()
 }))
-vi.mock('@/runtime/runtime-rpc-client', () => ({ callRuntimeRpc: vi.fn() }))
+vi.mock('@/runtime/rpc/calls/runtime-rpc-call', () => ({ callRuntimeRpc: vi.fn() }))
 vi.mock('../claude-account-move/ForkMoveAccountMenu', () => ({
   ForkMoveAccountMenu: (props: {
     trigger: React.ReactElement
