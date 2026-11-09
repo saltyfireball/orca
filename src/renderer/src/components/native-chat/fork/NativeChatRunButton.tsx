@@ -5,7 +5,10 @@ import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
 import { runQuickCommandInNewTab } from '@/lib/run-quick-command-in-new-tab'
 import { commandFromShellFence } from '../../../../../shared/fork/shell-fence'
-import { useNativeChatVisualOwner, type NativeChatVisualOwner } from '../native-chat-visual-owner'
+import {
+  useNativeChatVisualOwner,
+  type NativeChatVisualOwner
+} from '../media/visuals/native-chat-visual-owner'
 import {
   isNativeChatRunTargetCurrent,
   nativeChatRunLaunchHostId,

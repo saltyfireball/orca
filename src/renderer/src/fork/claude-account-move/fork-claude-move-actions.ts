@@ -2,12 +2,13 @@
 // point (tab menu, account chip, palette dialog) runs.
 import { toast } from 'sonner'
 import { translate } from '@/i18n/i18n'
-import { useAppStore, type AppState } from '@/store'
+import { useAppStore } from '@/store'
+import type { AppState } from '@/store/types'
 import {
   resolveStructuredAgentSessionOwner,
   structuredAgentSessionTargetForHost,
   structuredAgentSessionTargetForTab
-} from '@/runtime/structured-agent-session-owner'
+} from '@/runtime/native-chat/session-ownership/structured-agent-session-owner'
 import type { ForkClaudeMoveResponse } from '../../../../shared/fork/claude-account-move'
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 import { moveClaudeChatsToAccount, type ForkClaudeMoveScope } from './claude-account-move-client'

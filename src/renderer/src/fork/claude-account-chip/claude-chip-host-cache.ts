@@ -4,7 +4,7 @@ import type { ClaudeRateLimitAccountsState } from '../../../../shared/managed-ac
 import type { RateLimitState } from '../../../../shared/rate-limit-types'
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 import type { ForkClaudeLaunchHome } from '../../../../shared/fork/claude-account-move'
-import { fetchProviderAccountsSnapshot } from '@/runtime/runtime-provider-accounts-client'
+import { fetchProviderAccountsSnapshot } from '@/runtime/provider-accounts/observations/runtime-provider-accounts-client'
 import {
   onForkClaudeAccountMoved,
   readClaudeChatAccounts
