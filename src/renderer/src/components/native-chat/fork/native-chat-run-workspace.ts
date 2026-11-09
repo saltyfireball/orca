@@ -1,7 +1,7 @@
 import type { ExecutionHostId } from '../../../../../shared/execution-host'
-import { selectKnownWorktreeById } from '@/store/selectors'
+import { selectKnownWorktreeById } from '@/store/workspaces/selection/known-worktree-selection'
 import { resolveOwner } from '@/lib/resolve-owner'
-import { hostRouteForAuthority } from '@/runtime/runtime-client-target'
+import { hostRouteForAuthority } from '@/runtime/rpc/targets/runtime-client-target'
 import type { NativeChatRunPlace } from './native-chat-run-target'
 
 export type NativeChatRunWorkspace = { hostId: ExecutionHostId | null; displayName: string }
