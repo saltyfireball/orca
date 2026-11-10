@@ -3,6 +3,7 @@ import type { Tab } from '../../../../shared/tab-types'
 import type { TerminalTab } from '../../../../shared/workspace-layout/terminal-tab-types'
 import { structuredAgentSessionPaneKey } from '../../../../shared/agent-session/view/structured-agent-session-projection'
 import {
+  agentIconRingStyle,
   agentRowTintStyle,
   normalizeHexColor,
   resolveAgentRowTabColor,
@@ -84,7 +85,6 @@ describe('resolveAgentRowTabColor', () => {
       worktreeId: 'wt',
       tabId: 't2',
       paneKey: 't2:leaf',
-      structuredHostOwned: false,
       tabsByWorktree: { wt: [terminalTab('t1', YELLOW), terminalTab('t2', PINK)] },
       unifiedTabsByWorktree: {}
     })
@@ -97,7 +97,6 @@ describe('resolveAgentRowTabColor', () => {
       worktreeId: 'wt',
       tabId: 'backing-terminal',
       paneKey,
-      structuredHostOwned: true,
       tabsByWorktree: { wt: [terminalTab('backing-terminal', YELLOW)] },
       unifiedTabsByWorktree: {
         wt: [chatTab('chat-1', 'session-1', YELLOW), chatTab('chat-2', 'session-2', PINK)]
@@ -113,7 +112,6 @@ describe('resolveAgentRowTabColor', () => {
         worktreeId: 'wt',
         tabId: 'x',
         paneKey,
-        structuredHostOwned: true,
         tabsByWorktree: {},
         unifiedTabsByWorktree: { wt: [chatTab('chat-1', 'session-1', null)] }
       })
@@ -123,7 +121,6 @@ describe('resolveAgentRowTabColor', () => {
         worktreeId: 'wt',
         tabId: 't1',
         paneKey: 't1:leaf',
-        structuredHostOwned: false,
         tabsByWorktree: { wt: [terminalTab('t1', null)] },
         unifiedTabsByWorktree: {}
       })
@@ -136,10 +133,21 @@ describe('resolveAgentRowTabColor', () => {
         worktreeId: 'other',
         tabId: 't1',
         paneKey: 't1:leaf',
-        structuredHostOwned: false,
         tabsByWorktree: { wt: [terminalTab('t1', PINK)] },
         unifiedTabsByWorktree: undefined
       })
     ).toBeNull()
+  })
+})
+
+describe('agentIconRingStyle', () => {
+  it('rings a strip icon in the full tab color', () => {
+    expect(agentIconRingStyle(PINK)).toEqual({ boxShadow: `inset 0 0 0 1.5px ${PINK}` })
+    expect(agentIconRingStyle('#F0A')).toEqual({ boxShadow: 'inset 0 0 0 1.5px #ff00aa' })
+  })
+
+  it('leaves the icon plain without a hex color', () => {
+    expect(agentIconRingStyle(null)).toBeNull()
+    expect(agentIconRingStyle('pink')).toBeNull()
   })
 })
