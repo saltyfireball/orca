@@ -3,7 +3,7 @@
 // whatever account they follow. Kept on the host that runs the chat (each runtime has its own).
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { writeFileAtomically } from '../../codex-accounts/fs-utils'
+import { writeFileAtomically } from '../../filesystem/atomic-file-publication'
 import { getProfileUserDataPath } from '../../orca-profiles/profile-storage-paths'
 
 /** An account id, or `null` for System default. */
