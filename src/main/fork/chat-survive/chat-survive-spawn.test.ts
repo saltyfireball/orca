@@ -6,7 +6,8 @@ import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SpawnOptions as SdkSpawnOptions } from '@anthropic-ai/claude-agent-sdk'
 import { spawnProcess } from '@orca/process-host'
-import type { PipedChildProcess, PipedProcessSpec } from '@orca/process-host/process-spec'
+import type { ChildProcessWithoutNullStreams } from 'node:child_process'
+import type { PipedProcessSpec } from '@orca/process-host/process-spec'
 import { createProviderSpawnSpec } from '../../provider-process/provider-process-supervisor'
 import { proveClaudeChildExit } from '../../claude/claude-agent-sdk-exit-proof'
 import { createClaudeCodeProcessSpawn } from '../../claude/claude-agent-sdk-process-spawn'
@@ -73,7 +74,7 @@ function supervisorSpawn(): PipedProcessSpec {
 
 function recordingSpawner(): {
   specs: PipedProcessSpec[]
-  spawn: (spec: PipedProcessSpec) => PipedChildProcess
+  spawn: (spec: PipedProcessSpec) => ChildProcessWithoutNullStreams
 } {
   const specs: PipedProcessSpec[] = []
   return {
