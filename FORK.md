@@ -75,6 +75,14 @@ named Orca Fork until SLRM-1367. `main` is always
   - A worktree move on this desktop also restarts its Claude terminal panes on that account
     through the stock account-restart queue, each once it is idle.
 
+- **Sidebar agent rows wear their tab's color dot (SLRM-1966).** When a tab in the tab strip
+  shows a color dot after its title, its agent row in the workspace card's sidebar list gets a
+  soft wash of that color and a 2px left edge bar in the full color, so you can tell which row
+  is which tab. The color is the tab's own `color` field, the one the dot paints (the native
+  chat's agent-session tab, or the terminal tab for a terminal pane), so the two always agree
+  and the row goes plain when the dot is cleared. Sub-agent rows stay plain. Code is in
+  `src/renderer/src/fork/agent-row-tab-tint/`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -129,6 +137,7 @@ Apply these in this order. Each one is a single commit.
 48. `SLRM-1569 The update card shows the restart guard's wait instead of staying on Installing`
 49. `SLRM-1758 Stamp the fork version into the shipped orcad template`
 50. `SLRM-1758 Follow upstream 1.4.255's moved renderer modules in fork code`
+51. `SLRM-1966 Sidebar agent rows wear their tab's color dot`
 
 Fork-only code lives in `fork/` folders:
 
@@ -151,6 +160,8 @@ Upstream files only get short hooks, which keeps rebases small:
 - An optional `executionHostId` on `runQuickCommandInNewTab` and `createTab`, so a Run tab
   opens on the host captured at confirm.
 - One provider wrap in `MobileSessionRouteScreen.tsx`.
+- One element and a `relative` class in `worktree-card-compact-agent-row.tsx` for the row
+  tint (SLRM-1966).
 - The updater feed repoints.
 - One call each in `release-channel.ts`, `updater-release-builds.ts` and
   `electron-updater-loader.ts`.
