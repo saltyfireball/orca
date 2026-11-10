@@ -12,7 +12,7 @@ import {
   FORK_CLAUDE_SYSTEM_DEFAULT,
   FORK_CLAUDE_TERMINAL_ACCOUNT_ENV
 } from '../../../shared/fork/claude-account-move'
-import { writeFileAtomically } from '../../codex-accounts/fs-utils'
+import { writeFileAtomically } from '../../filesystem/atomic-file-publication'
 import { getClaudeProfileRouter } from '../../claude-accounts/claude-profile-installed-router'
 import type { ClaudeRuntimeAuthPreparation } from '../../claude-accounts/runtime-auth/runtime-auth-types'
 import type { ClaudeAccountSelectionTarget } from '../../claude-accounts/runtime-selection'
