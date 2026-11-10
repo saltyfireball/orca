@@ -11,6 +11,7 @@ import {
   summarizeAgents
 } from './worktree-card-agent-summary'
 import { useTranslate } from '@/i18n/use-translate'
+import { ForkAgentIconTabRing } from '@/fork/agent-row-tab-tint/ForkAgentIconTabRing'
 
 import './worktree-card-compact-agent-row'
 
@@ -153,9 +154,10 @@ export function CompactAgentSummaryButton({
                     {iconAgents.map((agent) => (
                       <span
                         key={agent.paneKey}
-                        className="inline-flex size-4 items-center justify-center rounded-full border border-worktree-sidebar-border/70 bg-worktree-sidebar"
+                        className="relative inline-flex size-4 items-center justify-center rounded-full border border-worktree-sidebar-border/70 bg-worktree-sidebar"
                       >
                         <AgentTypeIcon agentType={agent.agentType} size={13} />
+                        <ForkAgentIconTabRing agent={agent} />
                       </span>
                     ))}
                   </span>
