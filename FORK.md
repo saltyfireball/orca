@@ -80,8 +80,12 @@ named Orca Fork until SLRM-1367. `main` is always
   soft wash of that color and a 2px left edge bar in the full color, so you can tell which row
   is which tab. The color is the tab's own `color` field, the one the dot paints (the native
   chat's agent-session tab, or the terminal tab for a terminal pane), so the two always agree
-  and the row goes plain when the dot is cleared. Sub-agent rows stay plain. Code is in
-  `src/renderer/src/fork/agent-row-tab-tint/`.
+  and the row goes plain when the dot is cleared. Sub-agent rows stay plain. A chat row finds
+  its tab by pane key whether the chat is running or done (keying on `structuredHostOwned` lost
+  the color once a chat finished, since that flag only marks a live provider child). When a
+  card collapses its agents into the small icon strip, each icon whose tab has a color gets a
+  thin ring in it, from the same resolver. A chat that has never had a prompt has no status
+  entry, so it has no row to tint. Code is in `src/renderer/src/fork/agent-row-tab-tint/`.
 
 ## Patch list
 
@@ -139,6 +143,7 @@ Apply these in this order. Each one is a single commit.
 50. `SLRM-1758 Follow upstream 1.4.255's moved renderer modules in fork code`
 51. `SLRM-1966 Sidebar agent rows wear their tab's color dot`
 52. `SLRM-1966 Follow upstream 1.4.256's moved modules in fork code`
+53. `SLRM-1966 Tint done chat rows and ring tab colors in the collapsed agent strip`
 
 Fork-only code lives in `fork/` folders:
 
@@ -162,7 +167,8 @@ Upstream files only get short hooks, which keeps rebases small:
   opens on the host captured at confirm.
 - One provider wrap in `MobileSessionRouteScreen.tsx`.
 - One element and a `relative` class in `worktree-card-compact-agent-row.tsx` for the row
-  tint (SLRM-1966).
+  tint, and an import, one element and a `relative` class on the strip icon in
+  `worktree-card-compact-agents.tsx` for the icon ring (SLRM-1966).
 - The updater feed repoints.
 - One call each in `release-channel.ts`, `updater-release-builds.ts` and
   `electron-updater-loader.ts`.
