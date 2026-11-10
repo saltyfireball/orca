@@ -26,6 +26,7 @@ import {
 } from '../../../../../../shared/program-status/presentation'
 import { resolveRowProgramStatus } from '@/lib/program-status/agent-row-presentation'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
+import { ForkAgentRowTabTint } from '@/fork/agent-row-tab-tint/ForkAgentRowTabTint'
 
 function getCompactAgentPrimary(
   agent: DashboardAgentRowData,
@@ -302,7 +303,7 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
     <div
       draggable={false}
       className={cn(
-        'compact-agent-row agent-disclosure-row group/compact-agent-row min-w-0 cursor-pointer rounded-sm px-1 text-[11px] leading-none',
+        'compact-agent-row agent-disclosure-row group/compact-agent-row relative min-w-0 cursor-pointer rounded-sm px-1 text-[11px] leading-none',
         'text-muted-foreground worktree-agent-row-hover',
         hasChildDisclosure && 'worktree-agent-lineage-parent-row',
         isLineageChild && 'worktree-agent-lineage-child-row',
@@ -326,6 +327,7 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
       aria-expanded={hasChildDisclosure ? childAgentsExpanded : undefined}
       title={sendTargetDisabledReason}
     >
+      <ForkAgentRowTabTint agent={agent} />
       {rowBody}
     </div>
   )
