@@ -5,7 +5,7 @@
 // requests come again (a permission prompt still waiting on the user), then everything after.
 import { EventEmitter } from 'node:events'
 import { Transform, Writable, type TransformCallback } from 'node:stream'
-import type { PipedChildProcess } from '@orca/process-host/process-spec'
+import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import type { ChatSurviveConnection } from './chat-survive-client'
 import { isRecord, type ChatSurviveExit } from './chat-survive-protocol'
 import {
@@ -130,7 +130,7 @@ export function chatSurviveRedeliveryFilter(replayed: readonly string[]): Transf
 }
 
 /** The fields the managed provider process and the Claude SDK use of a piped child. */
-function isPiped(child: unknown): child is PipedChildProcess {
+function isPiped(child: unknown): child is ChildProcessWithoutNullStreams {
   return (
     child instanceof EventEmitter &&
     'stdin' in child &&
@@ -204,7 +204,7 @@ export function chatSurviveAdoptedChild(input: {
   brokerPid: number
   mark: ChatSurviveStreamMark
   tracker: ChatSurviveStreamTracker
-}): PipedChildProcess {
+}): ChildProcessWithoutNullStreams {
   const { connection, brokerPid, tracker } = input
   // Shaped like a spawned child; node:child_process stays behind @orca/process-host.
   const child = new EventEmitter()

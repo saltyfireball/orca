@@ -3,7 +3,7 @@
 // whether it is still running. Once the quit hook has handed a broker off (`detached`), nothing in
 // this instance may signal it again: its kill does nothing and the managed process stops closing.
 import { renameSync, writeFileSync } from 'node:fs'
-import type { PipedChildProcess } from '@orca/process-host/process-spec'
+import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import {
   createChatSurviveStreamTracker,
   type ChatSurviveStreamMark,
@@ -24,7 +24,7 @@ export type ChatSurviveRecord = {
 
 export type ChatSurviveEntry = {
   readonly sessionId: string
-  readonly child: PipedChildProcess
+  readonly child: ChildProcessWithoutNullStreams
   readonly record: ChatSurviveRecord
   readonly recordPath: string
   readonly tracker: ChatSurviveStreamTracker
@@ -34,7 +34,7 @@ export type ChatSurviveEntry = {
 }
 
 const bySession = new Map<string, ChatSurviveEntry>()
-const byChild = new WeakMap<PipedChildProcess, ChatSurviveEntry>()
+const byChild = new WeakMap<ChildProcessWithoutNullStreams, ChatSurviveEntry>()
 
 /** Writes a record whole or not at all, so a reader never sees half of one. */
 export function writeChatSurviveRecord(path: string, record: ChatSurviveRecord): void {
@@ -45,7 +45,7 @@ export function writeChatSurviveRecord(path: string, record: ChatSurviveRecord):
 
 /** Subscribes alongside the first reader, so watching never starts the stream early. */
 function watchWithReader(
-  stream: PipedChildProcess['stdout'],
+  stream: ChildProcessWithoutNullStreams['stdout'],
   onChunk: (chunk: Buffer | string) => void
 ): void {
   const onSubscribe = (event: string | symbol): void => {
@@ -84,7 +84,7 @@ function interpose<Name extends string, Fn extends Method>(
 }
 
 export function registerChatSurviveBroker(input: {
-  child: PipedChildProcess
+  child: ChildProcessWithoutNullStreams
   record: ChatSurviveRecord & { sessionId: string }
   recordPath: string
   /** An adopted broker's tracker, which its caller feeds with the broker's own offsets. */
@@ -128,7 +128,9 @@ export function chatSurviveEntryForSession(sessionId: string): ChatSurviveEntry 
   return bySession.get(sessionId) ?? null
 }
 
-export function chatSurviveEntryForChild(child: PipedChildProcess): ChatSurviveEntry | null {
+export function chatSurviveEntryForChild(
+  child: ChildProcessWithoutNullStreams
+): ChatSurviveEntry | null {
   return byChild.get(child) ?? null
 }
 
@@ -140,7 +142,7 @@ type ConsumedMessage = { readonly uuid?: unknown }
  * past it. Called for every Claude message; a child without a broker costs one map lookup.
  */
 export function forkChatSurviveConsumed(
-  child: PipedChildProcess | null | undefined,
+  child: ChildProcessWithoutNullStreams | null | undefined,
   message: ConsumedMessage
 ): void {
   const { uuid } = message

@@ -16,7 +16,7 @@ import { chmodSync, rmSync } from 'node:fs'
 import { createServer, type Server, type Socket } from 'node:net'
 import type { Readable, Writable } from 'node:stream'
 import { spawnProcess } from '@orca/process-host'
-import type { PipedChildProcess } from '@orca/process-host/process-spec'
+import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import { ChatSurviveByteRing } from './chat-survive-byte-ring'
 import { serveChatSurviveConnection } from './chat-survive-broker-connection'
 import { welcomeFrames } from './chat-survive-broker-hello'
@@ -67,7 +67,7 @@ export async function startChatSurviveBroker(
   let directPoll: NodeJS.Timeout | null = null
   let finishing: ChatSurviveBrokerEndReason | null = null
 
-  const child: PipedChildProcess = spawnProcess({
+  const child: ChildProcessWithoutNullStreams = spawnProcess({
     program: options.command,
     args: options.args,
     ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
