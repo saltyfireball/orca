@@ -4,11 +4,8 @@
 // so there is never a second writer and never a provider without its supervisor.
 import { chmodSync, existsSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import type {
-  PipedChildProcess,
-  PipedProcessSpawner,
-  PipedProcessSpec
-} from '@orca/process-host/process-spec'
+import type { ChildProcessWithoutNullStreams } from 'node:child_process'
+import type { PipedProcessSpawner, PipedProcessSpec } from '@orca/process-host/process-spec'
 import { ORCA_AGENT_SESSION_ID_ENV } from '../../../shared/agent-session/lifecycle/agent-session-caller-env'
 import { chatSurviveAdoptedChild } from './chat-survive-adopted-child'
 import {
@@ -103,7 +100,7 @@ function writeRecord(dir: string, name: string, record: ChatSurviveRecord): stri
 function adoptedChild(
   spec: PipedProcessSpec,
   env: Record<string, string | undefined>
-): PipedChildProcess | null {
+): ChildProcessWithoutNullStreams | null {
   const sessionId = env[ORCA_AGENT_SESSION_ID_ENV]
   if (!sessionId) {
     return null
