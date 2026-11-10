@@ -15,8 +15,6 @@ export type AgentRowTabColorInput = {
   worktreeId: string
   tabId: string
   paneKey: string
-  /** Set when the row is a native chat's structured session rather than a terminal pane. */
-  structuredHostOwned: boolean
   tabsByWorktree: Record<string, TerminalTab[] | undefined> | undefined
   unifiedTabsByWorktree: Record<string, Tab[] | undefined> | undefined
 }
@@ -26,22 +24,28 @@ export type AgentRowTabColorInput = {
  * A native chat tab is the agent-session unified tab whose pane key is the row's (TabBarItemRow
  * paints `item.data.color`); a terminal pane's tab is the terminal tab (TerminalSortableTab
  * paints `TerminalTab.color`).
+ *
+ * The chat lookup is keyed by the pane key alone, never by `entry.structuredHostOwned`: that flag
+ * only means "this host has the provider child running right now" and drops as soon as a chat
+ * finishes and its child is released, so a done or idle chat would fall through to the terminal
+ * tabs, where a chat-only workspace has none.
  */
 export function resolveAgentRowTabColor({
   worktreeId,
   tabId,
   paneKey,
-  structuredHostOwned,
   tabsByWorktree,
   unifiedTabsByWorktree
 }: AgentRowTabColorInput): string | null {
-  if (structuredHostOwned) {
-    const chat = (unifiedTabsByWorktree?.[worktreeId] ?? []).find(
-      (tab) =>
-        tab.contentType === 'agent-session' &&
-        structuredAgentSessionPaneKey(tab.id, tab.entityId) === paneKey
-    )
-    return chat?.color || null
+  const chat = (unifiedTabsByWorktree?.[worktreeId] ?? []).find(
+    (tab) =>
+      tab.contentType === 'agent-session' &&
+      // Cheap prefix check first, so only the row's own tab is hashed.
+      paneKey.startsWith(`${tab.id}:`) &&
+      structuredAgentSessionPaneKey(tab.id, tab.entityId) === paneKey
+  )
+  if (chat) {
+    return chat.color || null
   }
   const terminal = (tabsByWorktree?.[worktreeId] ?? []).find((tab) => tab.id === tabId)
   return terminal?.color || null
@@ -75,4 +79,16 @@ export function agentRowTintStyle(color: string | null | undefined): CSSProperti
     backgroundColor: `${hex}${ROW_TINT_ALPHA_HEX}`,
     boxShadow: `inset 2px 0 0 ${hex}`
   }
+}
+
+/**
+ * The collapsed icon strip's ring for a tab color: a thin full-color ring drawn over the icon's
+ * own border. Same resolver and hex check as the row tint, so the two always agree.
+ */
+export function agentIconRingStyle(color: string | null | undefined): CSSProperties | null {
+  const hex = normalizeHexColor(color)
+  if (!hex) {
+    return null
+  }
+  return { boxShadow: `inset 0 0 0 1.5px ${hex}` }
 }
