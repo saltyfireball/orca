@@ -138,6 +138,7 @@ Apply these in this order. Each one is a single commit.
 49. `SLRM-1758 Stamp the fork version into the shipped orcad template`
 50. `SLRM-1758 Follow upstream 1.4.255's moved renderer modules in fork code`
 51. `SLRM-1966 Sidebar agent rows wear their tab's color dot`
+52. `SLRM-1966 Follow upstream 1.4.256's moved modules in fork code`
 
 Fork-only code lives in `fork/` folders:
 
