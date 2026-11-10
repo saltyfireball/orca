@@ -4,29 +4,35 @@ import { useAppStore } from '@/store'
 import type { DashboardAgentRow } from '@/components/dashboard/useDashboardData'
 import { agentRowTintStyle, resolveAgentRowTabColor } from './agent-row-tab-tint'
 
+export type AgentRowTabColorSubject = Pick<DashboardAgentRow, 'paneKey' | 'tab' | 'rowSource'>
+
 /**
- * Paints the tab's color dot onto its sidebar row. The parent row must be `relative`.
- * Sub-agent rows have no tab of their own (they borrow the parent's), so they stay plain.
+ * The color dot of the row's tab, or null. Sub-agent rows have no tab of their own (they borrow
+ * the parent's), so they get none. Shared by the row tint and the collapsed strip's icon ring.
  */
-export function ForkAgentRowTabTint({
-  agent
-}: {
-  agent: Pick<DashboardAgentRow, 'paneKey' | 'tab' | 'entry' | 'rowSource'>
-}): React.JSX.Element | null {
+export function useAgentRowTabColor(agent: AgentRowTabColorSubject): string | null {
   const isSubagent = agent.rowSource === 'subagent'
   // Select the color string only, so unrelated tab writes do not repaint every row.
-  const color = useAppStore((s) =>
+  return useAppStore((s) =>
     isSubagent
       ? null
       : resolveAgentRowTabColor({
           worktreeId: agent.tab.worktreeId,
           tabId: agent.tab.id,
           paneKey: agent.paneKey,
-          structuredHostOwned: agent.entry.structuredHostOwned === true,
           tabsByWorktree: s.tabsByWorktree,
           unifiedTabsByWorktree: s.unifiedTabsByWorktree
         })
   )
+}
+
+/** Paints the tab's color dot onto its sidebar row. The parent row must be `relative`. */
+export function ForkAgentRowTabTint({
+  agent
+}: {
+  agent: AgentRowTabColorSubject
+}): React.JSX.Element | null {
+  const color = useAgentRowTabColor(agent)
   const style = agentRowTintStyle(color)
   if (!style) {
     return null
