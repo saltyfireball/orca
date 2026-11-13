@@ -32,6 +32,7 @@ import { RuntimeClientError } from '../runtime/types'
 import type { RuntimeClient } from '../runtime/client'
 import type { RuntimeRpcSuccess } from '../../shared/runtime-rpc-envelope'
 import { withCliAgentLaunchRecovery } from './agent-launch-recovery'
+import { forkAgentLaunchLines } from './fork/launch-defaults-output'
 
 type Flags = Map<string, string | boolean>
 
@@ -174,6 +175,7 @@ export function formatAgentLaunch(result: AgentLaunchResult & { operationId?: st
     ...(result.operationId ? [`operationId: ${result.operationId}`] : []),
     `why: ${receipt.detail}`,
     ...(result.prompt ? [`prompt: ${result.prompt.outcome}`] : []),
-    ...(result.warning ? [`warning: ${result.warning}`] : [])
+    ...(result.warning ? [`warning: ${result.warning}`] : []),
+    ...forkAgentLaunchLines(result)
   ].join('\n')
 }
