@@ -4,7 +4,7 @@
 import React from 'react'
 import type { GlobalSettings } from '../../../shared/global-settings-types'
 import { SettingsGroupHeader } from '@/components/settings/section-layout/SettingsGroup'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import { ForkChatSleepSetting } from './chat-sleep/ForkChatSleepSetting'
 import { ForkSleepersSetting } from './sleepers/ForkSleepersSetting'
 import { ForkChatStallSetting } from './chat-stall/ForkChatStallSetting'
@@ -21,11 +21,12 @@ type ForkAgentLifecycleSettingsProps = {
 export function ForkAgentLifecycleSettings(
   props: ForkAgentLifecycleSettingsProps
 ): React.JSX.Element {
+  const t = useTranslate()
   return (
     <section className="space-y-6" data-fork-agent-lifecycle="">
       <SettingsGroupHeader
-        title={translate('fork.lifecycle.title', 'Agent lifecycle')}
-        description={translate(
+        title={t('fork.lifecycle.title', 'Agent lifecycle')}
+        description={t(
           'fork.lifecycle.description',
           'How chats and agents sleep, stall, get cleaned up, wait to launch, start, and back off when memory runs short.'
         )}

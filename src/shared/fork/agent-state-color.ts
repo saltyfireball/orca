@@ -37,7 +37,7 @@ export const FORK_AGENT_THEME_COLOR_IDS = Object.keys(
 ) as ForkAgentThemeColor[]
 
 /** A stored choice: 'none', a theme color id, or a `#rgb` / `#rrggbb` custom color. */
-export type ForkAgentColorChoice = 'none' | ForkAgentThemeColor | string
+export type ForkAgentColorChoice = 'none' | ForkAgentThemeColor | (string & {})
 
 export const FORK_AGENT_STATE_COLOR_DEFAULTS: Readonly<
   Record<ForkAgentColorState, ForkAgentColorChoice>
