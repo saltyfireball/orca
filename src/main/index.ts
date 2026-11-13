@@ -23,6 +23,7 @@ import { installForkMemoryWatch } from './fork/memory-truth/memory-watch'
 import { installForkAgentQueueApp } from './fork/agent-queue/agent-queue-ipc'
 import { installForkChatStallBridge } from './fork/chat-stall/chat-stall-bridge'
 import { installForkWorkerCleanupBridge } from './fork/worker-cleanup/worker-cleanup-bridge'
+import { installForkMcpProfilesApp } from './fork/mcp-profiles/mcp-profiles-ipc'
 import { shouldActivateDesktopForSecondInstance } from './startup/single-instance-lock'
 import { resolveOsOpenedDocuments } from './startup/os-opened-documents'
 import {
@@ -183,6 +184,8 @@ if (preflightReady) {
   installForkAgentQueueApp(() => state.store?.getSettings())
   installForkChatStallBridge()
   installForkWorkerCleanupBridge()
+  // Fork: MCP profiles; every chat loads every server until profiles are set.
+  installForkMcpProfilesApp(() => state.store?.getSettings())
   void app.whenReady().then(async () => {
     try {
       await initializeMainProcessReady({

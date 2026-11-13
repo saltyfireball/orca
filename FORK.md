@@ -335,6 +335,46 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/main/runtime/rpc/methods/fork/fork-sleepers.ts`, `src/renderer/src/fork/sleepers/` and
     `src/cli/fork/sleepers-*`.
 
+- **MCP profiles (SLRM-2101).** Choose which MCP (tool) servers a Claude chat loads. Everything
+  defaults to "all", which passes nothing to Claude, so stock behavior is unchanged.
+  - **Discovery** (`src/main/fork/mcp-profiles/claude-mcp-discovery.ts`) reads Claude's config the
+    way Claude does, read-only: user servers (`mcpServers` in `~/.claude.json`, or
+    `$CLAUDE_CONFIG_DIR/.claude.json` for an account with its own folder), local servers
+    (`projects[<folder>].mcpServers`) and `.mcp.json` files from the folder up, which load only
+    once approved (`enableAllProjectMcpServers` / `enabledMcpjsonServers`, minus
+    `disabledMcpjsonServers`). `projects[<folder>].disabledMcpServers` turns any off. On a shared
+    name local wins, then project, then user. Nothing writes to the user's agent config.
+  - **Profiles** are named allow or deny lists of server names, plus the built-ins "all" (stock)
+    and "none". The profile a launch uses is the chat's own choice, else the closest
+    per-project entry holding the chat's folder (or its worktree's main checkout), else the
+    default for its launch kind: interactive (UI, `agent launch`, `worktree create`), worker
+    (`orchestration worker-start`) or background (automations).
+  - **Applying.** For anything but "all" the Claude launch gets `--strict-mcp-config` and, unless
+    the profile is "none", `--mcp-config <file>` holding only the kept servers' own definitions.
+    The file is `<userData>/fork-mcp-profiles/launch/<chat>.json` (folder 0700, file 0600, written
+    through an exclusive temp file), replaced on every start, swept when older than a day at
+    startup and all swept on quit. Server env, headers and arguments are never logged or shown;
+    a failure logs the error message only and the chat runs with every server.
+  - **Skipped with a reason** (the chat runs with every server and says why): the chat runs inside
+    WSL, the Claude launch arguments in Settings already set `mcp-config` or
+    `strict-mcp-config`, or an enterprise `managed-mcp.json` is installed.
+  - **On the chat.** `NativeChatStructuredSessionStatus` shows "MCP profile: X" with a picker and
+    the servers the last start got (tooltip). A change to a live chat applies at its next start
+    (sleep, restart or resume) and the strip says so. Per-chat state is
+    `<userData>/fork-mcp-profiles/chats.json`.
+  - **CLI.** `--mcp-profile <name>` on `orca agent launch`, `orca worktree create` and
+    `orca orchestration worker-start` (an unknown name is refused before anything starts).
+    `orca mcp-profile list [--folder <path>]`, `orca mcp-profile show <session>` and
+    `orca mcp-profile set <session> <profile|default>`, all with `--json`, over runtime RPC
+    (`fork.mcpProfiles.list`, `.chat`, `.set`).
+  - **Settings** (Settings > Advanced > MCP profiles): `forkMcpProfiles` ([]),
+    `forkMcpDefaultInteractive`, `forkMcpDefaultWorker` and `forkMcpDefaultBackground` ("all"),
+    and `forkMcpProjectProfiles` ([]).
+  - **Not covered.** Claude terminal (TUI) launches, Codex and other agents, chats inside WSL,
+    remote and paired hosts (they install nothing, so their chats load every server) and
+    plugin or claude.ai connector servers, which Claude adds on its own and which any profile
+    but "all" leaves out. Headless orcad installs nothing and passes every launch through.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -403,11 +443,13 @@ Apply these in this order. Each one is a single commit.
 62. `SLRM-2100 Worker cleanup: finished workers give up their agent, with guards and Undo`
 63. `SLRM-2102 Launch defaults: a default model and effort per kind of launch`
 64. `SLRM-2094 Sleepers: list, sleep, wake and pin chats and terminal agents in one place`
+65. `SLRM-2106 Agent state colors: tabs and agent rows colored by agent state`
+66. `SLRM-2101 MCP profiles: choose which MCP servers a chat loads`
 
 `AppRootSurfaces.tsx` carries one hook for the fork's always-mounted hosts: `ForkRootHosts`
 (`src/renderer/src/fork/ForkRootHosts.tsx`) renders `ForkChatSleepReporter`,
 `ForkWorkerCleanupReporter` and `ForkSleepersDialogHost`. Where a section below says
-`AppRootSurfaces.tsx` mounts one of those, it is mounted there. 65. `SLRM-2106 Agent state colors: tabs and agent rows colored by agent state`
+`AppRootSurfaces.tsx` mounts one of those, it is mounted there.
 
 Fork-only code lives in `fork/` folders:
 
@@ -701,6 +743,33 @@ Upstream files only get short hooks, which keeps rebases small:
     `fork-launch-defaults` group, and `cli-command-names.ts` lists `launch-defaults`.
   - `AdvancedPane.tsx` renders `ForkLaunchDefaultsSetting`; `forkLaunchDefaults` is in
     `src/shared/fork/fork-global-settings.ts`.
+
+- MCP profiles (SLRM-2101), from `src/main/fork/mcp-profiles/`, `src/cli/fork/mcp-profile-*`
+  and `src/renderer/src/fork/mcp-profiles/`:
+  - `claude-structured-launch-resolution.ts` spreads `forkMcpClaudeExtraArgs(...)` last in the
+    launch's `extraArgs`; it returns nothing unless a profile other than "all" applies.
+  - `dispatcher.ts` runs unary calls through `withForkMcpLaunchScope` (imported through a
+    re-export in `rpc-active-caller.ts`, as `dispatcher.ts` is at max-lines). It passes through
+    every method but `agent.launch`, `agent.launchReplay`, `worktree.create` and
+    `orchestration.workerStart`, which run in an AsyncLocalStorage scope holding the launch kind
+    and the raw `forkMcpProfile` param (the methods' own schemas drop it).
+  - `structured-agent-session-entry-delegates.ts` calls `noteForkMcpNewChat` in `create`, so a new
+    chat records the scope it was launched in.
+  - `automation-chat-agent-launch.ts` imports `launchBackgroundAgentOnHost as launchAgentOnHost`,
+    which runs the stock launch in the background scope.
+  - `rpc-method-registry.ts` spreads `FORK_MCP_PROFILE_METHODS` last and the generated
+    `rpc-params-catalog.generated.ts` lists their params; `src/cli/specs/index.ts` wraps
+    `COMMAND_SPECS` in `withForkMcpProfileFlag` and spreads `FORK_MCP_PROFILE_COMMAND_SPECS`;
+    `handler-group-manifest.ts` adds the `fork-mcp-profile` group;
+    `src/main/startup/cli-command-names.ts` lists `mcp-profile`.
+  - `agent-launch-request.ts` and `worker-launch-handler.ts` add `readForkMcpProfileFlag(flags)`
+    to their params.
+  - `src/main/index.ts` calls `installForkMcpProfilesApp(...)` after the agent queue install.
+  - `src/preload/index.ts` adds `forkMcpProfiles` (`src/preload/fork/mcp-profiles-bridge.ts`) and
+    `api-types.ts` types it as optional.
+  - `NativeChatStructuredSessionStatus.tsx` renders `ForkMcpProfileStrip` after
+    `ForkAgentQueueBanner`; `AdvancedPane.tsx` renders `ForkMcpProfileSetting` after
+    `ForkAgentQueueSetting`; the five settings are in `fork-global-settings.ts`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

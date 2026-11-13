@@ -31,6 +31,7 @@ import {
 import { RuntimeClientError, type RuntimeClient, type RuntimeRpcSuccess } from './runtime-client'
 import { withCliAgentLaunchRecovery } from './agent-launch-recovery'
 import { forkAgentLaunchLines } from './fork/launch-defaults-output'
+import { readForkMcpProfileFlag } from './fork/mcp-profile-flag'
 
 type Flags = Map<string, string | boolean>
 
@@ -45,6 +46,8 @@ export type CliAgentLaunch = {
   sessionOptions?: Record<string, string>
   operationId?: string
   surface?: AgentLaunchSurface
+  /** Fork: --mcp-profile; FORK.md "MCP profiles". */
+  forkMcpProfile?: string
 }
 
 function readSurfaceFlag(flags: Flags): AgentLaunchSurface | undefined {
@@ -98,7 +101,8 @@ export function readCliAgentLaunch(
     ...(typeof prompt === 'string' && prompt.trim()
       ? { prompt: { text: prompt, delivery: 'submit' as const } }
       : {}),
-    ...(checked.preferences ? { sessionOptions: { ...checked.preferences } } : {})
+    ...(checked.preferences ? { sessionOptions: { ...checked.preferences } } : {}),
+    ...readForkMcpProfileFlag(flags)
   }
 }
 

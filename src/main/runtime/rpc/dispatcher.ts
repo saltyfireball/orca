@@ -30,7 +30,7 @@ import { mapDispatcherError } from './dispatcher-error-response'
 import { createDispatcherStreamingFeatureEmitter } from './dispatcher-streaming-feature-emitter'
 import { recordRuntimeFeatureInteraction } from './runtime-feature-interaction'
 import type { RpcCallerScope } from './rpc-caller-scope'
-import { runWithActiveRpcCaller } from './rpc-active-caller'
+import { runWithActiveRpcCaller, withForkMcpLaunchScope } from './rpc-active-caller'
 import { admitRpcRequest } from './rpc-request-admission-prologue'
 import { resolveOrcadFeatureRequirement, rpcMethodFeatureWait } from './orcad-feature-readiness'
 import { routeRemoteOwnedCall } from '../orchestration/federation/remote-owned/remote-owned-route'
@@ -92,7 +92,9 @@ export class RpcDispatcher {
         await featureWait
       }
       options?.beforeInvoke?.()
-      return successResponse(request.id, meta, await this.invokeUnary(admission, options))
+      // Fork (FORK.md "MCP profiles"): launch methods run in their launch scope.
+      const invoke = () => this.invokeUnary(admission, options)
+      return successResponse(request.id, meta, await withForkMcpLaunchScope(admission, invoke))
     } catch (error) {
       if (probeEmulator) {
         emulatorProbeError(`rpc ${request.method}`, error, {

@@ -295,5 +295,11 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-sleepers',
     keys: ['sleepers list', 'sleepers sleep', 'sleepers wake', 'sleepers pin', 'sleepers unpin'],
     load: async () => (await import('./fork/sleepers-handlers.js')).FORK_SLEEPERS_HANDLERS
+  },
+  // Fork: MCP servers and profiles (FORK.md "MCP profiles").
+  {
+    name: 'fork-mcp-profile',
+    keys: ['mcp-profile list', 'mcp-profile show', 'mcp-profile set'],
+    load: async () => (await import('./fork/mcp-profile-handlers.js')).FORK_MCP_PROFILE_HANDLERS
   }
 ]
