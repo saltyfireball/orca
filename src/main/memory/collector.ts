@@ -1,5 +1,3 @@
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import os from 'node:os'
 import { getAppEnvironment, type AppEnvironment } from '../../shared/app-environment'
 import type {
@@ -16,13 +14,7 @@ import { collectHostMemory } from './host-memory'
 import { getProcessMemoryMetric } from './process-memory-metric'
 import { readDarwinProcessFootprints } from './darwin-process-footprint'
 import { getLocalDaemonPid } from './local-daemon-pid'
-import {
-  buildProcessIndex,
-  collectSubtree,
-  parsePsOutput,
-  type ProcIndex,
-  type ProcRow
-} from './process-index'
+import { buildProcessIndex, collectSubtree, type ProcIndex, type ProcRow } from './process-index'
 import {
   createEmptyWorktreeMemoryBucket,
   pushAppMemoryHistory,
@@ -40,6 +32,9 @@ import {
   optionalCommitField,
   snapshotCommitFields
 } from './memory-snapshot-values'
+// Fork (SLRM-2099): whole process trees, chats and system memory; see FORK.md "Memory truth".
+import { readForkUnixProcessTable } from '../fork/memory-truth/process-table'
+import { forkAugmentMemorySnapshot } from '../fork/memory-truth/augment'
 
 export type { MemorySnapshotStore } from './memory-snapshot-buckets'
 export { collectSubtree, parsePsOutput } from './process-index'
@@ -62,10 +57,6 @@ export async function collectMemorySnapshot(store: MemorySnapshotStore): Promise
   return inflight
 }
 
-const execFileAsync = promisify(execFile)
-const PS_EXEC_TIMEOUT_MS = 5_000
-const PS_MAX_BUFFER = 10 * 1024 * 1024
-
 async function enumerateProcesses(): Promise<ProcIndex> {
   const platform = os.platform()
   const [rows, footprints] = await Promise.all([
@@ -76,18 +67,8 @@ async function enumerateProcesses(): Promise<ProcIndex> {
 }
 
 async function enumerateUnix(): Promise<ProcRow[]> {
-  // Force dot decimals: parseFloat silently truncates locale-formatted comma values.
-  try {
-    const { stdout } = await execFileAsync('ps', ['-eo', 'pid=,ppid=,pcpu=,rss='], {
-      maxBuffer: PS_MAX_BUFFER,
-      timeout: PS_EXEC_TIMEOUT_MS,
-      env: { ...process.env, LC_ALL: 'C', LANG: 'C' }
-    })
-    return parsePsOutput(stdout)
-  } catch (err) {
-    console.warn('[memory] ps enumeration failed', err)
-    return []
-  }
+  // Fork: same rows plus process group and name, from one `ps` (LC_ALL=C for dot decimals).
+  return readForkUnixProcessTable()
 }
 
 async function enumerateWindows(): Promise<ProcRow[]> {
@@ -260,7 +241,7 @@ async function runSnapshot(store: MemorySnapshotStore): Promise<MemorySnapshot> 
     sessionPrivateTotal += clampMemoryMetric(wt.privateMemory)
   }
 
-  return {
+  const snapshot: MemorySnapshot = {
     app: { ...appBuckets, history: readAppMemoryHistory() },
     worktrees,
     host,
@@ -273,4 +254,5 @@ async function runSnapshot(store: MemorySnapshotStore): Promise<MemorySnapshot> 
     totalMemory: appBuckets.memory + sessionMemoryTotal,
     collectedAt: now
   }
+  return forkAugmentMemorySnapshot(snapshot, processIndex, ptys, store)
 }
