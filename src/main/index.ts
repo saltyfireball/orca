@@ -27,6 +27,7 @@ import { shouldActivateDesktopForSecondInstance } from './startup/profile-startu
 import { resolveOsOpenedDocuments } from './startup/open-routing/os-opened-documents'
 import { installForkRestartGuard } from './fork/restart-guard/restart-guard'
 import { installForkChatSleepBridge } from './fork/chat-sleep/chat-sleep-bridge'
+import { installForkMemoryWatch } from './fork/memory-truth/memory-watch'
 import {
   formatProfileStateStartupFailure,
   isDivergedProfileStateFailure,
@@ -197,6 +198,8 @@ if (preflightReady) {
   installMainProcessQuitHandlers()
   installForkRestartGuard()
   installForkChatSleepBridge()
+  // Fork (SLRM-2099): memory warning, notification and the opt-in launch pause.
+  installForkMemoryWatch(() => state.store?.getSettings())
   void app.whenReady().then(async () => {
     try {
       await wslHostsGateReady
