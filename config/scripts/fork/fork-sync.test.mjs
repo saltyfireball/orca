@@ -77,6 +77,41 @@ function setUp() {
   return { up, v1 }
 }
 
+/**
+ * As upstream releases: each stable tag is a release commit (a version bump) beside the branch,
+ * never on it. upstream main: u1 - u2 - u3; v1.0.0 = r1 on u2, v1.1.0 = r2 on u3; fork main:
+ * r1 + f1 + f2.
+ */
+function setUpOffBranchReleases() {
+  const up = join(root, 'up')
+  const release = (version, from) => {
+    git(up, 'checkout', '-q', '--detach', from)
+    const sha = commit(
+      up,
+      'package.json',
+      `{\n  "version": "${version}"\n}\n`,
+      `release: v${version}`
+    )
+    git(up, 'tag', `v${version}`)
+    git(up, 'checkout', '-q', 'main')
+    return sha
+  }
+  git(root, 'init', '-q', '-b', 'main', up)
+  commit(up, 'package.json', '{\n  "version": "0.9.0"\n}\n', 'u1')
+  const u2 = commit(up, 'upstream.txt', 'v1\n', 'u2')
+  const r1 = release('1.0.0', u2)
+  const r2 = release('1.1.0', commit(up, 'upstream.txt', 'v2\n', 'u3'))
+  git(root, 'init', '-q', '--bare', '-b', 'main', join(root, 'origin.git'))
+  const seed = join(root, 'seed')
+  git(root, 'clone', '-q', up, seed)
+  git(seed, 'checkout', '-q', '--detach', r1)
+  commit(seed, 'fork-a.txt', 'a\n', 'f1')
+  commit(seed, 'fork-b.txt', 'b\n', 'f2')
+  git(seed, 'push', '-q', join(root, 'origin.git'), 'HEAD:refs/heads/main')
+  cloneJob()
+  return { u2, r1, r2 }
+}
+
 function cloneJob() {
   rmSync(join(root, 'job'), { recursive: true, force: true })
   git(root, 'clone', '-q', '-b', 'main', join(root, 'origin.git'), join(root, 'job'))
@@ -131,6 +166,30 @@ describe('fork-sync.sh', () => {
     expect(rebase.status).toBe(0)
     expect(rebase.out.changed).toBe('true')
     expect(forkCommitsOn(v2)).toEqual(['f2', 'f1'])
+  })
+
+  it('bases a first run on the release tag under main when that tag is off the upstream branch', () => {
+    const { u2, r1, r2 } = setUpOffBranchReleases()
+    const job = join(root, 'job')
+    const detect = sync('detect')
+    expect(detect.status).toBe(0)
+    // Both merge-bases are u2, below the release commit main sits on.
+    git(job, 'fetch', '-q', 'upstream', 'main')
+    expect(git(job, 'merge-base', 'main', 'FETCH_HEAD')).toBe(u2)
+    expect(git(job, 'merge-base', 'main', r2)).toBe(u2)
+    expect(detect.out).toMatchObject({
+      latest: 'v1.1.0',
+      latest_sha: r2,
+      base_sha: r1,
+      base_source: 'newest tag under main',
+      base_version: '1.0.0',
+      state: 'behind'
+    })
+    const rebase = sync('rebase', { BASE_SHA: detect.out.base_sha, LATEST_SHA: r2 })
+    expect(rebase.status).toBe(0)
+    expect(rebase.out.changed).toBe('true')
+    expect(forkCommitsOn(r2)).toEqual(['f2', 'f1'])
+    expect(git(job, 'log', '--format=%s', 'main')).not.toMatch(/release: v1\.0\.0/)
   })
 
   it('reports in sync from the record once a sync was published', () => {
