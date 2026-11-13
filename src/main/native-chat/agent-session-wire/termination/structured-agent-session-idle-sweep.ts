@@ -52,6 +52,8 @@ export type StructuredAgentSessionIdleSweepDeps = {
     input: { progress: string; ownerPid: number | null } | null
   ) => Promise<'hold' | 'release'>
   attachStall?: (tick: () => Promise<void>) => void
+  /** Fork sleepers: handed the sweep once so "sleep now" can run it on one chat. */
+  attach?: (sweep: StructuredAgentSessionIdleSweep) => void
 }
 
 export type StructuredAgentSessionChildWorkReads = {
@@ -81,7 +83,16 @@ export class StructuredAgentSessionIdleSweep {
   private timer: ReturnType<typeof setInterval> | null = null
   private running = false
 
-  constructor(private readonly deps: StructuredAgentSessionIdleSweepDeps) {}
+  constructor(private readonly deps: StructuredAgentSessionIdleSweepDeps) {
+    deps.attach?.(this)
+  }
+
+  /** Fork sleepers: sweep one chat now with no idle window and no keep-awake; owed work still wins. */
+  async sweepNow(sessionId: string): Promise<void> {
+    if (!this.deps.isDisposed()) {
+      await this.sweepSession(sessionId, 0, undefined, true)
+    }
+  }
 
   start(): void {
     this.timer = setInterval(
@@ -144,10 +155,11 @@ export class StructuredAgentSessionIdleSweep {
   private async sweepSession(
     sessionId: string,
     agentIdleMs: number | null,
-    release?: () => 0 | null
+    release?: () => 0 | null,
+    force = false
   ): Promise<void> {
     const unconfirmed = await this.deps.serialize(sessionId, () =>
-      this.tickUnderSerialize(sessionId, release ? release() : agentIdleMs, null, !!release)
+      this.tickUnderSerialize(sessionId, release ? release() : agentIdleMs, null, !!release, force)
     )
     if (!unconfirmed) {
       return
@@ -161,9 +173,10 @@ export class StructuredAgentSessionIdleSweep {
         // The answer can take seconds; a window changed meanwhile (to Never, say) still applies.
         await this.tickUnderSerialize(
           sessionId,
-          release ? release() : this.idleWindow(),
+          release ? release() : force ? 0 : this.idleWindow(),
           unconfirmed,
-          !!release
+          !!release,
+          force
         )
       } else if (this.deps.sessions.get(sessionId)?.child === unconfirmed) {
         this.deps.sessions.touch(sessionId)
@@ -176,7 +189,8 @@ export class StructuredAgentSessionIdleSweep {
     sessionId: string,
     agentIdleMs: number | null,
     confirmed: RunningChild | null,
-    releasing = false
+    releasing = false,
+    force = false
   ): Promise<RunningChild | null> {
     const session = this.deps.sessions.get(sessionId)
     if (!session || this.deps.isDisposed()) {
@@ -208,7 +222,14 @@ export class StructuredAgentSessionIdleSweep {
       return null
     }
     await this.deps.stall?.(sessionId, null)
-    if (this.deps.keepAwake?.(sessionId)) {
+    // Fork sleepers: a forced sweep never cuts a provider mid-start or a send waiting on one.
+    if (
+      force &&
+      (session.child?.phase === 'starting' || this.queuedOrDelivering(sessionId, session))
+    ) {
+      return null
+    }
+    if (!force && this.deps.keepAwake?.(sessionId)) {
       this.deps.sessions.touch(sessionId)
       return null
     }
