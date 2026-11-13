@@ -54,17 +54,17 @@ const AUTH: ClaudeRuntimeAuthPreparation = {
 }
 
 describe('forkPinTerminalClaudeAccount', () => {
-  it('leaves a pane without the marker alone', () => {
+  it('leaves a pane without the marker alone', async () => {
     const env = { [CLAUDE_PROFILE_POINTER_ENV]: '/global-pointer' }
-    expect(forkPinTerminalClaudeAccount(env, undefined, AUTH, fakeRouter())).toEqual({
+    expect(await forkPinTerminalClaudeAccount(env, undefined, AUTH, fakeRouter())).toEqual({
       env,
       auth: AUTH
     })
   })
 
-  it('gives a moved pane its own pointer naming the account', () => {
+  it('gives a moved pane its own pointer naming the account', async () => {
     const router = fakeRouter()
-    const { env, auth } = forkPinTerminalClaudeAccount(
+    const { env, auth } = await forkPinTerminalClaudeAccount(
       { [FORK_CLAUDE_TERMINAL_ACCOUNT_ENV]: 'b', [CLAUDE_PROFILE_POINTER_ENV]: '/global-pointer' },
       { runtime: 'host' },
       AUTH,
@@ -80,8 +80,8 @@ describe('forkPinTerminalClaudeAccount', () => {
     })
   })
 
-  it('points a pane moved to System default at an empty pointer', () => {
-    const { env, auth } = forkPinTerminalClaudeAccount(
+  it('points a pane moved to System default at an empty pointer', async () => {
+    const { env, auth } = await forkPinTerminalClaudeAccount(
       { [FORK_CLAUDE_TERMINAL_ACCOUNT_ENV]: 'system' },
       undefined,
       AUTH,
@@ -92,13 +92,13 @@ describe('forkPinTerminalClaudeAccount', () => {
     expect(auth?.configDir).toBe('/fake/home/.claude')
   })
 
-  it('drops the marker without routing a WSL pane or a removed account', () => {
+  it('drops the marker without routing a WSL pane or a removed account', async () => {
     const cases: [string, ClaudeAccountSelectionTarget | undefined][] = [
       ['b', { runtime: 'wsl', wslDistro: 'Ubuntu' }],
       ['gone', undefined]
     ]
     for (const [marker, target] of cases) {
-      const result = forkPinTerminalClaudeAccount(
+      const result = await forkPinTerminalClaudeAccount(
         { [FORK_CLAUDE_TERMINAL_ACCOUNT_ENV]: marker },
         target,
         AUTH,

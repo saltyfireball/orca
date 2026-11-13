@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import type { ForkUpdateInstallWait } from '../../../../shared/fork/update-install-wait'
 
 /**
@@ -8,8 +8,12 @@ import type { ForkUpdateInstallWait } from '../../../../shared/fork/update-insta
 export function useForkUpdateInstallWait(onReleased: () => void): ForkUpdateInstallWait | null {
   const [wait, setWait] = useState<ForkUpdateInstallWait | null>(null)
   const [, setReleases] = useState(0)
-  const onReleasedRef = useRef(onReleased)
-  onReleasedRef.current = onReleased
+  // An effect event always runs the latest `onReleased` without re-subscribing.
+  const handleReleased = useEffectEvent(() => {
+    onReleased()
+    // The caller's reset lives in a ref; re-render so the card shows it.
+    setReleases((count) => count + 1)
+  })
 
   useEffect(() => {
     const bridge = window.api.forkUpdateInstallWait
@@ -22,11 +26,7 @@ export function useForkUpdateInstallWait(onReleased: () => void): ForkUpdateInst
       pushed = true
       setWait(next)
     })
-    const offReleased = bridge.onReleased(() => {
-      onReleasedRef.current()
-      // The caller's reset lives in a ref; re-render so the card shows it.
-      setReleases((count) => count + 1)
-    })
+    const offReleased = bridge.onReleased(() => handleReleased())
     void bridge
       .get()
       .then((current) => {

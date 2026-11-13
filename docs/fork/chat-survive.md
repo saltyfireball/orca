@@ -204,7 +204,8 @@ owner-gone signal, and fences decide who may write).
    - `chat-survive-launch.ts` turns a supervisor spawn into the broker spawn: same env, cwd and
      stdio, plus `ORCA_CHAT_SURVIVE_SPEC` (socket path, 64-hex token, owner pid, orphan timeout).
      Sockets live in `$TMPDIR/orca-chat-survive/` (0700, owner checked, path under 104 bytes). Any
-     check failing returns null and the caller spawns as today.
+     check failing returns null and the caller spawns as today. The folder check is async; the
+     broker repeats it before it listens, since the system may clear the temp folder.
    - The broker rewrites the supervisor's `ownerPid` to its own pid, so the provider dies with the
      broker and never with the app. It closes its IPC channel at once, so the app's group guard
      ends unproven and sweeps nothing.
@@ -213,8 +214,9 @@ owner-gone signal, and fences decide who may write).
      the supervisor as they would directly, and the broker exits with the supervisor's code or
      re-raises its signal, so the app's exit proof and close ladder are unchanged. The broker never
      SIGKILLs the supervisor inside the supervisor's own stop budget.
-   - The app is gone when the broker's parent pid changes (100 ms poll). A stdin end counts as a
-     close request only if the app is still there 250 ms later; otherwise it is the app dying
+   - The app is gone when the broker's parent pid changes (a check at 100 ms, backing off to 1 s;
+     an app that dies ends the broker's stdin at once, which the next point catches). A stdin end
+     counts as a close request only if the app is still there 250 ms later; otherwise it is the app dying
      without a hand-off, and the broker stops the provider (reason `closed`), as the supervisor
      would. Only a takeover (phase 4) leaves it running for the next app.
    - Single writer: a socket hello is refused `busy` while the app that spawned the broker lives.
@@ -222,12 +224,19 @@ owner-gone signal, and fences decide who may write).
      and close request, `busy`, stop by signal, app SIGKILLed (the provider stops), the app moving
      to the socket by takeover, broker SIGKILLed taking the provider down; plus the spec and
      launch-plan checks.
+
 3. **Spawn hook, shipped dark (done).** The fork setting `forkChatSurvive` (optional, off unless
    `true`; Settings > Advanced > Chat survive; read on every spawn, so no restart). One hook in
    `createClaudeCodeProcessSpawn` passes its `spawnImpl` through `forkChatSurviveSpawner`
    (`chat-survive-spawn.ts`): with the setting on, darwin or linux, a provider supervisor spawn,
    a private socket folder and the broker entry on disk, it spawns the broker plan; anything else
-   spawns as today. orcad never installs the setting reader, so it is always off there. Each
+   spawns as today. The spawn hook is synchronous, so it reads the socket folder from a readiness
+   answer (`chat-survive-launch-ready.ts`) checked when the setting is turned on, at install and
+   after each spawn, and still stats the broker entry itself. Start-up awaits the install's first
+   check before any session is restored; a chat started within the few milliseconds after the
+   setting is switched on, before that check lands, runs as today. Record writes are async and queued
+   per path, so the spawn's write, the detach rewrite and the exit's removal stay in order;
+   quit waits for every queued write and removal before the process ends. orcad never installs the setting reader, so it is always off there. Each
    broker gets a record `{v, sessionId, brokerPid, socketPath, token, launch}` at
    `userData/chat-survive/<sessionId>.<brokerPid>.json` (folder 0700, file 0600), removed when the
    broker exits; a stale one after a crash names a dead pid and is harmless. At install the

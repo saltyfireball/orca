@@ -78,15 +78,15 @@ describe.runIf(process.platform !== 'win32')('chat-survive startup sweep', () =>
       socketPath,
       token: 't'
     })
-    writeChatSurviveRecord(join(recordDir, 's.dead.json'), record(deadPid(), deadSocket))
-    writeChatSurviveRecord(
+    await writeChatSurviveRecord(join(recordDir, 's.dead.json'), record(deadPid(), deadSocket))
+    await writeChatSurviveRecord(
       join(recordDir, 's.live.json'),
       record(process.pid, join(socketDir, 'x'))
     )
     // A record never touches a socket outside a broker socket folder.
     const elsewhere = join(base, 'other.sock')
     await staleSocket(elsewhere)
-    writeChatSurviveRecord(join(recordDir, 's.away.json'), record(deadPid(), elsewhere))
+    await writeChatSurviveRecord(join(recordDir, 's.away.json'), record(deadPid(), elsewhere))
 
     sweepChatSurviveRecords(recordDir)
     expect(readdirSync(recordDir).sort()).toEqual(['s.live.json'])

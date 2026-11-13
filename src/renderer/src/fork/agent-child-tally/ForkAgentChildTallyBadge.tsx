@@ -6,18 +6,19 @@ import { AgentStateDot, agentStateLabel } from '@/components/AgentStateDot'
 import { STATE_INDICATOR_TOOLTIP_DELAY_MS } from '@/components/StateIndicatorTooltip'
 import { cn } from '@/lib/class-names'
 import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { useAppStore } from '@/store'
 import type { ChildTally, ChildTallyItem, ChildTallyKind } from './agent-child-tally'
 import { childTallyOptions, childTallyRootKey, useAgentChildTally } from './use-agent-child-tally'
 
-function kindLabel(kind: ChildTallyKind): string {
+function kindLabel(kind: ChildTallyKind, t: Translate = translate): string {
   switch (kind) {
     case 'worker':
-      return translate('fork.childTally.kindWorker', 'worker')
+      return t('fork.childTally.kindWorker', 'worker')
     case 'subagent':
-      return translate('fork.childTally.kindSubagent', 'sub-agent')
+      return t('fork.childTally.kindSubagent', 'sub-agent')
     case 'task':
-      return translate('fork.childTally.kindTask', 'background task')
+      return t('fork.childTally.kindTask', 'background task')
   }
 }
 
@@ -26,25 +27,26 @@ export function childTallyText(tally: ChildTally, countFinished: boolean): strin
   return countFinished ? `${tally.running}/${tally.total}` : `${tally.running}`
 }
 
-function tallyHeading(tally: ChildTally, countFinished: boolean): string {
+function tallyHeading(tally: ChildTally, countFinished: boolean, t: Translate = translate): string {
   const counts = countFinished
-    ? translate('fork.childTally.headingTotal', '{{running}} running of {{total}}', {
+    ? t('fork.childTally.headingTotal', '{{running}} running of {{total}}', {
         running: tally.running,
         total: tally.total
       })
-    : translate('fork.childTally.headingRunning', '{{running}} running', {
+    : t('fork.childTally.headingRunning', '{{running}} running', {
         running: tally.running
       })
   const direct =
     tally.direct === tally.total
       ? ''
-      : ` ${translate('fork.childTally.headingDirect', '({{direct}} direct)', {
+      : ` ${t('fork.childTally.headingDirect', '({{direct}} direct)', {
           direct: tally.direct
         })}`
   return `${counts}${direct}`
 }
 
 function TallyLine({ item }: { item: ChildTallyItem }): React.JSX.Element {
+  const t = useTranslate()
   return (
     <li
       className="flex min-w-0 items-center gap-1.5"
@@ -54,7 +56,7 @@ function TallyLine({ item }: { item: ChildTallyItem }): React.JSX.Element {
       <AgentStateDot state={item.state} size="sm" title={null} />
       <span className="min-w-0 flex-1 truncate">{item.name}</span>
       <span className="shrink-0 opacity-60">
-        {kindLabel(item.kind)} - {agentStateLabel(item.state)}
+        {kindLabel(item.kind, t)} - {agentStateLabel(item.state)}
       </span>
     </li>
   )
@@ -73,9 +75,10 @@ export function ForkAgentChildTallyBadge({
   highlighted = false,
   className
 }: Props): React.JSX.Element | null {
+  const t = useTranslate()
   const tally = useAgentChildTally(rootKey)
   const countFinished = useAppStore((s) => childTallyOptions(s).countFinished)
-  const heading = useMemo(() => tallyHeading(tally, countFinished), [tally, countFinished])
+  const heading = useMemo(() => tallyHeading(tally, countFinished, t), [tally, countFinished, t])
   if (tally.total === 0) {
     return null
   }
@@ -85,7 +88,7 @@ export function ForkAgentChildTallyBadge({
       <TooltipTrigger asChild>
         <span
           data-fork-child-tally={text}
-          aria-label={translate('fork.childTally.ariaLabel', 'Children: {{heading}}', {
+          aria-label={t('fork.childTally.ariaLabel', 'Children: {{heading}}', {
             heading
           })}
           className={cn(
