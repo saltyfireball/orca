@@ -75,7 +75,7 @@ export function ForkLostWorkDialog({
 }): React.JSX.Element {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] max-w-3xl flex-col gap-0 p-0">
+      <DialogContent className="flex max-h-[85vh] flex-col gap-0 p-0 sm:max-w-3xl">
         {open ? <DialogBody /> : null}
       </DialogContent>
     </Dialog>

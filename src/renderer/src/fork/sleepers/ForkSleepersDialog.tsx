@@ -183,7 +183,7 @@ function Body(): React.JSX.Element {
           </Button>
         </div>
       ) : null}
-      <div className="scrollbar-sleek min-h-0 flex-1 overflow-y-auto">
+      <div className="scrollbar-sleek min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
         {error ? (
           <p className="text-sm text-destructive">{error}</p>
         ) : !rows ? (
@@ -219,7 +219,7 @@ export function ForkSleepersDialogHost(): React.JSX.Element | null {
   }
   return (
     <Dialog open onOpenChange={(next) => setOpen(next)}>
-      <DialogContent className="flex max-h-[80vh] max-w-4xl flex-col">
+      <DialogContent className="flex max-h-[80vh] flex-col sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>{t('fork.sleepers.title', 'Sleepers')}</DialogTitle>
           <DialogDescription>

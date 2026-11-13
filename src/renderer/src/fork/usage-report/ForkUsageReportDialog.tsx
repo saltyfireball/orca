@@ -226,7 +226,7 @@ export function ForkUsageReportHost(): React.JSX.Element | null {
   }
   return (
     <Dialog open onOpenChange={(next) => !next && closeForkUsageReport()}>
-      <DialogContent className="flex max-h-[85vh] max-w-3xl flex-col">
+      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-3xl">
         <DialogBody />
       </DialogContent>
     </Dialog>

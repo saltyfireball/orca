@@ -106,7 +106,7 @@ export function ForkSleepersRow({
       >
         {sleeperAge(row.idleMs, t)}
       </div>
-      <div className="flex w-80 shrink-0 justify-end gap-1">
+      <div className="flex shrink-0 flex-wrap justify-end gap-1">
         <ForkSleepersLifecycleActions row={row} after={actions.after} />
         {canSleepNow(row) ? (
           <Button size="sm" variant="ghost" onClick={() => actions.sleep(row)}>
