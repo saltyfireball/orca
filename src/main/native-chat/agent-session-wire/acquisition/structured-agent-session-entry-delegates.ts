@@ -6,6 +6,7 @@ import {
   createStructuredAgentSession,
   type StructuredAgentSessionCreateOptions
 } from './structured-agent-session-create'
+import { noteForkMcpNewChat } from '../../../fork/mcp-profiles/mcp-profiles-service'
 
 export function structuredAgentSessionEntryDelegates(
   context: () => StructuredAgentSessionAttachContext
@@ -20,6 +21,10 @@ export function structuredAgentSessionEntryDelegates(
       caller: StructuredAgentSessionCaller,
       params: AgentSessionAttachParams,
       options?: StructuredAgentSessionCreateOptions
-    ) => createStructuredAgentSession(context(), caller, params, options)
+    ) => {
+      // Fork (FORK.md "MCP profiles"): the launch kind and profile, before the first start.
+      noteForkMcpNewChat(params.envelope.sessionId, params.agent)
+      return createStructuredAgentSession(context(), caller, params, options)
+    }
   }
 }
