@@ -5,12 +5,11 @@ import { realpathSync } from 'node:fs'
 import { hostname } from 'node:os'
 import { join } from 'node:path'
 import { agentSessionAccountHomePath } from '../../../shared/agent-session/lifecycle/agent-session-account-home'
-import { structuredAgentSessionPayloadFingerprint } from '../../../shared/agent-session/lifecycle/structured-agent-session-mutation'
 import { getClaudeProfileRouter } from '../../claude-accounts/profiles/routing/claude-profile-installed-router'
 import type { ClaudeProfileRouter } from '../../claude-accounts/profiles/routing/claude-profile-router'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import type { StructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-host'
-import { mintAgentSessionOperationId } from '../../runtime/orchestration/mailbox/structured-pointer/structured-pointer-operation-id'
+import { forkStopChatTurn } from '../chat-host-turn-stop'
 import { ClaudeAccountMoveService, type ClaudeAccountMoveDeps } from './claude-account-move-service'
 import { claudeChatLaunchHome } from './claude-chat-launch-home'
 import { pinnedClaudeRoute } from './claude-pinned-route'
@@ -30,31 +29,6 @@ function projectsFolder(home: string): string | null {
 export function claudeHomesShareHistory(fromHome: string, toHome: string): boolean {
   const from = projectsFolder(fromHome)
   return from === null || from === projectsFolder(toHome)
-}
-
-async function stopTurn(host: StructuredAgentSessionHost, sessionId: string): Promise<boolean> {
-  const fence = host.deps.store.getConversation(sessionId)?.currentFence
-  if (fence === undefined) {
-    return false
-  }
-  const result = await host
-    .cancel(
-      { callerKey: CALLER_KEY },
-      {
-        envelope: {
-          sessionId,
-          clientOperationId: mintAgentSessionOperationId(Date.now()),
-          expectedRuntimeFence: fence,
-          payloadFingerprint: structuredAgentSessionPayloadFingerprint({
-            method: 'agentSession.cancel',
-            sessionId,
-            fields: {}
-          })
-        }
-      }
-    )
-    .catch(() => null)
-  return result?.ok === true
 }
 
 function hostDeps(
@@ -81,7 +55,7 @@ function hostDeps(
       await router.prepareAccount(accountId)
     },
     pins: claudeSessionAccountPins(),
-    stopTurn: (record) => stopTurn(host, record.sessionId)
+    stopTurn: (record) => forkStopChatTurn(host, record.sessionId, CALLER_KEY)
   }
 }
 
