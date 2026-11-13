@@ -476,6 +476,7 @@ Apply these in this order. Each one is a single commit.
 67. `SLRM-2136 Agent lifecycle: memory pause queues, Sleepers shows stalled and queued`
 68. `SLRM-2103 Cache-cold cue: a usage ledger and a hint when an idle chat cache has expired`
 69. `SLRM-2104 Usage report: tokens and estimated cost per chat, coordinator, workspace, day or card`
+70. `SLRM-2105 Sync status: fork-sync publishes its outcome, the update check shows when the fork is behind`
 
 `AppRootSurfaces.tsx` carries one hook for the fork's always-mounted hosts: `ForkRootHosts`
 (`src/renderer/src/fork/ForkRootHosts.tsx`) renders `ForkChatSleepReporter`,
