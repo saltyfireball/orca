@@ -27,6 +27,7 @@ import { shouldActivateDesktopForSecondInstance } from './startup/profile-startu
 import type { DeepLink } from './startup/deep-link-state'
 import { resolveOsOpenedDocuments } from './startup/open-routing/os-opened-documents'
 import { installForkRestartGuard } from './fork/restart-guard/restart-guard'
+import { installForkChatSleepBridge } from './fork/chat-sleep/chat-sleep-bridge'
 import {
   formatProfileStateStartupFailure,
   isDivergedProfileStateFailure,
@@ -210,6 +211,7 @@ if (preflightReady) {
   registerMainProcessIpcHandlers()
   installMainProcessQuitHandlers()
   installForkRestartGuard()
+  installForkChatSleepBridge()
   void app.whenReady().then(async () => {
     try {
       await wslHostsGateReady
