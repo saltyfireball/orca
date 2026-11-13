@@ -1,3 +1,4 @@
+import os from 'node:os'
 import { getAppEnvironment, type AppEnvironment } from '../../shared/app-lifecycle/app-environment'
 import type {
   AppMemory,
@@ -12,7 +13,9 @@ import { collectHostMemory } from './host-memory'
 import { getLocalDaemonPid } from './local-daemon-pid'
 import { enumerateHostProcesses } from './host-process-index'
 import { claimPtyProcessTrees } from './pty-process-trees'
-import type { ProcIndex } from './process-index'
+import { buildProcessIndex, type ProcIndex } from './process-index'
+import { getProcessMemoryMetric } from './process-memory-metric'
+import { readDarwinProcessFootprints } from './darwin-process-footprint'
 import {
   createEmptyWorktreeMemoryBucket,
   pushAppMemoryHistory,
@@ -30,6 +33,9 @@ import {
   optionalCommitField,
   snapshotCommitFields
 } from './memory-snapshot-values'
+// Fork (SLRM-2099): whole process trees, chats and system memory; see FORK.md "Memory truth".
+import { readForkUnixProcessTable } from '../fork/memory-truth/process-table'
+import { forkAugmentMemorySnapshot } from '../fork/memory-truth/augment'
 
 export type { MemorySnapshotStore } from './memory-snapshot-buckets'
 export { collectSubtree, parsePsOutput } from './process-index'
@@ -50,6 +56,19 @@ export async function collectMemorySnapshot(store: MemorySnapshotStore): Promise
       inflight = null
     })
   return inflight
+}
+
+async function enumerateProcesses(): Promise<ProcIndex> {
+  const platform = os.platform()
+  if (platform === 'win32') {
+    return enumerateHostProcesses()
+  }
+  // Fork: same rows plus process group and name, from one `ps` (LC_ALL=C for dot decimals).
+  const [rows, footprints] = await Promise.all([
+    readForkUnixProcessTable(),
+    platform === 'darwin' ? readDarwinProcessFootprints() : Promise.resolve(null)
+  ])
+  return buildProcessIndex(rows, footprints, getProcessMemoryMetric(platform))
 }
 
 type AppBucketsRaw = Omit<AppMemory, 'history'>
@@ -120,9 +139,10 @@ function bucketElectronMetrics(processIndex: ProcIndex): AppBucketsRaw {
 }
 
 async function runSnapshot(store: MemorySnapshotStore): Promise<MemorySnapshot> {
-  const [processIndex, host] = await Promise.all([enumerateHostProcesses(), collectHostMemory()])
+  const [processIndex, host] = await Promise.all([enumerateProcesses(), collectHostMemory()])
   const appBuckets = bucketElectronMetrics(processIndex)
-  const ptyTrees = claimPtyProcessTrees(processIndex, listRegisteredPtys())
+  const ptys = listRegisteredPtys()
+  const ptyTrees = claimPtyProcessTrees(processIndex, ptys)
 
   const orphan = createEmptyWorktreeMemoryBucket(
     ORPHAN_WORKTREE_ID,
@@ -204,7 +224,7 @@ async function runSnapshot(store: MemorySnapshotStore): Promise<MemorySnapshot> 
     sessionPrivateTotal += clampMemoryMetric(wt.privateMemory)
   }
 
-  return {
+  const snapshot: MemorySnapshot = {
     app: { ...appBuckets, history: readAppMemoryHistory() },
     worktrees,
     host,
@@ -217,4 +237,5 @@ async function runSnapshot(store: MemorySnapshotStore): Promise<MemorySnapshot> 
     totalMemory: appBuckets.memory + sessionMemoryTotal,
     collectedAt: now
   }
+  return forkAugmentMemorySnapshot(snapshot, processIndex, ptys, store)
 }
