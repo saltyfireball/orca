@@ -9,7 +9,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 import type { ForkClaudeMoveScope } from './claude-account-move-client'
 import { runForkClaudeMove } from './fork-claude-move-actions'
@@ -39,20 +39,21 @@ export function openForkMoveAccountDialog(next: DialogRequest): void {
 }
 
 function DialogBody({ target, scope }: DialogRequest): React.JSX.Element {
+  const t = useTranslate()
   const { choices, currentAccountId, failed } = useForkClaudeMoveAccounts(target, true, scope)
   const message = (text: string) => <p className="text-sm text-muted-foreground">{text}</p>
   if (!target) {
-    return message(translate('fork.accountMove.noHost', 'This host cannot move Claude chats.'))
+    return message(t('fork.accountMove.noHost', 'This host cannot move Claude chats.'))
   }
   if (failed) {
-    return message(translate('fork.accountMove.readFailed', "Could not read this host's accounts."))
+    return message(t('fork.accountMove.readFailed', "Could not read this host's accounts."))
   }
   if (!choices) {
-    return message(translate('fork.accountMove.loading', 'Loading accounts...'))
+    return message(t('fork.accountMove.loading', 'Loading accounts...'))
   }
   const others = choices.filter((choice) => choice.id !== currentAccountId)
   if (others.length === 0) {
-    return message(translate('fork.accountMove.noOthers', 'No other Claude accounts on this host.'))
+    return message(t('fork.accountMove.noOthers', 'No other Claude accounts on this host.'))
   }
   return (
     <div className="flex flex-col gap-1">
@@ -67,7 +68,7 @@ function DialogBody({ target, scope }: DialogRequest): React.JSX.Element {
           }}
         >
           <span className="min-w-0 truncate">{choice.label}</span>
-          <span className="text-xs text-muted-foreground">{usageText(choice)}</span>
+          <span className="text-xs text-muted-foreground">{usageText(choice, t)}</span>
         </Button>
       ))}
     </div>
@@ -75,6 +76,7 @@ function DialogBody({ target, scope }: DialogRequest): React.JSX.Element {
 }
 
 export function ForkMoveAccountDialogHost(): React.JSX.Element | null {
+  const t = useTranslate()
   const current = useSyncExternalStore(subscribe, () => request)
   if (!current) {
     return null
@@ -86,14 +88,11 @@ export function ForkMoveAccountDialogHost(): React.JSX.Element | null {
         <DialogHeader>
           <DialogTitle>
             {chat
-              ? translate('fork.accountMove.chatTitle', 'Move this chat to account')
-              : translate(
-                  'fork.accountMove.worktreeTitle',
-                  "Move this worktree's chats to account"
-                )}
+              ? t('fork.accountMove.chatTitle', 'Move this chat to account')
+              : t('fork.accountMove.worktreeTitle', "Move this worktree's chats to account")}
           </DialogTitle>
           <DialogDescription>
-            {translate(
+            {t(
               'fork.accountMove.dialogHint',
               'Only these chats move. A chat mid-turn moves when its turn ends.'
             )}

@@ -13,6 +13,9 @@ vi.mock('../../store/index', () => ({
 
 const { ForkSyncStatusNotice } = await import('./ForkSyncStatusNotice')
 
+// A fixed clock: the notice turns stale by age, so the status is stamped at this time.
+const NOW = '2026-01-15T12:00:00.000Z'
+
 const RUN = `https://github.com/${FORK_RELEASE_REPO}/actions/runs/9`
 
 function status(overrides: Partial<ForkSyncStatus>): ForkSyncStatus {
@@ -22,9 +25,9 @@ function status(overrides: Partial<ForkSyncStatus>): ForkSyncStatus {
     upstreamVersion: '1.4.260',
     forkBaseVersion: '1.4.258',
     conflicts: ['src/a.ts', 'src/b.ts'],
-    since: new Date().toISOString(),
+    since: NOW,
     runUrl: RUN,
-    checkedAt: new Date().toISOString(),
+    checkedAt: NOW,
     ...overrides
   }
 }
@@ -36,11 +39,13 @@ function installBridge(value: ForkSyncStatus | null) {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'], now: Date.parse(NOW) })
   settings.current = {}
 })
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
 })
 
 describe('ForkSyncStatusNotice', () => {

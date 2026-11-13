@@ -202,12 +202,12 @@ describe('chat-survive launch plan', () => {
     expect(spec).toMatchObject({ ownerPid: 77, token: plan?.token, socketPath: plan?.socketPath })
   })
 
-  it('uses a socket folder only when it is private', () => {
+  it('uses a socket folder only when it is private', async () => {
     const base = tempDir()
-    const dir = chatSurviveSocketDir(base)
+    const dir = await chatSurviveSocketDir(base)
     expect(dir).toBe(join(base, 'orca-chat-survive'))
     chmodSync(join(base, 'orca-chat-survive'), 0o755)
-    expect(chatSurviveSocketDir(base)).toBeNull()
+    expect(await chatSurviveSocketDir(base)).toBeNull()
   })
 })
 

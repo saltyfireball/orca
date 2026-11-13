@@ -40,14 +40,14 @@ type ExtraArgs = Record<string, string | null>
 const STRICT = 'strict-mcp-config'
 const CONFIG = 'mcp-config'
 
-function skipReason(input: ForkMcpClaudeLaunch): string | null {
+async function skipReason(input: ForkMcpClaudeLaunch): Promise<string | null> {
   if (input.wsl) {
     return 'MCP profiles do not cover chats that run inside WSL yet.'
   }
   if (Object.hasOwn(input.userArgs, CONFIG) || Object.hasOwn(input.userArgs, STRICT)) {
     return 'The Claude launch arguments in Settings already set an MCP config.'
   }
-  if (hasManagedMcpPolicy(input.policyFiles ?? managedMcpPolicyFiles())) {
+  if (await hasManagedMcpPolicy(input.policyFiles ?? managedMcpPolicyFiles())) {
     return 'An enterprise MCP policy is installed; Claude refuses a narrowed MCP config with one.'
   }
   return null
@@ -99,7 +99,7 @@ export async function forkMcpClaudeLaunchArgs(input: ForkMcpClaudeLaunch): Promi
     record({ applied: false, servers: [] })
     return {}
   }
-  const skipped = skipReason(input)
+  const skipped = await skipReason(input)
   if (skipped) {
     record({ applied: false, skipped, servers: [] })
     return {}
