@@ -42,6 +42,7 @@ import {
   ForkClaudeAccountWhichParams
 } from '../fork/claude-account-move'
 import { ForkLostWorkScanParams } from '../fork/lost-work'
+import { ForkUsageReportParams } from '../fork/usage-report'
 import { MobileWebBundleChunkParamsSchema } from '../mobile-web-bundle/bundle-rpc-contract'
 import { MobileWebBundleLocaleCatalogParamsSchema } from '../mobile-web-bundle/locale-catalog-contract'
 import { OrcadMigrationBlobChunkRequestSchema } from '../orcad-migration/orcad-migration-blob-transfer'
@@ -1122,6 +1123,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.claudeAccount.move': ForkClaudeAccountMoveParams,
   'fork.claudeAccount.which': ForkClaudeAccountWhichParams,
   'fork.lostWork.scan': ForkLostWorkScanParams,
+  'fork.usageLedger.report': ForkUsageReportParams,
   'git.abortMerge': WorktreeSelectorOfGitParams,
   'git.abortRebase': WorktreeSelectorOfGitParams,
   'git.branchCompare': GitBranchCompare,

@@ -20,6 +20,7 @@ import { translate } from '@/i18n/i18n'
 import { createLocalizedCatalog } from '@/i18n/localized-catalog'
 import { getNativeChatSplitQuickActions } from './native-chat-split-quick-actions'
 import { getForkClaudeMoveQuickActions } from '@/fork/claude-account-move/fork-claude-move-quick-actions'
+import { getForkUsageReportQuickActions } from '@/fork/usage-report/fork-usage-report-quick-actions'
 
 export type CmdJQuickActionRunResult =
   | { status: 'ok' }
@@ -180,6 +181,8 @@ export const getCmdJQuickActions = createLocalizedCatalog((): CmdJQuickAction[] 
   ...getNativeChatSplitQuickActions(),
   // SLRM-1503: move Claude chats to another account (FORK.md).
   ...getForkClaudeMoveQuickActions(),
+  // SLRM-2104: open the usage report (FORK.md).
+  ...getForkUsageReportQuickActions(),
   {
     id: CREATE_WORKSPACE_QUICK_ACTION_ID,
     kind: 'action',

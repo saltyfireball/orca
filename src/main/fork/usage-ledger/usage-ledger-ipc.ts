@@ -1,5 +1,6 @@
 // SLRM-2103 (FORK.md "Usage ledger and cache-cold cue"): start-up hook and the window's side of
-// the ledger. Pushes prompt cache states to the main window when they change.
+// the ledger. Pushes prompt cache states to the main window when they change, and answers the
+// usage report (SLRM-2104, FORK.md "Usage and cost report").
 import { join, basename } from 'node:path'
 import { app, ipcMain } from 'electron'
 import { splitWorktreeId } from '../../../shared/worktree/id'
@@ -16,9 +17,13 @@ import type { UsageChatMeta } from './usage-ledger'
 import { USAGE_LEDGER_FILE_NAME } from './usage-ledger-file'
 import {
   forkUsageLedgerCacheStates,
+  forkUsageLedgerClear,
   installForkUsageLedgerService,
   onForkUsageLedgerCacheChanged
 } from './usage-ledger-service'
+import { ForkUsageReportParams } from '../../../shared/fork/usage-report'
+import { defaultUsagePrices } from './usage-report'
+import { forkUsageReport } from './usage-report-service'
 
 export type UsageLedgerStoreReader = {
   getSettings: () => ForkUsageLedgerSettings | undefined
@@ -83,6 +88,12 @@ export function installForkUsageLedger(readStore: () => UsageLedgerStoreReader |
     app.on('will-quit', flush)
   })
   ipcMain.handle(CHANNELS.cacheStates, () => forkUsageLedgerCacheStates())
+  // SLRM-2104: the usage report, clear history and the built-in prices.
+  ipcMain.handle(CHANNELS.report, (_event, params: unknown) =>
+    forkUsageReport(ForkUsageReportParams.parse(params ?? {}))
+  )
+  ipcMain.handle(CHANNELS.clear, () => forkUsageLedgerClear())
+  ipcMain.handle(CHANNELS.defaultPrices, () => defaultUsagePrices())
   onForkUsageLedgerCacheChanged(() => {
     mainWindowContents()?.send(CHANNELS.cacheChanged, forkUsageLedgerCacheStates())
   })

@@ -20,6 +20,7 @@ import { ForkChatSleepSetting } from '@/fork/chat-sleep/ForkChatSleepSetting'
 import { ForkMemorySettings } from '@/fork/memory-truth/ForkMemorySettings'
 import { ForkAgentQueueSetting } from '@/fork/agent-queue/ForkAgentQueueSetting'
 import { ForkCacheColdSetting } from '@/fork/cache-cold/ForkCacheColdSetting'
+import { ForkUsageReportSettings } from '@/fork/usage-report/ForkUsageReportSettings'
 
 type AdvancedPaneProps = {
   settings: GlobalSettings
@@ -163,6 +164,7 @@ export function AdvancedPane({ settings, updateSettings }: AdvancedPaneProps): R
       <ForkMemorySettings settings={settings} updateSettings={updateSettings} />
       <ForkAgentQueueSetting settings={settings} updateSettings={updateSettings} />
       <ForkCacheColdSetting settings={settings} updateSettings={updateSettings} />
+      <ForkUsageReportSettings settings={settings} updateSettings={updateSettings} />
     </div>
   )
 }

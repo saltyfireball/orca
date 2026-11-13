@@ -283,6 +283,7 @@ Apply these in this order. Each one is a single commit.
 59. `SLRM-2099 Truthful memory: whole process trees, system memory and a warning`
 60. `SLRM-2098 Agent launch queue: a limit on running agents with a queue for the rest`
 61. `SLRM-2103 Cache-cold cue: a usage ledger and a hint when an idle chat cache has expired`
+62. `SLRM-2104 Usage report: tokens and estimated cost per chat, coordinator, workspace, day or card`
 
 Fork-only code lives in `fork/` folders:
 
@@ -322,6 +323,27 @@ Fork-only code lives in `fork/` folders:
     blocked.
   - **Settings** (Settings > Advanced): `forkCacheColdCue` (on), `forkCacheWindowMinutes` (5),
     `forkCacheColdThresholdTokens` (50000).
+
+- **Usage and cost report (SLRM-2104).** Reads the usage ledger (SLRM-2103) and adds up tokens
+  and an estimated cost (`src/main/fork/usage-ledger/usage-report.ts`).
+  - **Groups.** Per chat, per coordinator (a chat plus every worker and sub-agent it
+    dispatched, following the worker's parent chat), per workspace, per day, or per card. A card
+    comes from `forkUsageCardPattern`, a regular expression over the workspace name (group 1 or
+    the whole match, case-insensitive). It is empty by default, so no card names are built in.
+    A range of 1, 7, 30 days or everything kept.
+  - **Prices.** `forkUsagePrices` is the user's table, USD per million tokens per model. Empty
+    means the app's own Claude prices (`claude-model-pricing.ts`). A row for the exact model id
+    or its family wins and is applied flat, without long-context rates. A model with no price
+    shows "+?". Every cost is marked as an estimate. A chat on a subscription (`apiKeySource`
+    `none`) counts its tokens only, shown as "subscription": it is not billed per token.
+  - **Where.** "Usage report" in the command palette and in Settings > Advanced > Usage report
+    (with the card pattern, the history kept and the price table), and
+    `orca usage-report [--by chat|coordinator|workspace|day|card] [--days N] [--json]` over
+    runtime RPC (`fork.usageLedger.report`). "Clear history" in the report forgets the ledger.
+  - **Settings** (Settings > Advanced): `forkUsageCardPattern` (empty), `forkUsagePrices`
+    (empty: built-in prices), `forkUsageRetentionDays` (90, shared with SLRM-2103).
+  - **Not covered.** Only native Claude chats counted on this computer. `apiKeySource` `none`
+    can also be a cloud provider account rather than a subscription.
 
 Upstream files only get short hooks, which keeps rebases small:
 
@@ -541,6 +563,21 @@ Upstream files only get short hooks, which keeps rebases small:
     which also hands the forwarded ref on. `ForkTabTitle` and `ForkClaudeAccountAgentRowChip` render the
     snowflake; `AdvancedPane.tsx` renders `ForkCacheColdSetting` after `ForkAgentQueueSetting`;
     `ForkUsageLedgerSettings` joins `fork-global-settings.ts`.
+
+- Usage report (SLRM-2104), from `src/main/fork/usage-ledger/usage-report*.ts`,
+  `src/shared/fork/usage-report.ts`, `src/cli/fork/usage-report-*.ts` and
+  `src/renderer/src/fork/usage-report/`:
+  - `rpc-method-registry.ts` registers `FORK_USAGE_REPORT_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-usage-report.ts`);
+    `rpc-params-catalog.generated.ts` is regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_USAGE_REPORT_COMMAND_SPECS`,
+    `handler-group-manifest.ts` adds the `fork-usage-report` group, and `cli-command-names.ts`
+    lists `usage-report`.
+  - `quick-actions.ts` spreads `getForkUsageReportQuickActions()`; `AppRootSurfaces.tsx`
+    renders `ForkUsageReportHost`; `AdvancedPane.tsx` renders `ForkUsageReportSettings` after
+    `ForkCacheColdSetting`.
+  - The SLRM-2103 ledger IPC and preload bridge (fork files) gain `report`, `clear` and
+    `defaultPrices`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

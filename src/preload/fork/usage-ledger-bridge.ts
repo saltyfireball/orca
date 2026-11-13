@@ -14,5 +14,9 @@ export const forkUsageLedgerApi: ForkUsageLedgerApi = {
       callback(states)
     ipcRenderer.on(CHANNELS.cacheChanged, listener)
     return () => ipcRenderer.removeListener(CHANNELS.cacheChanged, listener)
-  }
+  },
+  // SLRM-2104 (FORK.md "Usage and cost report").
+  report: (params) => ipcRenderer.invoke(CHANNELS.report, params),
+  clear: () => ipcRenderer.invoke(CHANNELS.clear),
+  defaultPrices: () => ipcRenderer.invoke(CHANNELS.defaultPrices)
 }

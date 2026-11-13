@@ -67,6 +67,7 @@ import { AUTOMATIC_WORK_METHODS } from './automations/automatic-work'
 import { FORK_CLAUDE_ACCOUNT_MOVE_METHODS } from './fork/fork-claude-account-move'
 import { FORK_LOST_WORK_METHODS } from './fork/fork-lost-work'
 import { FORK_AGENT_QUEUE_METHODS } from './fork/fork-agent-queue'
+import { FORK_USAGE_REPORT_METHODS } from './fork/fork-usage-report'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
 import { STRUCTURED_AGENT_SESSION_ATTACHMENT_METHODS } from './structured-sessions/attachments/structured-agent-session-attachments'
@@ -172,5 +173,7 @@ export const ALL_RPC_METHODS = [
   // SLRM-2096: the lost work scan behind `orca lost-work` (FORK.md).
   ...FORK_LOST_WORK_METHODS,
   // SLRM-2098: the agent launch queue (FORK.md).
-  ...FORK_AGENT_QUEUE_METHODS
+  ...FORK_AGENT_QUEUE_METHODS,
+  // SLRM-2104: the usage report behind `orca usage-report` (FORK.md).
+  ...FORK_USAGE_REPORT_METHODS
 ]

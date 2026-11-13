@@ -282,5 +282,11 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-agent-queue',
     keys: ['agent queue list', 'agent queue start', 'agent queue cancel'],
     load: async () => (await import('./fork/agent-queue-handlers.js')).FORK_AGENT_QUEUE_HANDLERS
+  },
+  // SLRM-2104: tokens and estimated cost of native Claude chats (FORK.md).
+  {
+    name: 'fork-usage-report',
+    keys: ['usage-report'],
+    load: async () => (await import('./fork/usage-report-handlers.js')).FORK_USAGE_REPORT_HANDLERS
   }
 ]

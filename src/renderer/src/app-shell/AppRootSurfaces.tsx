@@ -19,6 +19,7 @@ import { TelemetryFirstLaunchSurface } from '../components/TelemetryFirstLaunchS
 import { ZoomOverlay } from '../components/ZoomOverlay'
 import { WslMoveDialogHost } from '../components/wsl-move/WslMoveDialog'
 import { ForkMoveAccountDialogHost } from '../fork/claude-account-move/ForkMoveAccountDialog'
+import { ForkUsageReportHost } from '../fork/usage-report/ForkUsageReportDialog'
 import { ForkChatSleepReporter } from '../fork/chat-sleep/ForkChatSleep'
 import { MacosUpdateRequirementHost } from '../components/macos-update-requirement/MacosUpdateRequirementHost'
 import { shouldRenderPetOverlay } from '../components/pet/pet-overlay-visibility'
@@ -227,6 +228,8 @@ export const AppRootSurfaces = memo(function AppRootSurfaces(props: {
         <WslMoveDialogHost />
         {/* SLRM-1503: the palette's move-to-account picker (FORK.md). */}
         <ForkMoveAccountDialogHost />
+        {/* SLRM-2104: the usage report (FORK.md). */}
+        <ForkUsageReportHost />
         <ForkChatSleepReporter />
         {/* Opened by toast, SSH host row and terminal pane. */}
         {activeModal === 'node-dist-mirror' ? (
