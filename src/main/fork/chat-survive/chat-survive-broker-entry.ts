@@ -12,7 +12,9 @@
 //
 // Loaded under plain Node: keep this graph free of Electron and of lazy loads, because an update
 // can replace the app bundle while a broker still runs.
+import { dirname } from 'node:path'
 import { startChatSurviveBroker } from './chat-survive-broker'
+import { prepareChatSurviveSocketDir } from './chat-survive-launch'
 import {
   CHAT_SURVIVE_SPEC_ENV,
   parseChatSurviveBrokerSpec,
@@ -56,6 +58,10 @@ async function main(): Promise<void> {
   if (!env) {
     // Without a supervisor that answers to the broker, the provider would outlive everything.
     fail('the provider command is not a provider supervisor', 2)
+  }
+  // The app checked the folder before this spawn; the system may have cleaned it up since.
+  if (!(await prepareChatSurviveSocketDir(dirname(spec.socketPath)))) {
+    fail('the socket folder is not private', 2)
   }
   const broker = await startChatSurviveBroker({
     command,

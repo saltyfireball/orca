@@ -115,6 +115,7 @@ export function forkLaunchKindLabel(kind: string | undefined): string {
       return 'automation runs'
     case 'interactive':
       return 'interactive launches'
+    case undefined:
     default:
       return 'this kind of launch'
   }

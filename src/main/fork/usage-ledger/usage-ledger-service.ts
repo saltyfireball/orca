@@ -8,6 +8,7 @@ import {
   type ForkCacheState,
   type ForkUsageLedgerSettings
 } from '../../../shared/fork/usage-ledger'
+import { startForkBackoffTimer } from '../fork-backoff-timer'
 import { claudeUsageObservation } from './claude-usage-frames'
 import { LedgerFileWriter, readLedgerFile, writeLedgerFile } from './usage-ledger-file'
 import { UsageLedger, type UsageChatMeta } from './usage-ledger'
@@ -21,7 +22,9 @@ export type UsageLedgerServiceDeps = {
   now?: () => number
 }
 
+/** Hourly after a prune that dropped rows, backing off to every 6 hours while nothing ages out. */
 const PRUNE_EVERY_MS = 60 * 60_000
+const PRUNE_MAX_MS = 6 * PRUNE_EVERY_MS
 const CHANGE_PUSH_DELAY_MS = 500
 /** Most chats sent to the window: the cue only matters for recent ones. */
 const CACHE_STATES_SENT = 200
@@ -30,6 +33,7 @@ let ledger: UsageLedger | null = null
 let service: UsageLedgerServiceDeps | null = null
 let writer: LedgerFileWriter | null = null
 let pushTimer: ReturnType<typeof setTimeout> | null = null
+let stopPrune: (() => void) | null = null
 const changeListeners = new Set<() => void>()
 
 function notifyCacheChanged(): void {
@@ -45,10 +49,13 @@ function notifyCacheChanged(): void {
   pushTimer.unref?.()
 }
 
-function prune(): void {
-  if (ledger?.prune(forkUsageRetentionDays(service?.readSettings()))) {
-    writer?.schedule()
+/** Returns whether any rows aged out. */
+function prune(): boolean {
+  if (!ledger?.prune(forkUsageRetentionDays(service?.readSettings()))) {
+    return false
   }
+  writer?.schedule()
+  return true
 }
 
 /** Main-process start-up: load the saved ledger and start counting. Returns the quit flush. */
@@ -65,7 +72,13 @@ export function installForkUsageLedgerService(deps: UsageLedgerServiceDeps): () 
   const current = ledger
   writer = new LedgerFileWriter(() => writeLedgerFile(deps.filePath, current.snapshot()))
   prune()
-  setInterval(prune, PRUNE_EVERY_MS).unref?.()
+  stopPrune?.()
+  stopPrune = startForkBackoffTimer({
+    run: async () => prune(),
+    baseMs: PRUNE_EVERY_MS,
+    maxMs: PRUNE_MAX_MS,
+    onError: (error) => console.warn('[fork-usage-ledger] Could not prune the usage ledger:', error)
+  })
   return () => writer?.flush()
 }
 

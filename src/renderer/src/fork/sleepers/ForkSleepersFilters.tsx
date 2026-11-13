@@ -3,6 +3,7 @@ import React from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import {
   SLEEPER_STATES,
   type SleeperRow,
@@ -24,25 +25,25 @@ export type SleepersView = {
 /** The idle filter's choices, in minutes; 0 is any. */
 const IDLE_MINUTES = [0, 15, 60, 240, 1440]
 
-function idleLabel(minutes: number): string {
+function idleLabel(minutes: number, t: Translate = translate): string {
   if (minutes === 0) {
-    return translate('fork.sleepers.filter.anyIdle', 'Any idle time')
+    return t('fork.sleepers.filter.anyIdle', 'Any idle time')
   }
   return minutes < 60
-    ? translate('fork.sleepers.filter.idleMinutes', 'Idle {{count}}m+', { count: minutes })
-    : translate('fork.sleepers.filter.idleHours', 'Idle {{count}}h+', { count: minutes / 60 })
+    ? t('fork.sleepers.filter.idleMinutes', 'Idle {{count}}m+', { count: minutes })
+    : t('fork.sleepers.filter.idleHours', 'Idle {{count}}h+', { count: minutes / 60 })
 }
 
-function sortLabel(key: SleeperSortKey): string {
+function sortLabel(key: SleeperSortKey, t: Translate = translate): string {
   switch (key) {
     case 'idle':
-      return translate('fork.sleepers.sort.idle', 'Sort by idle time')
+      return t('fork.sleepers.sort.idle', 'Sort by idle time')
     case 'activity':
-      return translate('fork.sleepers.sort.activity', 'Sort by last activity')
+      return t('fork.sleepers.sort.activity', 'Sort by last activity')
     case 'workspace':
-      return translate('fork.sleepers.sort.workspace', 'Sort by workspace')
+      return t('fork.sleepers.sort.workspace', 'Sort by workspace')
     case 'state':
-      return translate('fork.sleepers.sort.state', 'Sort by state')
+      return t('fork.sleepers.sort.state', 'Sort by state')
   }
 }
 
@@ -57,31 +58,30 @@ export function ForkSleepersFilters({
   view: SleepersView
   onChange: (next: SleepersView) => void
 }): React.JSX.Element {
+  const t = useTranslate()
   const set = (patch: Partial<SleepersView>) => onChange({ ...view, ...patch })
   return (
     <div className="flex flex-wrap items-center gap-2">
       <select
         className={SELECT}
-        aria-label={translate('fork.sleepers.filter.state', 'State')}
+        aria-label={t('fork.sleepers.filter.state', 'State')}
         value={view.state}
         onChange={(event) => set({ state: event.target.value as SleepersView['state'] })}
       >
-        <option value="all">{translate('fork.sleepers.filter.allStates', 'All states')}</option>
+        <option value="all">{t('fork.sleepers.filter.allStates', 'All states')}</option>
         {SLEEPER_STATES.map((state) => (
           <option key={state} value={state}>
-            {sleeperStateLabel(state)}
+            {sleeperStateLabel(state, t)}
           </option>
         ))}
       </select>
       <select
         className={SELECT}
-        aria-label={translate('fork.sleepers.filter.workspace', 'Workspace')}
+        aria-label={t('fork.sleepers.filter.workspace', 'Workspace')}
         value={view.worktreeId}
         onChange={(event) => set({ worktreeId: event.target.value })}
       >
-        <option value="">
-          {translate('fork.sleepers.filter.allWorkspaces', 'All workspaces')}
-        </option>
+        <option value="">{t('fork.sleepers.filter.allWorkspaces', 'All workspaces')}</option>
         {sleeperWorkspaces(rows).map((workspace) => (
           <option key={workspace.worktreeId} value={workspace.worktreeId}>
             {workspace.name}
@@ -90,32 +90,32 @@ export function ForkSleepersFilters({
       </select>
       <select
         className={SELECT}
-        aria-label={translate('fork.sleepers.filter.idle', 'Idle time')}
+        aria-label={t('fork.sleepers.filter.idle', 'Idle time')}
         value={view.minIdleMs / 60_000}
         onChange={(event) => set({ minIdleMs: Number(event.target.value) * 60_000 })}
       >
         {IDLE_MINUTES.map((minutes) => (
           <option key={minutes} value={minutes}>
-            {idleLabel(minutes)}
+            {idleLabel(minutes, t)}
           </option>
         ))}
       </select>
       <select
         className={SELECT}
-        aria-label={translate('fork.sleepers.sort.label', 'Sort')}
+        aria-label={t('fork.sleepers.sort.label', 'Sort')}
         value={view.sort}
         onChange={(event) => set({ sort: event.target.value as SleeperSortKey })}
       >
         {(['idle', 'activity', 'workspace', 'state'] as const).map((key) => (
           <option key={key} value={key}>
-            {sortLabel(key)}
+            {sortLabel(key, t)}
           </option>
         ))}
       </select>
       <Button
         size="sm"
         variant="ghost"
-        aria-label={translate('fork.sleepers.sort.direction', 'Reverse the order')}
+        aria-label={t('fork.sleepers.sort.direction', 'Reverse the order')}
         onClick={() => set({ descending: !view.descending })}
       >
         {view.descending ? <ArrowDown className="size-3.5" /> : <ArrowUp className="size-3.5" />}

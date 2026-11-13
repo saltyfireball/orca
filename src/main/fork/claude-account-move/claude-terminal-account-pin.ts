@@ -2,7 +2,7 @@
 // shell function then reads a pointer of its own instead of the global one, so that one pane runs
 // the moved account while the other panes keep following the selection.
 import { createHash } from 'node:crypto'
-import { mkdirSync } from 'node:fs'
+import { mkdir } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import {
   CLAUDE_INJECTED_CONFIG_DIR_ENV,
@@ -36,10 +36,14 @@ function routeEnv(env: Env, pointer: string, home: string | null): void {
 }
 
 /** One pointer file per account, beside the global pointer; an empty file is System default. */
-function writePanePointer(router: PinnedClaudeRouter, name: string, home: string | null): string {
+async function writePanePointer(
+  router: PinnedClaudeRouter,
+  name: string,
+  home: string | null
+): Promise<string> {
   const folder = join(dirname(router.pointerPath), 'fork-pane-pins')
   const file = join(folder, createHash('sha256').update(name).digest('hex').slice(0, 24))
-  mkdirSync(folder, { recursive: true, mode: 0o700 })
+  await mkdir(folder, { recursive: true, mode: 0o700 })
   writeFileAtomically(file, home ?? '', { mode: 0o600 })
   return file
 }
@@ -48,12 +52,12 @@ function writePanePointer(router: PinnedClaudeRouter, name: string, home: string
  * Apply a pane's account pin to its spawn env and Claude launch auth. Without the marker, on a WSL
  * pane, or for an account this host no longer has, both come back unchanged (minus the marker).
  */
-export function forkPinTerminalClaudeAccount(
+export async function forkPinTerminalClaudeAccount(
   env: Env | undefined,
   target: ClaudeAccountSelectionTarget | undefined,
   auth: ClaudeRuntimeAuthPreparation | null,
   router: PinnedClaudeRouter | undefined = getClaudeProfileRouter()
-): { env: Env | undefined; auth: ClaudeRuntimeAuthPreparation | null } {
+): Promise<{ env: Env | undefined; auth: ClaudeRuntimeAuthPreparation | null }> {
   const marker = env?.[FORK_CLAUDE_TERMINAL_ACCOUNT_ENV]?.trim()
   if (!env || marker === undefined) {
     return { env, auth }
@@ -70,7 +74,7 @@ export function forkPinTerminalClaudeAccount(
   const home = route.kind === 'account' ? route.home : null
   let pointer: string
   try {
-    pointer = writePanePointer(router, marker, home)
+    pointer = await writePanePointer(router, marker, home)
   } catch (error) {
     // The pane then follows the selection, as stock does.
     console.warn('[fork-claude-account-move] Could not write a pane pointer:', error)

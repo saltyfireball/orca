@@ -3,8 +3,7 @@
 // can read, is written owner-only, and is never logged. Each chat has one file, replaced on
 // every start; files from earlier runs are swept at startup and on quit.
 import { randomBytes } from 'node:crypto'
-import { existsSync } from 'node:fs'
-import { chmod, lstat, mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { access, chmod, lstat, mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -119,6 +118,16 @@ export function managedMcpPolicyFiles(platform: NodeJS.Platform = process.platfo
   return ['/etc/claude-code/managed-mcp.json']
 }
 
-export function hasManagedMcpPolicy(files: readonly string[] = managedMcpPolicyFiles()): boolean {
-  return files.some((file) => existsSync(file))
+export async function hasManagedMcpPolicy(
+  files: readonly string[] = managedMcpPolicyFiles()
+): Promise<boolean> {
+  const found = await Promise.all(
+    files.map((file) =>
+      access(file).then(
+        () => true,
+        () => false
+      )
+    )
+  )
+  return found.includes(true)
 }

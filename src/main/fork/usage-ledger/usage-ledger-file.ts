@@ -9,7 +9,17 @@ import { emptyLedgerData, parseLedgerData, type UsageLedgerData } from './usage-
 export const USAGE_LEDGER_FILE_NAME = 'fork-usage-ledger.json'
 export const USAGE_LEDGER_WRITE_DELAY_MS = 10_000
 
+/**
+ * Start-up only (once, at install): reads the saved ledger and makes sure its folder exists, so
+ * the batched saves after it need no folder work. The saves stay synchronous through the shared
+ * atomic writer because the quit flush must land before the process exits.
+ */
 export function readLedgerFile(path: string): UsageLedgerData {
+  try {
+    mkdirSync(dirname(path), { recursive: true, mode: 0o700 })
+  } catch (error) {
+    console.warn('[fork-usage-ledger] Could not create the usage ledger folder:', error)
+  }
   if (!existsSync(path)) {
     return emptyLedgerData()
   }
@@ -22,7 +32,6 @@ export function readLedgerFile(path: string): UsageLedgerData {
 }
 
 export function writeLedgerFile(path: string, data: UsageLedgerData): void {
-  mkdirSync(dirname(path), { recursive: true, mode: 0o700 })
   writeFileAtomically(path, JSON.stringify(data), { mode: 0o600 })
 }
 

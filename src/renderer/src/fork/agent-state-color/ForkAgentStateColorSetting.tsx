@@ -28,6 +28,7 @@ import {
   SelectValue
 } from '../../components/ui/select'
 import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { normalizeHexColor } from '../agent-row-tab-tint/agent-row-tab-tint'
 
 type Props = {
@@ -39,39 +40,39 @@ const CUSTOM = 'custom'
 /** The first color a switch to Custom starts from. */
 const CUSTOM_START = '#3b82f6'
 
-function stateLabel(state: ForkAgentColorState): string {
+function stateLabel(state: ForkAgentColorState, t: Translate = translate): string {
   switch (state) {
     case 'needsYou':
-      return translate('fork.agentStateColors.state.needsYou', 'Needs you')
+      return t('fork.agentStateColors.state.needsYou', 'Needs you')
     case 'stalled':
-      return translate('fork.agentStateColors.state.stalled', 'Stalled')
+      return t('fork.agentStateColors.state.stalled', 'Stalled')
     case 'working':
-      return translate('fork.agentStateColors.state.working', 'Working')
+      return t('fork.agentStateColors.state.working', 'Working')
     case 'queued':
-      return translate('fork.agentStateColors.state.queued', 'Queued')
+      return t('fork.agentStateColors.state.queued', 'Queued')
     case 'unread':
-      return translate('fork.agentStateColors.state.unread', 'Unread')
+      return t('fork.agentStateColors.state.unread', 'Unread')
     case 'done':
-      return translate('fork.agentStateColors.state.done', 'Done')
+      return t('fork.agentStateColors.state.done', 'Done')
     case 'asleep':
-      return translate('fork.agentStateColors.state.asleep', 'Asleep')
+      return t('fork.agentStateColors.state.asleep', 'Asleep')
   }
 }
 
-function themeColorLabel(id: ForkAgentThemeColor): string {
+function themeColorLabel(id: ForkAgentThemeColor, t: Translate = translate): string {
   switch (id) {
     case 'blue':
-      return translate('fork.agentStateColors.color.blue', 'Theme blue')
+      return t('fork.agentStateColors.color.blue', 'Theme blue')
     case 'yellow':
-      return translate('fork.agentStateColors.color.yellow', 'Theme yellow')
+      return t('fork.agentStateColors.color.yellow', 'Theme yellow')
     case 'green':
-      return translate('fork.agentStateColors.color.green', 'Theme green')
+      return t('fork.agentStateColors.color.green', 'Theme green')
     case 'red':
-      return translate('fork.agentStateColors.color.red', 'Theme red')
+      return t('fork.agentStateColors.color.red', 'Theme red')
     case 'accent':
-      return translate('fork.agentStateColors.color.accent', 'Theme accent')
+      return t('fork.agentStateColors.color.accent', 'Theme accent')
     case 'muted':
-      return translate('fork.agentStateColors.color.muted', 'Theme muted')
+      return t('fork.agentStateColors.color.muted', 'Theme muted')
   }
 }
 
@@ -96,12 +97,13 @@ function StateColorRow({
   disabled: boolean
   onPick: (state: ForkAgentColorState, choice: string) => void
 }): React.JSX.Element {
+  const t = useTranslate()
   const labelId = useId()
   const choice = forkAgentStateColorChoice(settings, state)
   const isCustom = choice.startsWith('#')
   return (
     <SettingsRow
-      label={stateLabel(state)}
+      label={stateLabel(state, t)}
       labelId={labelId}
       control={
         <div className="flex items-center gap-2">
@@ -110,7 +112,7 @@ function StateColorRow({
               type="color"
               value={normalizeHexColor(choice) ?? CUSTOM_START}
               disabled={disabled}
-              aria-label={translate('fork.agentStateColors.customPicker', 'Custom color')}
+              aria-label={t('fork.agentStateColors.customPicker', 'Custom color')}
               onChange={(event) => onPick(state, event.target.value)}
               className="h-7 w-9 rounded-md border border-input bg-transparent p-0.5"
             />
@@ -126,17 +128,17 @@ function StateColorRow({
             <SelectContent>
               <SelectItem value="none">
                 <Swatch css={null} />
-                {translate('fork.agentStateColors.color.none', 'None')}
+                {t('fork.agentStateColors.color.none', 'None')}
               </SelectItem>
               {FORK_AGENT_THEME_COLOR_IDS.map((id) => (
                 <SelectItem key={id} value={id}>
                   <Swatch css={forkAgentColorChoiceCss(id)} />
-                  {themeColorLabel(id)}
+                  {themeColorLabel(id, t)}
                 </SelectItem>
               ))}
               <SelectItem value={CUSTOM}>
                 <Swatch css={isCustom ? choice : null} />
-                {translate('fork.agentStateColors.color.custom', 'Custom')}
+                {t('fork.agentStateColors.color.custom', 'Custom')}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -147,6 +149,7 @@ function StateColorRow({
 }
 
 export function ForkAgentStateColorSetting({ settings, updateSettings }: Props): React.JSX.Element {
+  const t = useTranslate()
   const enabled = forkAgentStateColorsEnabled(settings)
   const where = forkAgentStateColorsWhere(settings)
   const strength = forkAgentStateColorsStrength(settings)
@@ -159,19 +162,19 @@ export function ForkAgentStateColorSetting({ settings, updateSettings }: Props):
   return (
     <section className="space-y-3">
       <SettingsSubsectionHeader
-        title={translate('fork.agentStateColors.title', 'Agent state colors')}
-        description={translate(
+        title={t('fork.agentStateColors.title', 'Agent state colors')}
+        description={t(
           'fork.agentStateColors.description',
           'Color a tab and its sidebar agent row by what the agent is doing. The state icons stay as they are, and a color you set on a tab yourself always wins.'
         )}
       />
       <SettingsSwitchRow
-        label={translate('fork.agentStateColors.label', 'Color by agent state')}
+        label={t('fork.agentStateColors.label', 'Color by agent state')}
         checked={enabled}
         onChange={() => updateSettings({ forkAgentStateColors: !enabled })}
       />
       <SettingsRow
-        label={translate('fork.agentStateColors.whereLabel', 'Show on')}
+        label={t('fork.agentStateColors.whereLabel', 'Show on')}
         labelId={whereId}
         control={
           <SettingsSegmentedControl<ForkAgentStateColorWhere>
@@ -180,16 +183,16 @@ export function ForkAgentStateColorSetting({ settings, updateSettings }: Props):
             value={where}
             onChange={(value) => updateSettings({ forkAgentStateColorsWhere: value })}
             options={[
-              { value: 'both', label: translate('fork.agentStateColors.where.both', 'Both') },
-              { value: 'tab', label: translate('fork.agentStateColors.where.tab', 'Tabs') },
-              { value: 'row', label: translate('fork.agentStateColors.where.row', 'Rows') }
+              { value: 'both', label: t('fork.agentStateColors.where.both', 'Both') },
+              { value: 'tab', label: t('fork.agentStateColors.where.tab', 'Tabs') },
+              { value: 'row', label: t('fork.agentStateColors.where.row', 'Rows') }
             ]}
           />
         }
       />
       <SettingsRow
-        label={translate('fork.agentStateColors.strengthLabel', 'Style')}
-        description={translate(
+        label={t('fork.agentStateColors.strengthLabel', 'Style')}
+        description={t(
           'fork.agentStateColors.strengthHelp',
           'A thin edge stripe, or the stripe with a soft wash of the color.'
         )}
@@ -203,9 +206,9 @@ export function ForkAgentStateColorSetting({ settings, updateSettings }: Props):
             options={[
               {
                 value: 'accent',
-                label: translate('fork.agentStateColors.strength.accent', 'Stripe')
+                label: t('fork.agentStateColors.strength.accent', 'Stripe')
               },
-              { value: 'tint', label: translate('fork.agentStateColors.strength.tint', 'Tinted') }
+              { value: 'tint', label: t('fork.agentStateColors.strength.tint', 'Tinted') }
             ]}
           />
         }

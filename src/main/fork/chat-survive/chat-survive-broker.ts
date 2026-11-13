@@ -12,7 +12,7 @@
 //
 // Adopting a broker into a chat session (lease, journal, adapter) is described in
 // docs/fork/chat-survive.md.
-import { chmodSync, rmSync } from 'node:fs'
+import { chmod, rm } from 'node:fs/promises'
 import { createServer, type Server, type Socket } from 'node:net'
 import type { Readable, Writable } from 'node:stream'
 import { spawnProcess } from '@orca/process-host'
@@ -64,7 +64,7 @@ export async function startChatSurviveBroker(
   let exit: ChatSurviveExit | null = null
   let orphanTimer: NodeJS.Timeout | null = null
   let killTimer: NodeJS.Timeout | null = null
-  let directPoll: NodeJS.Timeout | null = null
+  let directPoll: (() => void) | null = null
   let finishing: ChatSurviveBrokerEndReason | null = null
 
   const child: ChildProcessWithoutNullStreams = spawnProcess({
@@ -130,9 +130,7 @@ export async function startChatSurviveBroker(
     if (orphanTimer) {
       clearTimeout(orphanTimer)
     }
-    if (directPoll) {
-      clearInterval(directPoll)
-    }
+    directPoll?.()
     const finish = (): void => {
       if (killTimer) {
         clearTimeout(killTimer)
@@ -141,9 +139,10 @@ export async function startChatSurviveBroker(
         socket.destroy()
       }
       server.close(() => {
-        // Our own name; nobody else binds it.
-        rmSync(options.socketPath, { force: true })
-        ended.resolve({ reason, exit })
+        // Our own name; nobody else binds it. Gone before `done` settles, as before.
+        void rm(options.socketPath, { force: true })
+          .catch(() => undefined)
+          .then(() => ended.resolve({ reason, exit }))
       })
     }
     if (exit) {
@@ -205,10 +204,8 @@ export async function startChatSurviveBroker(
       return
     }
     direct = null
-    if (directPoll) {
-      clearInterval(directPoll)
-      directPoll = null
-    }
+    directPoll?.()
+    directPoll = null
     unwireDirectOwner(lost)
     child.stdout.resume()
     child.stderr.resume()
@@ -298,7 +295,8 @@ export async function startChatSurviveBroker(
     shutdown('closed')
     return { pid, status, done: ended.promise, close: () => ended.promise }
   }
-  chmodSync(options.socketPath, 0o600)
+  // Before the orphan timer and before any owner can reach the socket by its path.
+  await chmod(options.socketPath, 0o600)
   if (!direct) {
     // The first socket owner has the same deadline as any later one.
     armOrphanTimer()

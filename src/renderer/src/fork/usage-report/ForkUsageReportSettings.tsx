@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import {
   FORK_USAGE_RETENTION_DEFAULT_DAYS,
@@ -33,6 +33,7 @@ function patternError(pattern: string): string | null {
 }
 
 function CardPattern({ settings, updateSettings }: Props): React.JSX.Element {
+  const t = useTranslate()
   const saved = settings.forkUsageCardPattern ?? ''
   const [draft, setDraft] = useState<string | null>(null)
   const text = draft ?? saved
@@ -43,20 +44,16 @@ function CardPattern({ settings, updateSettings }: Props): React.JSX.Element {
     }
     setDraft(null)
   }
-  const label = translate('fork.usageReport.setting.card', 'Card pattern')
+  const label = t('fork.usageReport.setting.card', 'Card pattern')
   return (
     <SettingsRow
       label={label}
       description={
         error
-          ? translate(
-              'fork.usageReport.setting.cardInvalid',
-              'Not a valid regular expression: {{error}}',
-              {
-                error
-              }
-            )
-          : translate(
+          ? t('fork.usageReport.setting.cardInvalid', 'Not a valid regular expression: {{error}}', {
+              error
+            })
+          : t(
               'fork.usageReport.setting.cardHelp',
               'A regular expression over the workspace name (it follows the branch). Group 1, or the whole match, names the card the usage is grouped under. Empty: no cards. Example: ([A-Z]+-\\d+)'
             )
@@ -81,29 +78,30 @@ function CardPattern({ settings, updateSettings }: Props): React.JSX.Element {
 }
 
 export function ForkUsageReportSettings({ settings, updateSettings }: Props): React.JSX.Element {
+  const t = useTranslate()
   const [pricesOpen, setPricesOpen] = useState(false)
-  const retentionLabel = translate('fork.usageReport.setting.retention', 'History kept (days)')
+  const retentionLabel = t('fork.usageReport.setting.retention', 'History kept (days)')
   return (
     <section className="space-y-3">
       <SettingsSubsectionHeader
-        title={translate('fork.usageReport.setting.title', 'Usage report')}
-        description={translate(
+        title={t('fork.usageReport.setting.title', 'Usage report')}
+        description={t(
           'fork.usageReport.setting.description',
           'Tokens and estimated cost of native Claude chats per chat, coordinator, workspace, day or card. Also `orca usage-report`. Counted on this computer only.'
         )}
       />
       <SettingsRow
-        label={translate('fork.usageReport.setting.open', 'Usage report')}
+        label={t('fork.usageReport.setting.open', 'Usage report')}
         control={
           <Button size="sm" variant="outline" onClick={openForkUsageReport}>
-            {translate('fork.usageReport.setting.openButton', 'Open report')}
+            {t('fork.usageReport.setting.openButton', 'Open report')}
           </Button>
         }
       />
       <CardPattern settings={settings} updateSettings={updateSettings} />
       <SettingsRow
         label={retentionLabel}
-        description={translate(
+        description={t(
           'fork.usageReport.setting.retentionHelp',
           'Default {{count}}. Older days are dropped, and at most 2000 chats are kept. Clear history is in the report.',
           { count: FORK_USAGE_RETENTION_DEFAULT_DAYS }
@@ -119,16 +117,16 @@ export function ForkUsageReportSettings({ settings, updateSettings }: Props): Re
         }
       />
       <SettingsRow
-        label={translate('fork.usageReport.setting.prices', 'Prices (estimate)')}
-        description={translate(
+        label={t('fork.usageReport.setting.prices', 'Prices (estimate)')}
+        description={t(
           'fork.usageReport.setting.pricesHelp',
           "USD per million tokens, per model. Starts from the app's own Claude prices; edit a row to use your own. Your rows are applied flat, without long-context rates."
         )}
         control={
           <Button size="sm" variant="ghost" onClick={() => setPricesOpen((value) => !value)}>
             {pricesOpen
-              ? translate('fork.usageReport.setting.hidePrices', 'Hide prices')
-              : translate('fork.usageReport.setting.showPrices', 'Edit prices')}
+              ? t('fork.usageReport.setting.hidePrices', 'Hide prices')
+              : t('fork.usageReport.setting.showPrices', 'Edit prices')}
           </Button>
         }
       />

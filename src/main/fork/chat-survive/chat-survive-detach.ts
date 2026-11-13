@@ -85,11 +85,17 @@ export async function detachChatSurvive(sessionId: string, fence: number): Promi
     return undo(entry)
   }
   try {
-    writeChatSurviveRecord(entry.recordPath, {
+    // Lands after the spawn's own write of this record, never before it.
+    await writeChatSurviveRecord(entry.recordPath, {
       ...entry.record,
       detached: { ...mark, fence: fenceAbove }
     })
   } catch {
+    connection.stop()
+    return undo(entry)
+  }
+  // The broker can exit while the record is written; then there is nothing left to hand off.
+  if (entry.state !== 'detaching' || chatSurviveEntryForSession(sessionId) !== entry) {
     connection.stop()
     return undo(entry)
   }

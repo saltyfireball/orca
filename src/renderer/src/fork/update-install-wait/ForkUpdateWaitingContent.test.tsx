@@ -6,7 +6,7 @@ import type {
   ForkUpdateInstallWaitApi
 } from '../../../../shared/fork/update-install-wait'
 import type { UpdateStatus } from '../../../../shared/update-status-types'
-import { forkUpdateWaitingCard } from './ForkUpdateWaitingContent'
+import { ForkUpdateCardContent, forkUpdateWaitingCard } from './ForkUpdateWaitingContent'
 import { useForkUpdateInstallWait } from './use-fork-update-install-wait'
 
 type Listeners = {
@@ -95,5 +95,30 @@ describe('update card while the restart guard waits', () => {
     Object.assign(window, { api: {} })
     const view = render(<Probe onReleased={vi.fn()} />)
     expect(view.getByTestId('normal')).toBeTruthy()
+  })
+
+  it('swaps the card body for the waiting view only while the guard waits', () => {
+    installBridge(null)
+    const body = <p data-testid="normal">normal</p>
+    const view = render(
+      <ForkUpdateCardContent status={downloaded} wait={null} onCollapse={() => undefined}>
+        {body}
+      </ForkUpdateCardContent>
+    )
+    expect(view.getByTestId('normal')).toBeTruthy()
+    const onCollapse = vi.fn()
+    view.rerender(
+      <ForkUpdateCardContent
+        status={downloaded}
+        wait={{ total: 3, remaining: 1 }}
+        onCollapse={onCollapse}
+      >
+        {body}
+      </ForkUpdateCardContent>
+    )
+    expect(view.queryByTestId('normal')).toBeNull()
+    expect(view.getByText('Waiting for 1 chat')).toBeTruthy()
+    fireEvent.click(view.getByLabelText('Minimize to status bar'))
+    expect(onCollapse).toHaveBeenCalledTimes(1)
   })
 })

@@ -2,7 +2,8 @@
 // watched from its spawn on: how much output the app took (for the quit hook's replay mark) and
 // whether it is still running. Once the quit hook has handed a broker off (`detached`), nothing in
 // this instance may signal it again: its kill does nothing and the managed process stops closing.
-import { renameSync, writeFileSync } from 'node:fs'
+import { chmod, mkdir, rename, rm, writeFile } from 'node:fs/promises'
+import { dirname } from 'node:path'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import {
   createChatSurviveStreamTracker,
@@ -36,11 +37,47 @@ export type ChatSurviveEntry = {
 const bySession = new Map<string, ChatSurviveEntry>()
 const byChild = new WeakMap<ChildProcessWithoutNullStreams, ChatSurviveEntry>()
 
-/** Writes a record whole or not at all, so a reader never sees half of one. */
-export function writeChatSurviveRecord(path: string, record: ChatSurviveRecord): void {
-  const next = `${path}.next`
-  writeFileSync(next, `${JSON.stringify(record)}\n`, { mode: 0o600 })
-  renameSync(next, path)
+// Every change to one record file runs after the one before it, in call order, so the spawn's
+// first write, the quit hook's rewrite and the exit's removal can never land out of order.
+const recordChains = new Map<string, Promise<void>>()
+
+function onRecordChain(path: string, change: () => Promise<void>): Promise<void> {
+  const run = (recordChains.get(path) ?? Promise.resolve()).then(change)
+  const settled = run.catch(() => undefined)
+  recordChains.set(path, settled)
+  void settled.then(() => {
+    if (recordChains.get(path) === settled) {
+      recordChains.delete(path)
+    }
+  })
+  return run
+}
+
+/**
+ * Writes a record whole or not at all, so a reader never sees half of one. With `privateDir`,
+ * first makes the record's folder (owner only: tokens live here). Rejects when the write fails.
+ */
+export function writeChatSurviveRecord(
+  path: string,
+  record: ChatSurviveRecord,
+  options: { privateDir?: boolean } = {}
+): Promise<void> {
+  return onRecordChain(path, async () => {
+    if (options.privateDir) {
+      const dir = dirname(path)
+      await mkdir(dir, { recursive: true, mode: 0o700 })
+      // mkdir leaves the mode of a folder that already exists alone.
+      await chmod(dir, 0o700)
+    }
+    const next = `${path}.next`
+    await writeFile(next, `${JSON.stringify(record)}\n`, { mode: 0o600 })
+    await rename(next, path)
+  })
+}
+
+/** Removes a record once every earlier write to it has landed. Never rejects. */
+export function removeChatSurviveRecord(path: string): Promise<void> {
+  return onRecordChain(path, () => rm(path, { force: true })).catch(() => undefined)
 }
 
 /** Subscribes alongside the first reader, so watching never starts the stream early. */
@@ -122,6 +159,13 @@ export function registerChatSurviveBroker(input: {
   bySession.set(entry.sessionId, entry)
   byChild.set(child, entry)
   return entry
+}
+
+/** A broker whose record could not be written: it stops at quit as today, never handed off. */
+export function dropChatSurviveBroker(entry: ChatSurviveEntry): void {
+  if (bySession.get(entry.sessionId) === entry) {
+    bySession.delete(entry.sessionId)
+  }
 }
 
 export function chatSurviveEntryForSession(sessionId: string): ChatSurviveEntry | null {

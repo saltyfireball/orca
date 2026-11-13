@@ -10,35 +10,35 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { useAppStore } from '@/store'
 import type { ForkChatStallAction, ForkChatStallEntry } from '../../../../shared/fork/chat-stall'
 import { useForkChatStallEntry } from './chat-stall-store'
 import { chatSessionIdForPaneKey, chatStallCanWake, chatStallQuietMinutes } from './chat-stall-view'
 
-function stallLabel(entry: ForkChatStallEntry): string {
+function stallLabel(entry: ForkChatStallEntry, t: Translate): string {
   const count = chatStallQuietMinutes(entry, Date.now())
   switch (entry.liveness) {
     case 'alive':
-      return translate(
+      return t(
         'fork.chatStall.alive',
         'No output for {{count}} min. The provider is still running and may be in a long tool.',
         { count }
       )
     case 'stopped':
-      return translate(
+      return t(
         'fork.chatStall.stopped',
         'No output for {{count}} min. The provider is stopped (suspended).',
         { count }
       )
     case 'gone':
-      return translate(
+      return t(
         'fork.chatStall.gone',
         'No output for {{count}} min. The provider process is gone.',
         { count }
       )
-    default:
-      return translate(
+    case 'unknown':
+      return t(
         'fork.chatStall.unknown',
         'No output for {{count}} min. The provider process could not be checked.',
         { count }
@@ -60,7 +60,8 @@ export function ForkChatStallMenu({
   entry: ForkChatStallEntry
   trigger: React.ReactElement
 }): React.JSX.Element {
-  const label = stallLabel(entry)
+  const t = useTranslate()
+  const label = stallLabel(entry, t)
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild title={label} onClick={stop} onPointerDown={stop}>
@@ -69,14 +70,14 @@ export function ForkChatStallMenu({
       <DropdownMenuContent align="start" onClick={stop} className="max-w-72">
         <DropdownMenuLabel>{label}</DropdownMenuLabel>
         <DropdownMenuItem onSelect={() => run(entry.sessionId, 'interrupt')}>
-          {translate('fork.chatStall.interrupt', 'Interrupt the turn')}
+          {t('fork.chatStall.interrupt', 'Interrupt the turn')}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => run(entry.sessionId, 'release')}>
-          {translate('fork.chatStall.release', 'Release the provider')}
+          {t('fork.chatStall.release', 'Release the provider')}
         </DropdownMenuItem>
         {chatStallCanWake(entry) ? (
           <DropdownMenuItem onSelect={() => run(entry.sessionId, 'wake')}>
-            {translate('fork.chatStall.wake', 'Wake the provider')}
+            {t('fork.chatStall.wake', 'Wake the provider')}
           </DropdownMenuItem>
         ) : null}
       </DropdownMenuContent>
@@ -90,6 +91,7 @@ export function ForkChatStallTabMark({
 }: {
   sessionId: string | undefined
 }): React.JSX.Element | null {
+  const t = useTranslate()
   const entry = useForkChatStallEntry(sessionId)
   if (!entry) {
     return null
@@ -99,7 +101,7 @@ export function ForkChatStallTabMark({
       entry={entry}
       trigger={
         <button type="button" className="mr-1 inline-flex shrink-0" data-fork-chat-stalled="">
-          <Hourglass className="size-3 text-status-warning" aria-label={stallLabel(entry)} />
+          <Hourglass className="size-3 text-status-warning" aria-label={stallLabel(entry, t)} />
         </button>
       }
     />
@@ -119,6 +121,7 @@ export function ForkChatStallRowMark({ agent }: { agent: RowSubject }): React.JS
       ? null
       : chatSessionIdForPaneKey(s.unifiedTabsByWorktree[agent.tab.worktreeId], agent.paneKey)
   )
+  const t = useTranslate()
   const entry = useForkChatStallEntry(sessionId)
   if (!entry) {
     return null
@@ -133,7 +136,7 @@ export function ForkChatStallRowMark({ agent }: { agent: RowSubject }): React.JS
           data-fork-chat-stalled=""
         >
           <Hourglass className="size-[11px]" aria-hidden />
-          {translate('fork.chatStall.mark', 'Stalled')}
+          {t('fork.chatStall.mark', 'Stalled')}
         </button>
       }
     />

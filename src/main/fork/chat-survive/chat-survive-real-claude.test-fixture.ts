@@ -15,6 +15,7 @@ import { createClaudeCodeProcessSpawn } from '../../claude/claude-agent-sdk-proc
 import { forkChatSurviveAdopt } from './chat-survive-adopt'
 import { forkChatSurviveQuit } from './chat-survive-detach'
 import { forkChatSurviveConsumed } from './chat-survive-registry'
+import { refreshChatSurviveLaunchReady } from './chat-survive-launch-ready'
 import { setChatSurviveConfigReader } from './chat-survive-spawn'
 
 const [mode, sessionId = '', recordDir = '', cwd = '', claude = '', last = ''] =
@@ -71,6 +72,8 @@ createInterface({ input: process.stdin }).on('line', (line) => {
 })
 
 async function main(): Promise<void> {
+  // As the app's install does before the first chat: the spawn's disk checks, ahead of it.
+  await refreshChatSurviveLaunchReady(entryPath)
   if (mode === 'adopt') {
     const ownerPid = Number(last)
     const ok = await forkChatSurviveAdopt({ sessionId, ownerPid, platform: process.platform })

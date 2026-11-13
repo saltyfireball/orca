@@ -3,7 +3,7 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SpawnOptions as SdkSpawnOptions } from '@anthropic-ai/claude-agent-sdk'
 import { spawnProcess } from '@orca/process-host'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
@@ -13,6 +13,10 @@ import { forkChatSurviveAdopt } from './chat-survive-adopt'
 import { hasChatSurviveClaim } from './chat-survive-claims'
 import { forkChatSurviveQuit } from './chat-survive-detach'
 import { forkChatSurviveConsumed } from './chat-survive-registry'
+import {
+  refreshChatSurviveLaunchReady,
+  resetChatSurviveLaunchReadyForTests
+} from './chat-survive-launch-ready'
 import { setChatSurviveConfigReader } from './chat-survive-spawn'
 import { createChatSurviveStreamTracker } from './chat-survive-stream-mark'
 
@@ -42,7 +46,10 @@ function alive(pid: number): boolean {
   }
 }
 
+beforeEach(() => refreshChatSurviveLaunchReady(ENTRY))
+
 afterEach(() => {
+  resetChatSurviveLaunchReadyForTests()
   setChatSurviveConfigReader(null)
   // Only processes these tests started, by their own pids.
   for (const pid of pids) {

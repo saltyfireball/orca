@@ -24,6 +24,8 @@ function letter(text: string): AgentJournalMessageItem {
   return { ...userMessage([{ type: 'text', text }]), from: FROM_AGENT }
 }
 
+const TOOK_AT = Date.UTC(2026, 10, 13, 12, 0, 0)
+
 function rows(path: string): Record<string, unknown>[] {
   if (!existsSync(path)) {
     return []
@@ -45,14 +47,24 @@ describe('agent letter ledger', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllEnvs()
     rmSync(dir, { recursive: true, force: true })
   })
 
+  /** A later letter on a working session lands after any row the earlier dispatch started, so
+   *  seeing the ledger hold only that letter proves the earlier one wrote nothing. */
+  async function expectOnlySentinelRow(): Promise<void> {
+    await dispatchClaudeTurn(sessionFor(), { body: letter('sentinel'), sentUuid: 'uuid-sentinel' })
+    await vi.waitFor(() => expect(rows(ledger).map((row) => row.uuid)).toContain('uuid-sentinel'))
+    expect(rows(ledger).map((row) => row.uuid)).toEqual(['uuid-sentinel'])
+  }
+
   it('records a letter Claude took: session, uuid, time and hash, never the text', async () => {
     const send = vi.fn().mockResolvedValue(undefined)
     const session = sessionFor(send)
-    const before = Date.now()
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(TOOK_AT)
     const outcome = await dispatchClaudeTurn(session, {
       body: letter('Please review PR 12\r\nthen report back.\n'),
       sentUuid: 'uuid-letter-1'
@@ -62,13 +74,12 @@ describe('agent letter ledger', () => {
     const [row] = rows(ledger)
     expect(row).toEqual({
       v: 1,
-      at: expect.any(Number),
+      at: TOOK_AT,
       agent: 'claude',
       session: 'provider-session',
       uuid: 'uuid-letter-1',
       sha256: agentLetterTextHash('Please review PR 12\nthen report back.')
     })
-    expect(row.at as number).toBeGreaterThanOrEqual(before)
     expect(readFileSync(ledger, 'utf8')).not.toContain('review')
     expect(statSync(ledger).mode & 0o777).toBe(0o600)
     // The hash covers exactly the text Claude was sent.
@@ -92,8 +103,7 @@ describe('agent letter ledger', () => {
       sentUuid: 'uuid-person'
     })
     expect(outcome.state).toBe('admitted')
-    await new Promise((resolve) => setTimeout(resolve, 50))
-    expect(existsSync(ledger)).toBe(false)
+    await expectOnlySentinelRow()
   })
 
   it('writes nothing when the send fails', async () => {
@@ -104,8 +114,7 @@ describe('agent letter ledger', () => {
     })
     expect(outcome.state).not.toBe('admitted')
     expect(outcome.state).not.toBe('accepted')
-    await new Promise((resolve) => setTimeout(resolve, 50))
-    expect(existsSync(ledger)).toBe(false)
+    await expectOnlySentinelRow()
   })
 })
 

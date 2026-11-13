@@ -28,8 +28,7 @@ import { initSshHostKeyStoreFile } from '../ssh/host-keys/ssh-host-key-store'
 import { initOrcadHeldFenceTokenFile } from '../managed-server/activation/orcad-held-fence-tokens'
 import { neutralizeLegacyTerminalShimDir } from '../pty/shell-startup/legacy-terminal-shim-dir'
 import { createWindowsShellPathHydration } from './windows-shell-path-hydration'
-import { forkPostReadyAppName } from '../fork/app-name'
-import { installChatSurviveSettingReader } from '../fork/chat-survive/chat-survive-setting'
+import { forkPostReadyAppName, installForkChatSurvive } from '../fork/fork-ready-foundation-hooks'
 import { configureWindowsHostGitEnvironmentReadiness } from '../git/command-runner/host-routing/windows-host-git-environment'
 import { setDefaultWslDistroOverride } from '../git/command-runner/host-routing/wsl-command-resolution'
 import { wslHookRelayManager } from '../agent-hooks/wsl-relay/wsl-hook-relay-manager'
@@ -182,7 +181,7 @@ export async function initializeReadyFoundation(): Promise<void> {
   }
   setNodeDistMirrorSettingReader(() => store.getSettings().nodeDistMirrorUrl)
   // Fork (SLRM-1394): chat survive, off unless switched on.
-  installChatSurviveSettingReader(() => store.getSettings().forkChatSurvive)
+  installForkChatSurvive(store)
   // Main-process-ready waits on interrupted moves being reset or finished, bounded.
   state.wslMoveStartupRewriteReady = startWslMoveStartup(
     getAppEnvironment().getPath('userData'),

@@ -252,6 +252,11 @@
 1 src/main/foreign-sqlite-readers/foreign-sqlite-reader-spawn.ts
 1 src/main/foreign-sqlite-readers/readers/cursor-profile.ts
 1 src/main/foreign-sqlite-readers/readers/opencode-binder-sessions.ts
+8 src/main/fork/chat-survive/chat-survive-sweep.ts
+1 src/main/fork/claude-account-move/claude-session-account-pins.ts
+1 src/main/fork/fork-app-identity.ts
+11 src/main/fork/shared-stock-data.ts
+3 src/main/fork/usage-ledger/usage-ledger-file.ts
 1 src/main/git/huge-folder-ignore.ts
 5 src/main/git/repo-detection.ts
 13 src/main/git/repo-git-marker-scan.ts

@@ -7,6 +7,7 @@ import { isFolderRepo } from '../../../shared/repo-kind'
 import { getRepoExecutionHostId, LOCAL_EXECUTION_HOST_ID } from '../../../shared/execution-host'
 import { splitWorktreeId } from '../../../shared/worktree/id'
 import type { Repo } from '../../../shared/repo-types'
+import type { ForkGlobalSettings } from '../../../shared/fork/fork-global-settings'
 import {
   forkWorkerCleanupEnabled,
   type ForkWorkerCleanupHeld,
@@ -23,6 +24,7 @@ import {
 import { closeStructuredAgentSessionChild } from '../../runtime/agent-session/structured-agent-session-close'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import type { LostWorkGit } from '../lost-work/lost-work-git'
+import { startForkBackoffTimer } from '../fork-backoff-timer'
 import { claimWorkerCleanupRelease, listWorkerCleanupCandidates } from './worker-cleanup-query'
 import type { WorkerCleanupCandidate } from './worker-cleanup-query'
 import { forkWorkerTurnStartedAt } from './worker-cleanup-activity'
@@ -39,10 +41,13 @@ import {
 } from './worker-cleanup-notices'
 
 export const FORK_WORKER_CLEANUP_SWEEP_MS = 60_000
+/** While the setting is off the sweep backs off to this; turning it on is seen within it. */
+export const FORK_WORKER_CLEANUP_IDLE_SWEEP_MS = 5 * 60_000
 
 export type WorkerCleanupStore = {
   getSettings?: () => unknown
   getRepos: () => Repo[]
+  onSettingsChanged?: (listener: (updates: Partial<ForkGlobalSettings>) => void) => unknown
 }
 
 const git: LostWorkGit = async (args, options) =>
@@ -131,6 +136,18 @@ type Installed = {
 }
 
 let installed: Installed | null = null
+let stopSweepTimer: (() => void) | null = null
+const storesWatched = new WeakSet<object>()
+
+// One timer serves every install: each sweep reads the current `installed`.
+function startSweepTimer(): void {
+  stopSweepTimer?.()
+  stopSweepTimer = startForkBackoffTimer({
+    run: sweepForkWorkerCleanup,
+    baseMs: FORK_WORKER_CLEANUP_SWEEP_MS,
+    maxMs: FORK_WORKER_CLEANUP_IDLE_SWEEP_MS
+  })
+}
 
 /** The runtime worker cleanup acts on, for Undo. */
 export function forkWorkerCleanupRuntime(): WorkerTerminalReleaseRuntime | null {
@@ -152,20 +169,34 @@ export function installForkWorkerCleanup(
     sinceMs: Date.now(),
     running: false
   }
-  const timer = setInterval(() => void sweepForkWorkerCleanup(), FORK_WORKER_CLEANUP_SWEEP_MS)
-  timer.unref?.()
+  if (!stopSweepTimer) {
+    startSweepTimer()
+  }
+  if (store.onSettingsChanged && !storesWatched.has(store)) {
+    storesWatched.add(store)
+    // The backed-off wait starts over when the setting changes, so turning it on is seen within
+    // one sweep interval, as with the old fixed timer.
+    store.onSettingsChanged((updates) => {
+      if ('forkWorkerCleanup' in updates && stopSweepTimer) {
+        startSweepTimer()
+      }
+    })
+  }
 }
 
-/** One sweep; does nothing while the setting is off or a sweep is still running. */
-export async function sweepForkWorkerCleanup(): Promise<void> {
+/**
+ * One sweep; does nothing while the setting is off or a sweep is still running. Resolves false
+ * only when the setting is off, so the sweep timer backs off while there is nothing to own.
+ */
+export async function sweepForkWorkerCleanup(): Promise<boolean> {
   const state = installed
   if (!state || state.running) {
-    return
+    return true
   }
   const settings = state.store.getSettings?.()
   if (!forkWorkerCleanupEnabled(settings)) {
     setWorkerCleanupHeld([])
-    return
+    return false
   }
   state.running = true
   try {
@@ -211,6 +242,7 @@ export async function sweepForkWorkerCleanup(): Promise<void> {
   } finally {
     state.running = false
   }
+  return true
 }
 
 export type { ForkWorkerCleanupHeld, ForkWorkerCleanupNotice }

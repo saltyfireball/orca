@@ -10,7 +10,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { formatForkTokens } from '../../../../shared/fork/usage-ledger'
 import {
   FORK_USAGE_REPORT_GROUPS,
@@ -26,38 +26,39 @@ import {
   type ForkUsageRange
 } from './use-fork-usage-report'
 
-function groupLabel(group: ForkUsageReportGroup): string {
+function groupLabel(group: ForkUsageReportGroup, t: Translate): string {
   switch (group) {
     case 'chat':
-      return translate('fork.usageReport.byChat', 'Chat')
+      return t('fork.usageReport.byChat', 'Chat')
     case 'coordinator':
-      return translate('fork.usageReport.byCoordinator', 'Coordinator')
+      return t('fork.usageReport.byCoordinator', 'Coordinator')
     case 'workspace':
-      return translate('fork.usageReport.byWorkspace', 'Workspace')
+      return t('fork.usageReport.byWorkspace', 'Workspace')
     case 'day':
-      return translate('fork.usageReport.byDay', 'Day')
+      return t('fork.usageReport.byDay', 'Day')
     case 'card':
-      return translate('fork.usageReport.byCard', 'Card')
+      return t('fork.usageReport.byCard', 'Card')
   }
 }
 
-function rangeLabel(days: ForkUsageRange): string {
+function rangeLabel(days: ForkUsageRange, t: Translate): string {
   return days === null
-    ? translate('fork.usageReport.rangeAll', 'All')
-    : translate('fork.usageReport.rangeDays', '{{count}} d', { count: days })
+    ? t('fork.usageReport.rangeAll', 'All')
+    : t('fork.usageReport.rangeDays', '{{count}} d', { count: days })
 }
 
 /** Cost cell: the estimate, "subscription" when only subscription tokens, "+?" for unpriced. */
-function costText(row: ForkUsageReportRow): string {
+function costText(row: ForkUsageReportRow, t: Translate): string {
   if (row.costUsd === null && row.subscriptionTokens > 0 && row.unpricedTokens === 0) {
-    return translate('fork.usageReport.subscription', 'subscription')
+    return t('fork.usageReport.subscription', 'subscription')
   }
   return `${formatForkUsd(row.costUsd)}${row.unpricedTokens > 0 ? ' +?' : ''}`
 }
 
 function Row({ row, strong }: { row: ForkUsageReportRow; strong?: boolean }): React.JSX.Element {
+  const t = useTranslate()
   const tokens = row.tokens
-  const breakdown = translate(
+  const breakdown = t(
     'fork.usageReport.breakdown',
     'input {{input}}, output {{output}}, cache read {{read}}, cache write {{write}}',
     {
@@ -79,38 +80,40 @@ function Row({ row, strong }: { row: ForkUsageReportRow; strong?: boolean }): Re
       <td className="py-1 pr-3 text-right tabular-nums" title={breakdown}>
         {formatForkTokens(row.totalTokens)}
       </td>
-      <td className="py-1 text-right tabular-nums">{costText(row)}</td>
+      <td className="py-1 text-right tabular-nums">{costText(row, t)}</td>
     </tr>
   )
 }
 
 function ClearHistory({ onClear }: { onClear: () => Promise<void> }): React.JSX.Element {
+  const t = useTranslate()
   const [confirming, setConfirming] = useState(false)
   if (!confirming) {
     return (
       <Button size="sm" variant="ghost" onClick={() => setConfirming(true)}>
-        {translate('fork.usageReport.clear', 'Clear history')}
+        {t('fork.usageReport.clear', 'Clear history')}
       </Button>
     )
   }
   return (
     <span className="flex items-center gap-2 text-xs">
-      {translate('fork.usageReport.clearConfirm', 'Forget all recorded usage?')}
+      {t('fork.usageReport.clearConfirm', 'Forget all recorded usage?')}
       <Button
         size="sm"
         variant="destructive"
         onClick={() => void onClear().finally(() => setConfirming(false))}
       >
-        {translate('fork.usageReport.clearYes', 'Clear')}
+        {t('fork.usageReport.clearYes', 'Clear')}
       </Button>
       <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>
-        {translate('fork.usageReport.cancel', 'Cancel')}
+        {t('fork.usageReport.cancel', 'Cancel')}
       </Button>
     </span>
   )
 }
 
 function DialogBody(): React.JSX.Element {
+  const t = useTranslate()
   const [by, setBy] = useState<ForkUsageReportGroup>('chat')
   const [days, setDays] = useState<ForkUsageRange>(7)
   const { report, error, loading, reload, clear } = useForkUsageReport(by, days)
@@ -118,9 +121,9 @@ function DialogBody(): React.JSX.Element {
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{translate('fork.usageReport.title', 'Usage report')}</DialogTitle>
+        <DialogTitle>{t('fork.usageReport.title', 'Usage report')}</DialogTitle>
         <DialogDescription>
-          {translate(
+          {t(
             'fork.usageReport.description',
             'Tokens of native Claude chats, sub-agents included. Costs are estimates from the price table in Settings > Advanced > Usage report; chats on a subscription are not billed per token.'
           )}
@@ -134,7 +137,7 @@ function DialogBody(): React.JSX.Element {
             variant={group === by ? 'secondary' : 'ghost'}
             onClick={() => setBy(group)}
           >
-            {groupLabel(group)}
+            {groupLabel(group, t)}
           </Button>
         ))}
         <span className="mx-1 h-4 w-px bg-border" aria-hidden />
@@ -145,7 +148,7 @@ function DialogBody(): React.JSX.Element {
             variant={range === days ? 'secondary' : 'ghost'}
             onClick={() => setDays(range)}
           >
-            {rangeLabel(range)}
+            {rangeLabel(range, t)}
           </Button>
         ))}
         <Button
@@ -155,23 +158,20 @@ function DialogBody(): React.JSX.Element {
           disabled={loading}
           onClick={() => void reload()}
         >
-          {translate('fork.usageReport.refresh', 'Refresh')}
+          {t('fork.usageReport.refresh', 'Refresh')}
         </Button>
       </div>
       <div className="scrollbar-sleek min-h-0 flex-1 overflow-y-auto">
         {error
           ? note(
               error === 'unavailable'
-                ? translate(
-                    'fork.usageReport.unavailable',
-                    'The usage report needs the desktop app.'
-                  )
-                : translate('fork.usageReport.failed', 'Could not read usage: {{error}}', { error })
+                ? t('fork.usageReport.unavailable', 'The usage report needs the desktop app.')
+                : t('fork.usageReport.failed', 'Could not read usage: {{error}}', { error })
             )
           : null}
         {report?.cardPatternError && by === 'card'
           ? note(
-              translate(
+              t(
                 'fork.usageReport.badPattern',
                 'The card pattern is not a valid regular expression: {{error}}',
                 { error: report.cardPatternError }
@@ -179,21 +179,21 @@ function DialogBody(): React.JSX.Element {
             )
           : null}
         {report && report.rows.length === 0 && !error
-          ? note(translate('fork.usageReport.empty', 'No usage recorded in this range.'))
+          ? note(t('fork.usageReport.empty', 'No usage recorded in this range.'))
           : null}
         {report && report.rows.length > 0 ? (
           <table className="w-full table-fixed text-sm">
             <thead className="text-xs text-muted-foreground">
               <tr>
-                <th className="py-1 text-left font-normal">{groupLabel(report.by)}</th>
+                <th className="py-1 text-left font-normal">{groupLabel(report.by, t)}</th>
                 <th className="w-16 py-1 text-right font-normal">
-                  {translate('fork.usageReport.chats', 'Chats')}
+                  {t('fork.usageReport.chats', 'Chats')}
                 </th>
                 <th className="w-20 py-1 text-right font-normal">
-                  {translate('fork.usageReport.tokens', 'Tokens')}
+                  {t('fork.usageReport.tokens', 'Tokens')}
                 </th>
                 <th className="w-28 py-1 text-right font-normal">
-                  {translate('fork.usageReport.cost', 'Cost (estimate)')}
+                  {t('fork.usageReport.cost', 'Cost (estimate)')}
                 </th>
               </tr>
             </thead>
@@ -201,17 +201,14 @@ function DialogBody(): React.JSX.Element {
               {report.rows.map((row) => (
                 <Row key={row.key || '-'} row={row} />
               ))}
-              <Row
-                row={{ ...report.total, label: translate('fork.usageReport.total', 'Total') }}
-                strong
-              />
+              <Row row={{ ...report.total, label: t('fork.usageReport.total', 'Total') }} strong />
             </tbody>
           </table>
         ) : null}
       </div>
       <div className="flex items-center gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
         <span className="min-w-0 flex-1">
-          {translate(
+          {t(
             'fork.usageReport.legend',
             '"+?": some tokens are of a model with no price. Hover a token count for its breakdown.'
           )}
