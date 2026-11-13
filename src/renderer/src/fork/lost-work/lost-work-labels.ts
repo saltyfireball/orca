@@ -1,6 +1,7 @@
 // SLRM-2096 (FORK.md "Lost work"): the words the Lost work dialog shows for risks, kinds, reasons
 // and per-project notes.
 import { translate } from '@/i18n/i18n'
+import type { Translate } from '@/i18n/use-translate'
 import type {
   LostWorkItem,
   LostWorkKind,
@@ -9,14 +10,14 @@ import type {
   LostWorkRisk
 } from '../../../../shared/fork/lost-work'
 
-export function lostWorkRiskLabel(risk: LostWorkRisk): string {
+export function lostWorkRiskLabel(risk: LostWorkRisk, t: Translate = translate): string {
   switch (risk) {
     case 'would-lose-work':
-      return translate('fork.lostWork.risk.wouldLose', 'Would lose work')
+      return t('fork.lostWork.risk.wouldLose', 'Would lose work')
     case 'needs-look':
-      return translate('fork.lostWork.risk.needsLook', 'Needs a look')
+      return t('fork.lostWork.risk.needsLook', 'Needs a look')
     case 'safe':
-      return translate('fork.lostWork.risk.safe', 'Safe to remove')
+      return t('fork.lostWork.risk.safe', 'Safe to remove')
   }
 }
 
@@ -78,32 +79,32 @@ export function lostWorkReasons(item: LostWorkItem): string[] {
     .filter((label): label is string => label !== null)
 }
 
-export function lostWorkNoteLabel(note: LostWorkNote): string {
+export function lostWorkNoteLabel(note: LostWorkNote, t: Translate = translate): string {
   switch (note.code) {
     case 'remote-project':
-      return translate('fork.lostWork.note.remote', 'Skipped: runs on another host.')
+      return t('fork.lostWork.note.remote', 'Skipped: runs on another host.')
     case 'folder-project':
-      return translate('fork.lostWork.note.folder', 'Skipped: not a git project.')
+      return t('fork.lostWork.note.folder', 'Skipped: not a git project.')
     case 'no-default-branch':
-      return translate(
+      return t(
         'fork.lostWork.note.noBase',
         'No default branch found. Set one in Settings > Advanced > Lost work.'
       )
     case 'git-error':
-      return translate('fork.lostWork.note.gitError', 'Git failed: {{detail}}', {
+      return t('fork.lostWork.note.gitError', 'Git failed: {{detail}}', {
         detail: note.detail ?? ''
       })
     case 'pull-requests-unavailable':
-      return translate(
+      return t(
         'fork.lostWork.note.noPullRequests',
         'Pull requests not read: the GitHub CLI is missing or signed out.'
       )
   }
 }
 
-export function lostWorkTitle(item: LostWorkItem): string {
+export function lostWorkTitle(item: LostWorkItem, t: Translate = translate): string {
   if (item.kind === 'stash') {
-    return item.stash?.message || translate('fork.lostWork.stashTitle', 'Stash')
+    return item.stash?.message || t('fork.lostWork.stashTitle', 'Stash')
   }
-  return item.branch || translate('fork.lostWork.detachedTitle', 'Detached HEAD')
+  return item.branch || t('fork.lostWork.detachedTitle', 'Detached HEAD')
 }

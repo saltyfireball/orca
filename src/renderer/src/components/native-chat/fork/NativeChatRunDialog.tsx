@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -15,30 +16,27 @@ import {
   type EditedRunCommandCheck
 } from '../../../../../shared/fork/shell-fence'
 
-export function editedRunRefusal(check: EditedRunCommandCheck): string | null {
+export function editedRunRefusal(
+  check: EditedRunCommandCheck,
+  t: Translate = translate
+): string | null {
   if (check.ok) {
     return null
   }
   switch (check.reason) {
     case 'empty':
-      return translate('components.native-chat.runCode.refuseEmpty', 'Enter a command to run.')
+      return t('components.native-chat.runCode.refuseEmpty', 'Enter a command to run.')
     case 'multiline':
-      return translate(
-        'components.native-chat.runCode.refuseMultiline',
-        'Keep the command on one line.'
-      )
+      return t('components.native-chat.runCode.refuseMultiline', 'Keep the command on one line.')
     case 'unsafe':
-      return translate(
+      return t(
         'components.native-chat.runCode.refuseUnsafe',
         'The command has a hidden or control character.'
       )
     case 'heredoc':
-      return translate(
-        'components.native-chat.runCode.refuseHeredoc',
-        'Heredocs cannot run from here.'
-      )
+      return t('components.native-chat.runCode.refuseHeredoc', 'Heredocs cannot run from here.')
     case 'continuation':
-      return translate(
+      return t(
         'components.native-chat.runCode.refuseContinuation',
         'Remove the trailing backslash.'
       )
@@ -60,9 +58,10 @@ export function NativeChatRunDialog({
   onRun: (command: string) => void
   onClose: () => void
 }): React.JSX.Element {
+  const t = useTranslate()
   const [text, setText] = useState(original)
   const check = checkEditedRunCommand(text)
-  const refusal = editedRunRefusal(check)
+  const refusal = editedRunRefusal(check, t)
   const submit = (): void => {
     if (check.ok) {
       onRun(check.command)
@@ -80,7 +79,7 @@ export function NativeChatRunDialog({
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            {translate(
+            {t(
               'components.native-chat.runCode.editHint',
               'Edit the command if you need to. Enter runs it.'
             )}
@@ -95,7 +94,7 @@ export function NativeChatRunDialog({
           rows={3}
           value={text}
           aria-invalid={refusal !== null}
-          aria-label={translate('components.native-chat.runCode.commandLabel', 'Command')}
+          aria-label={t('components.native-chat.runCode.commandLabel', 'Command')}
           className="max-h-48 resize-none [overflow-wrap:anywhere]"
           onFocus={(event) => {
             const end = event.currentTarget.value.length
@@ -119,16 +118,16 @@ export function NativeChatRunDialog({
               className="shrink-0 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
               onClick={() => setText(original)}
             >
-              {translate('components.native-chat.runCode.reset', 'Reset')}
+              {t('components.native-chat.runCode.reset', 'Reset')}
             </button>
           ) : null}
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>
-            {translate('components.native-chat.runCode.cancel', 'Cancel')}
+            {t('components.native-chat.runCode.cancel', 'Cancel')}
           </Button>
           <Button type="button" disabled={!check.ok} onClick={submit}>
-            {translate('components.native-chat.runCode.confirm', 'Run')}
+            {t('components.native-chat.runCode.confirm', 'Run')}
           </Button>
         </DialogFooter>
       </DialogContent>

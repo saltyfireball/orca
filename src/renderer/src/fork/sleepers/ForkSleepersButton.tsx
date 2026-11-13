@@ -4,17 +4,18 @@ import React from 'react'
 import { Moon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import { useAppStore } from '@/store'
 import { forkSleepersButtonShown } from '../../../../shared/fork/sleepers'
 import { openForkSleepersDialog } from './ForkSleepersDialog'
 
 export function ForkSleepersButton(): React.JSX.Element | null {
+  const t = useTranslate()
   const shown = useAppStore((s) => forkSleepersButtonShown(s.settings))
   if (!shown) {
     return null
   }
-  const label = translate('fork.sleepers.button', 'Sleepers: chats and agents, awake or asleep')
+  const label = t('fork.sleepers.button', 'Sleepers: chats and agents, awake or asleep')
   return (
     <Tooltip>
       <TooltipTrigger asChild>

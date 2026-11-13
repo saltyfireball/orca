@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '../../components/ui/select'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 
 type ForkSyncNoticeSettingProps = {
   settings: GlobalSettings
@@ -29,6 +29,7 @@ export function ForkSyncNoticeSetting({
   settings,
   updateSettings
 }: ForkSyncNoticeSettingProps): React.JSX.Element {
+  const t = useTranslate()
   const labelId = useId()
   const enabled = forkSyncNoticeEnabled(settings)
   const days = forkSyncNoticeStaleDays(settings)
@@ -38,24 +39,21 @@ export function ForkSyncNoticeSetting({
   return (
     <section className="space-y-3">
       <SettingsSubsectionHeader
-        title={translate('fork.syncStatus.title', 'Fork sync status')}
-        description={translate(
+        title={t('fork.syncStatus.title', 'Fork sync status')}
+        description={t(
           'fork.syncStatus.description',
           "The update check also reads the fork's sync status and says when the fork is behind upstream or its last sync failed. It never blocks an update."
         )}
       />
       <SettingsSwitchRow
-        label={translate('fork.syncStatus.label', 'Show the fork sync notice')}
-        description={translate(
-          'fork.syncStatus.help',
-          'Shown under the update state in Settings, About.'
-        )}
+        label={t('fork.syncStatus.label', 'Show the fork sync notice')}
+        description={t('fork.syncStatus.help', 'Shown under the update state in Settings, About.')}
         checked={enabled}
         onChange={() => updateSettings({ forkSyncNotice: !enabled })}
       />
       <SettingsRow
-        label={translate('fork.syncStatus.staleLabel', 'Warn when no sync is reported for')}
-        description={translate(
+        label={t('fork.syncStatus.staleLabel', 'Warn when no sync is reported for')}
+        description={t(
           'fork.syncStatus.staleHelp',
           'The sync workflow reports daily. A status older than this means it has stopped running.'
         )}
@@ -73,8 +71,8 @@ export function ForkSyncNoticeSetting({
               {choices.map((choice) => (
                 <SelectItem key={choice} value={String(choice)}>
                   {choice === 0
-                    ? translate('fork.syncStatus.staleOff', 'Never')
-                    : translate('fork.syncStatus.staleDays', '{{count}} days', { count: choice })}
+                    ? t('fork.syncStatus.staleOff', 'Never')
+                    : t('fork.syncStatus.staleDays', '{{count}} days', { count: choice })}
                 </SelectItem>
               ))}
             </SelectContent>

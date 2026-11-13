@@ -6,8 +6,8 @@ import { StructuredConversationCommandController as CommandController } from '..
 // Serialize durable mutations per conversation; open at rest and start a child only when work needs it.
 
 import type { AgentSessionSubscribeInput } from '../publication/subscribers/agent-session-subscribe-input'
-import { createStartupRecovery } from '../recovery/structured-agent-session-restart-reconcile'
-import { forkChatSurviveRecover } from '../../../fork/chat-survive/chat-survive-adopt'
+// Fork (SLRM-1394): the startup recovery import comes through the fork hook module (max-lines).
+import { createStartupRecovery, forkChatSurviveRecover } from '../../../fork/session-host-hooks'
 import { StructuredAgentSessionTaskQueue } from './structured-agent-session-task-queue'
 import { StructuredAgentSessionHostRuntimeState } from './structured-agent-session-host-runtime-state'
 import { structuredAgentSessionEntryDelegates } from '../acquisition/structured-agent-session-entry-delegates'

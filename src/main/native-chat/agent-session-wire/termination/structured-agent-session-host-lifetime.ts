@@ -33,7 +33,7 @@ import {
   runningRootTurnItemId
 } from './structured-agent-session-orca-stop-row'
 import { structuredAgentSessionFailureWordsContext } from '../operations/structured-agent-session-send-preparation'
-import { forkChatSurviveQuit } from '../../../fork/chat-survive/chat-survive-detach'
+import { forkChatSurviveQuit, forkChatSurviveSettled } from '../../../fork/chat-survive-quit-hooks'
 
 import {
   recordStopEvent,
@@ -320,6 +320,8 @@ export async function evictOwnedStructuredAgentSessions(
       }
     })
   )
+  // Fork (SLRM-2138): record removals queued by the exits above land before the process ends.
+  await forkChatSurviveSettled()
   if (failures.length > 0) {
     throw new AggregateError(failures, 'structured agent-session child eviction failed')
   }

@@ -1,6 +1,7 @@
 // SLRM-2096: the lost work scan. Read-only: it lists worktrees, branches and stashes and asks git
 // how much of each is merged; nothing is fetched, written or removed. Cancel with the signal.
 import type { GitWorktreeInfo } from '../../../shared/worktree/types'
+import { composeWorktreeId } from '../../../shared/worktree/id'
 import type {
   LostWorkItem,
   LostWorkKind,
@@ -43,7 +44,7 @@ export type LostWorkScanDeps = {
   listWorktrees: (repo: LostWorkRepo, signal?: AbortSignal) => Promise<GitWorktreeInfo[]>
   /** True when Orca keeps state for this `repoId::path` worktree. */
   isTracked: (worktreeId: string) => boolean
-  pathExists: (path: string) => boolean
+  pathExists: (path: string) => Promise<boolean>
   lookupPullRequests?: LostWorkPullRequestLookup
   now?: () => number
 }
@@ -130,8 +131,12 @@ async function scanRepo(
   }
 }
 
-function worktreeKind(scan: RepoScan, worktree: GitWorktreeInfo, worktreeId: string): LostWorkKind {
-  if (worktree.prunable || !scan.deps.pathExists(worktree.path)) {
+async function worktreeKind(
+  scan: RepoScan,
+  worktree: GitWorktreeInfo,
+  worktreeId: string
+): Promise<LostWorkKind> {
+  if (worktree.prunable || !(await scan.deps.pathExists(worktree.path))) {
     return 'missing-folder'
   }
   return scan.deps.isTracked(worktreeId) ? 'worktree' : 'untracked-worktree'
@@ -174,8 +179,8 @@ async function scanWorktrees(
     if (branch !== null && branch === base?.branch) {
       return null
     }
-    const worktreeId = `${repo.id}::${wt.path}`
-    const kind = worktreeKind(scan, wt, worktreeId)
+    const worktreeId = composeWorktreeId(repo.id, wt.path)
+    const kind = await worktreeKind(scan, wt, worktreeId)
     if (kind === 'missing-folder' && !checks.missingFolders) {
       return null
     }

@@ -19,8 +19,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '../../components/ui/select'
-import { translate } from '@/i18n/i18n'
-import { useIntlLocale } from '@/i18n/use-translate'
+import { useIntlLocale, useTranslate } from '@/i18n/use-translate'
 import { formatMinutesDuration } from '@/i18n/ui-intl-formatters'
 
 type ForkChatSleepSettingProps = {
@@ -32,6 +31,7 @@ export function ForkChatSleepSetting({
   settings,
   updateSettings
 }: ForkChatSleepSettingProps): React.JSX.Element {
+  const t = useTranslate()
   const intlLocale = useIntlLocale()
   const labelId = useId()
   const enabled = forkChatSleepEnabled(settings)
@@ -44,15 +44,15 @@ export function ForkChatSleepSetting({
   return (
     <section className="space-y-3">
       <SettingsSubsectionHeader
-        title={translate('fork.chatSleep.title', 'Chat sleep (experimental)')}
-        description={translate(
+        title={t('fork.chatSleep.title', 'Chat sleep (experimental)')}
+        description={t(
           'fork.chatSleep.description',
           'Free the memory of chats you are not using. A sleeping chat keeps its tab and transcript, and the next message to it, typed or sent by another agent, wakes it on the same session.'
         )}
       />
       <SettingsSwitchRow
-        label={translate('fork.chatSleep.label', 'Sleep idle chats')}
-        description={translate(
+        label={t('fork.chatSleep.label', 'Sleep idle chats')}
+        description={t(
           'fork.chatSleep.help',
           'A chat that is working, waiting on you, running background work or holding a message is never put to sleep. While this is on, its idle time replaces the stop idle chats setting.'
         )}
@@ -60,8 +60,8 @@ export function ForkChatSleepSetting({
         onChange={() => updateSettings({ forkChatSleep: !enabled })}
       />
       <SettingsRow
-        label={translate('fork.chatSleep.idleLabel', 'Sleep after')}
-        description={translate(
+        label={t('fork.chatSleep.idleLabel', 'Sleep after')}
+        description={t(
           'fork.chatSleep.idleHelp',
           'How long a chat sits idle before it sleeps. Chats are checked every 5 minutes.'
         )}
@@ -86,8 +86,8 @@ export function ForkChatSleepSetting({
         }
       />
       <SettingsSwitchRow
-        label={translate('fork.chatSleep.keepVisibleLabel', 'Keep chats on screen awake')}
-        description={translate(
+        label={t('fork.chatSleep.keepVisibleLabel', 'Keep chats on screen awake')}
+        description={t(
           'fork.chatSleep.keepVisibleHelp',
           'A chat open in the current workspace does not sleep, however long it is idle.'
         )}

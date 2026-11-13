@@ -23,7 +23,7 @@ import {
   SelectValue
 } from '../../components/ui/select'
 import { translate } from '@/i18n/i18n'
-import { useIntlLocale } from '@/i18n/use-translate'
+import { useIntlLocale, useTranslate, type Translate } from '@/i18n/use-translate'
 import { formatMinutesDuration } from '@/i18n/ui-intl-formatters'
 
 type ForkWorkerCleanupSettingProps = {
@@ -31,16 +31,17 @@ type ForkWorkerCleanupSettingProps = {
   updateSettings: (updates: Partial<GlobalSettings>) => void
 }
 
-function actionLabel(action: ForkWorkerCleanupAction): string {
+function actionLabel(action: ForkWorkerCleanupAction, t: Translate = translate): string {
   return action === 'release'
-    ? translate('fork.workerCleanup.actionRelease', 'Stop the agent, keep chat tabs')
-    : translate('fork.workerCleanup.actionClose', 'Stop the agent and close the tab')
+    ? t('fork.workerCleanup.actionRelease', 'Stop the agent, keep chat tabs')
+    : t('fork.workerCleanup.actionClose', 'Stop the agent and close the tab')
 }
 
 export function ForkWorkerCleanupSetting({
   settings,
   updateSettings
 }: ForkWorkerCleanupSettingProps): React.JSX.Element {
+  const t = useTranslate()
   const intlLocale = useIntlLocale()
   const graceId = useId()
   const actionId = useId()
@@ -55,15 +56,15 @@ export function ForkWorkerCleanupSetting({
   return (
     <section className="space-y-3">
       <SettingsSubsectionHeader
-        title={translate('fork.workerCleanup.title', 'Finished worker cleanup (experimental)')}
-        description={translate(
+        title={t('fork.workerCleanup.title', 'Finished worker cleanup (experimental)')}
+        description={t(
           'fork.workerCleanup.description',
           'Stop orchestration workers once their work is done, so finished agents stop holding memory. The worktree and branch are never touched, and a notice offers Undo.'
         )}
       />
       <SettingsSwitchRow
-        label={translate('fork.workerCleanup.label', 'Clean up finished workers')}
-        description={translate(
+        label={t('fork.workerCleanup.label', 'Clean up finished workers')}
+        description={t(
           'fork.workerCleanup.help',
           'Replaces the automatic close of finished workers while on. A worker is left open when you kept it open, used it after it reported, it has an open question, the coordinator has not read its report, or its worktree has uncommitted or unpushed work (it gets a mark instead). Only workers that finish while the app runs are cleaned up.'
         )}
@@ -71,8 +72,8 @@ export function ForkWorkerCleanupSetting({
         onChange={() => updateSettings({ forkWorkerCleanup: !enabled })}
       />
       <SettingsRow
-        label={translate('fork.workerCleanup.actionLabel', 'What to do')}
-        description={translate(
+        label={t('fork.workerCleanup.actionLabel', 'What to do')}
+        description={t(
           'fork.workerCleanup.actionHelp',
           'A terminal worker always closes its pane, since the agent is the terminal; reopening it resumes the conversation. A chat can keep its tab, and the next message starts it again.'
         )}
@@ -93,7 +94,7 @@ export function ForkWorkerCleanupSetting({
             <SelectContent>
               {(['close', 'release'] as const).map((choice) => (
                 <SelectItem key={choice} value={choice}>
-                  {actionLabel(choice)}
+                  {actionLabel(choice, t)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -101,8 +102,8 @@ export function ForkWorkerCleanupSetting({
         }
       />
       <SettingsSwitchRow
-        label={translate('fork.workerCleanup.onDoneLabel', 'When the worker reports done')}
-        description={translate(
+        label={t('fork.workerCleanup.onDoneLabel', 'When the worker reports done')}
+        description={t(
           'fork.workerCleanup.onDoneHelp',
           'Clean up a worker once its report has been in for the wait below.'
         )}
@@ -111,8 +112,8 @@ export function ForkWorkerCleanupSetting({
         onChange={() => updateSettings({ forkWorkerCleanupOnDone: !onDone })}
       />
       <SettingsRow
-        label={translate('fork.workerCleanup.graceLabel', 'Wait after the report')}
-        description={translate('fork.workerCleanup.graceHelp', 'Workers are checked every minute.')}
+        label={t('fork.workerCleanup.graceLabel', 'Wait after the report')}
+        description={t('fork.workerCleanup.graceHelp', 'Workers are checked every minute.')}
         labelId={graceId}
         control={
           <Select
@@ -136,8 +137,8 @@ export function ForkWorkerCleanupSetting({
         }
       />
       <SettingsSwitchRow
-        label={translate('fork.workerCleanup.onMergedLabel', 'When the worker branch is merged')}
-        description={translate(
+        label={t('fork.workerCleanup.onMergedLabel', 'When the worker branch is merged')}
+        description={t(
           'fork.workerCleanup.onMergedHelp',
           'Clean up a finished worker as soon as its branch has a merged pull request (when the GitHub CLI is installed and signed in) or all of its commits are on the default branch.'
         )}

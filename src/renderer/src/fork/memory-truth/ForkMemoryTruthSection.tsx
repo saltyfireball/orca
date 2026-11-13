@@ -34,7 +34,7 @@ export function forkPressureLabel(level: ForkSystemMemory['pressure'], t: Transl
       return t('fork.memory.pressure.warn', 'warning')
     case 'critical':
       return t('fork.memory.pressure.critical', 'critical')
-    default:
+    case 'unknown':
       return t('fork.memory.pressure.unknown', 'unknown')
   }
 }

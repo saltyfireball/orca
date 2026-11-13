@@ -5,6 +5,7 @@
 import { constants as fsConstants } from 'node:fs'
 import { access, stat, writeFile } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
+import { composeWorktreeId } from '../../../shared/worktree/id'
 import {
   isSafeRefName,
   type LostWorkActionArgs,
@@ -118,7 +119,7 @@ async function resolveTip(deps: LostWorkActionDeps, repo: LostWorkRepo, item: Lo
     return { cwd: repo.path, tip: `refs/heads/${branch}` }
   }
   const worktree = await requireListedWorktree(deps, repo, item)
-  if (!deps.pathExists(worktree.path)) {
+  if (!(await deps.pathExists(worktree.path))) {
     refuse('The worktree folder is gone.')
   }
   return { cwd: worktree.path, tip: 'HEAD' }
@@ -142,7 +143,7 @@ async function uncommittedPatch(deps: LostWorkActionDeps, item: LostWorkItem, re
     return ''
   }
   const worktree = await requireListedWorktree(deps, repo, item)
-  if (!deps.pathExists(worktree.path)) {
+  if (!(await deps.pathExists(worktree.path))) {
     return ''
   }
   return deps.git(['diff', '--binary', '--no-color', '--no-ext-diff', 'HEAD'], {
@@ -237,7 +238,7 @@ async function dropStash(deps: LostWorkActionDeps, repo: LostWorkRepo, args: Los
 
 async function pruneWorktree(deps: LostWorkActionDeps, repo: LostWorkRepo, item: LostWorkItem) {
   const worktree = await requireListedWorktree(deps, repo, item)
-  if (deps.pathExists(worktree.path)) {
+  if (await deps.pathExists(worktree.path)) {
     refuse('The worktree folder still exists. Delete the worktree instead.')
   }
   // Prune only forgets registrations whose folder is gone; branches and commits stay.
@@ -251,10 +252,10 @@ async function removeUntrackedWorktree(
   args: LostWorkActionArgs
 ) {
   const worktree = await requireListedWorktree(deps, repo, args.item)
-  if (deps.isTracked(`${repo.id}::${worktree.path}`)) {
+  if (deps.isTracked(composeWorktreeId(repo.id, worktree.path))) {
     refuse('Orca tracks this worktree now. Scan again and delete it as a workspace.')
   }
-  if (!deps.pathExists(worktree.path)) {
+  if (!(await deps.pathExists(worktree.path))) {
     refuse('The worktree folder is gone. Forget it instead.')
   }
   if (worktree.locked) {
@@ -324,9 +325,9 @@ export async function runLostWorkAction(
       case 'remove-untracked-worktree':
         await removeUntrackedWorktree(deps, repo, args)
         return { ok: true }
-      default:
-        return { ok: false, error: 'Unknown action.' }
     }
+    // The action arrives over RPC, so an unknown one can still reach here at runtime.
+    return { ok: false, error: 'Unknown action.' }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return { ok: false, error: message.slice(0, 500) }

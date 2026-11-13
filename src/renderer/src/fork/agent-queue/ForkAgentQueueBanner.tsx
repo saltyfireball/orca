@@ -1,7 +1,7 @@
 // SLRM-2098 (FORK.md "Agent launch queue"): shown in a chat whose start waits for a free agent
 // slot. Messages sent meanwhile stay in the chat's queue and go out when it starts.
 import { Button } from '@/components/ui/button'
-import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import {
   FORK_AGENT_QUEUE_MEMORY_HOLD_REASON,
   type ForkAgentQueueEntry
@@ -9,14 +9,17 @@ import {
 import { useForkQueuedLaunch } from './use-fork-agent-queue'
 
 /** Why the chat waits: a hold (low memory) when one is in force, else the agent limit. */
-function queuedText(entry: ForkAgentQueueEntry): {
+function queuedText(
+  entry: ForkAgentQueueEntry,
+  t: Translate
+): {
   title: string
   detail: string
 } {
   if (entry.heldReason === FORK_AGENT_QUEUE_MEMORY_HOLD_REASON) {
     return {
-      title: translate('fork.agentQueue.banner.memoryTitle', 'Queued: memory is low'),
-      detail: translate(
+      title: t('fork.agentQueue.banner.memoryTitle', 'Queued: memory is low'),
+      detail: t(
         'fork.agentQueue.banner.memoryDetail',
         'System memory is past the warning threshold and "Pause new agents" is on (Settings > Advanced > Memory). This chat starts when memory recovers, or now with Start now; messages you send now wait and go out then.'
       )
@@ -24,20 +27,20 @@ function queuedText(entry: ForkAgentQueueEntry): {
   }
   if (entry.heldReason) {
     return {
-      title: translate('fork.agentQueue.banner.heldTitle', 'Queued: {{reason}}', {
+      title: t('fork.agentQueue.banner.heldTitle', 'Queued: {{reason}}', {
         reason: entry.heldReason
       }),
-      detail: translate(
+      detail: t(
         'fork.agentQueue.banner.heldDetail',
         'New launches are held. This chat starts when the hold lifts, or now with Start now; messages you send now wait and go out then.'
       )
     }
   }
   return {
-    title: translate('fork.agentQueue.banner.title', 'Queued (position {{position}})', {
+    title: t('fork.agentQueue.banner.title', 'Queued (position {{position}})', {
       position: entry.position
     }),
-    detail: translate(
+    detail: t(
       'fork.agentQueue.banner.detail',
       'The agent limit is reached. This chat starts when another agent stops; messages you send now wait and go out then.'
     )
@@ -49,12 +52,13 @@ export function ForkAgentQueueBanner({
 }: {
   sessionId: string
 }): React.JSX.Element | null {
+  const t = useTranslate()
   const entry = useForkQueuedLaunch(sessionId)
   if (!entry) {
     return null
   }
   const bridge = window.api.forkAgentQueue
-  const text = queuedText(entry)
+  const text = queuedText(entry, t)
   return (
     <div
       role="status"
@@ -65,10 +69,10 @@ export function ForkAgentQueueBanner({
         <div className="text-xs text-muted-foreground">{text.detail}</div>
       </div>
       <Button size="sm" variant="default" onClick={() => void bridge?.start(entry.id)}>
-        {translate('fork.agentQueue.startNow', 'Start now')}
+        {t('fork.agentQueue.startNow', 'Start now')}
       </Button>
       <Button size="sm" variant="outline" onClick={() => void bridge?.cancel(entry.id)}>
-        {translate('fork.agentQueue.cancel', 'Cancel')}
+        {t('fork.agentQueue.cancel', 'Cancel')}
       </Button>
     </div>
   )
@@ -80,6 +84,7 @@ export function ForkAgentQueueTabBadge({
 }: {
   sessionId: string | undefined
 }): React.JSX.Element | null {
+  const t = useTranslate()
   const entry = useForkQueuedLaunch(sessionId)
   if (!entry) {
     return null
@@ -89,11 +94,11 @@ export function ForkAgentQueueTabBadge({
       className="mr-1 shrink-0 rounded bg-muted px-1 text-[10px] leading-4 text-muted-foreground"
       title={
         entry.heldReason
-          ? queuedText(entry).title
-          : translate('fork.agentQueue.badge.title', 'Waiting for a free agent slot')
+          ? queuedText(entry, t).title
+          : t('fork.agentQueue.badge.title', 'Waiting for a free agent slot')
       }
     >
-      {translate('fork.agentQueue.badge.label', 'queued {{position}}', {
+      {t('fork.agentQueue.badge.label', 'queued {{position}}', {
         position: entry.position
       })}
     </span>

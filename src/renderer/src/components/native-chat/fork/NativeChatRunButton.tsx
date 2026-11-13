@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Play } from 'lucide-react'
 import { toast } from 'sonner'
 import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import { useAppStore } from '@/store'
 import { runQuickCommandInNewTab } from '@/lib/terminal/quick-commands/run-quick-command-in-new-tab'
 import { commandFromShellFence } from '../../../../../shared/fork/shell-fence'
@@ -66,6 +67,7 @@ function RunButton({
   command: string
   owner: NativeChatVisualOwner
 }): React.JSX.Element {
+  const t = useTranslate()
   const { worktreeId, tabId } = owner
   // The confirm compares against the chat's owner at answer time, not at dialog open.
   const liveOwnerRef = useRef<NativeChatVisualOwner | null>(owner)
@@ -137,7 +139,7 @@ function RunButton({
     })
   }, [])
 
-  const label = translate('components.native-chat.runCode.action', 'Run in terminal')
+  const label = t('components.native-chat.runCode.action', 'Run in terminal')
   return (
     <>
       <button

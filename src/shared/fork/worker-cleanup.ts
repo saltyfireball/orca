@@ -84,13 +84,13 @@ export function pickForkWorkerCleanupSettings(value: unknown): WorkerCleanupSett
   if (typeof value !== 'object' || value === null) {
     return {}
   }
-  const read = (key: keyof WorkerCleanupSettings): unknown =>
-    key in value ? Reflect.get(value, key) : undefined
-  const enabled = read('forkWorkerCleanup')
-  const minutes = read('forkWorkerCleanupGraceMinutes')
-  const action = read('forkWorkerCleanupAction')
-  const onDone = read('forkWorkerCleanupOnDone')
-  const onMerged = read('forkWorkerCleanupOnMerged')
+  const enabled = 'forkWorkerCleanup' in value ? value.forkWorkerCleanup : undefined
+  const minutes =
+    'forkWorkerCleanupGraceMinutes' in value ? value.forkWorkerCleanupGraceMinutes : undefined
+  const action = 'forkWorkerCleanupAction' in value ? value.forkWorkerCleanupAction : undefined
+  const onDone = 'forkWorkerCleanupOnDone' in value ? value.forkWorkerCleanupOnDone : undefined
+  const onMerged =
+    'forkWorkerCleanupOnMerged' in value ? value.forkWorkerCleanupOnMerged : undefined
   return {
     ...(typeof enabled === 'boolean' ? { forkWorkerCleanup: enabled } : {}),
     ...(typeof minutes === 'number' ? { forkWorkerCleanupGraceMinutes: minutes } : {}),

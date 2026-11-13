@@ -1,8 +1,7 @@
 // SLRM-2099: one process-table snapshot per poll on macOS and Linux. It replaces upstream's
 // `ps -eo pid,ppid,pcpu,rss` in the memory collector (same rows, plus the process group and the
 // command name), so the whole-tree attribution reads the same sweep instead of spawning again.
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+import { runProcess } from '@orca/process-host'
 import type { ProcRow } from '../../memory/process-index'
 
 export type ForkProcRow = ProcRow & {
@@ -12,7 +11,6 @@ export type ForkProcRow = ProcRow & {
   name?: string
 }
 
-const execFileAsync = promisify(execFile)
 const PS_TIMEOUT_MS = 5_000
 const PS_MAX_BUFFER = 16 * 1024 * 1024
 
@@ -54,12 +52,21 @@ export function parseForkPsOutput(stdout: string): ForkProcRow[] {
 
 export async function readForkUnixProcessTable(): Promise<ForkProcRow[]> {
   try {
-    const { stdout } = await execFileAsync('ps', FORK_PS_ARGS, {
-      maxBuffer: PS_MAX_BUFFER,
-      timeout: PS_TIMEOUT_MS,
-      env: { ...process.env, LC_ALL: 'C', LANG: 'C' }
+    const result = await runProcess({
+      program: 'ps',
+      args: FORK_PS_ARGS,
+      env: { ...process.env, LC_ALL: 'C', LANG: 'C' },
+      maxOutputBytes: PS_MAX_BUFFER,
+      killOnOutputLimit: true,
+      timeoutMs: PS_TIMEOUT_MS
     })
-    return parseForkPsOutput(stdout)
+    // Same failures execFile rejected on: a nonzero exit, a timeout or output past the cap.
+    if (result.code !== 0 || result.timedOut || result.outputTruncated) {
+      throw new Error(
+        `ps exited ${result.code ?? result.signal}${result.timedOut ? ' (timed out)' : ''}`
+      )
+    }
+    return parseForkPsOutput(result.stdout)
   } catch (err) {
     console.warn('[memory] ps enumeration failed', err)
     return []

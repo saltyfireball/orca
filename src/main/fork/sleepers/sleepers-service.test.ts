@@ -75,7 +75,7 @@ describe('sleepChatsNow', () => {
       sweepNow: async (id: string) => {
         running += 1
         most = Math.max(most, running)
-        await new Promise((resolve) => setTimeout(resolve, 1))
+        await new Promise((resolve) => setTimeout(resolve, 0))
         live.set(id, { ...live.get(id)!, processAlive: false })
         running -= 1
       }

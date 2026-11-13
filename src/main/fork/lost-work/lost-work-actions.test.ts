@@ -64,6 +64,8 @@ async function branchWithCommit(branch: string): Promise<string> {
   return head
 }
 
+// Each case runs real git commands in a temp repo (bundle, format-patch, worktree add), which
+// takes several seconds on a loaded CI runner.
 describe('runLostWorkAction', { timeout: 30_000 }, () => {
   it('saves a branch as a bundle and a patch in the chosen folder', async () => {
     const head = await branchWithCommit('topic')

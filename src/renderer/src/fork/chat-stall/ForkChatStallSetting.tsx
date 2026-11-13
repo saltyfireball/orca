@@ -19,8 +19,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '../../components/ui/select'
-import { translate } from '@/i18n/i18n'
-import { useIntlLocale } from '@/i18n/use-translate'
+import { useIntlLocale, useTranslate } from '@/i18n/use-translate'
 import { formatMinutesDuration } from '@/i18n/ui-intl-formatters'
 
 type ForkChatStallSettingProps = {
@@ -32,6 +31,7 @@ export function ForkChatStallSetting({
   settings,
   updateSettings
 }: ForkChatStallSettingProps): React.JSX.Element {
+  const t = useTranslate()
   const intlLocale = useIntlLocale()
   const labelId = useId()
   const minutes = forkChatStallMinutes(settings)
@@ -43,15 +43,15 @@ export function ForkChatStallSetting({
   return (
     <section className="space-y-3">
       <SettingsSubsectionHeader
-        title={translate('fork.chatStall.title', 'Stalled chats')}
-        description={translate(
+        title={t('fork.chatStall.title', 'Stalled chats')}
+        description={t(
           'fork.chatStall.description',
           'A chat whose turn is still open but has had no output from its provider for a while is marked Stalled on its tab and row, with Interrupt, Release and Wake.'
         )}
       />
       <SettingsRow
-        label={translate('fork.chatStall.minutesLabel', 'Mark stalled after')}
-        description={translate(
+        label={t('fork.chatStall.minutesLabel', 'Mark stalled after')}
+        description={t(
           'fork.chatStall.minutesHelp',
           'Time without provider output before an open turn is marked. Chats are checked every 5 minutes.'
         )}
@@ -68,7 +68,7 @@ export function ForkChatStallSetting({
               {choices.map((choice) => (
                 <SelectItem key={choice} value={String(choice)}>
                   {choice === 0
-                    ? translate('fork.chatStall.off', 'Off')
+                    ? t('fork.chatStall.off', 'Off')
                     : formatMinutesDuration(choice, intlLocale)}
                 </SelectItem>
               ))}
@@ -77,8 +77,8 @@ export function ForkChatStallSetting({
         }
       />
       <SettingsSwitchRow
-        label={translate('fork.chatStall.autoLabel', 'Release long-stalled chats')}
-        description={translate(
+        label={t('fork.chatStall.autoLabel', 'Release long-stalled chats')}
+        description={t(
           'fork.chatStall.autoHelp',
           'After twice that time, release a stalled chat whose provider is stopped or gone. A chat whose provider is still running is only marked, since it may be in a long tool.'
         )}

@@ -4,6 +4,7 @@ import React from 'react'
 import { Hourglass } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import type { SleeperRow } from '../../../../shared/fork/sleepers'
 import { ForkChatStallMenu } from '../chat-stall/ForkChatStall'
 import { actOnQueuedSleeper } from './sleepers-actions'
@@ -16,14 +17,15 @@ export function ForkSleepersLifecycleActions({
   /** Refresh the list once an action lands. */
   after: (work: Promise<unknown>) => void
 }): React.JSX.Element | null {
+  const t = useTranslate()
   if (row.queue && row.local) {
     return (
       <>
         <Button size="sm" variant="ghost" onClick={() => after(actOnQueuedSleeper(row, 'start'))}>
-          {translate('fork.sleepers.startNow', 'Start now')}
+          {t('fork.sleepers.startNow', 'Start now')}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => after(actOnQueuedSleeper(row, 'cancel'))}>
-          {translate('fork.sleepers.cancelQueued', 'Cancel')}
+          {t('fork.sleepers.cancelQueued', 'Cancel')}
         </Button>
       </>
     )
@@ -35,7 +37,7 @@ export function ForkSleepersLifecycleActions({
         trigger={
           <Button size="sm" variant="ghost" data-fork-chat-stalled="">
             <Hourglass className="size-3.5 text-status-warning" aria-hidden />
-            {translate('fork.sleepers.stallActions', 'Stall actions')}
+            {t('fork.sleepers.stallActions', 'Stall actions')}
           </Button>
         }
       />
@@ -45,21 +47,25 @@ export function ForkSleepersLifecycleActions({
 }
 
 /** The extra line a queued or stalled row shows under its title: why it waits or how long. */
-export function sleeperLifecycleDetail(row: SleeperRow, now: number): string {
+export function sleeperLifecycleDetail(
+  row: SleeperRow,
+  now: number,
+  t: Translate = translate
+): string {
   if (row.queue) {
     const position = row.queue.position
     return row.queue.heldReason
-      ? translate('fork.sleepers.queuedHeld', 'Queued #{{position}}: {{reason}}', {
+      ? t('fork.sleepers.queuedHeld', 'Queued #{{position}}: {{reason}}', {
           position,
           reason: row.queue.heldReason
         })
-      : translate('fork.sleepers.queuedLimit', 'Queued #{{position}}: agent limit reached', {
+      : t('fork.sleepers.queuedLimit', 'Queued #{{position}}: agent limit reached', {
           position
         })
   }
   if (row.stall) {
     const count = Math.max(0, Math.floor((now - row.stall.quietSince) / 60_000))
-    return translate('fork.sleepers.stalledFor', 'No output for {{count}} min', { count })
+    return t('fork.sleepers.stalledFor', 'No output for {{count}} min', { count })
   }
   return ''
 }

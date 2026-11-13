@@ -3,7 +3,8 @@ import React from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/class-names'
-import { translate } from '@/i18n/i18n'
+import { useIntlLocale, useTranslate } from '@/i18n/use-translate'
+import { uiDateTimeFormat } from '@/i18n/ui-intl-formatters'
 import type { LostWorkItem, LostWorkRisk } from '../../../../shared/fork/lost-work'
 import { canOpenLostWork, canPushLostWork, canSaveLostWork } from './lost-work-actions'
 import {
@@ -21,8 +22,11 @@ const RISK_CLASS: Record<LostWorkRisk, string> = {
   safe: 'border-emerald-500/50 text-emerald-600 dark:text-emerald-400'
 }
 
-function day(ms: number | null): string {
-  return ms === null ? '' : new Date(ms).toLocaleDateString()
+// The fields toLocaleDateString() shows by default, in the UI language.
+const DAY_FORMAT: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'numeric', day: 'numeric' }
+
+function day(ms: number | null, intlLocale: string): string {
+  return ms === null ? '' : uiDateTimeFormat(DAY_FORMAT, intlLocale).format(ms)
 }
 
 export function ForkLostWorkRow({
@@ -38,6 +42,8 @@ export function ForkLostWorkRow({
   onSelect: (selected: boolean) => void
   onAction: (action: LostWorkRowAction) => void
 }): React.JSX.Element {
+  const t = useTranslate()
+  const intlLocale = useIntlLocale()
   const reasons = lostWorkReasons(item)
   const pr = item.pullRequest
   const action = (name: LostWorkRowAction, label: string, enabled = true) => (
@@ -52,7 +58,7 @@ export function ForkLostWorkRow({
         checked={selected}
         disabled={busy}
         onCheckedChange={(checked) => onSelect(checked === true)}
-        aria-label={lostWorkTitle(item)}
+        aria-label={lostWorkTitle(item, t)}
       />
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
@@ -62,9 +68,9 @@ export function ForkLostWorkRow({
               RISK_CLASS[item.risk]
             )}
           >
-            {lostWorkRiskLabel(item.risk)}
+            {lostWorkRiskLabel(item.risk, t)}
           </span>
-          <span className="min-w-0 truncate text-sm font-medium">{lostWorkTitle(item)}</span>
+          <span className="min-w-0 truncate text-sm font-medium">{lostWorkTitle(item, t)}</span>
           <span className="text-xs text-muted-foreground">{item.repoName}</span>
         </div>
         <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
@@ -74,8 +80,8 @@ export function ForkLostWorkRow({
           ))}
           {item.lastCommitAt !== null ? (
             <span>
-              {translate('fork.lostWork.lastCommit', 'Last commit {{date}}', {
-                date: day(item.lastCommitAt)
+              {t('fork.lostWork.lastCommit', 'Last commit {{date}}', {
+                date: day(item.lastCommitAt, intlLocale)
               })}
             </span>
           ) : null}
@@ -85,29 +91,21 @@ export function ForkLostWorkRow({
           <div className="truncate font-mono text-[11px] text-muted-foreground">{item.path}</div>
         ) : null}
         <div className="flex flex-wrap gap-1">
-          {canOpenLostWork(item) ? action('open', translate('fork.lostWork.open', 'Open')) : null}
-          {canPushLostWork(item) ? action('push', translate('fork.lostWork.push', 'Push')) : null}
+          {canOpenLostWork(item) ? action('open', t('fork.lostWork.open', 'Open')) : null}
+          {canPushLostWork(item) ? action('push', t('fork.lostWork.push', 'Push')) : null}
           {canPushLostWork(item)
             ? action(
                 'pull-request',
                 pr
-                  ? translate('fork.lostWork.viewPullRequest', 'View pull request')
-                  : translate('fork.lostWork.createPullRequest', 'Create pull request')
+                  ? t('fork.lostWork.viewPullRequest', 'View pull request')
+                  : t('fork.lostWork.createPullRequest', 'Create pull request')
               )
             : null}
           {item.kind !== 'stash'
-            ? action(
-                'bundle',
-                translate('fork.lostWork.saveBundle', 'Save bundle'),
-                canSaveLostWork(item)
-              )
+            ? action('bundle', t('fork.lostWork.saveBundle', 'Save bundle'), canSaveLostWork(item))
             : null}
-          {action(
-            'patch',
-            translate('fork.lostWork.savePatch', 'Save patch'),
-            canSaveLostWork(item)
-          )}
-          {action('delete', translate('fork.lostWork.delete', 'Delete'))}
+          {action('patch', t('fork.lostWork.savePatch', 'Save patch'), canSaveLostWork(item))}
+          {action('delete', t('fork.lostWork.delete', 'Delete'))}
         </div>
       </div>
     </div>

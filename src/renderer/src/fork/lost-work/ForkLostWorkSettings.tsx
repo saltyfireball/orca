@@ -11,6 +11,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { useAppStore } from '@/store'
 import { isFolderRepo } from '../../../../shared/repo-kind'
 import {
@@ -25,57 +26,57 @@ type Props = {
   updateSettings: (updates: Partial<GlobalSettings>) => void
 }
 
-function checkLabel(check: LostWorkCheck): { label: string; help: string } {
+function checkLabel(
+  check: LostWorkCheck,
+  t: Translate = translate
+): { label: string; help: string } {
   switch (check) {
     case 'unmergedWorktrees':
       return {
-        label: translate('fork.lostWork.check.unmerged', 'Worktrees with unmerged commits'),
-        help: translate(
+        label: t('fork.lostWork.check.unmerged', 'Worktrees with unmerged commits'),
+        help: t(
           'fork.lostWork.check.unmergedHelp',
           'Commits that are not on the default branch, by commit, patch or squash merge.'
         )
       }
     case 'finishedWorktrees':
       return {
-        label: translate('fork.lostWork.check.finished', 'Finished worktrees'),
-        help: translate(
+        label: t('fork.lostWork.check.finished', 'Finished worktrees'),
+        help: t(
           'fork.lostWork.check.finishedHelp',
           'Merged, or with a merged or closed pull request, but still on disk.'
         )
       }
     case 'untrackedWorktrees':
       return {
-        label: translate('fork.lostWork.check.untracked', 'Worktrees Orca does not track'),
-        help: translate(
+        label: t('fork.lostWork.check.untracked', 'Worktrees Orca does not track'),
+        help: t(
           'fork.lostWork.check.untrackedHelp',
           'Worktrees git knows about that are not Orca workspaces.'
         )
       }
     case 'missingFolders':
       return {
-        label: translate('fork.lostWork.check.missing', 'Missing folders'),
-        help: translate(
-          'fork.lostWork.check.missingHelp',
-          'Worktrees and workspaces whose folder is gone.'
-        )
+        label: t('fork.lostWork.check.missing', 'Missing folders'),
+        help: t('fork.lostWork.check.missingHelp', 'Worktrees and workspaces whose folder is gone.')
       }
     case 'unmergedBranches':
       return {
-        label: translate('fork.lostWork.check.branches', 'Branches without a worktree'),
-        help: translate(
+        label: t('fork.lostWork.check.branches', 'Branches without a worktree'),
+        help: t(
           'fork.lostWork.check.branchesHelp',
           'Local branches with unmerged commits that no worktree has checked out.'
         )
       }
     case 'stashes':
       return {
-        label: translate('fork.lostWork.check.stashes', 'Stashes'),
-        help: translate('fork.lostWork.check.stashesHelp', 'Every stash in each project.')
+        label: t('fork.lostWork.check.stashes', 'Stashes'),
+        help: t('fork.lostWork.check.stashesHelp', 'Every stash in each project.')
       }
     case 'pullRequests':
       return {
-        label: translate('fork.lostWork.check.pullRequests', 'Pull request state'),
-        help: translate(
+        label: t('fork.lostWork.check.pullRequests', 'Pull request state'),
+        help: t(
           'fork.lostWork.check.pullRequestsHelp',
           'Read pull requests with the GitHub CLI when it is installed and signed in.'
         )
@@ -131,6 +132,7 @@ function CommitInput({
 }
 
 export function ForkLostWorkSettings({ settings, updateSettings }: Props): React.JSX.Element {
+  const t = useTranslate()
   const stored: LostWorkSettings = settings.forkLostWork ?? {}
   const resolved = resolveLostWorkSettings(stored)
   const repos = useAppStore((s) => s.repos).filter((repo) => !isFolderRepo(repo))
@@ -152,14 +154,14 @@ export function ForkLostWorkSettings({ settings, updateSettings }: Props): React
   return (
     <section className="space-y-3">
       <SettingsSubsectionHeader
-        title={translate('fork.lostWork.settingTitle', 'Lost work')}
-        description={translate(
+        title={t('fork.lostWork.settingTitle', 'Lost work')}
+        description={t(
           'fork.lostWork.settingDescription',
           'What the Lost work scan looks for. It runs only when you open Lost work from Delete Inactive Workspaces and press Scan.'
         )}
       />
       {CHECK_ORDER.map((check) => {
-        const { label, help } = checkLabel(check)
+        const { label, help } = checkLabel(check, t)
         return (
           <SettingsSwitchRow
             key={check}
@@ -173,8 +175,8 @@ export function ForkLostWorkSettings({ settings, updateSettings }: Props): React
         )
       })}
       <SettingsRow
-        label={translate('fork.lostWork.archiveLabel', 'Archive folder')}
-        description={translate(
+        label={t('fork.lostWork.archiveLabel', 'Archive folder')}
+        description={t(
           'fork.lostWork.archiveHelp',
           'Where Save bundle and Save patch write. Empty asks each time.'
         )}
@@ -183,7 +185,7 @@ export function ForkLostWorkSettings({ settings, updateSettings }: Props): React
             <CommitInput
               className="w-64"
               value={resolved.archiveFolder}
-              ariaLabel={translate('fork.lostWork.archiveLabel', 'Archive folder')}
+              ariaLabel={t('fork.lostWork.archiveLabel', 'Archive folder')}
               onCommit={(value) => save({ archiveFolder: value.trim() })}
             />
             <Button
@@ -198,14 +200,14 @@ export function ForkLostWorkSettings({ settings, updateSettings }: Props): React
                 }
               }}
             >
-              {translate('fork.lostWork.archiveChoose', 'Choose...')}
+              {t('fork.lostWork.archiveChoose', 'Choose...')}
             </Button>
           </div>
         }
       />
       <SettingsRow
-        label={translate('fork.lostWork.lookbackLabel', 'Squash merge search depth')}
-        description={translate(
+        label={t('fork.lostWork.lookbackLabel', 'Squash merge search depth')}
+        description={t(
           'fork.lostWork.lookbackHelp',
           'How many recent default-branch commits are compared to find a squash merge. Default 500.'
         )}
@@ -213,14 +215,14 @@ export function ForkLostWorkSettings({ settings, updateSettings }: Props): React
           <CommitInput
             className="w-24"
             value={String(resolved.squashLookback)}
-            ariaLabel={translate('fork.lostWork.lookbackLabel', 'Squash merge search depth')}
+            ariaLabel={t('fork.lostWork.lookbackLabel', 'Squash merge search depth')}
             onCommit={(value) => saveNumber('squashLookback', value)}
           />
         }
       />
       <SettingsRow
-        label={translate('fork.lostWork.prLimitLabel', 'Pull requests read per project')}
-        description={translate(
+        label={t('fork.lostWork.prLimitLabel', 'Pull requests read per project')}
+        description={t(
           'fork.lostWork.prLimitHelp',
           'How many recent pull requests are read for each project. Default 200.'
         )}
@@ -228,7 +230,7 @@ export function ForkLostWorkSettings({ settings, updateSettings }: Props): React
           <CommitInput
             className="w-24"
             value={String(resolved.pullRequestLimit)}
-            ariaLabel={translate('fork.lostWork.prLimitLabel', 'Pull requests read per project')}
+            ariaLabel={t('fork.lostWork.prLimitLabel', 'Pull requests read per project')}
             onCommit={(value) => saveNumber('pullRequestLimit', value)}
           />
         }
@@ -236,7 +238,7 @@ export function ForkLostWorkSettings({ settings, updateSettings }: Props): React
       {repos.length > 0 ? (
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">
-            {translate(
+            {t(
               'fork.lostWork.branchesHelp',
               "Default branch per project. Empty uses the remote's default, then main, master, trunk or develop."
             )}
@@ -249,8 +251,8 @@ export function ForkLostWorkSettings({ settings, updateSettings }: Props): React
                 <CommitInput
                   className="w-48"
                   value={resolved.defaultBranches[repo.id] ?? ''}
-                  placeholder={translate('fork.lostWork.branchPlaceholder', 'Automatic')}
-                  ariaLabel={translate('fork.lostWork.branchLabel', 'Default branch for {{name}}', {
+                  placeholder={t('fork.lostWork.branchPlaceholder', 'Automatic')}
+                  ariaLabel={t('fork.lostWork.branchLabel', 'Default branch for {{name}}', {
                     name: repo.displayName || repo.path
                   })}
                   onCommit={(value) => saveBranch(repo.id, value)}

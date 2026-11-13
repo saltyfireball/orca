@@ -268,7 +268,8 @@ export function forkSleepersButtonShown(settings: unknown): boolean {
   return !(
     typeof settings === 'object' &&
     settings !== null &&
-    Reflect.get(settings, 'forkSleepersButton') === false
+    'forkSleepersButton' in settings &&
+    settings.forkSleepersButton === false
   )
 }
 
@@ -297,7 +298,7 @@ export function readForkSleepersPinned(settings: unknown): string[] {
   if (typeof settings !== 'object' || settings === null || !('forkSleepersPinned' in settings)) {
     return []
   }
-  return normalizeForkSleepersPinned(Reflect.get(settings, 'forkSleepersPinned'))
+  return normalizeForkSleepersPinned(settings.forkSleepersPinned)
 }
 
 export function withForkSleeperPinned(

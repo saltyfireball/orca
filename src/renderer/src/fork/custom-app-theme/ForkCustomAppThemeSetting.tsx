@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { useSettingsDarkTheme } from '@/hooks/use-document-dark-theme'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import { SettingsSubsectionHeader } from '../../components/settings/form-controls/SettingsFormControls'
 import { SearchableSetting } from '../../components/settings/section-layout/SearchableSetting'
@@ -40,13 +40,11 @@ export function ForkCustomAppThemeSetting({
   forceVisible = false,
   ...props
 }: Props): React.JSX.Element {
+  const t = useTranslate()
   return (
     <SearchableSetting
-      title={translate('fork.customAppTheme.title', 'Custom app themes')}
-      description={translate(
-        'fork.customAppTheme.searchDescription',
-        'Paste or import a whole app theme.'
-      )}
+      title={t('fork.customAppTheme.title', 'Custom app themes')}
+      description={t('fork.customAppTheme.searchDescription', 'Paste or import a whole app theme.')}
       keywords={[
         'theme',
         'custom',
@@ -66,6 +64,7 @@ export function ForkCustomAppThemeSetting({
 }
 
 function ForkCustomAppThemeEditor({ settings, updateSettings }: Props): React.JSX.Element {
+  const t = useTranslate()
   const dark = useSettingsDarkTheme()
   const [text, setText] = useState('')
   const [sourceName, setSourceName] = useState<string | undefined>(undefined)
@@ -87,9 +86,7 @@ function ForkCustomAppThemeEditor({ settings, updateSettings }: Props): React.JS
       return
     }
     if (file.size > MAX_CUSTOM_APP_THEME_TEXT) {
-      toast.error(
-        translate('fork.customAppTheme.issue.tooLarge', 'The theme is larger than 64 KB.')
-      )
+      toast.error(t('fork.customAppTheme.issue.tooLarge', 'The theme is larger than 64 KB.'))
       return
     }
     setSourceName(baseName(file.name))
@@ -103,10 +100,7 @@ function ForkCustomAppThemeEditor({ settings, updateSettings }: Props): React.JS
     const saved = saveCustomAppThemeUpdate(settings, result.theme)
     if (!saved.ok) {
       toast.error(
-        translate(
-          'fork.customAppTheme.full',
-          'You have 50 saved themes. Delete one to save another.'
-        )
+        t('fork.customAppTheme.full', 'You have 50 saved themes. Delete one to save another.')
       )
       return
     }
@@ -128,8 +122,8 @@ function ForkCustomAppThemeEditor({ settings, updateSettings }: Props): React.JS
   return (
     <section className="space-y-3 py-3">
       <SettingsSubsectionHeader
-        title={translate('fork.customAppTheme.title', 'Custom app themes')}
-        description={translate(
+        title={t('fork.customAppTheme.title', 'Custom app themes')}
+        description={t(
           'fork.customAppTheme.description',
           'Paste or import a theme: an Orca theme, a Ghostty or Warp theme, or a base16/base24 scheme. Saving does not change anything; Use does.'
         )}
@@ -140,7 +134,7 @@ function ForkCustomAppThemeEditor({ settings, updateSettings }: Props): React.JS
             disabled={!anyInUse}
             onClick={() => updateSettings(resetCustomAppThemeUpdate(settings))}
           >
-            {translate('fork.customAppTheme.reset', 'Reset to default')}
+            {t('fork.customAppTheme.reset', 'Reset to default')}
           </Button>
         }
       />
@@ -150,8 +144,8 @@ function ForkCustomAppThemeEditor({ settings, updateSettings }: Props): React.JS
         value={text}
         maxLength={MAX_CUSTOM_APP_THEME_TEXT}
         spellCheck={false}
-        aria-label={translate('fork.customAppTheme.pasteLabel', 'Theme to load')}
-        placeholder={translate('fork.customAppTheme.pastePlaceholder', 'Paste a theme here')}
+        aria-label={t('fork.customAppTheme.pasteLabel', 'Theme to load')}
+        placeholder={t('fork.customAppTheme.pastePlaceholder', 'Paste a theme here')}
         onChange={(event) => {
           setText(event.target.value)
           setSourceName(undefined)
@@ -159,7 +153,7 @@ function ForkCustomAppThemeEditor({ settings, updateSettings }: Props): React.JS
       />
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" variant="outline" onClick={() => fileInput.current?.click()}>
-          {translate('fork.customAppTheme.import', 'Import file...')}
+          {t('fork.customAppTheme.import', 'Import file...')}
         </Button>
         <input
           ref={fileInput}
@@ -179,10 +173,10 @@ function ForkCustomAppThemeEditor({ settings, updateSettings }: Props): React.JS
             setSourceName(undefined)
           }}
         >
-          {translate('fork.customAppTheme.example', 'Load example (cyberdream)')}
+          {t('fork.customAppTheme.example', 'Load example (cyberdream)')}
         </Button>
         <Button size="sm" disabled={!result?.ok} onClick={save}>
-          {translate('fork.customAppTheme.save', 'Save theme')}
+          {t('fork.customAppTheme.save', 'Save theme')}
         </Button>
       </div>
       {issues.length > 0 ? (
@@ -191,7 +185,7 @@ function ForkCustomAppThemeEditor({ settings, updateSettings }: Props): React.JS
           className={`space-y-0.5 text-xs ${result?.ok ? 'text-muted-foreground' : 'text-destructive'}`}
         >
           {issues.map(([key, issue]) => (
-            <li key={key}>{customAppThemeIssueText(issue)}</li>
+            <li key={key}>{customAppThemeIssueText(issue, t)}</li>
           ))}
         </ul>
       ) : null}
@@ -201,7 +195,7 @@ function ForkCustomAppThemeEditor({ settings, updateSettings }: Props): React.JS
           checked={withTerminal}
           onCheckedChange={(checked) => setWithTerminal(checked === true)}
         />
-        {translate(
+        {t(
           'fork.customAppTheme.withTerminal',
           "Also use the theme's terminal colors when it has them"
         )}

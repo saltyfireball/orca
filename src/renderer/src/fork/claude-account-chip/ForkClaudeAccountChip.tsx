@@ -3,6 +3,7 @@ import React from 'react'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { InlineUsageBars } from '@/components/status-bar/InlineProviderUsage'
 import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { cn } from '@/lib/class-names'
 import {
   SYSTEM_DEFAULT_ACCOUNT_ID,
@@ -38,16 +39,16 @@ function bareLabel(account: ForkClaudeAccount): string {
     : account.label
 }
 
-function chipLabel(resolution: ForkClaudeAccountResolution): string {
+function chipLabel(resolution: ForkClaudeAccountResolution, t: Translate = translate): string {
   if (resolution.kind === 'account') {
     return resolution.movingTo
       ? `${bareLabel(resolution.account)} -> ${resolution.movingTo.label}`
       : resolution.account.label
   }
   if (resolution.kind === 'mixed') {
-    return translate('fork.accountChip.mixed', 'Mixed')
+    return t('fork.accountChip.mixed', 'Mixed')
   }
-  const unknown = translate('fork.accountChip.unknownShort', '?')
+  const unknown = t('fork.accountChip.unknownShort', '?')
   return resolution.kind === 'unknown' && resolution.hostLabel
     ? `${unknown} @ ${resolution.hostLabel}`
     : unknown
@@ -65,13 +66,13 @@ function chipColours(resolution: ForkClaudeAccountResolution): string[] {
   return [UNKNOWN_COLOUR]
 }
 
-function accountName(account: ForkClaudeAccount): string {
+function accountName(account: ForkClaudeAccount, t: Translate = translate): string {
   if (account.email) {
     return account.email
   }
   return account.id === SYSTEM_DEFAULT_ACCOUNT_ID
-    ? translate('fork.accountChip.systemDefault', 'System default')
-    : translate('fork.accountChip.unnamed', 'Claude account')
+    ? t('fork.accountChip.systemDefault', 'System default')
+    : t('fork.accountChip.unnamed', 'Claude account')
 }
 
 function AccountUsageRow({
@@ -81,6 +82,7 @@ function AccountUsageRow({
   account: ForkClaudeAccount
   refreshKey: number
 }): React.JSX.Element {
+  const t = useTranslate()
   const usage = useForkClaudeAccountUsage(account)
   const { refresh } = usage
   React.useEffect(() => {
@@ -95,11 +97,11 @@ function AccountUsageRow({
           className="size-2 shrink-0 rounded-full"
           style={{ backgroundColor: account.colour }}
         />
-        <span className="truncate font-medium">{accountName(account)}</span>
+        <span className="truncate font-medium">{accountName(account, t)}</span>
       </div>
       {account.hostLabel ? (
         <div className="text-muted-foreground">
-          {translate('fork.accountChip.onHost', 'On {{value0}}', {
+          {t('fork.accountChip.onHost', 'On {{value0}}', {
             value0: account.hostLabel
           })}
         </div>
@@ -108,7 +110,7 @@ function AccountUsageRow({
         <InlineUsageBars limits={usage.limits} isFetching={usage.isFetching} />
       ) : (
         <div className="text-muted-foreground">
-          {translate('fork.accountChip.noUsage', 'No usage reading for this account yet.')}
+          {t('fork.accountChip.noUsage', 'No usage reading for this account yet.')}
         </div>
       )}
     </div>
@@ -122,10 +124,11 @@ function ChipHover({
   resolution: ForkClaudeAccountResolution
   refreshKey: number
 }): React.JSX.Element {
+  const t = useTranslate()
   if (resolution.kind === 'unknown') {
     return (
       <div className="text-muted-foreground">
-        {translate(
+        {t(
           'fork.accountChip.unknown',
           'This Claude session runs in a folder that is not one of the saved accounts.'
         )}
@@ -143,16 +146,14 @@ function ChipHover({
     <div className="space-y-3">
       {resolution.kind === 'mixed' ? (
         <div className="text-muted-foreground">
-          {translate('fork.accountChip.mixedHelp', 'Sessions here run on different accounts.')}
+          {t('fork.accountChip.mixedHelp', 'Sessions here run on different accounts.')}
         </div>
       ) : null}
       {movingTo ? (
         <div className="text-muted-foreground">
-          {translate(
-            'fork.accountChip.movingHelp',
-            'Moves to {{value0}} when the current turn ends.',
-            { value0: accountName(movingTo) }
-          )}
+          {t('fork.accountChip.movingHelp', 'Moves to {{value0}} when the current turn ends.', {
+            value0: accountName(movingTo, t)
+          })}
         </div>
       ) : null}
       {accounts.map((account) => (
@@ -173,12 +174,13 @@ export function ForkClaudeAccountChip({
   onOpenMenu,
   menu
 }: ForkClaudeAccountChipProps): React.JSX.Element | null {
+  const t = useTranslate()
   const [refreshKey, setRefreshKey] = React.useState(0)
   if (resolution.kind === 'none') {
     return null
   }
   const interactive = !!onOpenMenu || !!menu
-  const label = chipLabel(resolution)
+  const label = chipLabel(resolution, t)
   const stop = (event: React.SyntheticEvent): void => {
     if (interactive) {
       event.stopPropagation()
@@ -189,7 +191,7 @@ export function ForkClaudeAccountChip({
       type="button"
       data-testid="fork-account-chip"
       data-kind={resolution.kind}
-      aria-label={translate('fork.accountChip.ariaLabel', 'Claude account: {{value0}}', {
+      aria-label={t('fork.accountChip.ariaLabel', 'Claude account: {{value0}}', {
         value0: label
       })}
       tabIndex={interactive ? 0 : -1}

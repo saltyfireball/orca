@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import type { ForkUsagePrice } from '../../../../shared/fork/usage-ledger'
 import { ForkNumberInput } from '../cache-cold/ForkNumberInput'
@@ -18,19 +18,27 @@ type Field = (typeof FIELDS)[number]
 
 const ZERO: ForkUsagePrice = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cacheWrite1h: 0 }
 
-function fieldLabel(field: Field): string {
+function fieldLabel(field: Field, t: Translate): string {
   switch (field) {
     case 'input':
-      return translate('fork.usagePrices.input', 'Input')
+      return t('fork.usagePrices.input', 'Input')
     case 'output':
-      return translate('fork.usagePrices.output', 'Output')
+      return t('fork.usagePrices.output', 'Output')
     case 'cacheRead':
-      return translate('fork.usagePrices.cacheRead', 'Cache read')
+      return t('fork.usagePrices.cacheRead', 'Cache read')
     case 'cacheWrite':
-      return translate('fork.usagePrices.cacheWrite', 'Cache write 5m')
+      return t('fork.usagePrices.cacheWrite', 'Cache write 5m')
     case 'cacheWrite1h':
-      return translate('fork.usagePrices.cacheWrite1h', 'Cache write 1h')
+      return t('fork.usagePrices.cacheWrite1h', 'Cache write 1h')
   }
+}
+
+/** The user's own prices without one model's row. */
+function withoutModel(
+  own: Record<string, ForkUsagePrice>,
+  model: string
+): Record<string, ForkUsagePrice> {
+  return Object.fromEntries(Object.entries(own).filter(([key]) => key !== model))
 }
 
 function useDefaultPrices(): Record<string, ForkUsagePrice> {
@@ -49,6 +57,7 @@ function useDefaultPrices(): Record<string, ForkUsagePrice> {
 }
 
 export function ForkUsagePriceTable({ settings, updateSettings }: Props): React.JSX.Element {
+  const t = useTranslate()
   const defaults = useDefaultPrices()
   const own = settings.forkUsagePrices ?? {}
   const [adding, setAdding] = useState('')
@@ -59,8 +68,7 @@ export function ForkUsagePriceTable({ settings, updateSettings }: Props): React.
     save({ ...own, [model]: { ...base, [field]: value } })
   }
   const reset = (model: string) => {
-    const { [model]: _drop, ...rest } = own
-    save(rest)
+    save(withoutModel(own, model))
   }
   const add = () => {
     const model = adding.trim()
@@ -76,11 +84,11 @@ export function ForkUsagePriceTable({ settings, updateSettings }: Props): React.
           <thead className="sticky top-0 bg-background text-muted-foreground">
             <tr>
               <th className="px-2 py-1 text-left font-normal">
-                {translate('fork.usagePrices.model', 'Model')}
+                {t('fork.usagePrices.model', 'Model')}
               </th>
               {FIELDS.map((field) => (
                 <th key={field} className="px-1 py-1 text-right font-normal">
-                  {fieldLabel(field)}
+                  {fieldLabel(field, t)}
                 </th>
               ))}
               <th />
@@ -97,7 +105,7 @@ export function ForkUsagePriceTable({ settings, updateSettings }: Props): React.
                       <ForkNumberInput
                         decimal
                         value={price[field] ?? price.cacheWrite}
-                        label={`${model} ${fieldLabel(field)}`}
+                        label={`${model} ${fieldLabel(field, t)}`}
                         min={0}
                         max={10_000}
                         className="h-7 w-20 text-right"
@@ -109,8 +117,8 @@ export function ForkUsagePriceTable({ settings, updateSettings }: Props): React.
                     {own[model] ? (
                       <Button size="xs" variant="ghost" onClick={() => reset(model)}>
                         {defaults[model]
-                          ? translate('fork.usagePrices.reset', 'Reset')
-                          : translate('fork.usagePrices.remove', 'Remove')}
+                          ? t('fork.usagePrices.reset', 'Reset')
+                          : t('fork.usagePrices.remove', 'Remove')}
                       </Button>
                     ) : null}
                   </td>
@@ -124,8 +132,8 @@ export function ForkUsagePriceTable({ settings, updateSettings }: Props): React.
         <Input
           className="h-8 w-64"
           value={adding}
-          aria-label={translate('fork.usagePrices.addLabel', 'Model id to price')}
-          placeholder={translate('fork.usagePrices.addPlaceholder', 'Model id, e.g. a new release')}
+          aria-label={t('fork.usagePrices.addLabel', 'Model id to price')}
+          placeholder={t('fork.usagePrices.addPlaceholder', 'Model id, e.g. a new release')}
           onChange={(event) => setAdding(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
@@ -134,7 +142,7 @@ export function ForkUsagePriceTable({ settings, updateSettings }: Props): React.
           }}
         />
         <Button size="sm" variant="outline" disabled={!adding.trim()} onClick={add}>
-          {translate('fork.usagePrices.add', 'Add model')}
+          {t('fork.usagePrices.add', 'Add model')}
         </Button>
       </div>
     </div>
