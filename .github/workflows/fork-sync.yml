@@ -1,7 +1,8 @@
 name: Fork sync
 
 # Rebases the fork's own commits onto the newest stable upstream tag, checks them, pushes main,
-# keeps upstream workflows disabled, then builds and releases a self-signed macOS app. See FORK.md.
+# keeps upstream workflows disabled, then builds and releases a self-signed macOS app. Every run,
+# success or failure, ends by publishing its sync status for the app and the run summary. See FORK.md.
 
 on:
   schedule:
@@ -17,6 +18,13 @@ on:
 permissions:
   contents: read
 
+env:
+  # The upstream this fork follows; the sync and status jobs both read it.
+  UPSTREAM_URL: https://github.com/stablyai/orca.git
+  # Holds status.json and the recorded base. The app reads it at the same name
+  # (FORK_SYNC_STATUS_BRANCH in src/shared/fork/fork-sync-status.ts).
+  FORK_SYNC_STATUS_BRANCH: fork-sync-status
+
 concurrency:
   group: fork-sync
   cancel-in-progress: false
@@ -29,15 +37,23 @@ jobs:
     permissions:
       actions: write
       contents: write
-      issues: write
     outputs:
       changed: ${{ steps.rebase.outputs.changed }}
       released: ${{ steps.released.outputs.released }}
       upstream_tag: ${{ steps.tags.outputs.latest }}
+      latest_sha: ${{ steps.tags.outputs.latest_sha }}
+      base_sha: ${{ steps.tags.outputs.base_sha }}
+      base_version: ${{ steps.tags.outputs.base_version }}
+      base_source: ${{ steps.tags.outputs.base_source }}
+      detect_state: ${{ steps.tags.outputs.state }}
+      detect_error: ${{ steps.tags.outputs.detect_error }}
+      old_main: ${{ steps.tags.outputs.old_main }}
+      conflict: ${{ steps.rebase.outputs.conflict }}
+      conflicts: ${{ steps.rebase.outputs.conflicts }}
+      unsigned: ${{ steps.rebase.outputs.unsigned }}
       sha: ${{ steps.result.outputs.sha }}
       version: ${{ steps.version.outputs.version }}
     env:
-      UPSTREAM_URL: https://github.com/stablyai/orca.git
       NODE_OPTIONS: --max-old-space-size=4096
     steps:
       - name: Require the deploy key
@@ -45,7 +61,7 @@ jobs:
           FORK_SYNC_DEPLOY_KEY: ${{ secrets.FORK_SYNC_DEPLOY_KEY }}
         run: |
           if [ -z "$FORK_SYNC_DEPLOY_KEY" ]; then
-            echo "::error::Actions secret FORK_SYNC_DEPLOY_KEY is empty. Add a write deploy key to saltyfireball/orca and store its private key as FORK_SYNC_DEPLOY_KEY (FORK.md)."
+            echo "::error::Actions secret FORK_SYNC_DEPLOY_KEY is empty. Add a write deploy key to $GITHUB_REPOSITORY and store its private key as FORK_SYNC_DEPLOY_KEY (FORK.md)."
             exit 1
           fi
 
@@ -58,44 +74,19 @@ jobs:
           filter: blob:none
           ssh-key: ${{ secrets.FORK_SYNC_DEPLOY_KEY }}
 
-      - name: Find the newest stable upstream tag
+      # Base detection and its reasoning live in the script (FORK.md "How sync works").
+      - name: Find the newest stable upstream tag and the fork base
         id: tags
         shell: bash
         run: |
           set -euo pipefail
           git remote add upstream "$UPSTREAM_URL"
-          latest="$(git ls-remote --tags --refs upstream 'v*' \
-            | sed 's#.*refs/tags/##' \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
-            | sort -V | tail -n 1)"
-          if [ -z "$latest" ]; then
-            echo "::error::No stable vX.Y.Z tag found upstream"
-            exit 1
-          fi
-          git fetch --no-tags --filter=blob:none upstream '+refs/tags/v*:refs/upstream-tags/v*'
-          # The fork's base is the newest stable upstream tag already under main.
-          stable="$(git for-each-ref --format='%(refname:lstrip=2)' 'refs/upstream-tags/' \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V -r)"
-          base=''
-          for tag in $stable; do
-            if git merge-base --is-ancestor "refs/upstream-tags/$tag" HEAD; then
-              base="$tag"
-              break
-            fi
-          done
-          if [ -z "$base" ]; then
-            echo "::error::main does not contain any stable upstream tag"
-            exit 1
-          fi
-          echo "latest=$latest" >>"$GITHUB_OUTPUT"
-          echo "base=$base" >>"$GITHUB_OUTPUT"
-          echo "old_main=$(git rev-parse HEAD)" >>"$GITHUB_OUTPUT"
-          echo "main is on $base, newest upstream is $latest"
+          bash config/scripts/fork/fork-sync.sh detect
 
       # A rebase re-commits every fork commit; with this key they are SSH-signed by the fork owner.
       - name: Set up commit signing
         id: signing
-        if: steps.tags.outputs.base != steps.tags.outputs.latest
+        if: steps.tags.outputs.state == 'behind'
         shell: bash
         env:
           FORK_GIT_SIGNING_KEY: ${{ secrets.FORK_GIT_SIGNING_KEY }}
@@ -125,52 +116,22 @@ jobs:
           echo "enabled=true" >>"$GITHUB_OUTPUT"
           echo "Rebased commits will be signed and committed by $name."
 
+      # On a conflict main is left as it was (the push below never runs); the status job reports it.
       - name: Rebase fork commits onto the newest tag
         id: rebase
+        if: steps.tags.outputs.state == 'behind'
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
-          BASE: ${{ steps.tags.outputs.base }}
-          LATEST: ${{ steps.tags.outputs.latest }}
+          BASE_SHA: ${{ steps.tags.outputs.base_sha }}
+          LATEST_SHA: ${{ steps.tags.outputs.latest_sha }}
           SIGNING: ${{ steps.signing.outputs.enabled }}
         run: |
           set -euo pipefail
-          if [ "$BASE" = "$LATEST" ]; then
-            echo "changed=false" >>"$GITHUB_OUTPUT"
-            exit 0
-          fi
           if [ "$SIGNING" != 'true' ]; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           fi
-          echo "Fork commits:"
-          git log --oneline "refs/upstream-tags/$BASE..HEAD"
-          if ! git rebase --onto "refs/upstream-tags/$LATEST" "refs/upstream-tags/$BASE" main; then
-            conflicts="$(git diff --name-only --diff-filter=U)"
-            git rebase --abort
-            title="fork-sync conflict on $LATEST"
-            body="$(printf 'Rebasing the fork commits from %s onto %s stopped on conflicts.\n\nConflicting files:\n\n%s\n\nRun: %s/%s/actions/runs/%s\n' \
-              "$BASE" "$LATEST" "$(printf '%s\n' "$conflicts" | sed 's/^/- /')" \
-              "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")"
-            existing="$(gh issue list -R saltyfireball/orca --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')"
-            if [ -z "$existing" ]; then
-              gh issue create -R saltyfireball/orca --title "$title" --body "$body"
-            else
-              gh issue comment "$existing" -R saltyfireball/orca --body "$body"
-            fi
-            echo "::error::$title"
-            exit 1
-          fi
-          if [ "$SIGNING" = 'true' ]; then
-            unsigned="$(git log --format='%G? %h %s' "refs/upstream-tags/$LATEST..HEAD" | grep -v '^G ' || true)"
-            if [ -n "$unsigned" ]; then
-              printf '%s\n' "$unsigned"
-              echo "::error::Rebased commits without a good signature from FORK_GIT_SIGNING_KEY"
-              exit 1
-            fi
-            echo "Every rebased commit is signed."
-          fi
-          echo "changed=true" >>"$GITHUB_OUTPUT"
+          bash config/scripts/fork/fork-sync.sh rebase
 
       # Straight after the rebase, so the key is gone before pnpm install runs package scripts.
       - name: Remove the signing key
@@ -277,7 +238,7 @@ jobs:
           tags_at_sha="$(git ls-remote --tags origin 'v*' \
             | awk -v sha="$SHA" '$1 == sha { sub("refs/tags/", "", $2); sub("\\^\\{\\}$", "", $2); print $2 }' \
             | sort -u)"
-          published="$(gh api --paginate repos/saltyfireball/orca/releases \
+          published="$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" \
             --jq '.[] | select(.draft == false) | .tag_name' | sort -u)"
           if [ -n "$tags_at_sha" ] && [ -n "$(comm -12 <(printf '%s\n' "$tags_at_sha") <(printf '%s\n' "$published"))" ]; then
             echo "released=true" >>"$GITHUB_OUTPUT"
@@ -560,7 +521,54 @@ jobs:
             [ -f "release-assets/$url" ] || { echo "::error::latest-mac.yml names missing asset $url"; exit 1; }
           done < <(sed -n 's/^ *- url: //p' release-assets/latest-mac.yml)
           gh release create "$tag" "${assets[@]}" \
-            -R saltyfireball/orca \
+            -R "$GITHUB_REPOSITORY" \
             --target "$SHA" \
             --title "Blackfish $FORK_VERSION" \
             --notes "Self-signed macOS build of upstream $UPSTREAM_TAG plus the fork patches in FORK.md."
+
+  # Every run, whatever failed, publishes status.json on the status branch (read by the app's
+  # update check) and states the outcome, with resync commands, in the run summary. GITHUB_TOKEN
+  # suffices: that branch's tree holds no workflow files, and token pushes start no workflows.
+  status:
+    needs: [sync, orcad-template, orcad-template-fork, build-mac]
+    if: always() && github.repository == 'saltyfireball/orca'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Read the last published status
+        shell: bash
+        run: bash config/scripts/fork/fork-sync.sh previous >"$RUNNER_TEMP/previous-status.json"
+
+      - name: Compose the sync status and the run summary
+        id: compose
+        shell: bash
+        env:
+          SYNC_RESULT: ${{ needs.sync.result }}
+          BUILD_RESULTS: ${{ needs.orcad-template.result }} ${{ needs.orcad-template-fork.result }} ${{ needs.build-mac.result }}
+          LATEST: ${{ needs.sync.outputs.upstream_tag }}
+          LATEST_SHA: ${{ needs.sync.outputs.latest_sha }}
+          BASE_SHA: ${{ needs.sync.outputs.base_sha }}
+          BASE_VERSION: ${{ needs.sync.outputs.base_version }}
+          BASE_SOURCE: ${{ needs.sync.outputs.base_source }}
+          DETECT_STATE: ${{ needs.sync.outputs.detect_state }}
+          DETECT_ERROR: ${{ needs.sync.outputs.detect_error }}
+          OLD_MAIN: ${{ needs.sync.outputs.old_main }}
+          CHANGED: ${{ needs.sync.outputs.changed }}
+          CONFLICT: ${{ needs.sync.outputs.conflict }}
+          CONFLICTS: ${{ needs.sync.outputs.conflicts }}
+          UNSIGNED: ${{ needs.sync.outputs.unsigned }}
+        run: node config/scripts/fork/fork-sync-status.mjs "$RUNNER_TEMP/status.json" "$RUNNER_TEMP/previous-status.json"
+
+      - name: Publish the sync status
+        shell: bash
+        env:
+          STATUS_FILE: ${{ runner.temp }}/status.json
+          BASE_RECORD: ${{ steps.compose.outputs.base_record }}
+        run: bash config/scripts/fork/fork-sync.sh publish
