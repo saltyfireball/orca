@@ -23,6 +23,7 @@ import { ForkSleepersRow, type SleeperRowActions } from './ForkSleepersRow'
 import { ForkSleepersFilters, type SleepersView } from './ForkSleepersFilters'
 import { sleeperBulkTargets, type SleeperBulkAction } from './sleepers-view-model'
 import { useSleeperRows } from './use-sleeper-rows'
+import { forkLostWorkAvailable, openForkLostWork } from '../lost-work/ForkLostWorkHost'
 
 let open = false
 const listeners = new Set<() => void>()
@@ -130,6 +131,19 @@ function Body(): React.JSX.Element {
         >
           {t('fork.sleepers.sleepExceptVisible', 'Sleep all except visible')}
         </Button>
+        {forkLostWorkAvailable() ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto"
+            onClick={() => {
+              setOpen(false)
+              openForkLostWork()
+            }}
+          >
+            {t('fork.sleepers.lostWork', 'Find lost work')}
+          </Button>
+        ) : null}
       </div>
       <ForkSleepersFilters rows={rows ?? []} view={view} onChange={setView} />
       {selected.size > 0 ? (
