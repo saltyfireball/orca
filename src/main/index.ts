@@ -36,6 +36,7 @@ import {
   installForkUsageLedger,
   forkUsageLedgerStoreReader
 } from './fork/usage-ledger/usage-ledger-ipc'
+import { installForkSyncStatusBridge } from './fork/sync-status/sync-status-bridge'
 import {
   formatProfileStateStartupFailure,
   isDivergedProfileStateFailure,
@@ -216,6 +217,7 @@ if (preflightReady) {
   installForkMcpProfilesApp(() => state.store?.getSettings())
   // Fork (SLRM-2103/2104): the usage ledger behind the cache-cold cue and the usage report.
   installForkUsageLedger(() => forkUsageLedgerStoreReader(state.store))
+  installForkSyncStatusBridge()
   void app.whenReady().then(async () => {
     try {
       await wslHostsGateReady
