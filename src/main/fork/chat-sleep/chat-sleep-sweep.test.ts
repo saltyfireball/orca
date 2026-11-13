@@ -66,6 +66,18 @@ describe('forkChatSleepIdleSweep', () => {
     expect(sweep.keepAwake('s1')).toBe(false)
   })
 
+  it('keeps a pinned chat awake whether chat sleep is on or off', () => {
+    const off = forkChatSleepIdleSweep(() => ({ forkSleepersPinned: ['p1'] }), stock)
+    expect(off.keepAwake('p1')).toBe(true)
+    expect(off.keepAwake('s1')).toBe(false)
+    const on = forkChatSleepIdleSweep(
+      () => ({ forkChatSleep: true, forkChatSleepKeepVisible: false, forkSleepersPinned: ['p1'] }),
+      stock
+    )
+    expect(on.keepAwake('p1')).toBe(true)
+    expect(on.keepAwake('s1')).toBe(false)
+  })
+
   it('reads settings on every call and falls back to stock when the read throws', () => {
     let settings: ForkGlobalSettings = { forkChatSleep: true, forkChatSleepIdleMinutes: 5 }
     const sweep = forkChatSleepIdleSweep(() => settings, stock)
