@@ -43,6 +43,7 @@ import {
 import { ForkMarkedName } from '../../native-chat/fork/ForkMarkedName'
 import { BOT_HOME_TAB_LABEL_CLASSES, BotHomeTabAccent } from '../../bots/home-chat/BotHomeTabAccent'
 import { ForkTabTitle } from '@/fork/claude-account-chip/ForkClaudeAccountChips'
+import { ForkTabHue } from '@/fork/agent-state-color/ForkAgentStateColor'
 
 export default function SortableTab({
   tab,
@@ -238,6 +239,7 @@ export default function SortableTab({
         // Why: a real DOM child keeps both drop-indicator pseudo-elements free and pointer events reaching the tab.
         <span aria-hidden className="pointer-events-none absolute inset-0 bg-amber-500/10" />
       )}
+      <ForkTabHue tab={tab} status={activityStatus} unread={showUnreadActivity} chat={nativeChat} />
       <TerminalTabLeadingIcon
         agent={tabAgent}
         activityStatus={activityStatus}
