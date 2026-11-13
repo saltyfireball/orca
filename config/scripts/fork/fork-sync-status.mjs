@@ -41,6 +41,7 @@ export function inputFromEnv(env) {
     changed: env.CHANGED === 'true',
     conflict: env.CONFLICT === 'true',
     unsigned: env.UNSIGNED === 'true',
+    rebaseError: env.REBASE_ERROR === 'true',
     conflicts: list(env.CONFLICTS),
     upstreamUrl: env.UPSTREAM_URL ?? '',
     runUrl:
@@ -73,6 +74,12 @@ function stateAndReason(input) {
   }
   if (input.syncResult === 'cancelled') {
     return ['behind', 'The run was cancelled before main moved.']
+  }
+  if (input.rebaseError) {
+    return [
+      'behind',
+      `The rebase onto ${input.latest} failed before any conflict; see the run log.`
+    ]
   }
   if (input.unsigned) {
     return ['behind', 'The rebased commits were not all signed, so main was not pushed.']

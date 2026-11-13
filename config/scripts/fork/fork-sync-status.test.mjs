@@ -24,6 +24,14 @@ function input(env) {
 }
 
 describe('composeStatus', () => {
+  it('says so when the rebase failed before any conflict', () => {
+    const run = input({ SYNC_RESULT: 'failure', REBASE_ERROR: 'true' })
+    const status = composeStatus(run, null, NOW)
+    expect(status).toMatchObject({ state: 'behind', forkBaseSha: OLD, conflicts: [] })
+    expect(status.reason).toMatch(/failed before any conflict/)
+    expect(baseRecordFor(run)).toBe('')
+  })
+
   it('reports a successful sync as in sync on the new tag and records it', () => {
     const run = input({ SYNC_RESULT: 'success', CHANGED: 'true', BUILD_RESULTS: 'success success' })
     const status = composeStatus(run, null, NOW)

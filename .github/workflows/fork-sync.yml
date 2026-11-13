@@ -19,7 +19,8 @@ permissions:
   contents: read
 
 env:
-  # The upstream this fork follows; the sync and status jobs both read it.
+  # The upstream this fork follows; the sync and status jobs both read it. Each job's `if` names
+  # the same repository (an `if` cannot read env): the workflow runs in any fork, never upstream.
   UPSTREAM_URL: https://github.com/stablyai/orca.git
   # Holds status.json and the recorded base. The app reads it at the same name
   # (FORK_SYNC_STATUS_BRANCH in src/shared/fork/fork-sync-status.ts).
@@ -31,7 +32,7 @@ concurrency:
 
 jobs:
   sync:
-    if: github.repository == 'saltyfireball/orca'
+    if: github.repository != 'stablyai/orca'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -51,6 +52,7 @@ jobs:
       conflict: ${{ steps.rebase.outputs.conflict }}
       conflicts: ${{ steps.rebase.outputs.conflicts }}
       unsigned: ${{ steps.rebase.outputs.unsigned }}
+      rebase_error: ${{ steps.rebase.outputs.rebase_error }}
       sha: ${{ steps.result.outputs.sha }}
       version: ${{ steps.version.outputs.version }}
     env:
@@ -254,7 +256,7 @@ jobs:
   orcad-template:
     needs: sync
     if: >-
-      github.repository == 'saltyfireball/orca' &&
+      github.repository != 'stablyai/orca' &&
       (needs.sync.outputs.changed == 'true' || needs.sync.outputs.released != 'true' || inputs.force_build)
     permissions:
       contents: read
@@ -270,7 +272,7 @@ jobs:
   # from the same qualified lane slots, as desktop_template does, with the fork version stamped.
   orcad-template-fork:
     needs: [sync, orcad-template]
-    if: github.repository == 'saltyfireball/orca' && needs.orcad-template.result == 'success'
+    if: github.repository != 'stablyai/orca' && needs.orcad-template.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -346,7 +348,7 @@ jobs:
   build-mac:
     needs: [sync, orcad-template-fork]
     if: >-
-      github.repository == 'saltyfireball/orca' &&
+      github.repository != 'stablyai/orca' &&
       needs.orcad-template-fork.result == 'success' &&
       (needs.sync.outputs.changed == 'true' || needs.sync.outputs.released != 'true' || inputs.force_build)
     runs-on: macos-15
@@ -529,9 +531,11 @@ jobs:
   # Every run, whatever failed, publishes status.json on the status branch (read by the app's
   # update check) and states the outcome, with resync commands, in the run summary. GITHUB_TOKEN
   # suffices: that branch's tree holds no workflow files, and token pushes start no workflows.
+  # Its steps continue on error: a status that cannot be published must not turn a run red
+  # whose release went out.
   status:
     needs: [sync, orcad-template, orcad-template-fork, build-mac]
-    if: always() && github.repository == 'saltyfireball/orca'
+    if: always() && github.repository != 'stablyai/orca'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -543,11 +547,13 @@ jobs:
           ref: ${{ github.sha }}
 
       - name: Read the last published status
+        continue-on-error: true
         shell: bash
         run: bash config/scripts/fork/fork-sync.sh previous >"$RUNNER_TEMP/previous-status.json"
 
       - name: Compose the sync status and the run summary
         id: compose
+        continue-on-error: true
         shell: bash
         env:
           SYNC_RESULT: ${{ needs.sync.result }}
@@ -564,9 +570,11 @@ jobs:
           CONFLICT: ${{ needs.sync.outputs.conflict }}
           CONFLICTS: ${{ needs.sync.outputs.conflicts }}
           UNSIGNED: ${{ needs.sync.outputs.unsigned }}
+          REBASE_ERROR: ${{ needs.sync.outputs.rebase_error }}
         run: node config/scripts/fork/fork-sync-status.mjs "$RUNNER_TEMP/status.json" "$RUNNER_TEMP/previous-status.json"
 
       - name: Publish the sync status
+        continue-on-error: true
         shell: bash
         env:
           STATUS_FILE: ${{ runner.temp }}/status.json
