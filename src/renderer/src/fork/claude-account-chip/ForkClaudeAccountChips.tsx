@@ -21,6 +21,7 @@ import {
   ForkWorkerCleanupRowMark,
   ForkWorkerCleanupTabMark
 } from '../worker-cleanup/ForkWorkerCleanup'
+import { ForkCacheColdMark, ForkCacheColdRowMark } from '../cache-cold/ForkCacheColdCue'
 
 type SlotProps = Pick<ForkClaudeAccountChipProps, 'className' | 'onOpenMenu' | 'menu'>
 
@@ -62,6 +63,7 @@ export function ForkTabTitle({
     <>
       <span className={`${TAB_LABEL_WIDTH_CLASSES} mr-1 ${labelClassName}`}>{title}</span>
       <ForkChatSleepTabMark worktreeId={chip.tab.worktreeId} sessionId={chip.chat?.sessionId} />
+      <ForkCacheColdMark sessionId={chip.chat?.sessionId} className="mr-1 inline-flex shrink-0" />
       {/* SLRM-2098: queued for a free agent slot. */}
       <ForkAgentQueueTabBadge sessionId={chip.chat?.sessionId} />
       <ForkChatStallTabMark sessionId={chip.chat?.sessionId} />
@@ -95,6 +97,7 @@ export function ForkClaudeAccountAgentRowChip({
       <ForkChatSleepRowMark agent={agent} />
       <ForkChatStallRowMark agent={agent} />
       <ForkWorkerCleanupRowMark agent={agent} />
+      <ForkCacheColdRowMark agent={agent} />
       <ForkClaudeAccountChip resolution={resolution} menu={menu} {...slot} />
     </>
   )
