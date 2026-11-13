@@ -7,6 +7,7 @@ import { worktreeIdsEqual } from '../../../../shared/worktree/id'
 import type { createOrchestrationProjectionScope } from './runtime-agent-orchestration-scope'
 import { currentRunCoordinatorOrcaSessionId } from '../db/runs/run-coordinator-orca-session'
 import type { DispatchContextRow } from '../db/orchestration-records'
+import { forkWorkerRowLaunch } from '../../../fork/launch-defaults/launch-defaults-worker'
 import type {
   DispatchProjectionOptions,
   RuntimeAgentOrchestrationDependencies
@@ -135,6 +136,7 @@ export function composeOrchestrationDispatch(
     ...(parent.paneKey ? { parentPaneKey: parent.paneKey } : {}),
     ...(coordinator.handle ? { coordinatorHandle: coordinator.handle } : {}),
     ...(orchestrationRunId ? { orchestrationRunId } : {}),
-    ...(attention ? { attention } : {})
+    ...(attention ? { attention } : {}),
+    ...forkWorkerRowLaunch(db, dispatch.id)
   }
 }

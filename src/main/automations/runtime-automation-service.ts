@@ -29,6 +29,7 @@ import {
 } from './terminal-retention/run-terminal-workspace-session'
 import { automationRunSetupSkip } from './launch/automation-run-setup-skip'
 import { automationSystemSettled } from './dispatch/automation-wake-settle'
+import { withForkAutomationLaunchDefault } from '../fork/launch-defaults/launch-defaults-apply'
 
 const MAX_REMEMBERED_LAUNCHES = 256
 
@@ -165,7 +166,8 @@ export function createRuntimeAutomationService(input: {
     chatDispatcher: async (request) => {
       const { terminalHandle, ...launched } = await launchAutomationChatAgent(runtime, {
         ...request,
-        runs: store.listAutomationRuns(request.automation.id)
+        runs: store.listAutomationRuns(request.automation.id),
+        automation: withForkAutomationLaunchDefault(runtime, request.automation)
       })
       const launch = {
         ...launched,
@@ -188,7 +190,8 @@ export function createRuntimeAutomationService(input: {
       launch: async (request) => {
         const { terminalHandle, ...launched } = await launchAutomationTerminalAgent(runtime, {
           ...request,
-          runs: store.listAutomationRuns(request.automation.id)
+          runs: store.listAutomationRuns(request.automation.id),
+          automation: withForkAutomationLaunchDefault(runtime, request.automation)
         })
         const launch = {
           ...launched,
