@@ -17,6 +17,7 @@ import { useAppStore } from '../../index'
 import { useSettingsDarkTheme } from '@/hooks/use-document-dark-theme'
 import { pluginAppThemeSlotUpdate } from '../../../../../shared/plugin-theme-settings'
 import { isPluginContentSwitchedOff } from '../../../../../shared/plugins/plugin-system-settings'
+import { activeCustomAppThemePaintId } from '../../../../../shared/fork/custom-app-theme/custom-app-theme-settings'
 
 const appThemes = createPluginContentListStore<PluginThemeRegistration>({
   kind: 'themes',
@@ -56,7 +57,11 @@ export function usePluginAppThemeSync(): void {
   const settings = useAppStore((s) => s.settings)
   const updateSettings = useAppStore((s) => s.updateSettings)
   const dark = useSettingsDarkTheme()
-  const selected = (dark ? settings?.pluginAppThemeDark : settings?.pluginAppThemeLight) ?? null
+  // Fork SLRM-2097: a custom theme's cached paint stays valid while it is selected.
+  const selected =
+    activeCustomAppThemePaintId(settings, dark) ??
+    (dark ? settings?.pluginAppThemeDark : settings?.pluginAppThemeLight) ??
+    null
   const disabled = !selected || isPluginContentSwitchedOff(settings ?? undefined, selected)
 
   useEffect(() => {
