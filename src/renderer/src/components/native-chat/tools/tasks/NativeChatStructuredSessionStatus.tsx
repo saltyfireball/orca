@@ -25,6 +25,8 @@ const NO_CONFIRMED_STOPS: ReadonlyMap<string, string> = new Map()
 
 export function NativeChatStructuredSessionStatus(props: {
   sessionId: string
+  /** Fork: the pane's agent, for the MCP profile strip before the chat has a record. */
+  agent?: string
   /** The session's own status row, whose verdict the strip's children read. */
   paneKey: string
   isVisible: boolean
@@ -106,7 +108,7 @@ export function NativeChatStructuredSessionStatus(props: {
       {/* Fork (SLRM-2098): queued for a free agent slot (FORK.md). */}
       <ForkAgentQueueBanner sessionId={props.sessionId} />
       {/* Fork: the chat's MCP profile (FORK.md "MCP profiles"). */}
-      <ForkMcpProfileStrip sessionId={props.sessionId} />
+      <ForkMcpProfileStrip sessionId={props.sessionId} agent={props.agent} />
       {props.tasks.backgroundTasks.show ? (
         <NativeChatBackgroundTasksStatus
           isVisible={props.isVisible}

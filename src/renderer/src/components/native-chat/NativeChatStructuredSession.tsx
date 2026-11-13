@@ -349,6 +349,7 @@ export function NativeChatStructuredSession(props: Omit<NativeChatStructuredView
           />
           <NativeChatStructuredSessionStatus
             sessionId={props.sessionId}
+            agent={props.agent}
             paneKey={paneKey}
             isVisible={props.isVisible}
             tasks={controller}
