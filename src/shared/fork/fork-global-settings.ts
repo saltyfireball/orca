@@ -1,6 +1,7 @@
 import type { ForkCustomAppThemeSettings } from './custom-app-theme/custom-app-theme-settings'
 import type { LostWorkSettings } from './lost-work'
 import type { ForkMemoryGlobalSettings } from './memory-truth'
+import type { ForkLaunchDefaultsSettings } from './launch-defaults/launch-defaults-settings'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -48,6 +49,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkWorkerCleanupOnDone?: boolean
     /** Fork worker cleanup: clean up once the worker's branch is merged; unset is off. */
     forkWorkerCleanupOnMerged?: boolean
+    /** Fork launch defaults: model and effort per launch kind and agent; empty is stock. */
+    forkLaunchDefaults?: ForkLaunchDefaultsSettings
   }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */
