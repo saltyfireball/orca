@@ -14,11 +14,14 @@ import { NativeChatStructuredSubagentStatusBar } from './NativeChatSubagentStatu
 /** A structured chat's agents strip and open subagent's bar, which share the strip's one Stop. */
 export function useStructuredNativeChatSubagents({
   sessionId,
+  agent,
   paneKey,
   isVisible,
   controller
 }: {
   sessionId: string
+  /** Fork: the pane's agent, for the MCP profile strip (FORK.md "MCP profiles"). */
+  agent?: string
   paneKey: string
   isVisible: boolean
   controller: {
@@ -39,6 +42,7 @@ export function useStructuredNativeChatSubagents({
     strip: (
       <NativeChatStructuredSessionStatus
         sessionId={sessionId}
+        agent={agent}
         paneKey={paneKey}
         isVisible={isVisible}
         backgroundTasks={controller.backgroundTasks}
