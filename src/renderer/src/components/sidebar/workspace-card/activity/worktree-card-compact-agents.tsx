@@ -19,6 +19,7 @@ import {
 } from './worktree-card-agent-summary'
 import { useTranslate } from '@/i18n/use-translate'
 import { ForkAgentIconTabRing } from '@/fork/agent-row-tab-tint/ForkAgentIconTabRing'
+import { ForkAgentStripChildTally } from '@/fork/agent-child-tally/ForkAgentChildTallyBadge'
 
 import './worktree-card-compact-agent-row'
 
@@ -231,6 +232,7 @@ export function CompactAgentSummaryButton({
               +{hiddenGroupAgentCount}
             </span>
           )}
+          <ForkAgentStripChildTally agents={agents} />
         </>
       )}
       <ChevronDown
