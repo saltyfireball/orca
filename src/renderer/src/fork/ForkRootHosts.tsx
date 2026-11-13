@@ -1,5 +1,6 @@
 import { ForkChatSleepReporter } from './chat-sleep/ForkChatSleep'
 import { ForkSleepersDialogHost } from './sleepers/ForkSleepersDialog'
+import { ForkUsageReportHost } from './usage-report/ForkUsageReportDialog'
 import { ForkWorkerCleanupReporter } from './worker-cleanup/ForkWorkerCleanup'
 
 /**
@@ -12,6 +13,7 @@ export function ForkRootHosts(): React.JSX.Element {
       <ForkChatSleepReporter />
       <ForkWorkerCleanupReporter />
       <ForkSleepersDialogHost />
+      <ForkUsageReportHost />
     </>
   )
 }
