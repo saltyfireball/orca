@@ -86,6 +86,7 @@ import type {
   WorktreeApi
 } from './api/workspaces/worktree-api'
 import type { ForkUpdateInstallWaitApi } from '../shared/fork/update-install-wait'
+import type { ForkLostWorkApi } from '../shared/fork/lost-work'
 
 // Flattens contracts that share one PreloadApi key: an intersection is not type-identical to the flat shape.
 type Merged<T> = { [K in keyof T]: T[K] }
@@ -151,6 +152,7 @@ export type PreloadApi = {
   updater: UpdaterApi
   /** Fork restart guard (SLRM-1569); desktop only. */
   forkUpdateInstallWait?: ForkUpdateInstallWaitApi
+  forkLostWork?: ForkLostWorkApi
   notebook: FilesystemApi['notebook']
   docPreview: DocPreviewApi['docPreview']
   stats: StatsApi
