@@ -1,3 +1,5 @@
+import type { ForkMemoryTruth } from './fork/memory-truth'
+
 export type StatsSummary = {
   totalAgentsSpawned: number
   totalPRsCreated: number
@@ -78,4 +80,6 @@ export type MemorySnapshot = {
   /** App plus tracked-worktree committed bytes, present exactly with processCommitMetric; exceeding physical RAM is meaningful. */
   totalPrivateMemory?: number
   collectedAt: number
+  /** Fork (SLRM-2099): whole-tree attribution, chats, system memory and the warning status. */
+  forkTruth?: ForkMemoryTruth
 }
