@@ -46,5 +46,18 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-usage-report',
     keys: ['usage-report'],
     load: async () => (await import('./usage-report-handlers.js')).FORK_USAGE_REPORT_HANDLERS
+  },
+  // Fork: read and edit every app setting (FORK.md "Settings from the CLI").
+  {
+    name: 'fork-settings',
+    keys: [
+      'settings list',
+      'settings get',
+      'settings set',
+      'settings reset',
+      'settings export',
+      'settings apply'
+    ],
+    load: async () => (await import('./settings-handlers.js')).FORK_SETTINGS_HANDLERS
   }
 ]
