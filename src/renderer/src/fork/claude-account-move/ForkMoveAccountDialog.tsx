@@ -84,7 +84,7 @@ export function ForkMoveAccountDialogHost(): React.JSX.Element | null {
   const chat = 'sessionId' in current.scope
   return (
     <Dialog open onOpenChange={(open) => !open && setRequest(null)}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {chat
