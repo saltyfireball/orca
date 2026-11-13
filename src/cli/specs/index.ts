@@ -41,6 +41,7 @@ import { FORK_AGENT_QUEUE_COMMAND_SPECS } from '../fork/agent-queue-specs'
 import { FORK_LAUNCH_DEFAULTS_COMMAND_SPECS } from '../fork/launch-defaults-specs'
 import { FORK_SLEEPERS_COMMAND_SPECS } from '../fork/sleepers-specs'
 import { FORK_MCP_PROFILE_COMMAND_SPECS, withForkMcpProfileFlag } from '../fork/mcp-profile-specs'
+import { FORK_USAGE_REPORT_COMMAND_SPECS } from '../fork/usage-report-specs'
 
 // Fork: --mcp-profile on the commands that start agents (FORK.md "MCP profiles").
 export const COMMAND_SPECS: CommandSpec[] = withForkMcpProfileFlag([
@@ -84,5 +85,6 @@ export const COMMAND_SPECS: CommandSpec[] = withForkMcpProfileFlag([
   ...FORK_AGENT_QUEUE_COMMAND_SPECS,
   ...FORK_LAUNCH_DEFAULTS_COMMAND_SPECS,
   ...FORK_SLEEPERS_COMMAND_SPECS,
-  ...FORK_MCP_PROFILE_COMMAND_SPECS
+  ...FORK_MCP_PROFILE_COMMAND_SPECS,
+  ...FORK_USAGE_REPORT_COMMAND_SPECS
 ])

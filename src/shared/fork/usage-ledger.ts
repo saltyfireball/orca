@@ -1,6 +1,7 @@
 // SLRM-2103 (FORK.md "Usage ledger and cache-cold cue"): per-turn token usage of native chats,
 // kept by main in one small ledger. The cache-cold cue and the usage report both read it. Shared
 // by main, preload and the renderer.
+import type { ForkUsageReportApi } from './usage-report'
 
 /** Token counts in the shape the built-in price table takes; cache writes include 1 h writes. */
 export type ForkUsageTokens = {
@@ -163,8 +164,8 @@ export function formatForkTokens(tokens: number): string {
   return String(Math.round(tokens))
 }
 
-/** window.api.forkUsageLedger; desktop only. */
-export type ForkUsageLedgerApi = {
+/** window.api.forkUsageLedger; desktop only. The report side is SLRM-2104's. */
+export type ForkUsageLedgerApi = ForkUsageReportApi & {
   cacheStates: () => Promise<ForkCacheState[]>
   onCacheChanged: (callback: (states: ForkCacheState[]) => void) => () => void
 }

@@ -7,6 +7,7 @@ import { SERVE_PAIRING_HANDLER_GROUPS } from './serve-pairing-handler-groups'
 import { PLUGIN_HANDLER_GROUPS } from './plugin-handler-groups'
 import { HOST_HANDLER_GROUPS } from './host-handler-groups'
 import { WORKTREE_HANDLER_GROUPS } from './worktree-handler-groups'
+import { FORK_HANDLER_GROUPS } from './fork/fork-handler-groups'
 
 export type HandlerGroup = {
   name: string
@@ -265,41 +266,6 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     keys: ['ports'],
     load: async () => (await import('./handlers/ports.js')).PORTS_HANDLERS
   },
-  // SLRM-1503: move Claude chats between accounts (FORK.md).
-  {
-    name: 'fork-account-move',
-    keys: ['account which', 'account move'],
-    load: async () => (await import('./fork/account-move-handlers.js')).FORK_ACCOUNT_MOVE_HANDLERS
-  },
-  // SLRM-2096: list unmerged and forgotten work (FORK.md "Lost work").
-  {
-    name: 'fork-lost-work',
-    keys: ['lost-work'],
-    load: async () => (await import('./fork/lost-work-handlers.js')).FORK_LOST_WORK_HANDLERS
-  },
-  // SLRM-2098: the agent launch queue (FORK.md).
-  {
-    name: 'fork-agent-queue',
-    keys: ['agent queue list', 'agent queue start', 'agent queue cancel'],
-    load: async () => (await import('./fork/agent-queue-handlers.js')).FORK_AGENT_QUEUE_HANDLERS
-  },
-  // Fork launch defaults: model and effort per kind of launch (FORK.md "Launch defaults").
-  {
-    name: 'fork-launch-defaults',
-    keys: ['launch-defaults'],
-    load: async () =>
-      (await import('./fork/launch-defaults-handlers.js')).FORK_LAUNCH_DEFAULTS_HANDLERS
-  },
-  // Fork: Sleepers, list, sleep, wake and pin chats (FORK.md).
-  {
-    name: 'fork-sleepers',
-    keys: ['sleepers list', 'sleepers sleep', 'sleepers wake', 'sleepers pin', 'sleepers unpin'],
-    load: async () => (await import('./fork/sleepers-handlers.js')).FORK_SLEEPERS_HANDLERS
-  },
-  // Fork: MCP servers and profiles (FORK.md "MCP profiles").
-  {
-    name: 'fork-mcp-profile',
-    keys: ['mcp-profile list', 'mcp-profile show', 'mcp-profile set'],
-    load: async () => (await import('./fork/mcp-profile-handlers.js')).FORK_MCP_PROFILE_HANDLERS
-  }
+  // Fork: every fork command group, in one hook (FORK.md).
+  ...FORK_HANDLER_GROUPS
 ]

@@ -21,6 +21,7 @@ import { createLocalizedCatalog } from '@/i18n/localized-catalog'
 import { getNativeChatSplitQuickActions } from './native-chat-split-quick-actions'
 import { getForkClaudeMoveQuickActions } from '@/fork/claude-account-move/fork-claude-move-quick-actions'
 import { getForkSleepersQuickActions } from '@/fork/sleepers/fork-sleepers-quick-actions'
+import { getForkUsageReportQuickActions } from '@/fork/usage-report/fork-usage-report-quick-actions'
 
 export type CmdJQuickActionRunResult =
   | { status: 'ok' }
@@ -183,6 +184,8 @@ export const getCmdJQuickActions = createLocalizedCatalog((): CmdJQuickAction[] 
   ...getForkClaudeMoveQuickActions(),
   // Fork: open the Sleepers dialog (FORK.md).
   ...getForkSleepersQuickActions(),
+  // SLRM-2104: open the usage report (FORK.md).
+  ...getForkUsageReportQuickActions(),
   {
     id: CREATE_WORKSPACE_QUICK_ACTION_ID,
     kind: 'action',
