@@ -2,8 +2,8 @@
 // plugin themes (same contrast checks, same startup cache), plus its radius and UI font.
 import { useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { buildAppFontFamily } from '@/lib/app-font-family'
-import type { AppThemePaint } from '@/lib/document-theme'
+import { buildAppFontFamily } from '@/app-shell/appearance/app-font-family'
+import type { AppThemePaint } from '@/app-shell/appearance/document-theme'
 import { useAppStore } from '@/store'
 import {
   activeCustomAppTheme,
