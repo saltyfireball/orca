@@ -17,6 +17,10 @@ import {
 } from './use-claude-account'
 import { ForkChatSleepRowMark, ForkChatSleepTabMark } from '../chat-sleep/ForkChatSleep'
 import { ForkChatStallRowMark, ForkChatStallTabMark } from '../chat-stall/ForkChatStall'
+import {
+  ForkWorkerCleanupRowMark,
+  ForkWorkerCleanupTabMark
+} from '../worker-cleanup/ForkWorkerCleanup'
 
 type SlotProps = Pick<ForkClaudeAccountChipProps, 'className' | 'onOpenMenu' | 'menu'>
 
@@ -60,6 +64,7 @@ export function ForkTabTitle({
       {/* SLRM-2098: queued for a free agent slot. */}
       <ForkAgentQueueTabBadge sessionId={chip.chat?.sessionId} />
       <ForkChatStallTabMark sessionId={chip.chat?.sessionId} />
+      <ForkWorkerCleanupTabMark sessionId={chip.chat?.sessionId} />
       <ForkClaudeAccountTabChip {...chip} />
     </>
   )
@@ -88,6 +93,7 @@ export function ForkClaudeAccountAgentRowChip({
     <>
       <ForkChatSleepRowMark agent={agent} />
       <ForkChatStallRowMark agent={agent} />
+      <ForkWorkerCleanupRowMark agent={agent} />
       <ForkClaudeAccountChip resolution={resolution} menu={menu} {...slot} />
     </>
   )
