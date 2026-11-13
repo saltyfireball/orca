@@ -28,11 +28,10 @@ export function pickForkChatSleepSettings(value: unknown): ChatSleepSettings {
   if (typeof value !== 'object' || value === null) {
     return {}
   }
-  const read = (key: keyof ChatSleepSettings): unknown =>
-    key in value ? Reflect.get(value, key) : undefined
-  const enabled = read('forkChatSleep')
-  const minutes = read('forkChatSleepIdleMinutes')
-  const keepVisible = read('forkChatSleepKeepVisible')
+  const enabled = 'forkChatSleep' in value ? value.forkChatSleep : undefined
+  const minutes = 'forkChatSleepIdleMinutes' in value ? value.forkChatSleepIdleMinutes : undefined
+  const keepVisible =
+    'forkChatSleepKeepVisible' in value ? value.forkChatSleepKeepVisible : undefined
   return {
     ...(typeof enabled === 'boolean' ? { forkChatSleep: enabled } : {}),
     ...(typeof minutes === 'number' ? { forkChatSleepIdleMinutes: minutes } : {}),

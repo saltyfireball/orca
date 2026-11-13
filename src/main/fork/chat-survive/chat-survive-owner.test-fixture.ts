@@ -20,42 +20,54 @@ const supervisor = createProviderSpawnSpec(
   process.env,
   process.platform
 )
-const plan = planChatSurviveBrokerSpawn(
-  {
-    program: supervisor.program,
-    args: supervisor.args,
-    env: supervisor.env,
-    cwd: supervisor.cwd,
-    detached: supervisor.detached
-  },
-  {
-    entryPath: join(import.meta.dirname, 'chat-survive-broker-entry.ts'),
-    socketDir: chatSurviveSocketDir(socketBase),
-    orphanTimeoutMs
-  }
-)
-if (!plan) {
-  process.stderr.write('{"error":"no plan"}\n')
-  process.exit(2)
-}
-const broker = spawnProcess({
-  ...plan.spawn,
-  // The broker is a TypeScript file here; the app runs the built JavaScript.
-  args: ['--import', tsxLoader, ...(plan.spawn.args ?? [])],
-  stdio: ['pipe', 'pipe', 'pipe', 'ipc']
-})
-broker.on('message', () => {})
-broker.once('spawn', () => {
-  process.stderr.write(
-    `${JSON.stringify({ brokerPid: broker.pid, socketPath: plan.socketPath, token: plan.token })}\n`
+// Plans and spawns the broker once its socket folder is made, as the app's launch check does.
+async function main(): Promise<void> {
+  const socketDir = await chatSurviveSocketDir(socketBase)
+  const plan = planChatSurviveBrokerSpawn(
+    {
+      program: supervisor.program,
+      args: supervisor.args,
+      env: supervisor.env,
+      cwd: supervisor.cwd,
+      detached: supervisor.detached
+    },
+    {
+      entryPath: join(import.meta.dirname, 'chat-survive-broker-entry.ts'),
+      socketDir,
+      orphanTimeoutMs
+    }
   )
-})
-process.stdin.pipe(broker.stdin)
-broker.stdout.pipe(process.stdout)
-broker.stderr.pipe(process.stderr)
-for (const stream of [broker.stdin, broker.stdout, broker.stderr, process.stdout, process.stderr]) {
-  stream.on('error', () => {})
+  if (!plan) {
+    process.stderr.write('{"error":"no plan"}\n')
+    process.exit(2)
+  }
+  const broker = spawnProcess({
+    ...plan.spawn,
+    // The broker is a TypeScript file here; the app runs the built JavaScript.
+    args: ['--import', tsxLoader, ...(plan.spawn.args ?? [])],
+    stdio: ['pipe', 'pipe', 'pipe', 'ipc']
+  })
+  broker.on('message', () => {})
+  broker.once('spawn', () => {
+    process.stderr.write(
+      `${JSON.stringify({ brokerPid: broker.pid, socketPath: plan.socketPath, token: plan.token })}\n`
+    )
+  })
+  process.stdin.pipe(broker.stdin)
+  broker.stdout.pipe(process.stdout)
+  broker.stderr.pipe(process.stderr)
+  for (const stream of [
+    broker.stdin,
+    broker.stdout,
+    broker.stderr,
+    process.stdout,
+    process.stderr
+  ]) {
+    stream.on('error', () => {})
+  }
+  broker.once('exit', (code, signal) => {
+    process.stderr.write(`exit ${code} ${signal}\n`, () => process.exit(0))
+  })
 }
-broker.once('exit', (code, signal) => {
-  process.stderr.write(`exit ${code} ${signal}\n`, () => process.exit(0))
-})
+
+void main()

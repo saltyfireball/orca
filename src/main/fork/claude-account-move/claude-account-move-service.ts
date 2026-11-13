@@ -36,7 +36,7 @@ export type ClaudeAccountMoveDeps = {
   /** The account a chat without a pin follows; null is System default. */
   selectedAccountId(): string | null
   /** Each account folder shares System default's conversation history (stock `projects` link). */
-  sharesHistory(fromHome: string, toHome: string): boolean
+  sharesHistory(fromHome: string, toHome: string): Promise<boolean>
   prepareAccount(accountId: string): Promise<void>
   pins: Pick<ClaudeSessionAccountPins, 'get' | 'set'>
   /** Stop the running turn; false when the host refused. */
@@ -207,8 +207,9 @@ export class ClaudeAccountMoveService {
     const fromHome =
       running ?? agentSessionAccountHomePath(record.accountHome) ?? this.deps.systemHome()
     if (running === toHome || (running === undefined && previous === accountId)) {
-      this.deps.pins.set(sessionId, accountId)
+      const saved = this.deps.pins.set(sessionId, accountId)
       this.pending.delete(sessionId)
+      await saved
       return { sessionId, name, status: 'unchanged' }
     }
     if (route.kind === 'account') {
@@ -218,18 +219,21 @@ export class ClaudeAccountMoveService {
         return cantMove('account-setup-failed')
       }
     }
-    if (!this.deps.sharesHistory(fromHome, toHome)) {
+    if (!(await this.deps.sharesHistory(fromHome, toHome))) {
       return cantMove('history-not-shared')
     }
-    this.deps.pins.set(sessionId, accountId)
+    // The pin and the pending entry change together, as before; only the file save is awaited.
+    const saved = this.deps.pins.set(sessionId, accountId)
     const busy = busyActivity(summary)
     if (!busy || running === undefined) {
       this.pending.delete(sessionId)
+      await saved
       return { sessionId, name, status: 'moved' }
     }
     if (!this.pending.has(sessionId)) {
       this.pending.set(sessionId, { previous })
     }
+    await saved
     if (!now) {
       return { sessionId, name, status: 'queued', busy }
     }
@@ -240,13 +244,13 @@ export class ClaudeAccountMoveService {
   }
 
   /** Drop a queued move: the chat goes back to the account it followed before. */
-  cancel(sessionId: string): { cancelled: boolean } {
+  async cancel(sessionId: string): Promise<{ cancelled: boolean }> {
     const entry = this.pending.get(sessionId)
     if (!entry || !this.settlePending(sessionId)) {
       return { cancelled: false }
     }
     this.pending.delete(sessionId)
-    this.deps.pins.set(sessionId, entry.previous)
+    await this.deps.pins.set(sessionId, entry.previous)
     return { cancelled: true }
   }
 }

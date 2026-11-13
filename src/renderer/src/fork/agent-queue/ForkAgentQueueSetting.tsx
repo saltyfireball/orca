@@ -13,7 +13,7 @@ import {
   SettingsSwitchRow
 } from '../../components/settings/form-controls/SettingsFormControls'
 import { Input } from '@/components/ui/input'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 
 type Props = {
   settings: GlobalSettings
@@ -57,21 +57,22 @@ function LimitInput({
 }
 
 export function ForkAgentQueueSetting({ settings, updateSettings }: Props): React.JSX.Element {
+  const t = useTranslate()
   const config = forkAgentQueueConfigOf(settings)
   const maxLiveLabel = config.separate
-    ? translate('fork.agentQueue.setting.maxInteractive', 'Most chats you start running at once')
-    : translate('fork.agentQueue.setting.maxLive', 'Most agents running at once')
+    ? t('fork.agentQueue.setting.maxInteractive', 'Most chats you start running at once')
+    : t('fork.agentQueue.setting.maxLive', 'Most agents running at once')
   return (
     <section className="space-y-3">
       <SettingsSubsectionHeader
-        title={translate('fork.agentQueue.setting.title', 'Agent limit')}
-        description={translate(
+        title={t('fork.agentQueue.setting.title', 'Agent limit')}
+        description={t(
           'fork.agentQueue.setting.description',
           'Cap how many agents run at once. New launches past the cap wait in a queue and start in order as running agents stop. Sleeping chats do not count.'
         )}
       />
       <SettingsSwitchRow
-        label={translate('fork.agentQueue.setting.enabled', 'Limit running agents')}
+        label={t('fork.agentQueue.setting.enabled', 'Limit running agents')}
         checked={config.enabled}
         onChange={() => updateSettings({ forkAgentQueueEnabled: !config.enabled })}
       />
@@ -79,7 +80,7 @@ export function ForkAgentQueueSetting({ settings, updateSettings }: Props): Reac
         <>
           <SettingsRow
             label={maxLiveLabel}
-            description={translate(
+            description={t(
               'fork.agentQueue.setting.maxLiveHelp',
               'Default {{count}}. Chats you start go ahead of orchestration workers in the queue.',
               { count: FORK_AGENT_QUEUE_DEFAULT_MAX_LIVE }
@@ -93,8 +94,8 @@ export function ForkAgentQueueSetting({ settings, updateSettings }: Props): Reac
             }
           />
           <SettingsSwitchRow
-            label={translate('fork.agentQueue.setting.separate', 'Separate limit for workers')}
-            description={translate(
+            label={t('fork.agentQueue.setting.separate', 'Separate limit for workers')}
+            description={t(
               'fork.agentQueue.setting.separateHelp',
               'Orchestration workers get their own cap instead of sharing one with your chats.'
             )}
@@ -103,28 +104,19 @@ export function ForkAgentQueueSetting({ settings, updateSettings }: Props): Reac
           />
           {config.separate ? (
             <SettingsRow
-              label={translate(
-                'fork.agentQueue.setting.maxWorkers',
-                'Most workers running at once'
-              )}
+              label={t('fork.agentQueue.setting.maxWorkers', 'Most workers running at once')}
               control={
                 <LimitInput
                   value={config.maxWorkers}
-                  label={translate(
-                    'fork.agentQueue.setting.maxWorkers',
-                    'Most workers running at once'
-                  )}
+                  label={t('fork.agentQueue.setting.maxWorkers', 'Most workers running at once')}
                   onCommit={(next) => updateSettings({ forkAgentQueueMaxWorkers: next })}
                 />
               }
             />
           ) : null}
           <SettingsSwitchRow
-            label={translate(
-              'fork.agentQueue.setting.resumeBypass',
-              'Never hold a chat that wakes'
-            )}
-            description={translate(
+            label={t('fork.agentQueue.setting.resumeBypass', 'Never hold a chat that wakes')}
+            description={t(
               'fork.agentQueue.setting.resumeBypassHelp',
               'Waking or resuming a chat that ran before starts at once, even at the limit. Only new launches wait.'
             )}

@@ -2,6 +2,7 @@
 // session: this desktop's usage store, or the remote host's accounts snapshot.
 import { useCallback, useSyncExternalStore } from 'react'
 import { useAppStore } from '@/store'
+import { recomputeOn } from '@/lib/recompute-on'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import type { ProviderRateLimits, RateLimitState } from '../../../../shared/rate-limit-types'
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
@@ -98,9 +99,12 @@ export function useForkClaudeAccountUsage(account: ForkClaudeAccount | null): {
   const rateLimits = useAppStore((state) => state.rateLimits)
   const settings = useAppStore((state) => state.settings)
   const fetchInactive = useAppStore((state) => state.fetchInactiveClaudeAccountUsage)
-  useSyncExternalStore(subscribeClaudeChipCache, getClaudeChipCacheVersion)
+  const cacheVersion = useSyncExternalStore(subscribeClaudeChipCache, getClaudeChipCacheVersion)
   const place = account ? ownerPlace(account.ownerKey) : null
-  const remote = place?.kind === 'remote' ? getClaudeHostSnapshot(place.target) : undefined
+  const remote =
+    place?.kind === 'remote'
+      ? recomputeOn([cacheVersion], () => getClaudeHostSnapshot(place.target))
+      : undefined
   const limits = account ? accountUsage(account, { rateLimits, settings }, remote) : null
   const inactive =
     account && place?.kind === 'local'
