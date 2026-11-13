@@ -6,6 +6,7 @@
 import { EventEmitter } from 'node:events'
 import { Transform, Writable, type TransformCallback } from 'node:stream'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
+import { chatSurviveBackoffPoll } from './chat-survive-backoff-poll'
 import type { ChatSurviveConnection } from './chat-survive-client'
 import { isRecord, type ChatSurviveExit } from './chat-survive-protocol'
 import {
@@ -16,8 +17,9 @@ import {
   type ChatSurviveStreamTracker
 } from './chat-survive-stream-mark'
 
-/** How often an adopted child checks that its broker has gone after the provider exited. */
-const EXIT_POLL_MS = 100
+/** How soon, then how often at most, an adopted child checks its broker has gone after the provider. */
+const EXIT_POLL_FIRST_MS = 100
+const EXIT_POLL_MAX_MS = 1_000
 
 /**
  * Replays from `mark.out`: below `mark.seen` only the still-pending control requests, up to
@@ -180,13 +182,18 @@ function reportExit(
       return
     }
     watching = true
-    const timer = setInterval(() => {
-      if (gone(pid)) {
-        clearInterval(timer)
+    // The broker leaves right after its provider, so the first look nearly always finds it gone.
+    chatSurviveBackoffPoll(
+      () => {
+        if (!gone(pid)) {
+          return false
+        }
         finish()
-      }
-    }, EXIT_POLL_MS)
-    timer.unref()
+        return true
+      },
+      EXIT_POLL_FIRST_MS,
+      EXIT_POLL_MAX_MS
+    )
   }
   void connection.exited.then((reported) => {
     exit = reported

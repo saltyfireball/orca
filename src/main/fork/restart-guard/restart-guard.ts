@@ -33,8 +33,6 @@ import {
 } from './restart-guard-machine'
 import { createUpdateInstallWait } from './update-install-wait'
 
-const MENU_REFRESH_MS = 30_000
-
 const schedule = (run: () => void, ms: number): (() => void) => {
   const timer = setTimeout(run, ms)
   return () => clearTimeout(timer)
@@ -201,7 +199,10 @@ export function installForkRestartGuard(): void {
     // macOS logout and shutdown arrive as a native quit; this fires first and lets it through.
     powerMonitor.on('shutdown', systemShutdown.mark)
     powerMonitor.on('resume', systemShutdown.reset)
-    setInterval(refreshMenu, MENU_REFRESH_MS).unref()
+    // Updater status and wait progress push refreshMenu; focus catches any change made without
+    // a status push (such as a cancelled install), before the menu is in front of anyone.
+    app.on('browser-window-focus', refreshMenu)
+    app.on('did-become-active', refreshMenu)
   })
 }
 

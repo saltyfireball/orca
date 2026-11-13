@@ -2,7 +2,7 @@
 // of a provider supervisor into the spawn of a broker that runs that same supervisor, and makes
 // the broker's private socket and token.
 import { randomBytes } from 'node:crypto'
-import { lstatSync, mkdirSync } from 'node:fs'
+import { lstat, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { PipedProcessSpec } from '@orca/process-host/process-spec'
@@ -28,27 +28,27 @@ export function isProviderSupervisorSpawn(spec: Pick<PipedProcessSpec, 'args'>):
   return flag === '-e' && script === POSIX_PROVIDER_SUPERVISOR_SCRIPT && separator === '--'
 }
 
+/** Makes the broker socket folder and checks it is private: a folder, ours, no group or other bits. */
+export async function prepareChatSurviveSocketDir(dir: string): Promise<boolean> {
+  try {
+    await mkdir(dir, { recursive: true, mode: 0o700 })
+    const stat = await lstat(dir)
+    const uid = process.getuid?.()
+    return (
+      stat.isDirectory() && (uid === undefined || stat.uid === uid) && (stat.mode & 0o077) === 0
+    )
+  } catch {
+    return false
+  }
+}
+
 /**
  * A private folder for broker sockets under the per-user temp folder, or null when it cannot be
  * made private (someone else's folder, a symlink, loose mode). Callers then spawn as today.
  */
-export function chatSurviveSocketDir(base: string = tmpdir()): string | null {
+export async function chatSurviveSocketDir(base: string = tmpdir()): Promise<string | null> {
   const dir = join(base, 'orca-chat-survive')
-  try {
-    mkdirSync(dir, { recursive: true, mode: 0o700 })
-    const stat = lstatSync(dir)
-    const uid = process.getuid?.()
-    if (
-      !stat.isDirectory() ||
-      (uid !== undefined && stat.uid !== uid) ||
-      (stat.mode & 0o077) !== 0
-    ) {
-      return null
-    }
-    return dir
-  } catch {
-    return null
-  }
+  return (await prepareChatSurviveSocketDir(dir)) ? dir : null
 }
 
 export type ChatSurviveBrokerPlan = {

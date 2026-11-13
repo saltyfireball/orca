@@ -1,7 +1,7 @@
 // Chat stall (FORK.md): is a stalled chat's provider still running? Reads the process table once
 // and judges the provider tree from its root (the pid the chat's lease records: the provider
 // supervisor, or a chat-survive broker in front of it). Electron-free, so tests feed it a table.
-import { execFile } from 'node:child_process'
+import { runProcess } from '@orca/process-host'
 import type { ForkChatStallLiveness } from '../../../shared/fork/chat-stall'
 import { forkProviderWriterParents } from '../chat-survive/chat-survive-writer'
 
@@ -35,14 +35,20 @@ export function readForkProcessRows(
   if (platform === 'win32') {
     return Promise.resolve(null)
   }
-  return new Promise((resolve) => {
-    execFile(
-      'ps',
-      ['-A', '-o', 'pid=,ppid=,pgid=,stat='],
-      { timeout: PS_TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024 },
-      (error, stdout) => resolve(error ? null : parseForkProcessRows(stdout))
-    )
-  })
+  return runProcess({
+    program: 'ps',
+    args: ['-A', '-o', 'pid=,ppid=,pgid=,stat='],
+    timeoutMs: PS_TIMEOUT_MS,
+    maxOutputBytes: 16 * 1024 * 1024,
+    killOnOutputLimit: true
+  }).then(
+    // Same failures execFile reported: a nonzero exit, a timeout or output past the cap.
+    (result) =>
+      result.code !== 0 || result.timedOut || result.outputTruncated
+        ? null
+        : parseForkProcessRows(result.stdout),
+    () => null
+  )
 }
 
 function descendantsOf(rootPid: number, rows: readonly ForkProcessRow[]): ForkProcessRow[] {

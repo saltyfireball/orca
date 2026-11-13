@@ -1,6 +1,6 @@
 // SLRM-1503: the stock launch and launch-home reads ask here first. A pinned chat launches under its
 // pin; every other chat falls through to the global selection exactly as stock does.
-import { statSync } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import type { ClaudeAccountRecipe } from '../../../shared/agent-session/lifecycle/agent-session-acquired-account'
 import {
   agentSessionAccountHome,
@@ -20,9 +20,9 @@ import {
 } from './claude-session-account-pins'
 import { pinnedClaudeRoute, type PinnedClaudeRouter } from './claude-pinned-route'
 
-function isDirectory(path: string): boolean {
+async function isDirectory(path: string): Promise<boolean> {
   try {
-    return statSync(path).isDirectory()
+    return (await stat(path)).isDirectory()
   } catch {
     return false
   }
@@ -61,7 +61,7 @@ export async function forkPinnedClaudeLaunchAccount(
     delete env[CLAUDE_INJECTED_CONFIG_DIR_ENV]
     return { route: 'system', home, configDir: env.CLAUDE_CONFIG_DIR ?? null }
   }
-  if (!isDirectory(route.home)) {
+  if (!(await isDirectory(route.home))) {
     await router.prepareAccount?.(route.accountId)
   }
   env.CLAUDE_CONFIG_DIR = route.home

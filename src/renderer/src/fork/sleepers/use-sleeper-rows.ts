@@ -2,13 +2,15 @@
 // every few seconds and after each action) and lays the renderer's own facts over it.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAppStore } from '@/store'
+import { selectWorktreesByRepo } from '@/store/workspaces/catalog/workspace-record-fields'
+import { installWindowVisibilityInterval } from '@/lib/window-activity/window-visibility-interval'
 import { readForkSleepersPinned, type SleeperRow } from '../../../../shared/fork/sleepers'
 import type { ForkSleepersListResult } from '../../../../shared/fork/sleepers-wire'
 import { onScreenChatSessionIds } from '../chat-sleep/chat-sleep-view'
 import { fetchSleepers } from './sleepers-actions'
 import { mergeSleeperRows, sleeperMemoryByPaneKey } from './sleepers-view-model'
 
-/** How often an open dialog reads the host again. Only while it is open. */
+/** How often an open dialog reads the host again. Only while it is open and the window shows. */
 const REFRESH_MS = 5_000
 
 export function useSleeperRows(open: boolean): {
@@ -43,11 +45,11 @@ export function useSleeperRows(open: boolean): {
           }
         })
     }
-    read()
-    const timer = setInterval(read, REFRESH_MS)
+    // Reads now, then every REFRESH_MS while the window is visible (and again when it shows).
+    const stop = installWindowVisibilityInterval({ run: read, intervalMs: REFRESH_MS })
     return () => {
       live = false
-      clearInterval(timer)
+      stop()
     }
   }, [open, tick])
 
@@ -57,7 +59,7 @@ export function useSleeperRows(open: boolean): {
   const pinnedSetting = useAppStore((s) => s.settings?.forkSleepersPinned)
   const memorySnapshot = useAppStore((s) => s.memorySnapshot)
   const sleepingRecords = useAppStore((s) => s.sleepingAgentSessionsByPaneKey)
-  const worktreesByRepo = useAppStore((s) => s.worktreesByRepo)
+  const worktreesByRepo = useAppStore(selectWorktreesByRepo)
 
   const rows = useMemo(() => {
     if (!reply) {

@@ -92,7 +92,7 @@ export function lostWorkTestDeps(
     listWorktrees: async (repo) =>
       parseWorktreeList(await sandbox.git(['worktree', 'list', '--porcelain'], { cwd: repo.path })),
     isTracked: (id) => tracked.has(id),
-    pathExists: existsSync,
+    pathExists: async (path) => existsSync(path),
     now: () => 1_000
   }
 }
