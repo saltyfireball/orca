@@ -17,6 +17,7 @@ import { ForkAccountChipSetting } from '@/fork/claude-account-chip/ForkAccountCh
 import { ForkChildTallySetting } from '@/fork/agent-child-tally/ForkChildTallySetting'
 import { ForkLostWorkSettings } from '@/fork/lost-work/ForkLostWorkSettings'
 import { ForkChatSleepSetting } from '@/fork/chat-sleep/ForkChatSleepSetting'
+import { ForkMemorySettings } from '@/fork/memory-truth/ForkMemorySettings'
 
 type AdvancedPaneProps = {
   settings: GlobalSettings
@@ -157,6 +158,7 @@ export function AdvancedPane({ settings, updateSettings }: AdvancedPaneProps): R
       <ForkChildTallySetting settings={settings} updateSettings={updateSettings} />
       <ForkLostWorkSettings settings={settings} updateSettings={updateSettings} />
       <ForkChatSleepSetting settings={settings} updateSettings={updateSettings} />
+      <ForkMemorySettings settings={settings} updateSettings={updateSettings} />
     </div>
   )
 }

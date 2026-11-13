@@ -88,6 +88,7 @@ import type {
 import type { ForkUpdateInstallWaitApi } from '../shared/fork/update-install-wait'
 import type { ForkLostWorkApi } from '../shared/fork/lost-work'
 import type { ForkChatSleepApi } from '../shared/fork/chat-sleep'
+import type { ForkMemoryApi } from '../shared/fork/memory-truth'
 
 // Flattens contracts that share one PreloadApi key: an intersection is not type-identical to the flat shape.
 type Merged<T> = { [K in keyof T]: T[K] }
@@ -157,6 +158,8 @@ export type PreloadApi = {
   forkLostWork?: ForkLostWorkApi
   /** Fork chat sleep; desktop only. */
   forkChatSleep?: ForkChatSleepApi
+  /** Fork memory warning (SLRM-2099); desktop only. */
+  forkMemory?: ForkMemoryApi
   notebook: FilesystemApi['notebook']
   docPreview: DocPreviewApi['docPreview']
   stats: StatsApi
