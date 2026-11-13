@@ -803,6 +803,9 @@ Upstream files only get short hooks, which keeps rebases small:
   - `workspace-cleanup-dialog-header.tsx` renders `ForkLostWorkButton`, hidden without the
     bridge; `AdvancedPane.tsx` renders `ForkLostWorkSettings`; `forkLostWork` is in
     `src/shared/fork/fork-global-settings.ts`.
+  - The list also opens from the command palette (`getForkLostWorkQuickActions`, one spread in
+    `cmd-j/quick-actions.ts`) and from the Sleepers dialog, through `ForkLostWorkHost` in
+    `ForkRootHosts.tsx`.
 - Sleepers (SLRM-2094): `StructuredAgentSessionIdleSweepDeps` takes an optional `attach`, called
   with the sweep from its constructor, and the sweep gains `sweepNow(sessionId)`, which runs the
   stock `sweepSession` with a `force` flag: no idle window, no keep-awake, and it also refuses a
