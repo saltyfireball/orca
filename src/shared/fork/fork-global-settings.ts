@@ -51,6 +51,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkWorkerCleanupOnMerged?: boolean
     /** Fork launch defaults: model and effort per launch kind and agent; empty is stock. */
     forkLaunchDefaults?: ForkLaunchDefaultsSettings
+    /** Fork sleepers: native chat session ids that never auto-sleep; unset is none. */
+    forkSleepersPinned?: string[]
   }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */
