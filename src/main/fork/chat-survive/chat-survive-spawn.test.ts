@@ -3,7 +3,7 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SpawnOptions as SdkSpawnOptions } from '@anthropic-ai/claude-agent-sdk'
 import { spawnProcess } from '@orca/process-host'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
@@ -16,6 +16,10 @@ import { CHAT_SURVIVE_SPEC_ENV } from './chat-survive-broker-spec'
 import { dropChatSurviveClaim, holdChatSurviveClaim } from './chat-survive-claims'
 import type { ChatSurviveConnection } from './chat-survive-client'
 import type { ChatSurviveRecord } from './chat-survive-registry'
+import {
+  refreshChatSurviveLaunchReady,
+  resetChatSurviveLaunchReadyForTests
+} from './chat-survive-launch-ready'
 import {
   chatSurviveRecordName,
   forkChatSurviveSpawner,
@@ -43,7 +47,10 @@ function alive(pid: number): boolean {
   }
 }
 
+beforeEach(() => refreshChatSurviveLaunchReady(ENTRY))
+
 afterEach(() => {
+  resetChatSurviveLaunchReadyForTests()
   setChatSurviveConfigReader(null)
   // Only processes these tests started, by their own pids.
   for (const pid of pids) {
@@ -72,7 +79,8 @@ function supervisorSpawn(): PipedProcessSpec {
   return { program: spec.program, args: spec.args, env: spec.env, cwd: spec.cwd, detached: true }
 }
 
-function recordingSpawner(): {
+/** Records each spec and runs a stand-in: `true`, or Node with `nodeArgs` to stay up a while. */
+function recordingSpawner(nodeArgs?: string[]): {
   specs: PipedProcessSpec[]
   spawn: (spec: PipedProcessSpec) => ChildProcessWithoutNullStreams
 } {
@@ -81,7 +89,13 @@ function recordingSpawner(): {
     specs,
     spawn: (spec) => {
       specs.push(spec)
-      return spawnProcess({ program: 'true', stdio: ['pipe', 'pipe', 'pipe'] })
+      return nodeArgs
+        ? spawnProcess({
+            program: process.execPath,
+            args: nodeArgs,
+            stdio: ['pipe', 'pipe', 'pipe']
+          })
+        : spawnProcess({ program: 'true', stdio: ['pipe', 'pipe', 'pipe'] })
     }
   }
 }
@@ -93,7 +107,9 @@ function enable(recordDir: string, entryPath: string = ENTRY, enabled = true): v
 describe('chat-survive spawn hook', () => {
   it('spawns as today unless switched on for a supervisor spawn it can plan', () => {
     const supervisor = supervisorSpawn()
-    const socketDir = (): string => tempDir()
+    // As the default does: no socket folder unless the broker entry is on disk.
+    const socketDir = (entryPath: string): string | null =>
+      existsSync(entryPath) ? tempDir() : null
     const cases: { setup: () => void; spec?: PipedProcessSpec; platform?: NodeJS.Platform }[] = [
       { setup: () => setChatSurviveConfigReader(null) },
       { setup: () => enable(tempDir(), ENTRY, false) },
@@ -124,18 +140,23 @@ describe('chat-survive spawn hook', () => {
     const recordDir = join(tempDir(), 'chat-survive')
     enable(recordDir)
     const supervisor = supervisorSpawn()
-    const base = recordingSpawner()
+    const base = recordingSpawner(['-e', 'setTimeout(() => {}, 1500)'])
     const child = forkChatSurviveSpawner(
       base.spawn,
       'linux',
       { ORCA_AGENT_SESSION_ID: 'abc-1' },
       () => tempDir()
     )(supervisor)
+    if (child.pid !== undefined) {
+      pids.add(child.pid)
+    }
     const [spawned] = base.specs
     expect(spawned?.args).toEqual([ENTRY, '--', supervisor.program, ...(supervisor.args ?? [])])
     expect(spawned?.env?.[CHAT_SURVIVE_SPEC_ENV]).toBeTruthy()
     const name = `abc-1.${child.pid}.json`
     const path = join(recordDir, name)
+    // The record is written off the spawn path, and removed only after that write.
+    await vi.waitFor(() => expect(existsSync(path)).toBe(true), { timeout: 5000, interval: 20 })
     const record: unknown = JSON.parse(readFileSync(path, 'utf8'))
     expect(record).toMatchObject({ v: 1, sessionId: 'abc-1', brokerPid: child.pid })
     expect(statSync(path).mode & 0o777).toBe(0o600)

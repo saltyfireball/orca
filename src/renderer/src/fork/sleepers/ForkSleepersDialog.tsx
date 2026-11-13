@@ -10,7 +10,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import {
   filterSleepers,
   selectSleepAllIdle,
@@ -54,6 +54,7 @@ const DEFAULT_VIEW: SleepersView = {
 }
 
 function Body(): React.JSX.Element {
+  const t = useTranslate()
   const { rows, now, error, refresh } = useSleeperRows(true)
   const [view, setView] = useState<SleepersView>(DEFAULT_VIEW)
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
@@ -72,7 +73,7 @@ function Body(): React.JSX.Element {
     [rows, view]
   )
 
-  const after = (work: Promise<unknown> | unknown): void => {
+  const after = (work: unknown): void => {
     void Promise.resolve(work).finally(refresh)
   }
   const sleepRows = (targets: readonly SleeperRow[]): void =>
@@ -120,21 +121,21 @@ function Body(): React.JSX.Element {
     <div className="flex min-h-0 flex-col gap-3">
       <div className="flex flex-wrap gap-2">
         <Button size="sm" onClick={() => sleepRows(selectSleepAllIdle(rows ?? []))}>
-          {translate('fork.sleepers.sleepAllIdle', 'Sleep all idle')}
+          {t('fork.sleepers.sleepAllIdle', 'Sleep all idle')}
         </Button>
         <Button
           size="sm"
           variant="secondary"
           onClick={() => sleepRows(selectSleepExceptVisible(rows ?? []))}
         >
-          {translate('fork.sleepers.sleepExceptVisible', 'Sleep all except visible')}
+          {t('fork.sleepers.sleepExceptVisible', 'Sleep all except visible')}
         </Button>
       </div>
       <ForkSleepersFilters rows={rows ?? []} view={view} onChange={setView} />
       {selected.size > 0 ? (
         <div className="flex flex-wrap items-center gap-1 text-xs">
           <span className="mr-1 text-muted-foreground">
-            {translate('fork.sleepers.selected', '{{count}} selected', { count: selected.size })}
+            {t('fork.sleepers.selected', '{{count}} selected', { count: selected.size })}
           </span>
           <Button
             size="sm"
@@ -142,7 +143,7 @@ function Body(): React.JSX.Element {
             disabled={count('sleep') === 0}
             onClick={() => bulk('sleep')}
           >
-            {translate('fork.sleepers.sleep', 'Sleep')}
+            {t('fork.sleepers.sleep', 'Sleep')}
           </Button>
           <Button
             size="sm"
@@ -150,7 +151,7 @@ function Body(): React.JSX.Element {
             disabled={count('pin') === 0}
             onClick={() => bulk('pin')}
           >
-            {translate('fork.sleepers.pin', 'Keep awake')}
+            {t('fork.sleepers.pin', 'Keep awake')}
           </Button>
           <Button
             size="sm"
@@ -158,7 +159,7 @@ function Body(): React.JSX.Element {
             disabled={count('unpin') === 0}
             onClick={() => bulk('unpin')}
           >
-            {translate('fork.sleepers.unpin', 'Let it sleep on idle')}
+            {t('fork.sleepers.unpin', 'Let it sleep on idle')}
           </Button>
           <Button
             size="sm"
@@ -175,10 +176,10 @@ function Body(): React.JSX.Element {
             }}
           >
             {confirmBulkClose
-              ? translate('fork.sleepers.confirmCloseMany', 'Close {{count}} tabs?', {
+              ? t('fork.sleepers.confirmCloseMany', 'Close {{count}} tabs?', {
                   count: count('close')
                 })
-              : translate('fork.sleepers.close', 'Close')}
+              : t('fork.sleepers.close', 'Close')}
           </Button>
         </div>
       ) : null}
@@ -187,11 +188,11 @@ function Body(): React.JSX.Element {
           <p className="text-sm text-destructive">{error}</p>
         ) : !rows ? (
           <p className="text-sm text-muted-foreground">
-            {translate('fork.sleepers.loading', 'Loading...')}
+            {t('fork.sleepers.loading', 'Loading...')}
           </p>
         ) : shown.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {translate('fork.sleepers.empty', 'No chats or terminal agents match.')}
+            {t('fork.sleepers.empty', 'No chats or terminal agents match.')}
           </p>
         ) : (
           shown.map((row) => (
@@ -211,6 +212,7 @@ function Body(): React.JSX.Element {
 }
 
 export function ForkSleepersDialogHost(): React.JSX.Element | null {
+  const t = useTranslate()
   const isOpen = useSyncExternalStore(subscribe, () => open)
   if (!isOpen) {
     return null
@@ -219,9 +221,9 @@ export function ForkSleepersDialogHost(): React.JSX.Element | null {
     <Dialog open onOpenChange={(next) => setOpen(next)}>
       <DialogContent className="flex max-h-[80vh] max-w-4xl flex-col">
         <DialogHeader>
-          <DialogTitle>{translate('fork.sleepers.title', 'Sleepers')}</DialogTitle>
+          <DialogTitle>{t('fork.sleepers.title', 'Sleepers')}</DialogTitle>
           <DialogDescription>
-            {translate(
+            {t(
               'fork.sleepers.description',
               'Every chat and terminal agent. A sleeping chat keeps its tab and history and starts again on your next message. Sleep never stops a chat that is working, waiting on you, or running subagents.'
             )}

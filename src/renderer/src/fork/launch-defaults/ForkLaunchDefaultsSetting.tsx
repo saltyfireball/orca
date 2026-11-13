@@ -28,6 +28,7 @@ import {
   SelectValue
 } from '../../components/ui/select'
 import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 
 type Props = {
   settings: GlobalSettings
@@ -37,25 +38,25 @@ type Props = {
 // Radix Select cannot hold an empty value, so "no default" has its own token.
 const NONE = '__stock__'
 
-function kindText(kind: ForkLaunchKind): { label: string; help: string } {
+function kindText(kind: ForkLaunchKind, t: Translate = translate): { label: string; help: string } {
   switch (kind) {
     case 'cli':
       return {
-        label: translate('fork.launchDefaults.cli', 'CLI launches'),
-        help: translate(
+        label: t('fork.launchDefaults.cli', 'CLI launches'),
+        help: t(
           'fork.launchDefaults.cliHelp',
           'orca agent launch and orca worktree create --agent.'
         )
       }
     case 'worker':
       return {
-        label: translate('fork.launchDefaults.worker', 'Orchestration workers'),
-        help: translate('fork.launchDefaults.workerHelp', 'orca orchestration worker-start.')
+        label: t('fork.launchDefaults.worker', 'Orchestration workers'),
+        help: t('fork.launchDefaults.workerHelp', 'orca orchestration worker-start.')
       }
     case 'automation':
       return {
-        label: translate('fork.launchDefaults.automation', 'Automation runs'),
-        help: translate(
+        label: t('fork.launchDefaults.automation', 'Automation runs'),
+        help: t(
           'fork.launchDefaults.automationHelp',
           'Scheduled and run-now automations that name no model.'
         )
@@ -109,6 +110,7 @@ function keptEffort(
 }
 
 export function ForkLaunchDefaultsSetting({ settings, updateSettings }: Props): React.JSX.Element {
+  const t = useTranslate()
   const agentLabelId = useId()
   const rowId = useId()
   const agents = forkLaunchDefaultAgents()
@@ -127,14 +129,14 @@ export function ForkLaunchDefaultsSetting({ settings, updateSettings }: Props): 
   return (
     <section className="space-y-3">
       <SettingsSubsectionHeader
-        title={translate('fork.launchDefaults.title', 'Launch defaults')}
-        description={translate(
+        title={t('fork.launchDefaults.title', 'Launch defaults')}
+        description={t(
           'fork.launchDefaults.description',
           'The model and effort each kind of launch starts on when the launch does not choose one. A --model or --effort flag, a picker choice, or a model in the agent arguments always wins. Left empty, a launch starts as it does today: on the default set in Settings > Agents, or the config of the agent itself. Desktop and mobile pickers use the Settings > Agents default.'
         )}
       />
       <SettingsRow
-        label={translate('fork.launchDefaults.agent', 'Agent')}
+        label={t('fork.launchDefaults.agent', 'Agent')}
         labelId={agentLabelId}
         control={
           <Select value={agent} onValueChange={(value) => setAgent(value as TuiAgent)}>
@@ -145,7 +147,7 @@ export function ForkLaunchDefaultsSetting({ settings, updateSettings }: Props): 
               {agents.map((id) => (
                 <SelectItem key={id} value={id}>
                   {FORK_LAUNCH_KINDS.some((kind) => saved[kind]?.[id])
-                    ? translate('fork.launchDefaults.agentSet', '{{name}} (set)', {
+                    ? t('fork.launchDefaults.agentSet', '{{name}} (set)', {
                         name: name(id)
                       })
                     : name(id)}
@@ -157,7 +159,7 @@ export function ForkLaunchDefaultsSetting({ settings, updateSettings }: Props): 
       />
       {FORK_LAUNCH_KINDS.map((kind) => {
         const current = saved[kind]?.[agent]
-        const text = kindText(kind)
+        const text = kindText(kind, t)
         const labelId = `${rowId}-${kind}`
         return (
           <SettingsRow
@@ -170,14 +172,14 @@ export function ForkLaunchDefaultsSetting({ settings, updateSettings }: Props): 
                 <ChoiceSelect
                   value={current?.model}
                   choices={models}
-                  noneLabel={translate('fork.launchDefaults.modelNone', 'No default')}
+                  noneLabel={t('fork.launchDefaults.modelNone', 'No default')}
                   labelledBy={labelId}
                   onChange={(model) => set(kind, model, keptEffort(agent, model, current?.effort))}
                 />
                 <ChoiceSelect
                   value={current?.effort}
                   choices={forkLaunchEffortChoices(agent, current?.model)}
-                  noneLabel={translate('fork.launchDefaults.effortNone', 'Model default effort')}
+                  noneLabel={t('fork.launchDefaults.effortNone', 'Model default effort')}
                   disabled={!current?.model}
                   labelledBy={labelId}
                   onChange={(effort) => set(kind, current?.model, effort)}
