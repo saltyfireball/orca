@@ -282,6 +282,21 @@ named Orca Fork until SLRM-1367. `main` is always
     Code is in `src/shared/fork/worker-cleanup.ts`, `src/main/fork/worker-cleanup/`,
     `src/preload/fork/worker-cleanup-bridge.ts` and `src/renderer/src/fork/worker-cleanup/`.
 
+- **Launch defaults (SLRM-2102).** Stock runs a launch on the model in Settings > Agents or the
+  agent's own config unless the launch passes `--model`, so a forgotten flag runs whatever that
+  is. Settings > Advanced > Launch defaults sets, per agent, an optional model and effort for
+  three kinds of launch: CLI launches (`orca agent launch`, `orca worktree create --agent`),
+  orchestration workers (`orca orchestration worker-start`) and automation runs (scheduled and
+  run-now). The choices come from the app's own model catalog. Order: an explicit `--model` or
+  `--effort`, a picker choice or a model in the agent arguments wins, then the default for the
+  kind, then stock. A default the agent refuses falls back to stock with a note. Every cell is
+  empty by default, which is stock. Desktop and mobile pickers keep the Settings > Agents
+  default. `orca agent launch` prints a `model:` line, `worker-start --json` adds `modelFrom`, a
+  worker's sidebar row tooltip names its model and effort and says when the worker default chose
+  them, and `orca launch-defaults [--agent <agent>] [--json]` prints what each kind resolves to.
+  Not covered: desktop and mobile launches, `--terminal` reuse, automation `reuseSession` sends,
+  the legacy `worktree.create` startup agent on old hosts, and paired hosts that run stock Orca.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -348,6 +363,7 @@ Apply these in this order. Each one is a single commit.
 60. `SLRM-2098 Agent launch queue: a limit on running agents with a queue for the rest`
 61. `SLRM-2127 Chat stall marks stuck chats, writer kill under a broker, broker test hang`
 62. `SLRM-2100 Worker cleanup: finished workers give up their agent, with guards and Undo`
+63. `SLRM-2102 Launch defaults: a default model and effort per kind of launch`
 
 Fork-only code lives in `fork/` folders:
 
@@ -600,6 +616,30 @@ Upstream files only get short hooks, which keeps rebases small:
   - `AppRootSurfaces.tsx` mounts `ForkWorkerCleanupReporter` and `AdvancedPane.tsx` renders
     `ForkWorkerCleanupSetting`. The held mark renders inside the existing `ForkTabTitle` and
     `ForkClaudeAccountAgentRowChip` hooks. The settings are in
+    `src/shared/fork/fork-global-settings.ts`.
+
+- Launch defaults (SLRM-2102), from `src/shared/fork/launch-defaults/`,
+  `src/main/fork/launch-defaults/`, `src/renderer/src/fork/launch-defaults/` and
+  `src/cli/fork/launch-defaults-*`:
+  - `resolveUnlaunchedIntent` (`agent-launch-intent-resolution.ts`) passes the intent through
+    `applyForkCliLaunchDefault` and returns its `forkLaunch`; `runAgentLaunch` (`agent-launch.ts`)
+    adds it to the result with `withForkLaunchChoice`.
+  - `resolveWorkerStartAgent` (`worker-start-validation.ts`) calls
+    `resolveForkWorkerLaunch(runtime, ..., resolveWorkerLaunchPreferences)` instead of
+    `resolveWorkerLaunchPreferences` directly.
+  - Both launchers in `runtime-automation-service.ts` (chat and terminal) receive
+    `withForkAutomationLaunchDefault(runtime, request.automation)`.
+  - `composeOrchestrationDispatch` (`orchestration-dispatch-context.ts`) spreads
+    `forkWorkerRowLaunch(db, dispatch.id)` last; `AgentStatusOrchestrationContext` gains an
+    optional `forkLaunch`, compared in `orchestrationContextsEqual`; the compact agent row builds
+    its `title` through `forkAgentRowTitle`.
+  - `formatAgentLaunch` (`agent-launch-request.ts`) ends with `...forkAgentLaunchLines(result)`;
+    `worker-start-agent-view.ts` adds `modelFrom: forkWorkerModelFrom(value.launch)`.
+  - `rpc-method-registry.ts` spreads `FORK_LAUNCH_DEFAULTS_METHODS`, and the generated
+    `rpc-params-catalog.generated.ts` lists its params. `src/cli/specs/index.ts` spreads
+    `FORK_LAUNCH_DEFAULTS_COMMAND_SPECS`, `handler-group-manifest.ts` adds the
+    `fork-launch-defaults` group, and `cli-command-names.ts` lists `launch-defaults`.
+  - `AdvancedPane.tsx` renders `ForkLaunchDefaultsSetting`; `forkLaunchDefaults` is in
     `src/shared/fork/fork-global-settings.ts`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
