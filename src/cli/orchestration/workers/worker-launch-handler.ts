@@ -22,6 +22,7 @@ import { withResolvedNextCommands } from '../recovery/orchestration-mutation-rec
 import { readTextOrFileFlag } from '../../arguments/command-body-input'
 import { refuseAgentServerRoute } from '../identity/agent-server-route'
 import { printForkQueuedLaunch, readForkQueuedLaunch } from '../../fork/agent-queue-launch-note'
+import { readForkMcpProfileFlag } from '../../fork/mcp-profile-flag'
 
 export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler> = {
   'orchestration worker-start': async (ctx) => {
@@ -86,7 +87,9 @@ export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler>
       timeoutMs: getOptionalPositiveIntegerValueFlag(flags, 'timeout-ms'),
       run: getOptionalStringFlag(flags, 'run'),
       from: await resolveCoordinatorTerminalHandle(flags, cwd, client),
-      devMode: isDevCliInvocation()
+      devMode: isDevCliInvocation(),
+      // Fork: --mcp-profile (FORK.md "MCP profiles").
+      ...readForkMcpProfileFlag(flags)
     }).catch(async (error: unknown) => {
       throw await explainOlderRuntimeRunRequired(client, error)
     })
