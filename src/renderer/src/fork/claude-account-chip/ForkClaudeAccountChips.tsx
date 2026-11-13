@@ -15,6 +15,10 @@ import {
   useClaudeAccountForWorktree
 } from './use-claude-account'
 import { ForkChatSleepRowMark, ForkChatSleepTabMark } from '../chat-sleep/ForkChatSleep'
+import {
+  ForkWorkerCleanupRowMark,
+  ForkWorkerCleanupTabMark
+} from '../worker-cleanup/ForkWorkerCleanup'
 
 type SlotProps = Pick<ForkClaudeAccountChipProps, 'className' | 'onOpenMenu' | 'menu'>
 
@@ -55,6 +59,7 @@ export function ForkTabTitle({
     <>
       <span className={`${TAB_LABEL_WIDTH_CLASSES} mr-1`}>{title}</span>
       <ForkChatSleepTabMark worktreeId={chip.tab.worktreeId} sessionId={chip.chat?.sessionId} />
+      <ForkWorkerCleanupTabMark sessionId={chip.chat?.sessionId} />
       <ForkClaudeAccountTabChip {...chip} />
     </>
   )
@@ -82,6 +87,7 @@ export function ForkClaudeAccountAgentRowChip({
   return (
     <>
       <ForkChatSleepRowMark agent={agent} />
+      <ForkWorkerCleanupRowMark agent={agent} />
       <ForkClaudeAccountChip resolution={resolution} menu={menu} {...slot} />
     </>
   )

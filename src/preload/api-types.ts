@@ -71,6 +71,7 @@ import type { UpdaterApi } from './api/updater-api'
 import type { ForkUpdateInstallWaitApi } from '../shared/fork/update-install-wait'
 import type { ForkLostWorkApi } from '../shared/fork/lost-work'
 import type { ForkChatSleepApi } from '../shared/fork/chat-sleep'
+import type { ForkWorkerCleanupApi } from '../shared/fork/worker-cleanup'
 import type { WorkspaceCleanupApi, WorkspaceSpaceApi } from './api/workspace-cleanup-api'
 import type { LocalhostWorktreeLabelsApi, WorkspacePortsApi } from './api/workspace-port-api'
 import type { LinkPreviewApi } from './api/link-preview-api'
@@ -144,6 +145,7 @@ export type PreloadApi = {
   forkLostWork?: ForkLostWorkApi
   /** Fork chat sleep; desktop only. */
   forkChatSleep?: ForkChatSleepApi
+  forkWorkerCleanup?: ForkWorkerCleanupApi
   notebook: FilesystemApi['notebook']
   docPreview: DocPreviewApi['docPreview']
   stats: StatsApi
