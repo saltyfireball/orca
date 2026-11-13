@@ -233,6 +233,9 @@ describe('chat-survive broker', () => {
     const server = createServer((socket) => {
       const ring = { first: 0, end: 0, truncated: false }
       const welcome = { t: 'welcome', pid: 1, fence: 1, out: ring, err: ring, exit: null }
+      // Read (and drop) the hello: a socket nobody reads never sees the client hang up, and
+      // server.close() would wait on it forever.
+      socket.resume()
       socket.write(`${JSON.stringify({ ...welcome, v: CHAT_SURVIVE_PROTOCOL_VERSION + 1 })}\n`)
     })
     await new Promise<void>((resolve) => server.listen(path, resolve))
