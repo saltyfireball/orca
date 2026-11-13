@@ -21,6 +21,9 @@ import {
 } from './popover/resource-usage-popover-body'
 import { renderResourceUsageKillDialog } from './popover/resource-usage-kill-dialog'
 import { WorkspaceSpaceCompactPanel } from '../workspace-storage/WorkspaceSpaceCompactPanel'
+// Fork (SLRM-2099): whole-tree memory, system memory and the warning cue.
+import { ForkMemoryTruthSection } from '@/fork/memory-truth/ForkMemoryTruthSection'
+import { ForkMemoryStatusCue } from '@/fork/memory-truth/ForkMemoryStatusCue'
 
 export function ResourceUsageStatusSegment(): React.JSX.Element {
   const t = useTranslate()
@@ -78,6 +81,7 @@ export function ResourceUsageStatusSegment(): React.JSX.Element {
         setOpen(nextOpen)
       }}
     >
+      <ForkMemoryStatusCue t={t} onOpen={() => setOpen(true)} />
       {renderResourceUsageStatusTrigger(
         {
           daemonUnreachable,
@@ -164,6 +168,7 @@ export function ResourceUsageStatusSegment(): React.JSX.Element {
                 )}
               </div>
             )}
+            <ForkMemoryTruthSection truth={resourceSnapshot?.forkTruth} t={t} />
             {renderResourceUsagePopoverBody(
               {
                 setPopoverBodyNode,

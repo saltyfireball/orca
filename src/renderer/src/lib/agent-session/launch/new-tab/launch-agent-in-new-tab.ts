@@ -33,6 +33,7 @@ import '@/lib/agent-session/launch/routing/agent-launch-route-input'
 import { workspaceKindForWorktreeId } from '../../../../../../shared/agent-launch/contracts/workspace-launch-kind'
 import { launchOnceHostAnswered, routeNewTabLaunch } from './launch-agent-in-new-tab-host-agents'
 import type { AgentTabLaunchOutcome } from './launch-agent-in-new-tab-host-agents'
+import { forkRefuseAgentLaunchOverMemory } from '@/fork/memory-truth/launch-gate'
 
 /**
  * Create a new terminal tab and queue the agent's launch command, optionally
@@ -49,6 +50,11 @@ export function launchAgentInNewTabWithOutcome(
   notifyFailure = true
 ): AgentTabLaunchOutcome {
   const notify = () => notifyAgentLaunchFailure(args.agent)
+  // Fork (SLRM-2099): the opt-in pause on new agents while system memory is over the threshold.
+  const memoryRefusal = forkRefuseAgentLaunchOverMemory(args, notifyFailure)
+  if (memoryRefusal) {
+    return memoryRefusal
+  }
   try {
     return openAgentInNewTab(args, notifyFailure, notify)
   } catch {
