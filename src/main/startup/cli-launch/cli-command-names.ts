@@ -80,6 +80,7 @@ export const CLI_COMMAND_NAMES = [
   'serve',
   'set',
   'sheets',
+  'settings',
   'skills',
   'slack',
   'sleepers',
