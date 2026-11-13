@@ -22,6 +22,9 @@ export function forkMemoryCueLines(status: ForkMemoryStatus, t: Translate): stri
   if (status.launchesPaused) {
     lines.push(t('fork.memory.paused', 'New agents are paused until memory frees up.'))
   }
+  if (status.launchesHeld) {
+    lines.push(t('fork.memory.held', 'New chats wait in the launch queue until memory frees up.'))
+  }
   return lines
 }
 
@@ -37,7 +40,8 @@ export function ForkMemoryStatusCue({
     return null
   }
   const lines = forkMemoryCueLines(status, t)
-  const severe = status.launchesPaused || status.system?.pressure === 'critical'
+  const severe =
+    status.launchesPaused || status.launchesHeld || status.system?.pressure === 'critical'
   return (
     <Tooltip>
       <TooltipTrigger asChild>

@@ -52,7 +52,8 @@ function run(sessionId: string, action: ForkChatStallAction): void {
 
 const stop = (event: React.SyntheticEvent): void => event.stopPropagation()
 
-function StallMenu({
+/** The stall menu on any trigger; Sleepers reuses it for its stalled rows (SLRM-2136). */
+export function ForkChatStallMenu({
   entry,
   trigger
 }: {
@@ -94,7 +95,7 @@ export function ForkChatStallTabMark({
     return null
   }
   return (
-    <StallMenu
+    <ForkChatStallMenu
       entry={entry}
       trigger={
         <button type="button" className="mr-1 inline-flex shrink-0" data-fork-chat-stalled="">
@@ -105,7 +106,11 @@ export function ForkChatStallTabMark({
   )
 }
 
-type RowSubject = { paneKey: string; tab: { worktreeId: string }; rowSource?: string }
+type RowSubject = {
+  paneKey: string
+  tab: { worktreeId: string }
+  rowSource?: string
+}
 
 /** A dashboard or worktree card agent row's mark. */
 export function ForkChatStallRowMark({ agent }: { agent: RowSubject }): React.JSX.Element | null {
@@ -119,7 +124,7 @@ export function ForkChatStallRowMark({ agent }: { agent: RowSubject }): React.JS
     return null
   }
   return (
-    <StallMenu
+    <ForkChatStallMenu
       entry={entry}
       trigger={
         <button

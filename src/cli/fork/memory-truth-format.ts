@@ -35,7 +35,7 @@ export function formatForkMemoryTruth(truth: ForkMemoryTruth): string {
     s.warnSwapGb > 0 ? `swap ${s.warnSwapGb} GB` : null
   ].filter((part): part is string => part !== null)
   lines.push(
-    `warning: ${status.over ? `over (${status.reasons.join(', ')})` : 'no'}; threshold ${thresholds.join(' or ') || 'off'}; new agents ${status.launchesPaused ? 'paused' : 'allowed'}`
+    `warning: ${status.over ? `over (${status.reasons.join(', ')})` : 'no'}; threshold ${thresholds.join(' or ') || 'off'}; new agents ${status.launchesPaused ? 'paused' : status.launchesHeld ? 'queued' : 'allowed'}`
   )
   const sessions = [
     ...truth.workspaces.map((w) => ({
