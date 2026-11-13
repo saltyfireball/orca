@@ -20,6 +20,7 @@ import { translate } from '@/i18n/i18n'
 import { createLocalizedCatalog } from '@/i18n/localized-catalog'
 import { getNativeChatSplitQuickActions } from './native-chat-split-quick-actions'
 import { getForkClaudeMoveQuickActions } from '@/fork/claude-account-move/fork-claude-move-quick-actions'
+import { getForkLostWorkQuickActions } from '@/fork/lost-work/fork-lost-work-quick-actions'
 import { getForkSleepersQuickActions } from '@/fork/sleepers/fork-sleepers-quick-actions'
 import { getForkUsageReportQuickActions } from '@/fork/usage-report/fork-usage-report-quick-actions'
 
@@ -184,6 +185,7 @@ export const getCmdJQuickActions = createLocalizedCatalog((): CmdJQuickAction[] 
   ...getForkClaudeMoveQuickActions(),
   // Fork: open the Sleepers dialog (FORK.md).
   ...getForkSleepersQuickActions(),
+  ...getForkLostWorkQuickActions(),
   // SLRM-2104: open the usage report (FORK.md).
   ...getForkUsageReportQuickActions(),
   {
