@@ -30,6 +30,10 @@ named Orca Fork until SLRM-1367. `main` is always
 - **Shared mode: the fork can run on stock Orca's data.** See Shared mode below.
 - **Restart guard: quitting, restarting or updating waits for busy chats.** See Restart guard
   below.
+- **Sync status: the update check says when the fork is behind upstream (SLRM-2105).** Settings,
+  About shows one line under the update state when the fork-sync workflow's last run left the
+  fork behind upstream, hit conflicts or failed, or has not reported for a while. See Sync status
+  below.
 - **Groundwork for chats that survive a restart (SLRM-1394).** `src/main/fork/chat-survive/` holds
   a broker that hosts one chat provider outside the app, keeps its output in a ring with byte
   offsets, and lets the next app instance reattach by token and lease fence after a hand-off at
@@ -608,6 +612,12 @@ Upstream files only get short hooks, which keeps rebases small:
   `UpdateCard.tsx` calls `useForkUpdateInstallWait` (which resets `hasStartedDownload` when the
   guard drops the install) and renders `forkUpdateWaitingCard(...) ??` before its stock
   content (`src/renderer/src/fork/update-install-wait/`).
+- Sync status (SLRM-2105): `installForkSyncStatusBridge()` in `src/main/index.ts`;
+  `forkSyncStatus` in `src/preload/index.ts` and (optional) in `api-types.ts`, one import and one
+  line each; one import and one `<ForkSyncStatusNotice updateState={updateStatus.state} />` under
+  the status line in `GeneralUpdateSettingsSection.tsx`; `ForkSyncNoticeSetting` at the end of
+  `AdvancedPane.tsx`. Code: `src/shared/fork/fork-sync-status.ts`, `src/main/fork/sync-status/`,
+  `src/renderer/src/fork/sync-status/`.
 - The chat-survive broker entry (SLRM-1394): one entry in `main-build-entry-points.ts`, and in
   `plain-node-entry-guard.ts` it shares the `daemon-entry` line (a two-name `map`, so the file
   stays under max-lines). The builder overlay adds it to `asarUnpack`.
@@ -1013,14 +1023,15 @@ runs in `saltyfireball/orca`. Every third-party action is pinned to a full commi
 1. **sync** (ubuntu-latest):
    - Fails at once, with a message, if the `FORK_SYNC_DEPLOY_KEY` secret is empty.
    - Checks out `main` over SSH with that deploy key.
-   - Finds the newest stable upstream tag with `git ls-remote --tags` and `sort -V`, and the
-     stable tag `main` is on now.
-   - If the two tags differ, it rebases the fork commits (`<old tag>..main`) onto the new tag,
-     SSH-signed when `FORK_GIT_SIGNING_KEY` is set (see Signed rebase commits).
-   - **If the rebase conflicts**, it aborts and opens an issue titled
-     `fork-sync conflict on <tag>` that lists the conflicting files (or comments on the open
-     one), and the run fails. To fix it, rebase by hand, resolve, run the checks below, and
-     push `main`.
+   - `config/scripts/fork/fork-sync.sh detect` finds the newest stable upstream tag with
+     `git ls-remote --tags` and `sort -V`, and the upstream commit `main` sits on (the base, see
+     Base detection).
+   - If the base is not the tag's commit, `fork-sync.sh rebase` rebases the fork commits
+     (`<base>..main`) onto it, SSH-signed when `FORK_GIT_SIGNING_KEY` is set (see Signed rebase
+     commits).
+   - **If the rebase conflicts**, it aborts and the run fails with `main` untouched (the push
+     never runs). The status job publishes the conflict and the run summary lists the
+     conflicting files with the exact commands to resync by hand (see Sync status).
    - **If the rebase succeeds**, it installs and checks the result:
      - root typecheck
      - the fork and updater tests
@@ -1063,6 +1074,56 @@ runs in `saltyfireball/orca`. Every third-party action is pinned to a full commi
      as an update.
    - Checks that `latest-mac.yml` and the app both carry the fork version.
    - Publishes the arm64 dmg, the arm64 zip and `latest-mac.yml` as release `v<fork version>`.
+5. **status** (ubuntu-latest) runs after every other job on every run, whatever failed or was
+   cancelled, and publishes the sync status (see Sync status).
+
+### Base detection
+
+A tag name does not say which commit `main` sits on: upstream has re-cut a tag to another
+commit, and `rebase --onto <new> <tag>` then replayed upstream's own commits as fork commits.
+So `fork-sync.sh detect` works out the base as a SHA:
+
+1. The record: the file `base` on the status branch (`fork-sync-status`), the SHA the last
+   successful sync rebased onto (or found `main` already on). It is written only by the status
+   job of a run whose sync job succeeded. It is used while it is an ancestor of `main`.
+2. Without a record, the merge-base of `main` with upstream: the newer of its merge-base with
+   upstream's default branch (`FORK_SYNC_UPSTREAM_BRANCH` overrides) and with the newest tag.
+3. A record older than that merge-base is stale (main resynced by hand, or a run died between
+   the push and the record), so the merge-base wins. A moved tag never makes the merge-base
+   newer than the record, since the dropped commit is not on upstream.
+
+If the newest tag's commit is an ancestor of the base (a tag re-cut to an older commit), the
+run fails instead of rebasing backwards. `config/scripts/fork/fork-sync.test.mjs` covers a clean
+sync, a moved tag, a conflict, a missing, stale and foreign record, and that case, against
+throwaway repos.
+
+### Sync status
+
+Issues are off on the repo, and the app's update check alone only sees that no newer fork
+release exists, so the status job publishes each run's outcome where anyone can read it:
+
+- `status.json` on the branch `fork-sync-status` (the workflow env `FORK_SYNC_STATUS_BRANCH`),
+  served at `https://raw.githubusercontent.com/<repo>/fork-sync-status/status.json`. Its tree
+  holds only `status.json` and `base`, so pushing it starts no workflow. Each run adds one
+  commit, so the branch is also the sync history. It is pushed with `GITHUB_TOKEN`.
+- Fields (`config/scripts/fork/fork-sync-status.mjs`): `schema` (1), `state` (`in-sync`,
+  `behind`, `conflict`, `error`), `reason`, `upstreamVersion`, `upstreamSha`,
+  `forkBaseVersion`, `forkBaseSha`, `conflicts`, `since` (first run of the current
+  not-in-sync streak), `runUrl`, `checkedAt`.
+- `error` covers a run that could not read upstream, a tag that moved below the base, a failed
+  sync job with nothing to rebase, and a failed release build after a good sync.
+- The run summary says the same in plain words. For `behind` and `conflict` it gives the exact
+  resync commands for that run: a backup branch at the old `main`,
+  `git rebase --onto <new> <base> main`, the `%G?` signature check and
+  `git push --force-with-lease=main:<old main>`.
+- The app reads it from the URL derived from `FORK_RELEASE_REPO`
+  (`src/shared/fork/fork-sync-status.ts`) when Settings, About opens and after each update check
+  settles, at most once per 5 minutes, through `net.fetch` in main. It shows one line under the
+  update state for `behind`, `conflict` and `error` (upstream version, fork base, since when,
+  why, a link to the run), and for a status older than the stale setting. It never blocks a
+  check, download or install.
+- Settings, Advanced, Fork sync status: `forkSyncNotice` (on by default) and
+  `forkSyncNoticeStaleDays` (3 by default, 0 never calls it stale).
 
 ### Signing
 
@@ -1110,8 +1171,8 @@ those often. So the sync job checks out and pushes over SSH with a write deploy 
 1. Add a deploy key with write access to `saltyfireball/orca`.
 2. Store its private key as the Actions secret `FORK_SYNC_DEPLOY_KEY`.
 
-`GITHUB_TOKEN` is still used for the issue, release and workflow API calls. Its permissions
-are `contents: write`, `issues: write` and `actions: write`.
+`GITHUB_TOKEN` is still used for the release and workflow API calls and the status branch push.
+Its permissions are `contents: write` and `actions: write`.
 
 ### Upstream workflows stay off
 
