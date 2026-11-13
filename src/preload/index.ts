@@ -95,6 +95,7 @@ import { agentStatusApi } from './api/agent-status/agent-status-bridge'
 import { speechApi } from './api/speech/speech-bridge'
 import { forkUpdateInstallWaitApi } from './fork/update-install-wait-bridge'
 import { forkLostWorkApi } from './fork/lost-work-bridge'
+import { forkChatSleepApi } from './fork/chat-sleep-bridge'
 
 installBrowserFindListener()
 
@@ -178,6 +179,7 @@ const api = {
   updater: updaterApi,
   forkUpdateInstallWait: forkUpdateInstallWaitApi,
   forkLostWork: forkLostWorkApi,
+  forkChatSleep: forkChatSleepApi,
   docPreview: docPreviewApi,
   notebook: notebookApi,
   fs: fsApi,
