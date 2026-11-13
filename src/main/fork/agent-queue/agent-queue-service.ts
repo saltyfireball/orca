@@ -135,6 +135,12 @@ export function forkAgentQueueNoteWorker(worker: {
   workerHandles.set(worker.session.handle, worker.session.sessionId)
 }
 
+/** The chat that dispatched this worker, when a chat (not a terminal) did; for the usage rollup. */
+export function forkAgentQueueWorkerParent(sessionId: string): string | undefined {
+  const parentKey = workers.get(sessionId)?.parentKey
+  return parentKey && !parentKey.startsWith('pty:') ? parentKey : undefined
+}
+
 function labelOf(sessionId: string): string {
   const summary = getStructuredAgentSessionHost()?.readStatusSummary(sessionId)
   const text = (summary?.conversationName?.trim() || summary?.latestPrompt || '')
