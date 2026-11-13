@@ -8,7 +8,7 @@ import {
 } from '../../../shared/claude-profile-routing'
 import { FORK_CLAUDE_TERMINAL_ACCOUNT_ENV } from '../../../shared/fork/claude-account-move'
 import type { ClaudeRuntimeAuthPreparation } from '../../claude-accounts/runtime-auth/runtime-auth-types'
-import type { ClaudeAccountSelectionTarget } from '../../claude-accounts/runtime-selection'
+import type { ClaudeAccountSelectionTarget } from '../../claude-accounts/selection/runtime-selection'
 import type { PinnedClaudeRouter } from './claude-pinned-route'
 import { forkPinTerminalClaudeAccount } from './claude-terminal-account-pin'
 

@@ -13,9 +13,9 @@ import {
   FORK_CLAUDE_TERMINAL_ACCOUNT_ENV
 } from '../../../shared/fork/claude-account-move'
 import { writeFileAtomically } from '../../filesystem/atomic-file-publication'
-import { getClaudeProfileRouter } from '../../claude-accounts/claude-profile-installed-router'
+import { getClaudeProfileRouter } from '../../claude-accounts/profiles/routing/claude-profile-installed-router'
 import type { ClaudeRuntimeAuthPreparation } from '../../claude-accounts/runtime-auth/runtime-auth-types'
-import type { ClaudeAccountSelectionTarget } from '../../claude-accounts/runtime-selection'
+import type { ClaudeAccountSelectionTarget } from '../../claude-accounts/selection/runtime-selection'
 import { pinnedClaudeRoute, type PinnedClaudeRouter } from './claude-pinned-route'
 
 type Env = Record<string, string>

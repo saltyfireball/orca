@@ -3,7 +3,7 @@ import React from 'react'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { InlineUsageBars } from '@/components/status-bar/InlineProviderUsage'
 import { translate } from '@/i18n/i18n'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/class-names'
 import {
   SYSTEM_DEFAULT_ACCOUNT_ID,
   type ForkClaudeAccount,

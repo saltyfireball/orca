@@ -41,7 +41,7 @@ vi.mock('./claude-chip-evidence', () => ({
 vi.mock('../claude-account-move/fork-claude-move-actions', () => ({
   forkClaudeWorktreeTarget: () => fake.worktreeTarget
 }))
-vi.mock('@/lib/local-preflight-context', () => ({
+vi.mock('@/runtime/hosts/preflight/local-preflight-context', () => ({
   getLocalProjectExecutionRuntimeContext: () =>
     fake.wsl ? { status: 'resolved', runtime: { kind: 'wsl' } } : null
 }))

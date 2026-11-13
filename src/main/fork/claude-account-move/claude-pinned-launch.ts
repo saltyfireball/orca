@@ -11,8 +11,8 @@ import {
   CLAUDE_INJECTED_CONFIG_DIR_ENV,
   CLAUDE_PROFILE_POINTER_ENV
 } from '../../../shared/claude-profile-routing'
-import { getClaudeProfileRouter } from '../../claude-accounts/claude-profile-installed-router'
-import type { ClaudeProfileRouter } from '../../claude-accounts/claude-profile-router'
+import { getClaudeProfileRouter } from '../../claude-accounts/profiles/routing/claude-profile-installed-router'
+import type { ClaudeProfileRouter } from '../../claude-accounts/profiles/routing/claude-profile-router'
 import { CLAUDE_STRUCTURED_AGENT } from '../../claude/structured/claude-structured-agent-definition'
 import {
   claudeSessionAccountPins,

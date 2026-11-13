@@ -3,7 +3,7 @@ import { Play } from 'lucide-react'
 import { toast } from 'sonner'
 import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
-import { runQuickCommandInNewTab } from '@/lib/run-quick-command-in-new-tab'
+import { runQuickCommandInNewTab } from '@/lib/terminal/quick-commands/run-quick-command-in-new-tab'
 import { commandFromShellFence } from '../../../../../shared/fork/shell-fence'
 import {
   useNativeChatVisualOwner,

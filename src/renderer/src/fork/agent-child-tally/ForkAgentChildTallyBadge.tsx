@@ -4,7 +4,7 @@ import React, { useMemo } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { AgentStateDot, agentStateLabel } from '@/components/AgentStateDot'
 import { STATE_INDICATOR_TOOLTIP_DELAY_MS } from '@/components/StateIndicatorTooltip'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/class-names'
 import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
 import type { ChildTally, ChildTallyItem, ChildTallyKind } from './agent-child-tally'
@@ -101,7 +101,7 @@ export function ForkAgentChildTallyBadge({
       </TooltipTrigger>
       <TooltipContent side="right" sideOffset={6} className="max-w-80">
         <div className="mb-1 font-medium">{heading}</div>
-        <ul className="flex max-h-72 flex-col gap-0.5 overflow-y-auto">
+        <ul className="flex max-h-72 flex-col gap-0.5 scrollbar-sleek overflow-y-auto">
           {tally.items.map((item) => (
             <TallyLine key={item.key} item={item} />
           ))}

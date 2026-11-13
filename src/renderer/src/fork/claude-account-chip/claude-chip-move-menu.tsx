@@ -4,7 +4,7 @@
 import React from 'react'
 import { useAppStore } from '@/store'
 import type { AppState } from '@/store/types'
-import { getLocalProjectExecutionRuntimeContext } from '@/lib/local-preflight-context'
+import { getLocalProjectExecutionRuntimeContext } from '@/runtime/hosts/preflight/local-preflight-context'
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 import type { ForkClaudeMoveScope } from '../claude-account-move/claude-account-move-client'
 import { ForkMoveAccountMenu } from '../claude-account-move/ForkMoveAccountMenu'

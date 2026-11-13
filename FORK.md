@@ -225,6 +225,7 @@ Apply these in this order. Each one is a single commit.
 55. `SLRM-2097 Custom app themes: paste or import a whole app theme`
 56. `SLRM-2096 Lost work: find and handle unmerged or lost work across agent worktrees`
 57. `SLRM-2093 Chat sleep: idle native chats give up their provider, on screen chats stay awake`
+58. `SLRM-2105 Follow upstream 1.4.258's moved modules in fork code`
 
 Fork-only code lives in `fork/` folders:
 

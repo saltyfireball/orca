@@ -1,5 +1,5 @@
 // SLRM-1503: where a chat's account pin sends its launches on this host.
-import type { ClaudeProfileRouter } from '../../claude-accounts/claude-profile-router'
+import type { ClaudeProfileRouter } from '../../claude-accounts/profiles/routing/claude-profile-router'
 import type { ClaudeSessionPin } from './claude-session-account-pins'
 
 export type PinnedClaudeRouter = Pick<
