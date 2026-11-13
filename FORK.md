@@ -275,7 +275,8 @@ named Orca Fork until SLRM-1367. `main` is always
   merges, or offer Undo. Worker cleanup takes over that release while on:
   - Stock auto-release (and its federated claims) reads as off while `forkWorkerCleanup` is on;
     while off, stock runs exactly as before.
-  - A sweep runs every minute over owned workers whose dispatch succeeded or failed and that are
+  - A sweep runs every minute (while the setting is off the timer backs off to every 5 minutes,
+    and changing the setting starts it over at one minute) over owned workers whose dispatch succeeded or failed and that are
     not kept or released. It leaves one open while: its agent started a turn after it reported
     (typed into or sent more work), a question or decision gate is pending, a `worker_done`
     report is unread, it is in a turn, it has no local git worktree, or git cannot read the
@@ -402,6 +403,61 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/renderer/src/fork/sleepers/ForkSleepersLifecycleActions.tsx`,
     `src/renderer/src/fork/sleepers/ForkSleepersSetting.tsx` and
     `src/renderer/src/fork/ForkAgentLifecycleSettings.tsx`.
+- **Fork main passes the push and pull request checks (SLRM-2138).** Every check that runs
+  on a push to `main` or on a pull request passes on the fork (the list is under Contributing).
+  What that changed:
+  - **Sync file I/O on the main process.** Calls on paths that repeat moved to
+    `node:fs/promises`: the lost work scan and actions; the Claude account move (pin saves, the
+    history check, the pane pointer the terminal spawn writes); and chat survive's record
+    writes, socket folder check and adopt read; and the MCP profiles' enterprise policy check,
+    which runs on every Claude launch.
+    - Record writes are queued per path, so a spawn's write, the detach rewrite and the exit's
+      removal stay in order. Quit waits for the queue (one hook line in
+      `structured-agent-session-host-lifetime.ts`, through `src/main/fork/chat-survive-quit-hooks.ts`).
+    - A detach whose chat changed during its write undoes itself and removes the record it wrote.
+    - A failed first record write unregisters the broker, so it is not handed off at quit.
+    - The spawn hook stays synchronous. It reads a readiness answer (private socket folder)
+      that is checked when the setting is turned on, at install and after each spawn, and keeps
+      its one stat of the broker entry (baselined). Start-up awaits the first check
+      (`installForkReady` in `main-process-ready-foundation.ts`) before sessions are restored. A
+      chat started within milliseconds of switching the setting on can still run without it.
+    - The broker's socket chmod tolerates the socket being gone when its direct owner died in
+      that moment; the broker then ends without an orphan timer.
+    - The broker checks its socket folder itself, because the system may clear the temp folder
+      in between.
+    - A pin save moves its pending entry first and awaits the file after, as before.
+  - **Baselined in `config/main-sync-fs-baseline.txt`** (one-shot reads that must finish before
+    the code after them):
+    - `shared-stock-data.ts` (11): runs once in `configureDevUserDataPath` before ready, before
+      anything opens the data folder.
+    - `fork-app-identity.ts` (1): one plist read, cached per executable path.
+    - `chat-survive-sweep.ts` (8): runs once at install and must finish before session recovery
+      can adopt a broker.
+    - `claude-session-account-pins.ts` (1): one read that fills the cache synchronous launches
+      read from; every write is async.
+    - `chat-survive-launch-ready.ts` (1): the spawn's one stat of the broker entry, kept from
+      before so an entry removed since the last check spawns the plain provider.
+    - `usage-ledger-file.ts` (3): the ledger's one read and its folder creation, both once at
+      install. The batched saves keep the shared synchronous atomic writer, because the quit
+      flush must land before the process exits.
+  - **Fixed timers became timers that back off or stop.**
+    - The broker's owner check runs at 100 ms, backing off to 1 s. Its stdin end still reports a
+      dead app at once.
+    - The stdin end confirm checks at 25, 50, 75 and 100 ms and decides at 250 ms, as before.
+    - An adopted child's broker gone check runs at 100 ms, backing off to 1 s.
+    - Worker cleanup backs off while off (above).
+    - The restart guard menu has no timed refresh (Restart guard below).
+    - The Sleepers list refreshes every 5 s only while the window is visible.
+    - The MCP chat panel's refresh pauses while the window is hidden.
+    - The usage ledger prunes hourly after a prune that dropped rows, backing off to every 6 h
+      while nothing ages out, and prunes at once when the retention setting changes.
+  - **Lint fixes.**
+    - The chat stall probe and process table run `ps` through `@orca/process-host`, with the same
+      results on failure.
+    - Fork renderer strings go through `useTranslate`. The custom theme preview's words became
+      `fork.customAppTheme.preview.*` keys.
+    - Lost work pull request links open through `openAppHttpLink`, so they follow the app's
+      link setting.
 
 ## Patch list
 
@@ -477,6 +533,7 @@ Apply these in this order. Each one is a single commit.
 68. `SLRM-2103 Cache-cold cue: a usage ledger and a hint when an idle chat cache has expired`
 69. `SLRM-2104 Usage report: tokens and estimated cost per chat, coordinator, workspace, day or card`
 70. `SLRM-2105 Sync status: fork-sync publishes its outcome, the update check shows when the fork is behind`
+71. `SLRM-2138 Fork main passes every push and pull request check`
 
 `AppRootSurfaces.tsx` carries one hook for the fork's always-mounted hosts: `ForkRootHosts`
 (`src/renderer/src/fork/ForkRootHosts.tsx`) renders `ForkChatSleepReporter`,
@@ -514,7 +571,8 @@ Fork-only code lives in `fork/` folders:
   - **Saved.** `fork-usage-ledger.json` in the app's data folder, written atomically at most
     every 10 s and on quit. Per chat: name, workspace, the coordinator that dispatched it (from
     the agent queue's worker note), billing, turns, and tokens and calls per day and model. Kept
-    `forkUsageRetentionDays` days (90) and at most 2000 chats, oldest dropped first.
+    `forkUsageRetentionDays` days (90) and at most 2000 chats, oldest dropped first. The prune
+    runs at start-up, then hourly, backing off to every 6 h while nothing ages out (SLRM-2138).
   - **The cue.** When a chat has sat idle past its cache lifetime and its last context is at
     least `forkCacheColdThresholdTokens` (50000), the composer shows "Cache likely expired: the
     next message re-reads about N tokens", and the chat's tab and agent rows show a snowflake.
@@ -596,7 +654,9 @@ Upstream files only get short hooks, which keeps rebases small:
   wraps `updater:quitAndInstall` in `src/main/window/main-window-updater.ts`;
   `...forkRestartGuardMenuItems()` follows `checkForUpdatesItem` in
   `src/main/menu/register-app-menu.ts`; and one `notifyForkRestartGuardUpdaterStatus()` call
-  after the status send in `src/main/updater/lifecycle/updater-status.ts` refreshes the menu row.
+  after the status send in `src/main/updater/lifecycle/updater-status.ts` refreshes the menu row
+  (so do wait progress and the app or a window coming to the front; there is no timed refresh,
+  SLRM-2138).
   `app:relaunch` passes a third, deferred callback (cleanup, `relaunchApp`, `quitProcess`) for a
   relaunch that runs after a wait. These come from the import-light
   `src/main/fork/restart-guard/restart-guard-hooks.ts`, which passes through until the guard
@@ -624,21 +684,31 @@ Upstream files only get short hooks, which keeps rebases small:
   stays under max-lines). The builder overlay adds it to `asarUnpack`.
 - Chat survive spawn hook (SLRM-1394): `createClaudeCodeProcessSpawn` passes its `spawnImpl`
   through `forkChatSurviveSpawner` (`src/main/fork/chat-survive/chat-survive-spawn.ts`);
-  `main-process-ready-foundation.ts` installs the setting reader in one line;
+  `main-process-ready-foundation.ts` awaits `installForkReady(store)` in one line (chat survive's
+  install and first readiness check, plus the usage ledger's retention watch), imported
+  with `forkPostReadyAppName` from `src/main/fork/fork-ready-foundation-hooks.ts` (one import line,
+  so the file stays at max-lines);
   `forkChatSurvive` is in `src/shared/fork/fork-global-settings.ts`; `AdvancedPane.tsx` renders
   `src/renderer/src/fork/ForkChatSurviveSetting.tsx`.
 - Chat survive quit hook (SLRM-1394): `createClaudeCodeProcessSpawn` wraps the managed process in
   `forkChatSurviveManaged` (one line), and `evictOwnedStructuredAgentSessions` calls
-  `forkChatSurviveQuit` before the stop and skips the stop when it returns true
-  (`src/main/fork/chat-survive/chat-survive-detach.ts`).
+  `forkChatSurviveQuit` before the stop and skips the stop when it returns true, then awaits
+  `forkChatSurviveSettled` (queued record writes and removals) after every session; both come in
+  one import from `src/main/fork/chat-survive-quit-hooks.ts`, so the file stays at max-lines
+  (`src/main/fork/chat-survive/chat-survive-detach.ts`, `chat-survive-registry.ts`).
 - Chat survive adopt hooks (SLRM-1394): `resolveStructuredSessionRecovery` asks
   `forkChatSurviveAdopt` before it stops a proven-alive local owner and skips the stop when it
   returns true; `StructuredAgentSessionHost`'s tab recovery callback goes through
   `forkChatSurviveRecover`, which starts each adopted chat
-  (`src/main/fork/chat-survive/chat-survive-adopt.ts`).
-- Chat survive consumed hook (SLRM-1394): `openClaudeStreamJsonConnection` calls
-  `forkChatSurviveConsumed` after each `onMessage`, so the replay mark moves past messages the
-  chat consumed (`src/main/fork/chat-survive/chat-survive-registry.ts`).
+  (`src/main/fork/chat-survive/chat-survive-adopt.ts`). That file is at max-lines, so
+  `forkChatSurviveRecover` and upstream's `createStartupRecovery` come in one import from
+  `src/main/fork/session-host-hooks.ts` (SLRM-2138).
+- Chat survive consumed hook (SLRM-1394): `openClaudeStreamJsonConnection` hands each message to
+  `forkConsumeClaudeMessage` (`src/main/fork/claude-stream-hooks.ts`), which calls `onMessage` and
+  then `forkChatSurviveConsumed`, so the replay mark moves past messages the chat consumed
+  (`src/main/fork/chat-survive/chat-survive-registry.ts`). The file is at max-lines, so the hook
+  replaces the `onMessage` line and its exit-error import comes through the same module
+  (SLRM-2138).
 - Test runner PATH (SLRM-1394): `run-vitest.mjs` puts `node_modules/.bin` first on the Vitest
   PATH when it runs the pinned Bun. Under Bun the Claude SDK runs a script CLI with `bun`, and the
   pinned binary is `bun.exe`, so without the shim `claude-stop-ack-race.test.ts` and
@@ -795,6 +865,9 @@ Upstream files only get short hooks, which keeps rebases small:
     `ForkTabTitle` renders `ForkAgentQueueTabBadge`; `AdvancedPane.tsx` renders
     `ForkAgentQueueSetting` after `ForkChildTallySetting`; the five settings are in
     `fork-global-settings.ts`.
+- Claude account pin at terminal spawn: both `spawn-preflight.ts` files (`src/main/ipc/pty/ipc/`
+  and `src/main/ipc/pty/runtime/`) now `await forkPinTerminalClaudeAccount(...)`, since it writes
+  its pane pointer with `node:fs/promises` (SLRM-2138).
 - Worker cleanup (SLRM-2100), from `src/main/fork/worker-cleanup/`:
   - `orchestration-database-binding.ts`: `db.workerAutoReleaseEnabled` also requires
     `!forkWorkerCleanupOwnsRelease(settings)`, one `installForkWorkerCleanup(this, this.store)`
@@ -906,6 +979,36 @@ Upstream files only get short hooks, which keeps rebases small:
 it, so the series leaves it as upstream has it. The fork identity is in
 `config/scripts/fork/electron-builder.fork.config.cjs`.
 
+## Contributing
+
+Before you open a fork pull request, run these from the repo root (with `pnpm` 12.14.0, for
+example `npx -y pnpm@12.14.0`). They are what the push and pull request workflows run, minus
+the build and full test jobs.
+
+```sh
+pnpm typecheck
+pnpm exec vitest run --config config/vitest.config.ts <the test files or folders you touched>
+node config/scripts/static-analysis/ratchet-runner/run-ratchets.mjs
+node config/scripts/static-analysis/ratchets/runtime-lifecycle/check-main-sync-fs-ratchet.mjs
+node config/scripts/static-analysis/ratchets/runtime-lifecycle/check-main-blocking-api-ratchet.mjs
+node config/scripts/static-analysis/process-boundaries/check-main-sync-spawn-ratchet.mjs
+bun config/scripts/static-analysis/process-boundaries/check-import-boundaries.mjs
+node node_modules/oxlint/bin/oxlint --format github
+node node_modules/oxlint/bin/oxlint --config config/oxlint-anti-slop.json src config tests mobile --deny-warnings
+node node_modules/oxlint/bin/oxlint --type-aware --config config/oxlint-code-quality-type-aware.json src config tests --deny-warnings
+node config/scripts/static-analysis/structural-scan/ast-grep-gates.mjs --format=github
+bun config/scripts/localization/source-extraction/audit-localization-coverage.mjs --check
+node node_modules/oxfmt/bin/oxfmt --check .
+```
+
+- A ratchet failure names its rule. Fix the code. Do not raise an upstream file's baseline
+  count.
+- A fork file may get a baseline entry only for a one-shot startup or shutdown use. Give the
+  reason in the commit message and in this file (as SLRM-2138 does).
+- The pre-commit hook enforces max-lines: 300 code lines per `.ts` file and 400 per `.tsx` file.
+  An upstream file already at the limit takes its fork hook through an existing import line
+  (see the `*-hooks.ts` modules in `src/main/fork/`).
+
 ## Name and data folder
 
 The app is named Blackfish (`productName` in the builder overlay), so it builds `Blackfish.app`
@@ -957,7 +1060,8 @@ any chat is busy, and asks first. The code is `src/main/fork/restart-guard/`.
   guard's `onProgress` and `onWaitEnded`); a restart or quit wait never shows on the card.
 - **Update Ready - Restart When Idle** appears in the app menu once an update is downloaded. It
   skips the first dialog and installs as soon as no chat is busy (at once if none is). It is
-  hidden while the install runs, and refreshes on every updater status.
+  hidden while the install runs, and refreshes on every updater status and whenever the app or
+  one of its windows comes to the front.
 - **Never held:** macOS logout and shutdown (`powerMonitor` `shutdown`; Windows
   `query-session-end`, `session-end`), a quit another listener already vetoed, serve mode, and quits another
   owner committed (signals and the supervisor through `quitProcess`, an update already

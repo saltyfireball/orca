@@ -5,7 +5,7 @@
 // the fence, its provider is still running and the broker still holds every byte from the mark.
 // Anything else returns false and recovery stops the owner as today. macOS only: Linux owner
 // probes also read the spawn token from the process, which an adopted broker cannot match.
-import { readFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { StructuredAgentSessionAttachContext } from '../../native-chat/agent-session-wire/acquisition/structured-agent-session-attach-context'
 import { startStructuredAgentSessionAgentForOperation } from '../../native-chat/agent-session-wire/startup/structured-agent-session-agent-start'
@@ -59,10 +59,14 @@ function readMark(value: unknown): (ChatSurviveStreamMark & { fence: number }) |
   return { out, err, seen, delivered, pending, fence }
 }
 
-function readDetachedRecord(path: string, sessionId: string, pid: number): DetachedRecord | null {
+async function readDetachedRecord(
+  path: string,
+  sessionId: string,
+  pid: number
+): Promise<DetachedRecord | null> {
   let raw: unknown
   try {
-    raw = JSON.parse(readFileSync(path, 'utf8'))
+    raw = JSON.parse(await readFile(path, 'utf8'))
   } catch {
     return null
   }
@@ -129,7 +133,7 @@ export async function forkChatSurviveAdopt(input: {
   }
   const env = { [ORCA_AGENT_SESSION_ID_ENV]: input.sessionId }
   const recordPath = join(config.recordDir, chatSurviveRecordName(env, input.ownerPid))
-  const record = readDetachedRecord(recordPath, input.sessionId, input.ownerPid)
+  const record = await readDetachedRecord(recordPath, input.sessionId, input.ownerPid)
   const connection = record ? await claim(record) : null
   if (!record || !connection) {
     return false

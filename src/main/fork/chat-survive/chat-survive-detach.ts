@@ -12,6 +12,7 @@ import { connectChatSurviveBroker, type ChatSurviveConnection } from './chat-sur
 import {
   chatSurviveEntryForChild,
   chatSurviveEntryForSession,
+  removeChatSurviveRecord,
   writeChatSurviveRecord,
   type ChatSurviveEntry
 } from './chat-survive-registry'
@@ -85,12 +86,20 @@ export async function detachChatSurvive(sessionId: string, fence: number): Promi
     return undo(entry)
   }
   try {
-    writeChatSurviveRecord(entry.recordPath, {
+    // Lands after the spawn's own write of this record, never before it.
+    await writeChatSurviveRecord(entry.recordPath, {
       ...entry.record,
       detached: { ...mark, fence: fenceAbove }
     })
   } catch {
     connection.stop()
+    return undo(entry)
+  }
+  // The broker can exit while the record is written; then there is nothing left to hand off, and
+  // the record just written (after the exit's removal, if that ran first) must not outlive it.
+  if (entry.state !== 'detaching' || chatSurviveEntryForSession(sessionId) !== entry) {
+    connection.stop()
+    void removeChatSurviveRecord(entry.recordPath)
     return undo(entry)
   }
   entry.state = 'detached'

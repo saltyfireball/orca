@@ -3,7 +3,7 @@
 // color the app has now.
 import type React from 'react'
 import { useMemo } from 'react'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import {
   resolveCustomAppThemeTokens,
   type CustomAppThemeDraft
@@ -15,12 +15,13 @@ type Props = {
 }
 
 export function ForkCustomAppThemePreview({ theme }: Props): React.JSX.Element {
+  const t = useTranslate()
   const tokens = useMemo(() => resolveCustomAppThemeTokens(theme), [theme])
   const c = (name: string): string => tokens[`--${name}`] ?? `var(--${name})`
   const terminal = theme.terminal
   return (
     <div
-      aria-label={translate('fork.customAppTheme.preview.label', 'Theme preview')}
+      aria-label={t('fork.customAppTheme.preview.label', 'Theme preview')}
       className="overflow-hidden border text-xs"
       style={{
         borderColor: c('border'),
@@ -35,13 +36,13 @@ export function ForkCustomAppThemePreview({ theme }: Props): React.JSX.Element {
           style={{ background: c('sidebar'), color: c('sidebar-foreground') }}
         >
           <div className="font-semibold">
-            {translate('fork.customAppTheme.preview.sidebar', 'Workspaces')}
+            {t('fork.customAppTheme.preview.sidebar', 'Workspaces')}
           </div>
           <div className="px-1" style={{ background: c('accent'), color: c('accent-foreground') }}>
-            {translate('fork.customAppTheme.preview.selected', 'Selected')}
+            {t('fork.customAppTheme.preview.selected', 'Selected')}
           </div>
           <div style={{ color: c('muted-foreground') }}>
-            {translate('fork.customAppTheme.preview.other', 'Another one')}
+            {t('fork.customAppTheme.preview.other', 'Another one')}
           </div>
         </div>
         <div className="min-w-0 flex-1">
@@ -54,13 +55,13 @@ export function ForkCustomAppThemePreview({ theme }: Props): React.JSX.Element {
                 borderColor: c('tab-active-indicator')
               }}
             >
-              {translate('fork.customAppTheme.preview.activeTab', 'Active tab')}
+              {t('fork.customAppTheme.preview.activeTab', 'Active tab')}
             </div>
             <div
               className="px-2 py-1"
               style={{ background: c('tab-inactive'), color: c('tab-inactive-foreground') }}
             >
-              {translate('fork.customAppTheme.preview.tab', 'Tab')}
+              {t('fork.customAppTheme.preview.tab', 'Tab')}
             </div>
           </div>
           <div className="space-y-2 p-2">
@@ -68,7 +69,7 @@ export function ForkCustomAppThemePreview({ theme }: Props): React.JSX.Element {
               className="ml-auto w-fit px-2 py-1"
               style={{ background: c('chat-user-message'), borderRadius: 'inherit' }}
             >
-              {translate('fork.customAppTheme.preview.message', 'A chat message with')}{' '}
+              {t('fork.customAppTheme.preview.message', 'A chat message with')}{' '}
               <code
                 className="px-1"
                 style={{
@@ -76,18 +77,22 @@ export function ForkCustomAppThemePreview({ theme }: Props): React.JSX.Element {
                   color: c('chat-inline-code-foreground')
                 }}
               >
-                code
+                {t('fork.customAppTheme.preview.code', 'code')}
               </code>
             </div>
             <div style={{ color: c('muted-foreground') }}>
-              {translate('fork.customAppTheme.preview.muted', 'Quiet text and a')}{' '}
+              {t('fork.customAppTheme.preview.muted', 'Quiet text and a')}{' '}
               <span className="underline" style={{ color: c('text-link') }}>
-                {translate('fork.customAppTheme.preview.link', 'link')}
+                {t('fork.customAppTheme.preview.link', 'link')}
               </span>
             </div>
             <div className="font-mono">
-              <div style={{ color: c('diff-added') }}>+ added line</div>
-              <div style={{ color: c('diff-removed') }}>- removed line</div>
+              <div style={{ color: c('diff-added') }}>
+                {t('fork.customAppTheme.preview.addedLine', '+ added line')}
+              </div>
+              <div style={{ color: c('diff-removed') }}>
+                {t('fork.customAppTheme.preview.removedLine', '- removed line')}
+              </div>
             </div>
             <span
               className="inline-block px-2 py-0.5"
@@ -97,7 +102,7 @@ export function ForkCustomAppThemePreview({ theme }: Props): React.JSX.Element {
                 borderRadius: 'inherit'
               }}
             >
-              {translate('fork.customAppTheme.preview.button', 'Button')}
+              {t('fork.customAppTheme.preview.button', 'Button')}
             </span>
           </div>
         </div>
