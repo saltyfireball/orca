@@ -65,6 +65,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkAgentStateColorsStrength?: 'accent' | 'tint'
     /** Fork agent state colors: per state 'none', a theme color id or a hex; unset keys use defaults. */
     forkAgentStateColorsByState?: Partial<Record<ForkAgentColorState, string>>
+    /** Fork sleepers: the sidebar toolbar's Sleepers button; unset is shown. */
+    forkSleepersButton?: boolean
   }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */

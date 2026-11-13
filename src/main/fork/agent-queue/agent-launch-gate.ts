@@ -65,6 +65,8 @@ export class AgentLaunchGate {
   private readonly verdicts = new Map<string, { verdict: GateVerdict; at: number }>()
   private readonly listeners = new Set<() => void>()
   private cancelPoll: (() => void) | null = null
+  /** The hold in force at the last check, shown on every waiting entry (SLRM-2136). */
+  private heldReason: string | undefined
 
   constructor(private readonly deps: AgentLaunchGateDeps) {}
 
@@ -178,7 +180,8 @@ export class AgentLaunchGate {
       kind: ticket.kind,
       position,
       queuedAt: ticket.queuedAt,
-      ...(ticket.dispatchId ? { dispatchId: ticket.dispatchId } : {})
+      ...(ticket.dispatchId ? { dispatchId: ticket.dispatchId } : {}),
+      ...(this.heldReason ? { heldReason: this.heldReason } : {})
     }
   }
 
@@ -225,6 +228,7 @@ export class AgentLaunchGate {
 
   private pump(): void {
     if (this.tickets.length === 0) {
+      this.heldReason = undefined
       this.stopPoll()
       return
     }
@@ -239,7 +243,14 @@ export class AgentLaunchGate {
       this.emit()
       return
     }
-    if (!this.deps.shouldHold().hold) {
+    const hold = this.deps.shouldHold()
+    // A hold blocks even an empty pool, so every waiting entry says why (no silent wait).
+    const reason = hold.hold ? (hold.reason ?? 'held') : undefined
+    if (reason !== this.heldReason) {
+      this.heldReason = reason
+      changed = true
+    }
+    if (!hold.hold) {
       const live = this.live()
       for (const ticket of this.ordered()) {
         if (this.hasRoom(config, live, ticket.kind) || this.breaksDeadlock(config, live, ticket)) {
