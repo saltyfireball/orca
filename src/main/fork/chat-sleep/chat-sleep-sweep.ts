@@ -17,6 +17,11 @@ import {
   forkChatStallSweepHooks,
   type ForkChatStallSweepHooks
 } from '../chat-stall/chat-stall-service'
+import { readForkSleepersPinned } from '../../../shared/fork/sleepers'
+import {
+  attachForkSleepersSweep,
+  type ForkSleepersSweep
+} from '../sleepers/sleepers-sweep-registry'
 
 /** On-screen session ids per reporting window, so a closed window drops only its own. */
 const onScreenBySource = new Map<number, ReadonlySet<string>>()
@@ -50,9 +55,19 @@ export function resetForkChatSleepOnScreen(): void {
   onScreenBySource.clear()
 }
 
+/** Sleepers (FORK.md): a pinned chat never sleeps on idle, whether or not chat sleep is on. */
+function pinned(readSettings: () => unknown, sessionId: string): boolean {
+  try {
+    return readForkSleepersPinned(readSettings()).includes(sessionId)
+  } catch {
+    return false
+  }
+}
+
 export type ForkChatSleepIdleSweep = ForkChatStallSweepHooks & {
   idleMs: () => number | null
   keepAwake: (sessionId: string) => boolean
+  attach: (sweep: ForkSleepersSweep) => void
 }
 
 /**
@@ -79,10 +94,14 @@ export function forkChatSleepIdleSweep(
       return settings ? forkChatSleepIdleMinutes(settings) * 60_000 : stockIdleMs()
     },
     keepAwake: (sessionId) => {
+      if (pinned(readSettings, sessionId)) {
+        return true
+      }
       const settings = enabledSettings()
       return (
         settings !== null && forkChatSleepKeepVisible(settings) && isForkChatOnScreen(sessionId)
       )
-    }
+    },
+    attach: attachForkSleepersSweep
   }
 }

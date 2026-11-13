@@ -297,6 +297,30 @@ named Orca Fork until SLRM-1367. `main` is always
   Not covered: desktop and mobile launches, `--terminal` reuse, automation `reuseSession` sends,
   the legacy `worktree.create` startup agent on old hosts, and paired hosts that run stock Orca.
 
+- **Sleepers: one place to see and manage sleeping and idle agents (SLRM-2094).** A dialog,
+  opened from the moon button in the sidebar's bottom toolbar or the Sleepers... quick action,
+  lists every native chat and terminal agent across all workspaces with its state (working,
+  needs input, awake and idle, asleep), idle time, last activity, workspace, model and memory
+  (only when the resource monitor already sampled that pane). Rows filter by state, workspace and
+  idle time and sort by idle time, last activity, workspace or state.
+  - Per row and for a selection: sleep now, wake (or open), keep awake (pin) and close (asks once
+    more). Sleep all idle and Sleep all except visible each take one click; both skip pinned
+    chats and anything not awake and idle.
+  - Sleep now goes through the stock idle sweep (`sweepNow`), so the same owed-work check runs:
+    a chat with a running turn, a queued or mid-delivery send, an open dispatch, a pending
+    prompt, open child work, a starting provider or a provider that does not confirm it is idle
+    is refused and reported as busy. Only native chats this desktop hosts can be put to sleep
+    now; terminal agents are listed, woken and closed, and sleep through Agent sleep as before.
+  - A pinned chat is never put to sleep by the idle sweep, whether or not Chat sleep is on.
+    Pins are the only new setting: `forkSleepersPinned` (native chat session ids, unset is
+    none). An explicit sleep of one pinned chat still works.
+  - CLI: `orca sleepers list [--json]`, `orca sleepers sleep <id>|--all-idle [--except-visible]`,
+    `orca sleepers wake <id>`, `orca sleepers pin <id>` and `orca sleepers unpin <id>`. Ids are
+    the session id or a unique prefix of it, as `list` prints them.
+    Code is in `src/shared/fork/sleepers*.ts`, `src/main/fork/sleepers/`,
+    `src/main/runtime/rpc/methods/fork/fork-sleepers.ts`, `src/renderer/src/fork/sleepers/` and
+    `src/cli/fork/sleepers-*`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -364,6 +388,12 @@ Apply these in this order. Each one is a single commit.
 61. `SLRM-2127 Chat stall marks stuck chats, writer kill under a broker, broker test hang`
 62. `SLRM-2100 Worker cleanup: finished workers give up their agent, with guards and Undo`
 63. `SLRM-2102 Launch defaults: a default model and effort per kind of launch`
+64. `SLRM-2094 Sleepers: list, sleep, wake and pin chats and terminal agents in one place`
+
+`AppRootSurfaces.tsx` carries one hook for the fork's always-mounted hosts: `ForkRootHosts`
+(`src/renderer/src/fork/ForkRootHosts.tsx`) renders `ForkChatSleepReporter`,
+`ForkWorkerCleanupReporter` and `ForkSleepersDialogHost`. Where a section below says
+`AppRootSurfaces.tsx` mounts one of those, it is mounted there.
 
 Fork-only code lives in `fork/` folders:
 
@@ -556,6 +586,18 @@ Upstream files only get short hooks, which keeps rebases small:
   - `workspace-cleanup-dialog-header.tsx` renders `ForkLostWorkButton`, hidden without the
     bridge; `AdvancedPane.tsx` renders `ForkLostWorkSettings`; `forkLostWork` is in
     `src/shared/fork/fork-global-settings.ts`.
+- Sleepers (SLRM-2094): `StructuredAgentSessionIdleSweepDeps` takes an optional `attach`, called
+  with the sweep from its constructor, and the sweep gains `sweepNow(sessionId)`, which runs the
+  stock `sweepSession` with a `force` flag: no idle window, no keep-awake, and it also refuses a
+  starting provider and a queued or mid-delivery send. `forkChatSleepIdleSweep` passes
+  `attachForkSleepersSweep` as `attach` and its `keepAwake` also keeps pinned chats awake.
+  `rpc-method-registry.ts` spreads `FORK_SLEEPERS_METHODS` last, and the generated
+  `rpc-params-catalog.generated.ts` lists their params. `src/cli/specs/index.ts` spreads
+  `FORK_SLEEPERS_COMMAND_SPECS`, `handler-group-manifest.ts` adds the `fork-sleepers` group and
+  `cli-command-names.ts` lists `sleepers`. `quick-actions.ts` spreads
+  `getForkSleepersQuickActions()`, `AppRootSurfaces.tsx` mounts `ForkSleepersDialogHost` and
+  `SidebarToolbar.tsx` renders `ForkSleepersButton`. `forkSleepersPinned` is in
+  `src/shared/fork/fork-global-settings.ts`.
 
 - Memory truth (SLRM-2099):
   - `src/main/memory/collector.ts` reads the process table through

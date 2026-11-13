@@ -68,6 +68,7 @@ import { FORK_CLAUDE_ACCOUNT_MOVE_METHODS } from './fork/fork-claude-account-mov
 import { FORK_LOST_WORK_METHODS } from './fork/fork-lost-work'
 import { FORK_AGENT_QUEUE_METHODS } from './fork/fork-agent-queue'
 import { FORK_LAUNCH_DEFAULTS_METHODS } from './fork/fork-launch-defaults'
+import { FORK_SLEEPERS_METHODS } from './fork/fork-sleepers'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
 import { STRUCTURED_AGENT_SESSION_ATTACHMENT_METHODS } from './structured-sessions/attachments/structured-agent-session-attachments'
@@ -174,5 +175,7 @@ export const ALL_RPC_METHODS = [
   ...FORK_LOST_WORK_METHODS,
   // SLRM-2098: the agent launch queue (FORK.md).
   ...FORK_AGENT_QUEUE_METHODS,
-  ...FORK_LAUNCH_DEFAULTS_METHODS
+  ...FORK_LAUNCH_DEFAULTS_METHODS,
+  // Fork: Sleepers, list, sleep now and pins behind `orca sleepers` (FORK.md).
+  ...FORK_SLEEPERS_METHODS
 ]

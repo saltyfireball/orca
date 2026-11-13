@@ -289,5 +289,11 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     keys: ['launch-defaults'],
     load: async () =>
       (await import('./fork/launch-defaults-handlers.js')).FORK_LAUNCH_DEFAULTS_HANDLERS
+  },
+  // Fork: Sleepers, list, sleep, wake and pin chats (FORK.md).
+  {
+    name: 'fork-sleepers',
+    keys: ['sleepers list', 'sleepers sleep', 'sleepers wake', 'sleepers pin', 'sleepers unpin'],
+    load: async () => (await import('./fork/sleepers-handlers.js')).FORK_SLEEPERS_HANDLERS
   }
 ]
