@@ -14,6 +14,7 @@ import { handleForkRestartHeld } from '@/fork/restart-guard-held-toast'
 import { SettingsGroup } from '../section-layout/SettingsGroup'
 import { ForkChatSurviveSetting } from '@/fork/ForkChatSurviveSetting'
 import { ForkAccountChipSetting } from '@/fork/claude-account-chip/ForkAccountChipSetting'
+import { ForkLostWorkSettings } from '@/fork/lost-work/ForkLostWorkSettings'
 
 type AdvancedPaneProps = {
   settings: GlobalSettings
@@ -151,6 +152,7 @@ export function AdvancedPane({ settings, updateSettings }: AdvancedPaneProps): R
 
       <ForkChatSurviveSetting settings={settings} updateSettings={updateSettings} />
       <ForkAccountChipSetting settings={settings} updateSettings={updateSettings} />
+      <ForkLostWorkSettings settings={settings} updateSettings={updateSettings} />
     </div>
   )
 }

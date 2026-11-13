@@ -86,6 +86,32 @@ named Orca Fork until SLRM-1367. `main` is always
   card collapses its agents into the small icon strip, each icon whose tab has a color gets a
   thin ring in it, from the same resolver. A chat that has never had a prompt has no status
   entry, so it has no row to tint. Code is in `src/renderer/src/fork/agent-row-tab-tint/`.
+- **Lost work (SLRM-2096).** A Lost work button in the workspace cleanup dialog opens a scan of
+  every local git project for work an agent worktree could lose. Nothing runs until you press
+  Scan; the scan only reads git and can be stopped.
+  - It lists worktrees with commits not on the default branch (squash merges are caught by
+    patch-id, and by pull request state when `gh` is installed and signed in; without `gh` the
+    scan carries on and says so), worktrees whose pull request is merged or closed, worktrees
+    git knows that Orca does not track, Orca workspaces whose folder is gone, local branches
+    with unmerged commits and no worktree, and stashes.
+  - Each row shows unmerged and unpushed commits, uncommitted files, the last commit date, the
+    pull request link and state, and a risk: safe to remove, needs a look, or would lose work.
+  - Actions per row and in bulk: open the workspace, push the branch, view or create the pull
+    request, save as a git bundle or patch file (uncommitted changes go in a second patch), and
+    delete. Delete always asks; anything that would lose work needs a second confirm, and main
+    checks again against git before it deletes. Tracked workspaces go through Orca's own removal;
+    untracked worktrees, gone folders (`git worktree prune`), branches and stashes through
+    `src/main/fork/lost-work/lost-work-actions.ts`.
+  - CLI: `orca lost-work [--repo <id|name>] [--json]` prints the same scan as a table, over the
+    `fork.lostWork.scan` RPC (desktop host only; remote and folder projects are skipped with a
+    note).
+  - Settings > Advanced > Lost work (`forkLostWork`): which checks run (all on), the archive
+    folder for saves (empty: ask each time), a default branch per project (empty: the remote's
+    `HEAD`, then `main`, `master`, `trunk` or `develop`), squash lookback (500 base commits) and the pull request limit
+    (200 per project).
+  - Code is in `src/main/fork/lost-work/`, `src/renderer/src/fork/lost-work/`,
+    `src/shared/fork/lost-work.ts`, `src/preload/fork/lost-work-bridge.ts` and
+    `src/cli/fork/lost-work-*`.
 
 ## Patch list
 
@@ -144,6 +170,7 @@ Apply these in this order. Each one is a single commit.
 51. `SLRM-1966 Sidebar agent rows wear their tab's color dot`
 52. `SLRM-1966 Follow upstream 1.4.256's moved modules in fork code`
 53. `SLRM-1966 Tint done chat rows and ring tab colors in the collapsed agent strip`
+54. `SLRM-2096 Lost work: find and handle unmerged or lost work across agent worktrees`
 
 Fork-only code lives in `fork/` folders:
 
@@ -275,6 +302,20 @@ Upstream files only get short hooks, which keeps rebases small:
   - `SortableTabContextMenu.tsx` renders `ForkMoveAccountTabMenuItems` for a native Claude chat,
     `quick-actions.ts` spreads `getForkClaudeMoveQuickActions()`, and `AppRootSurfaces.tsx`
     mounts `ForkMoveAccountDialogHost`.
+- Lost work (SLRM-2096), from `src/main/fork/lost-work/`, `src/renderer/src/fork/lost-work/` and
+  `src/cli/fork/lost-work-*`:
+  - `registerWorkspaceCleanupHandlers` (`workspace-cleanup.ts`) ends with one
+    `installForkLostWork(store)` call, which registers the `fork:lostWork:*` IPC handlers and
+    gives the RPC method the store.
+  - `rpc-method-registry.ts` spreads `FORK_LOST_WORK_METHODS` last, and the generated
+    `rpc-params-catalog.generated.ts` lists its params.
+  - `src/cli/specs/index.ts` spreads `FORK_LOST_WORK_COMMAND_SPECS`, `handler-group-manifest.ts`
+    adds the `fork-lost-work` group, and `cli-command-names.ts` lists `lost-work`.
+  - `src/preload/index.ts` adds `forkLostWork` (`src/preload/fork/lost-work-bridge.ts`) and
+    `api-types.ts` types it as optional.
+  - `workspace-cleanup-dialog-header.tsx` renders `ForkLostWorkButton`, hidden without the
+    bridge; `AdvancedPane.tsx` renders `ForkLostWorkSettings`; `forkLostWork` is in
+    `src/shared/fork/fork-global-settings.ts`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
