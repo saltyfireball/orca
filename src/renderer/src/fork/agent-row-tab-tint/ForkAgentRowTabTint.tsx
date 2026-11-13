@@ -4,6 +4,7 @@ import { useAppStore } from '@/store'
 import type { DashboardAgentRow } from '@/components/dashboard/useDashboardData'
 import { agentRowTintStyle, resolveAgentRowTabColor } from './agent-row-tab-tint'
 import { ForkChatSleepRowDim } from '../chat-sleep/ForkChatSleep'
+import { ForkRowStateColor } from '../agent-state-color/ForkAgentStateColor'
 
 export type AgentRowTabColorSubject = Pick<DashboardAgentRow, 'paneKey' | 'tab' | 'rowSource'>
 
@@ -28,13 +29,18 @@ export function useAgentRowTabColor(agent: AgentRowTabColorSubject): string | nu
 }
 
 /**
- * Paints the tab's color dot onto its sidebar row, and dims the row of a sleeping chat (chat
- * sleep). The parent row must be `relative`.
+ * Paints the tab's color dot onto its sidebar row, or else the row's agent state color (agent
+ * state colors, which pass the row's own glyph state and unread flag), and dims the row of a
+ * sleeping chat (chat sleep). The parent row must be `relative`.
  */
 export function ForkAgentRowTabTint({
-  agent
+  agent,
+  dotState = null,
+  unread = false
 }: {
   agent: AgentRowTabColorSubject
+  dotState?: string | null
+  unread?: boolean
 }): React.JSX.Element {
   const color = useAgentRowTabColor(agent)
   const style = agentRowTintStyle(color)
@@ -48,6 +54,7 @@ export function ForkAgentRowTabTint({
           style={style}
         />
       ) : null}
+      <ForkRowStateColor agent={agent} manualColor={color} dotState={dotState} unread={unread} />
       <ForkChatSleepRowDim agent={agent} />
     </>
   )
