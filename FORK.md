@@ -86,6 +86,20 @@ named Orca Fork until SLRM-1367. `main` is always
   card collapses its agents into the small icon strip, each icon whose tab has a color gets a
   thin ring in it, from the same resolver. A chat that has never had a prompt has no status
   entry, so it has no row to tint. Code is in `src/renderer/src/fork/agent-row-tab-tint/`.
+- **Agent state colors (SLRM-2106).** Off by default (Settings > Advanced > Agent state colors).
+  When on, a tab in the tab strip and its sidebar agent row take a color from the agent's state:
+  needs you, stalled, working, queued, unread, done or asleep, first match in that order. The
+  state is the one the tab's or row's own state glyph already shows (plus the unread mark and
+  the fork's stall, queue and sleep marks), so no second state machine exists and the icons and
+  labels are unchanged. Each state's color is None, a theme color or a custom hex; the shipped
+  theme colors are CSS variables that the light and dark themes define and pasted custom app
+  themes also write (`--text-link`, `--git-decoration-*`, `--primary`, `--muted-foreground`).
+  Defaults: needs you yellow, stalled red, working blue, queued muted, unread accent, done green,
+  asleep none. A state set to None shows nothing (it does not fall through to a lower state).
+  Show on tabs, rows or both (default both); style Stripe (2px edge, default) or Tinted (stripe
+  plus a 14% wash). A manual tab color always wins: that tab and its row show only the manual
+  color (SLRM-1966's tint). Sub-agent rows stay plain. Code is in
+  `src/shared/fork/agent-state-color.ts` and `src/renderer/src/fork/agent-state-color/`.
 - **Lost work (SLRM-2096).** A Lost work button in the workspace cleanup dialog opens a scan of
   every local git project for work an agent worktree could lose. Nothing runs until you press
   Scan; the scan only reads git and can be stopped.
@@ -348,6 +362,7 @@ Apply these in this order. Each one is a single commit.
 60. `SLRM-2098 Agent launch queue: a limit on running agents with a queue for the rest`
 61. `SLRM-2127 Chat stall marks stuck chats, writer kill under a broker, broker test hang`
 62. `SLRM-2100 Worker cleanup: finished workers give up their agent, with guards and Undo`
+63. `SLRM-2106 Agent state colors: tabs and agent rows colored by agent state`
 
 Fork-only code lives in `fork/` folders:
 
@@ -376,6 +391,10 @@ Upstream files only get short hooks, which keeps rebases small:
 - An import and one element in each of those two files for the child count:
   `ForkAgentRowChildTally` before the row's `+N` span and `ForkAgentStripChildTally` after the
   strip's hidden-agent count (SLRM-2095).
+- Agent state colors (SLRM-2106): the row's existing `ForkAgentRowTabTint` element in
+  `worktree-card-compact-agent-row.tsx` also passes `dotState` and `isUnvisited`, and
+  `SortableTab.tsx` gets an import and one `ForkTabStateColor` element after its unread overlay.
+  `ForkAgentStateColorSetting` renders at the end of `AdvancedPane.tsx`.
 - The updater feed repoints.
 - One call each in `release-channel.ts`, `updater-release-builds.ts` and
   `electron-updater-loader.ts`.

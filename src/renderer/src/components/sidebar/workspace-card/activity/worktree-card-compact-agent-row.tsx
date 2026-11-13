@@ -329,7 +329,7 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
       aria-expanded={hasChildDisclosure ? childAgentsExpanded : undefined}
       title={sendTargetDisabledReason}
     >
-      <ForkAgentRowTabTint agent={agent} />
+      <ForkAgentRowTabTint agent={agent} dotState={dotState} unread={isUnvisited} />
       {rowBody}
     </div>
   )

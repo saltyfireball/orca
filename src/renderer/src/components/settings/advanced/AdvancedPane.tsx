@@ -21,6 +21,7 @@ import { ForkMemorySettings } from '@/fork/memory-truth/ForkMemorySettings'
 import { ForkAgentQueueSetting } from '@/fork/agent-queue/ForkAgentQueueSetting'
 import { ForkChatStallSetting } from '@/fork/chat-stall/ForkChatStallSetting'
 import { ForkWorkerCleanupSetting } from '@/fork/worker-cleanup/ForkWorkerCleanupSetting'
+import { ForkAgentStateColorSetting } from '@/fork/agent-state-color/ForkAgentStateColorSetting'
 
 type AdvancedPaneProps = {
   settings: GlobalSettings
@@ -165,6 +166,7 @@ export function AdvancedPane({ settings, updateSettings }: AdvancedPaneProps): R
       <ForkAgentQueueSetting settings={settings} updateSettings={updateSettings} />
       <ForkChatStallSetting settings={settings} updateSettings={updateSettings} />
       <ForkWorkerCleanupSetting settings={settings} updateSettings={updateSettings} />
+      <ForkAgentStateColorSetting settings={settings} updateSettings={updateSettings} />
     </div>
   )
 }
