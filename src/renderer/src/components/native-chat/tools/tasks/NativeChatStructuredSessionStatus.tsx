@@ -9,6 +9,7 @@ import {
   useNativeChatCrew
 } from '../../../orchestration-crew/use-native-chat-crew'
 import { ForkAgentQueueBanner } from '../../../../fork/agent-queue/ForkAgentQueueBanner'
+import { ForkMcpProfileStrip } from '../../../../fork/mcp-profiles/ForkMcpProfileStrip'
 
 export function NativeChatStructuredSessionStatus(props: {
   sessionId: string
@@ -34,6 +35,8 @@ export function NativeChatStructuredSessionStatus(props: {
     <>
       {/* Fork (SLRM-2098): queued for a free agent slot (FORK.md). */}
       <ForkAgentQueueBanner sessionId={props.sessionId} />
+      {/* Fork: the chat's MCP profile (FORK.md "MCP profiles"). */}
+      <ForkMcpProfileStrip sessionId={props.sessionId} />
       {backgroundTasks.show || crew ? (
         <NativeChatBackgroundTasksStatus
           isVisible={props.isVisible}
