@@ -56,6 +56,7 @@ export const CLI_COMMAND_NAMES = [
   'launch-defaults',
   'linear',
   'lost-work',
+  'mcp-profile',
   'mouse',
   'network',
   'open',
