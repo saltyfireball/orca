@@ -38,6 +38,16 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkChatStallMinutes?: number
     /** Fork chat stall: release a long-stalled chat whose provider is stopped or gone. Off unless true. */
     forkChatStallAutoRelease?: boolean
+    /** Fork worker cleanup: finished workers give up their agent, replacing the stock auto-release. Off unless true. */
+    forkWorkerCleanup?: boolean
+    /** Fork worker cleanup: minutes after a worker reports before it is cleaned up; unset is 5. */
+    forkWorkerCleanupGraceMinutes?: number
+    /** Fork worker cleanup: 'close' closes the tab, 'release' keeps a chat's tab; unset is 'close'. */
+    forkWorkerCleanupAction?: 'close' | 'release'
+    /** Fork worker cleanup: clean up once the worker reports done; unset is on. */
+    forkWorkerCleanupOnDone?: boolean
+    /** Fork worker cleanup: clean up once the worker's branch is merged; unset is off. */
+    forkWorkerCleanupOnMerged?: boolean
   }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */
