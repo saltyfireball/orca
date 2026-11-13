@@ -21,6 +21,11 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings & {
   forkChatSleepIdleMinutes?: number
   /** Fork chat sleep: chats on screen never sleep; unset is on. */
   forkChatSleepKeepVisible?: boolean
+  /** Fork chat stall: minutes without provider output before an open turn is marked stalled;
+   *  unset is 30, 0 is off. */
+  forkChatStallMinutes?: number
+  /** Fork chat stall: release a long-stalled chat whose provider is stopped or gone. Off unless true. */
+  forkChatStallAutoRelease?: boolean
 }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */

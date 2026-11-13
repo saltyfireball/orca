@@ -164,6 +164,36 @@ named Orca Fork until SLRM-1367. `main` is always
     Code is in `src/shared/fork/chat-sleep.ts`, `src/main/fork/chat-sleep/` and
     `src/renderer/src/fork/chat-sleep/`.
 
+- **Chat stall: a chat stuck working is marked, and can be released (SLRM-2127).** The stock
+  idle sweep treats a chat with an open turn as busy and never releases it. A turn whose result
+  event was lost, a provider that hangs, a provider in the stopped (T) state, or a provider that
+  died without its exit being observed leaves the turn open, and the provider is held forever.
+  (A provider whose exit is observed, and an app restart, already end the turn in stock code.)
+  - Each sweep tick, every chat held busy is checked by its journal cursor. A cursor that has
+    not moved for `forkChatStallMinutes` (default 30; 0 turns detection off) marks the chat
+    stalled. Only then is the process table read (`ps`, not on Windows) from the provider root
+    the chat's lease records: the root, a supervisor under a chat-survive broker, and the
+    writer give `alive`, `stopped` (any of them in the T state) or `gone` (root missing or a
+    zombie); a failed read is `unknown`. A stopped tool deeper down is the tool's business and
+    reads `alive`.
+  - A stalled chat shows an amber Stalled mark on its sidebar row and an hourglass after its tab
+    title. Its menu offers Interrupt (the host's own cancel, as the Stop button), Release (the
+    sweep's own retire path: stop the provider, close the conversation at rest; the next send
+    starts it again) and, for a stopped provider, Wake (SIGCONT to each stopped process of the
+    tree). Every action is refused for a chat that is not marked now.
+  - With `forkChatStallAutoRelease` (default off), a chat stalled for twice the window whose
+    provider is `stopped` or `gone` is released; a stopped provider is resumed first so it can
+    take the stop. A chat whose provider is `alive` or `unknown` is only ever marked, since it
+    may be running a long tool.
+  - This covers chats this desktop hosts. Code is in `src/shared/fork/chat-stall.ts`,
+    `src/main/fork/chat-stall/` and `src/renderer/src/fork/chat-stall/`.
+- **Provider writer kill under a chat-survive broker (SLRM-2127).** `killProviderWriter` only
+  group-killed children of the root that lead their own group, so under a broker (whose
+  supervisor shares the broker's group) it matched nothing: the writer was still reached by the
+  descendant sweep, but `killDelivered` stayed false and the close proof was weaker.
+  `forkProviderWriterParents` (`src/main/fork/chat-survive/chat-survive-writer.ts`) also counts
+  a direct child that shares the root's group as a writer parent.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -225,6 +255,7 @@ Apply these in this order. Each one is a single commit.
 55. `SLRM-2097 Custom app themes: paste or import a whole app theme`
 56. `SLRM-2096 Lost work: find and handle unmerged or lost work across agent worktrees`
 57. `SLRM-2093 Chat sleep: idle native chats give up their provider, on screen chats stay awake`
+58. `SLRM-2127 Chat stall marks stuck chats, writer kill under a broker, broker test hang`
 
 Fork-only code lives in `fork/` folders:
 
@@ -353,6 +384,26 @@ Upstream files only get short hooks, which keeps rebases small:
   `ForkChatSleepSetting`. The moon and the dim render inside the existing fork hooks
   (`ForkTabTitle`, `ForkClaudeAccountAgentRowChip`, `ForkAgentRowTabTint`), so they add no
   upstream lines of their own. The settings are in `src/shared/fork/fork-global-settings.ts`.
+- Chat stall (SLRM-2127): `StructuredAgentSessionIdleSweepDeps` takes optional `stall` and
+  `attachStall`; `start()` hands the sweep's tick to `attachStall`, and in
+  `tickUnderSerialize` the owed-work branch passes the journal cursor and the lease's owner pid
+  to `stall` and, on `release`, retires the chat with the sweep's own `stopAgent` and
+  `closeConversation`; a chat not held busy is reported with null. `forkChatSleepIdleSweep`
+  returns the stall hooks too, so `workspace-process-listing.ts` is unchanged; like
+  `keepAwake`, they reach the sweep through the untyped spread of `idleSweep` (the host deps
+  type picks only `intervalMs` and `idleMs`, and that file is over the line budget).
+  `src/main/index.ts` calls `installForkChatStallBridge()` after the chat sleep bridge;
+  `src/preload/index.ts` adds `forkChatStall` and `api-types.ts` types it as optional;
+  `AdvancedPane.tsx` renders `ForkChatStallSetting`. The marks render inside `ForkTabTitle` and
+  `ForkClaudeAccountAgentRowChip`. The account move's `stopTurn` moved to
+  `src/main/fork/chat-host-turn-stop.ts`, which Interrupt shares.
+- Writer kill (SLRM-2127): `killProviderWriter` in `provider-process-teardown.ts` matches writer
+  groups under `forkProviderWriterParents(child.pid, snapshot)` instead of `child.pid` alone
+  (one import, two lines).
+- Broker test (SLRM-2127): the "refuses a broker that welcomes in another protocol version"
+  test in `chat-survive-broker.test.ts` hung until its 30 s timeout because its fake server
+  never read its socket, so it never saw the client hang up and `server.close()` waited
+  forever. The fake now reads and drops the hello; the code under test was right.
 - Account move (SLRM-1503), from `src/main/fork/claude-account-move/` and
   `src/renderer/src/fork/claude-account-move/`:
   - `prepareClaudeLaunchAccount` (`claude-launch-account.ts`) takes an optional `sessionId` and
