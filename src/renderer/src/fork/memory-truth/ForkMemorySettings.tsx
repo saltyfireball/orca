@@ -88,7 +88,7 @@ export function ForkMemorySettings({
         label={translate('fork.memory.settings.pauseLabel', 'Pause new agents while over')}
         description={translate(
           'fork.memory.settings.pauseHelp',
-          'Refuse to start new agents and chats while memory is past the warning line. Running sessions are not touched.'
+          'Refuse to start new agents and chats while memory is past the warning line. With the launch queue on, new chats wait in the queue instead and start when memory recovers. Running sessions are not touched.'
         )}
         checked={resolved.pauseLaunches}
         onChange={() => updateSettings({ forkMemoryPauseLaunches: !resolved.pauseLaunches })}

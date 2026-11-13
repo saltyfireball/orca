@@ -71,9 +71,19 @@ export function setForkMemoryStatusForTests(status: ForkMemoryStatus | null): vo
   set(status)
 }
 
-/** The message to refuse a new agent launch with, or null when launches may go ahead. */
-export function forkMemoryLaunchRefusal(): string | null {
+/**
+ * The message to refuse a new agent launch with, or null when launches may go ahead. With the
+ * launch queue on (`launchesHeld`), a native chat is not refused here: it waits in the queue. A
+ * terminal agent cannot wait there, so it is still refused.
+ */
+export function forkMemoryLaunchRefusal(queueable = false): string | null {
   ensureSubscribed()
+  if (latest?.launchesHeld === true && !queueable) {
+    return translate(
+      'fork.memory.launchPausedTerminal',
+      'New terminal agents are paused: system memory is past the warning threshold. Chats wait in the launch queue, terminal agents cannot. Close some sessions, or turn off "Pause new agents" in Settings > Advanced > Memory.'
+    )
+  }
   if (latest?.launchesPaused !== true) {
     return null
   }
