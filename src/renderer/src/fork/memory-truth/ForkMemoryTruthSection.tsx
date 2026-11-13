@@ -154,6 +154,11 @@ export function ForkMemoryTruthSection({
           {t('fork.memory.paused', 'New agents are paused until memory frees up.')}
         </div>
       )}
+      {status.launchesHeld && (
+        <div className="text-destructive">
+          {t('fork.memory.held', 'New chats wait in the launch queue until memory frees up.')}
+        </div>
+      )}
       <div className="flex justify-between gap-2 font-medium">
         <span>{t('fork.memory.grandTotal', 'Orca and its sessions')}</span>
         <span className="tabular-nums">{formatForkBytes(truth.grandTotal)}</span>

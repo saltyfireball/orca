@@ -5,13 +5,21 @@ import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'
 import { canSleepNow, type SleeperRow, type SleeperState } from '../../../../shared/fork/sleepers'
 import { formatSleeperBytes } from './sleepers-view-model'
+import {
+  ForkSleepersLifecycleActions,
+  sleeperLifecycleDetail
+} from './ForkSleepersLifecycleActions'
 
 export function sleeperStateLabel(state: SleeperState): string {
   switch (state) {
     case 'working':
       return translate('fork.sleepers.state.working', 'Working')
+    case 'stalled':
+      return translate('fork.sleepers.state.stalled', 'Stalled')
     case 'needs-input':
       return translate('fork.sleepers.state.needsInput', 'Needs input')
+    case 'queued':
+      return translate('fork.sleepers.state.queued', 'Queued')
     case 'awake-idle':
       return translate('fork.sleepers.state.awakeIdle', 'Awake, idle')
     case 'asleep':
@@ -41,6 +49,8 @@ export type SleeperRowActions = {
   wake: (row: SleeperRow) => void
   pin: (row: SleeperRow, pinned: boolean) => void
   close: (row: SleeperRow) => void
+  /** A stall or queue action ran; refresh once it lands. */
+  after: (work: Promise<unknown>) => void
 }
 
 export function ForkSleepersRow({
@@ -62,6 +72,7 @@ export function ForkSleepersRow({
     row.kind === 'chat'
       ? translate('fork.sleepers.kind.chat', 'Chat')
       : translate('fork.sleepers.kind.terminal', 'Terminal'),
+    sleeperLifecycleDetail(row, now),
     row.workspace,
     row.model ?? row.agent ?? '',
     memory,
@@ -93,17 +104,20 @@ export function ForkSleepersRow({
       >
         {sleeperAge(row.idleMs)}
       </div>
-      <div className="flex w-64 shrink-0 justify-end gap-1">
+      <div className="flex w-80 shrink-0 justify-end gap-1">
+        <ForkSleepersLifecycleActions row={row} after={actions.after} />
         {canSleepNow(row) ? (
           <Button size="sm" variant="ghost" onClick={() => actions.sleep(row)}>
             {translate('fork.sleepers.sleep', 'Sleep')}
           </Button>
         ) : null}
-        <Button size="sm" variant="ghost" onClick={() => actions.wake(row)}>
-          {row.state === 'asleep'
-            ? translate('fork.sleepers.wake', 'Wake')
-            : translate('fork.sleepers.open', 'Open')}
-        </Button>
+        {row.worktreeId ? (
+          <Button size="sm" variant="ghost" onClick={() => actions.wake(row)}>
+            {row.state === 'asleep'
+              ? translate('fork.sleepers.wake', 'Wake')
+              : translate('fork.sleepers.open', 'Open')}
+          </Button>
+        ) : null}
         {row.kind === 'chat' && row.local ? (
           <Button
             size="sm"
@@ -123,7 +137,7 @@ export function ForkSleepersRow({
             {row.pinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
           </Button>
         ) : null}
-        {confirmClose ? (
+        {!row.worktreeId ? null : confirmClose ? (
           <Button
             size="sm"
             variant="destructive"
