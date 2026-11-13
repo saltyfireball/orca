@@ -183,6 +183,21 @@ named Orca Fork until SLRM-1367. `main` is always
   `src/main/fork/memory-truth/`, `src/renderer/src/fork/memory-truth/`,
   `src/shared/fork/memory-truth.ts` and `src/cli/fork/memory-truth-format.ts`.
 
+- **Launch defaults (SLRM-2102).** Stock runs a launch on the model in Settings > Agents or the
+  agent's own config unless the launch passes `--model`, so a forgotten flag runs whatever that
+  is. Settings > Advanced > Launch defaults sets, per agent, an optional model and effort for
+  three kinds of launch: CLI launches (`orca agent launch`, `orca worktree create --agent`),
+  orchestration workers (`orca orchestration worker-start`) and automation runs (scheduled and
+  run-now). The choices come from the app's own model catalog. Order: an explicit `--model` or
+  `--effort`, a picker choice or a model in the agent arguments wins, then the default for the
+  kind, then stock. A default the agent refuses falls back to stock with a note. Every cell is
+  empty by default, which is stock. Desktop and mobile pickers keep the Settings > Agents
+  default. `orca agent launch` prints a `model:` line, `worker-start --json` adds `modelFrom`, a
+  worker's sidebar row tooltip names its model and effort and says when the worker default chose
+  them, and `orca launch-defaults [--agent <agent>] [--json]` prints what each kind resolves to.
+  Not covered: desktop and mobile launches, `--terminal` reuse, automation `reuseSession` sends,
+  the legacy `worktree.create` startup agent on old hosts, and paired hosts that run stock Orca.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -246,6 +261,7 @@ Apply these in this order. Each one is a single commit.
 57. `SLRM-2093 Chat sleep: idle native chats give up their provider, on screen chats stay awake`
 58. `SLRM-2105 Follow upstream 1.4.258's moved modules in fork code`
 59. `SLRM-2099 Truthful memory: whole process trees, system memory and a warning`
+60. `SLRM-2102 Launch defaults: a default model and effort per kind of launch`
 
 Fork-only code lives in `fork/` folders:
 
@@ -437,6 +453,30 @@ Upstream files only get short hooks, which keeps rebases small:
     `withForkMemoryTruth`.
   - Not gated: terminal agents launched through the CLI or RPC. Headless `orcad` uses default
     settings and does not count native chats.
+
+- Launch defaults (SLRM-2102), from `src/shared/fork/launch-defaults/`,
+  `src/main/fork/launch-defaults/`, `src/renderer/src/fork/launch-defaults/` and
+  `src/cli/fork/launch-defaults-*`:
+  - `resolveUnlaunchedIntent` (`agent-launch-intent-resolution.ts`) passes the intent through
+    `applyForkCliLaunchDefault` and returns its `forkLaunch`; `runAgentLaunch` (`agent-launch.ts`)
+    adds it to the result with `withForkLaunchChoice`.
+  - `resolveWorkerStartAgent` (`worker-start-validation.ts`) calls
+    `resolveForkWorkerLaunch(runtime, ..., resolveWorkerLaunchPreferences)` instead of
+    `resolveWorkerLaunchPreferences` directly.
+  - Both launchers in `runtime-automation-service.ts` (chat and terminal) receive
+    `withForkAutomationLaunchDefault(runtime, request.automation)`.
+  - `composeOrchestrationDispatch` (`orchestration-dispatch-context.ts`) spreads
+    `forkWorkerRowLaunch(db, dispatch.id)` last; `AgentStatusOrchestrationContext` gains an
+    optional `forkLaunch`, compared in `orchestrationContextsEqual`; the compact agent row builds
+    its `title` through `forkAgentRowTitle`.
+  - `formatAgentLaunch` (`agent-launch-request.ts`) ends with `...forkAgentLaunchLines(result)`;
+    `worker-start-agent-view.ts` adds `modelFrom: forkWorkerModelFrom(value.launch)`.
+  - `rpc-method-registry.ts` spreads `FORK_LAUNCH_DEFAULTS_METHODS`, and the generated
+    `rpc-params-catalog.generated.ts` lists its params. `src/cli/specs/index.ts` spreads
+    `FORK_LAUNCH_DEFAULTS_COMMAND_SPECS`, `handler-group-manifest.ts` adds the
+    `fork-launch-defaults` group, and `cli-command-names.ts` lists `launch-defaults`.
+  - `AdvancedPane.tsx` renders `ForkLaunchDefaultsSetting`; `forkLaunchDefaults` is in
+    `src/shared/fork/fork-global-settings.ts`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

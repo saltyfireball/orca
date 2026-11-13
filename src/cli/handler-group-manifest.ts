@@ -276,5 +276,12 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-lost-work',
     keys: ['lost-work'],
     load: async () => (await import('./fork/lost-work-handlers.js')).FORK_LOST_WORK_HANDLERS
+  },
+  // Fork launch defaults: model and effort per kind of launch (FORK.md "Launch defaults").
+  {
+    name: 'fork-launch-defaults',
+    keys: ['launch-defaults'],
+    load: async () =>
+      (await import('./fork/launch-defaults-handlers.js')).FORK_LAUNCH_DEFAULTS_HANDLERS
   }
 ]

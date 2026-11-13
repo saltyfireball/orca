@@ -1,5 +1,6 @@
 import type { AgentStatusOrchestrationContext } from '../../../../../shared/agent-status/contracts/agent-status-types'
 import { orchestrationFleetAttentionEqual } from '../../../../../shared/orchestration/fleet/orchestration-fleet-attention'
+import { forkAgentRowLaunchEqual } from '../../../../../shared/fork/launch-defaults/launch-defaults-row'
 
 export function orchestrationContextsEqual(
   a: AgentStatusOrchestrationContext,
@@ -15,7 +16,8 @@ export function orchestrationContextsEqual(
     a.parentPaneKey === b.parentPaneKey &&
     a.coordinatorHandle === b.coordinatorHandle &&
     a.orchestrationRunId === b.orchestrationRunId &&
-    orchestrationFleetAttentionEqual(a.attention, b.attention)
+    orchestrationFleetAttentionEqual(a.attention, b.attention) &&
+    forkAgentRowLaunchEqual(a.forkLaunch, b.forkLaunch)
   )
 }
 

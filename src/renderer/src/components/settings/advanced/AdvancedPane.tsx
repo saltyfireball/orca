@@ -18,6 +18,7 @@ import { ForkChildTallySetting } from '@/fork/agent-child-tally/ForkChildTallySe
 import { ForkLostWorkSettings } from '@/fork/lost-work/ForkLostWorkSettings'
 import { ForkChatSleepSetting } from '@/fork/chat-sleep/ForkChatSleepSetting'
 import { ForkMemorySettings } from '@/fork/memory-truth/ForkMemorySettings'
+import { ForkLaunchDefaultsSetting } from '@/fork/launch-defaults/ForkLaunchDefaultsSetting'
 
 type AdvancedPaneProps = {
   settings: GlobalSettings
@@ -159,6 +160,7 @@ export function AdvancedPane({ settings, updateSettings }: AdvancedPaneProps): R
       <ForkLostWorkSettings settings={settings} updateSettings={updateSettings} />
       <ForkChatSleepSetting settings={settings} updateSettings={updateSettings} />
       <ForkMemorySettings settings={settings} updateSettings={updateSettings} />
+      <ForkLaunchDefaultsSetting settings={settings} updateSettings={updateSettings} />
     </div>
   )
 }

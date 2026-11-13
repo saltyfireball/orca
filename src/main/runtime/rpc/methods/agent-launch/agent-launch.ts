@@ -50,6 +50,7 @@ import {
   supportsAgentLaunch
 } from './agent-launch-target-authorization'
 import { resolveUnlaunchedIntent } from './agent-launch-intent-resolution'
+import { withForkLaunchChoice } from '../../../../fork/launch-defaults/launch-defaults-apply'
 import {
   publishEarlyTab,
   withPlacement,
@@ -61,7 +62,7 @@ type HostLaunchContext = RpcContext & {
 }
 
 async function runAgentLaunch(
-  { intent, decidedMode }: Awaited<ReturnType<typeof resolveUnlaunchedIntent>>,
+  { intent, decidedMode, forkLaunch }: Awaited<ReturnType<typeof resolveUnlaunchedIntent>>,
   context: HostLaunchContext,
   view: AgentLaunchView,
   replaySafe?: ReplaySafeLaunch
@@ -92,7 +93,7 @@ async function runAgentLaunch(
       selectLaunchedTab(context, surface, view.presentation, callerNavigationId)
     }
   })
-  return withPlacement(result, view)
+  return withForkLaunchChoice(withPlacement(result, view), forkLaunch)
 }
 
 /** Legacy unnamed launches retain the 60-second create dedupe cache (repo/mutation id, no caller partition).

@@ -9,6 +9,7 @@ import type { OrchestrationFleetAttention } from '../../orchestration/fleet/orch
 import type { AgentStatusRowFacets } from './agent-status-observation'
 import type { AgentChildWorkView } from '../child-work/agent-status-child-work-view'
 import type { TerminalAgent } from '../identity/terminal-agent'
+import type { ForkAgentRowLaunch } from '../../fork/launch-defaults/launch-defaults-row'
 import {
   AGENT_MODEL_MAX_LENGTH,
   AGENT_STATUS_TOOL_INPUT_MAX_LENGTH,
@@ -47,6 +48,8 @@ export type AgentStatusOrchestrationContext = {
   orchestrationRunId?: string
   /** Durable orchestration categories combined with the current push-fed status observation. */
   attention?: OrchestrationFleetAttention
+  /** Fork launch defaults: the model and effort the worker started on, for its row tooltip. */
+  forkLaunch?: ForkAgentRowLaunch
 }
 
 export type AgentStatusEntry = {
