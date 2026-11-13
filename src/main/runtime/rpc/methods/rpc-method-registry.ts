@@ -75,6 +75,7 @@ import { MOBILE_PROJECT_SECTIONS_METHODS } from './mobile-delivery/mobile-projec
 import { UPDATER_METHODS } from './updater/updater'
 import { AUTOMATIC_WORK_METHODS } from './automations/automatic-work'
 import { FORK_CLAUDE_ACCOUNT_MOVE_METHODS } from './fork/fork-claude-account-move'
+import { FORK_LOST_WORK_METHODS } from './fork/fork-lost-work'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
 import { STRUCTURED_AGENT_SESSION_ATTACHMENT_METHODS } from './structured-sessions/attachments/structured-agent-session-attachments'
@@ -256,7 +257,9 @@ const SERVICE_RPC_METHODS = [
   ...UPDATER_METHODS,
   ...AUTOMATIC_WORK_METHODS,
   // SLRM-1503: move Claude chats between this host's accounts (FORK.md).
-  ...FORK_CLAUDE_ACCOUNT_MOVE_METHODS
+  ...FORK_CLAUDE_ACCOUNT_MOVE_METHODS,
+  // SLRM-2096: the lost work scan behind `orca lost-work` (FORK.md).
+  ...FORK_LOST_WORK_METHODS
 ] as const
 
 type ConcatMethods<A extends readonly unknown[], B extends readonly unknown[]> = readonly [
