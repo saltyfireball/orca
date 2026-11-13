@@ -18,6 +18,7 @@ import { registerMainProcessIpcHandlers } from './startup/main-process-ipc-boots
 import { initializeMainProcessReady } from './startup/main-process-ready'
 import { installMainProcessQuitHandlers } from './startup/main-process-quit'
 import { installForkRestartGuard } from './fork/restart-guard/restart-guard'
+import { installForkMemoryWatch } from './fork/memory-truth/memory-watch'
 import { shouldActivateDesktopForSecondInstance } from './startup/single-instance-lock'
 import { resolveOsOpenedDocuments } from './startup/os-opened-documents'
 import {
@@ -171,6 +172,8 @@ if (preflightReady) {
   registerMainProcessIpcHandlers()
   installMainProcessQuitHandlers()
   installForkRestartGuard()
+  // Fork (SLRM-2099): memory warning, notification and the opt-in launch pause.
+  installForkMemoryWatch(() => state.store?.getSettings())
   void app.whenReady().then(async () => {
     try {
       await initializeMainProcessReady({

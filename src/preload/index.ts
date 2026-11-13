@@ -64,6 +64,7 @@ import { cacheApi } from './api/cache-bridge'
 import { sessionApi } from './api/session-bridge'
 import { updaterApi } from './api/updater-bridge'
 import { forkUpdateInstallWaitApi } from './fork/update-install-wait-bridge'
+import { forkMemoryApi } from './fork/memory-truth-bridge'
 import { docPreviewApi } from './api/doc-preview-bridge'
 import { notebookApi } from './api/notebook-bridge'
 import { fsApi } from './api/fs-bridge'
@@ -171,6 +172,7 @@ const api = {
   session: sessionApi,
   updater: updaterApi,
   forkUpdateInstallWait: forkUpdateInstallWaitApi,
+  forkMemory: forkMemoryApi,
   docPreview: docPreviewApi,
   notebook: notebookApi,
   fs: fsApi,

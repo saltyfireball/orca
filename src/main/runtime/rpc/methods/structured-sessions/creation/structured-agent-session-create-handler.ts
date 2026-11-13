@@ -23,6 +23,8 @@ import {
   prepareStructuredAgentSessionCreateForWorktree,
   structuredAgentSessionCreateIntentFingerprint
 } from './structured-agent-session-create'
+// Fork (SLRM-2099): refuse new chats while memory is over the threshold, when the user asked to.
+import { assertForkAgentLaunchAllowed } from '../../../../../fork/memory-truth/pressure-state'
 import { resolveUncommittedStructuredCreate } from './structured-agent-session-precommit-refusal'
 import { ORCA_LAYOUT_OWNER_IS_MAIN } from '../../../../../../shared/layout-owner-switch'
 import { projectReceiptDeviceAttach } from '../subscriptions/structured-agent-session-receipt-devices'
@@ -67,6 +69,7 @@ export async function handleStructuredAgentSessionCreate(
   capture?: (surface: StructuredSessionSurface) => void
 ) {
   requireStructuredAgentAudience(ctx, params.agent)
+  assertForkAgentLaunchAllowed()
   if (params.envelope.expectedRuntimeFence !== null) {
     throw agentSessionRefusalError('agent_session_operation_invalid', {
       reason: 'requestMalformed'
