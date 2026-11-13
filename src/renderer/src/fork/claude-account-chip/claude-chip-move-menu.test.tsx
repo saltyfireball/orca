@@ -28,11 +28,11 @@ const fake = vi.hoisted(() => {
   return state
 })
 
-type NoState = Record<string, never>
+type NoState = { unifiedTabsByWorktree: Record<string, never> }
 
 vi.mock('@/store', () => ({
-  // Every selector input is mocked below, so the store itself is empty.
-  useAppStore: (select: (state: NoState) => unknown) => select({})
+  // Every other selector input is mocked below, so the store holds only the tab map.
+  useAppStore: (select: (state: NoState) => unknown) => select({ unifiedTabsByWorktree: {} })
 }))
 vi.mock('./claude-chip-evidence', () => ({
   chatEvidence: () => fake.chat,

@@ -41,6 +41,17 @@ export function ForkChatSleepReporter(): null {
   return null
 }
 
+/** True while this chat tab sleeps (and chat sleep is on). Shared with the state colors. */
+export function useSleepingChatTab(worktreeId: string, sessionId: string | undefined): boolean {
+  return useAppStore((s) => {
+    if (!sessionId || !enabled(s)) {
+      return false
+    }
+    const paneKey = chatPaneKeyForSession(s.unifiedTabsByWorktree[worktreeId], sessionId)
+    return paneKey !== null && isSleepingChatStatus(s.agentStatusByPaneKey[paneKey])
+  })
+}
+
 /** A chat tab's moon, after its title. */
 export function ForkChatSleepTabMark({
   worktreeId,
@@ -49,14 +60,7 @@ export function ForkChatSleepTabMark({
   worktreeId: string
   sessionId: string | undefined
 }): React.JSX.Element | null {
-  const sleeping = useAppStore((s) => {
-    if (!sessionId || !enabled(s)) {
-      return false
-    }
-    const paneKey = chatPaneKeyForSession(s.unifiedTabsByWorktree[worktreeId], sessionId)
-    return paneKey !== null && isSleepingChatStatus(s.agentStatusByPaneKey[paneKey])
-  })
-  if (!sleeping) {
+  if (!useSleepingChatTab(worktreeId, sessionId)) {
     return null
   }
   return (
@@ -68,7 +72,8 @@ export function ForkChatSleepTabMark({
 
 type RowSubject = { paneKey: string; tab: { worktreeId: string }; rowSource?: string }
 
-function useSleepingChatRow(agent: RowSubject): boolean {
+/** True while this row's chat sleeps (and chat sleep is on). Shared with the state colors. */
+export function useSleepingChatRow(agent: RowSubject): boolean {
   return useAppStore(
     (s) =>
       agent.rowSource !== 'subagent' &&

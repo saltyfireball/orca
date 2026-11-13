@@ -2,6 +2,7 @@ import type { ForkCustomAppThemeSettings } from './custom-app-theme/custom-app-t
 import type { LostWorkSettings } from './lost-work'
 import type { ForkMemoryGlobalSettings } from './memory-truth'
 import type { ForkLaunchDefaultsSettings } from './launch-defaults/launch-defaults-settings'
+import type { ForkAgentColorState } from './agent-state-color'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -53,6 +54,14 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkLaunchDefaults?: ForkLaunchDefaultsSettings
     /** Fork sleepers: native chat session ids that never auto-sleep; unset is none. */
     forkSleepersPinned?: string[]
+    /** Fork agent state colors: color tabs and agent rows by agent state. Off unless true. */
+    forkAgentStateColors?: boolean
+    /** Fork agent state colors: 'tab', 'row' or 'both'; unset is 'both'. */
+    forkAgentStateColorsWhere?: 'both' | 'tab' | 'row'
+    /** Fork agent state colors: 'accent' (edge stripe) or 'tint' (stripe and wash); unset is 'accent'. */
+    forkAgentStateColorsStrength?: 'accent' | 'tint'
+    /** Fork agent state colors: per state 'none', a theme color id or a hex; unset keys use defaults. */
+    forkAgentStateColorsByState?: Partial<Record<ForkAgentColorState, string>>
   }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */
