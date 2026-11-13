@@ -92,6 +92,7 @@ import type { ForkChatSleepApi } from '../shared/fork/chat-sleep'
 import type { ForkMemoryApi } from '../shared/fork/memory-truth'
 import type { ForkAgentQueueApi } from '../shared/fork/agent-queue'
 import type { ForkChatStallApi } from '../shared/fork/chat-stall'
+import type { ForkWorkerCleanupApi } from '../shared/fork/worker-cleanup'
 
 // Flattens contracts that share one PreloadApi key: an intersection is not type-identical to the flat shape.
 type Merged<T> = { [K in keyof T]: T[K] }
@@ -167,6 +168,7 @@ export type PreloadApi = {
   forkAgentQueue?: ForkAgentQueueApi
   /** Fork chat stall; desktop only. */
   forkChatStall?: ForkChatStallApi
+  forkWorkerCleanup?: ForkWorkerCleanupApi
   notebook: FilesystemApi['notebook']
   docPreview: DocPreviewApi['docPreview']
   stats: StatsApi
