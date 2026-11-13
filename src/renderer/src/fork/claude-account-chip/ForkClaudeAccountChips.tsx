@@ -14,6 +14,7 @@ import {
   useClaudeAccountForTab,
   useClaudeAccountForWorktree
 } from './use-claude-account'
+import { ForkChatSleepRowMark, ForkChatSleepTabMark } from '../chat-sleep/ForkChatSleep'
 
 type SlotProps = Pick<ForkClaudeAccountChipProps, 'className' | 'onOpenMenu' | 'menu'>
 
@@ -53,6 +54,7 @@ export function ForkTabTitle({
   return (
     <>
       <span className={`${TAB_LABEL_WIDTH_CLASSES} mr-1`}>{title}</span>
+      <ForkChatSleepTabMark worktreeId={chip.tab.worktreeId} sessionId={chip.chat?.sessionId} />
       <ForkClaudeAccountTabChip {...chip} />
     </>
   )
@@ -68,7 +70,7 @@ export function ForkClaudeAccountWorktreeChip({
   return <ForkClaudeAccountChip resolution={resolution} menu={menu} {...slot} />
 }
 
-/** An agent row in the dashboard or a worktree card. */
+/** An agent row in the dashboard or a worktree card, with chat sleep's moon. */
 export function ForkClaudeAccountAgentRowChip({
   agent,
   ...slot
@@ -77,5 +79,10 @@ export function ForkClaudeAccountAgentRowChip({
 }): React.JSX.Element | null {
   const resolution = useClaudeAccountForAgentRow(agent.tab.worktreeId, agent.tab.id, agent.paneKey)
   const menu = useAgentRowMoveMenu(agent.tab.worktreeId, agent.tab.id, agent.paneKey)
-  return <ForkClaudeAccountChip resolution={resolution} menu={menu} {...slot} />
+  return (
+    <>
+      <ForkChatSleepRowMark agent={agent} />
+      <ForkClaudeAccountChip resolution={resolution} menu={menu} {...slot} />
+    </>
+  )
 }
