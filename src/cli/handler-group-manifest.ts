@@ -276,5 +276,11 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-lost-work',
     keys: ['lost-work'],
     load: async () => (await import('./fork/lost-work-handlers.js')).FORK_LOST_WORK_HANDLERS
+  },
+  // Fork: Sleepers, list, sleep, wake and pin chats (FORK.md).
+  {
+    name: 'fork-sleepers',
+    keys: ['sleepers list', 'sleepers sleep', 'sleepers wake', 'sleepers pin', 'sleepers unpin'],
+    load: async () => (await import('./fork/sleepers-handlers.js')).FORK_SLEEPERS_HANDLERS
   }
 ]

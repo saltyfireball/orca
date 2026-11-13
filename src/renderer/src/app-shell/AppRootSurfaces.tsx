@@ -20,6 +20,7 @@ import { ZoomOverlay } from '../components/ZoomOverlay'
 import { WslMoveDialogHost } from '../components/wsl-move/WslMoveDialog'
 import { ForkMoveAccountDialogHost } from '../fork/claude-account-move/ForkMoveAccountDialog'
 import { ForkChatSleepReporter } from '../fork/chat-sleep/ForkChatSleep'
+import { ForkSleepersDialogHost } from '../fork/sleepers/ForkSleepersDialog'
 import { MacosUpdateRequirementHost } from '../components/macos-update-requirement/MacosUpdateRequirementHost'
 import { shouldRenderPetOverlay } from '../components/pet/pet-overlay-visibility'
 import { useAppStore } from '../store/index'
@@ -228,6 +229,7 @@ export const AppRootSurfaces = memo(function AppRootSurfaces(props: {
         {/* SLRM-1503: the palette's move-to-account picker (FORK.md). */}
         <ForkMoveAccountDialogHost />
         <ForkChatSleepReporter />
+        <ForkSleepersDialogHost />
         {/* Opened by toast, SSH host row and terminal pane. */}
         {activeModal === 'node-dist-mirror' ? (
           <ModalBoundary boundaryId="modal.node-dist-mirror" resetKey>
