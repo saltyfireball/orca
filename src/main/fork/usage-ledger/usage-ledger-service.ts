@@ -58,6 +58,20 @@ function prune(): boolean {
   return true
 }
 
+/**
+ * Prunes at once when the retention setting changes, so a lower one does not wait for the
+ * backed-off prune timer (SLRM-2138). Safe before the ledger loads: prune then does nothing.
+ */
+export function watchForkUsageRetention(store: {
+  onSettingsChanged: (listener: (updates: Partial<ForkUsageLedgerSettings>) => void) => unknown
+}): void {
+  store.onSettingsChanged((updates) => {
+    if ('forkUsageRetentionDays' in updates) {
+      prune()
+    }
+  })
+}
+
 /** Main-process start-up: load the saved ledger and start counting. Returns the quit flush. */
 export function installForkUsageLedgerService(deps: UsageLedgerServiceDeps): () => void {
   service = deps

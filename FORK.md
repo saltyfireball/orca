@@ -408,12 +408,17 @@ named Orca Fork until SLRM-1367. `main` is always
     writes, socket folder check and adopt read; and the MCP profiles' enterprise policy check,
     which runs on every Claude launch.
     - Record writes are queued per path, so a spawn's write, the detach rewrite and the exit's
-      removal stay in order.
-    - A detach whose chat changed during its write undoes itself.
+      removal stay in order. Quit waits for the queue (one hook line in
+      `structured-agent-session-host-lifetime.ts`, through `src/main/fork/chat-survive-quit-hooks.ts`).
+    - A detach whose chat changed during its write undoes itself and removes the record it wrote.
     - A failed first record write unregisters the broker, so it is not handed off at quit.
-    - The spawn hook stays synchronous. It reads a readiness answer (broker entry on disk,
-      private socket folder) that is checked when the setting is turned on, at install and after
-      each spawn. Until the first answer, a spawn runs as today.
+    - The spawn hook stays synchronous. It reads a readiness answer (private socket folder)
+      that is checked when the setting is turned on, at install and after each spawn, and keeps
+      its one stat of the broker entry (baselined). Start-up awaits the first check
+      (`installForkReady` in `main-process-ready-foundation.ts`) before sessions are restored. A
+      chat started within milliseconds of switching the setting on can still run without it.
+    - The broker's socket chmod tolerates the socket being gone when its direct owner died in
+      that moment; the broker then ends without an orphan timer.
     - The broker checks its socket folder itself, because the system may clear the temp folder
       in between.
     - A pin save moves its pending entry first and awaits the file after, as before.
@@ -426,6 +431,8 @@ named Orca Fork until SLRM-1367. `main` is always
       can adopt a broker.
     - `claude-session-account-pins.ts` (1): one read that fills the cache synchronous launches
       read from; every write is async.
+    - `chat-survive-launch-ready.ts` (1): the spawn's one stat of the broker entry, kept from
+      before so an entry removed since the last check spawns the plain provider.
     - `usage-ledger-file.ts` (3): the ledger's one read and its folder creation, both once at
       install. The batched saves keep the shared synchronous atomic writer, because the quit
       flush must land before the process exits.
@@ -439,7 +446,7 @@ named Orca Fork until SLRM-1367. `main` is always
     - The Sleepers list refreshes every 5 s only while the window is visible.
     - The MCP chat panel's refresh pauses while the window is hidden.
     - The usage ledger prunes hourly after a prune that dropped rows, backing off to every 6 h
-      while nothing ages out.
+      while nothing ages out, and prunes at once when the retention setting changes.
   - **Lint fixes.**
     - The chat stall probe and process table run `ps` through `@orca/process-host`, with the same
       results on failure.
@@ -666,15 +673,18 @@ Upstream files only get short hooks, which keeps rebases small:
   stays under max-lines). The builder overlay adds it to `asarUnpack`.
 - Chat survive spawn hook (SLRM-1394): `createClaudeCodeProcessSpawn` passes its `spawnImpl`
   through `forkChatSurviveSpawner` (`src/main/fork/chat-survive/chat-survive-spawn.ts`);
-  `main-process-ready-foundation.ts` calls `installForkChatSurvive(store)` in one line, imported
+  `main-process-ready-foundation.ts` awaits `installForkReady(store)` in one line (chat survive's
+  install and first readiness check, plus the usage ledger's retention watch), imported
   with `forkPostReadyAppName` from `src/main/fork/fork-ready-foundation-hooks.ts` (one import line,
   so the file stays at max-lines);
   `forkChatSurvive` is in `src/shared/fork/fork-global-settings.ts`; `AdvancedPane.tsx` renders
   `src/renderer/src/fork/ForkChatSurviveSetting.tsx`.
 - Chat survive quit hook (SLRM-1394): `createClaudeCodeProcessSpawn` wraps the managed process in
   `forkChatSurviveManaged` (one line), and `evictOwnedStructuredAgentSessions` calls
-  `forkChatSurviveQuit` before the stop and skips the stop when it returns true
-  (`src/main/fork/chat-survive/chat-survive-detach.ts`).
+  `forkChatSurviveQuit` before the stop and skips the stop when it returns true, then awaits
+  `forkChatSurviveSettled` (queued record writes and removals) after every session; both come in
+  one import from `src/main/fork/chat-survive-quit-hooks.ts`, so the file stays at max-lines
+  (`src/main/fork/chat-survive/chat-survive-detach.ts`, `chat-survive-registry.ts`).
 - Chat survive adopt hooks (SLRM-1394): `resolveStructuredSessionRecovery` asks
   `forkChatSurviveAdopt` before it stops a proven-alive local owner and skips the stop when it
   returns true; `StructuredAgentSessionHost`'s tab recovery callback goes through

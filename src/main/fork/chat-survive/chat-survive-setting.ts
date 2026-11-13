@@ -27,20 +27,21 @@ function brokerEntryPath(): string {
 }
 
 /**
- * The desktop app's install: the setting reader, plus the spawn's disk checks run ahead of the
- * first chat at start and whenever the setting is switched on (SLRM-2138).
+ * The desktop app's install: the setting reader, plus the spawn's disk checks (SLRM-2138). With
+ * the setting on, resolves once the first check is done; start-up awaits it before any session
+ * is restored, so no chat spawns ahead of it. Switching the setting on checks again at once; a
+ * chat started within the few milliseconds that check takes still runs without chat survive.
  */
-export function installForkChatSurvive(
+export async function installForkChatSurvive(
   store: Pick<ProfilePreferences, 'getSettings' | 'onSettingsChanged'>
-): void {
+): Promise<void> {
   installChatSurviveSettingReader(() => store.getSettings().forkChatSurvive)
-  const prime = (): void => void refreshChatSurviveLaunchReady(brokerEntryPath())
-  if (store.getSettings().forkChatSurvive === true) {
-    prime()
-  }
   store.onSettingsChanged((updates) => {
     if (updates.forkChatSurvive === true) {
-      prime()
+      void refreshChatSurviveLaunchReady(brokerEntryPath())
     }
   })
+  if (store.getSettings().forkChatSurvive === true) {
+    await refreshChatSurviveLaunchReady(brokerEntryPath())
+  }
 }

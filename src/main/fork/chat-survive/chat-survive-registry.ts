@@ -75,6 +75,14 @@ export function writeChatSurviveRecord(
   })
 }
 
+/**
+ * Resolves once every record write and removal queued so far has landed or failed; the quit path
+ * awaits it so an exit's removal is not lost with the process. Never rejects.
+ */
+export async function chatSurviveRecordsSettled(): Promise<void> {
+  await Promise.all(recordChains.values())
+}
+
 /** Removes a record once every earlier write to it has landed. Never rejects. */
 export function removeChatSurviveRecord(path: string): Promise<void> {
   return onRecordChain(path, () => rm(path, { force: true })).catch(() => undefined)

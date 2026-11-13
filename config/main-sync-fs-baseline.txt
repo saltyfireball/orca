@@ -252,6 +252,7 @@
 1 src/main/foreign-sqlite-readers/foreign-sqlite-reader-spawn.ts
 1 src/main/foreign-sqlite-readers/readers/cursor-profile.ts
 1 src/main/foreign-sqlite-readers/readers/opencode-binder-sessions.ts
+1 src/main/fork/chat-survive/chat-survive-launch-ready.ts
 8 src/main/fork/chat-survive/chat-survive-sweep.ts
 1 src/main/fork/claude-account-move/claude-session-account-pins.ts
 1 src/main/fork/fork-app-identity.ts

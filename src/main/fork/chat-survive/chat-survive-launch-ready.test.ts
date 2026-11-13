@@ -54,3 +54,14 @@ describe('chat-survive launch readiness', () => {
     expect(chatSurviveReadySocketDir(entry)).toBeNull()
   })
 })
+
+describe('chat-survive launch readiness, entry gone since the check', () => {
+  it('spawns the plain provider when the broker entry was removed after the last check', async () => {
+    const entry = join(tempDir(), 'entry.js')
+    const socketDir = tempDir()
+    writeFileSync(entry, '')
+    await refreshChatSurviveLaunchReady(entry, async () => socketDir)
+    rmSync(entry)
+    expect(chatSurviveReadySocketDir(entry)).toBeNull()
+  })
+})

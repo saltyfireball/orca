@@ -154,6 +154,9 @@ export async function startChatSurviveBroker(
     exitObserved.then(finish, finish)
   }
 
+  // A function, so the checks after an await read the value as it is then.
+  const isFinishing = (): boolean => finishing !== null
+
   const armOrphanTimer = (): void => {
     if (orphanTimer || finishing) {
       return
@@ -296,8 +299,16 @@ export async function startChatSurviveBroker(
     return { pid, status, done: ended.promise, close: () => ended.promise }
   }
   // Before the orphan timer and before any owner can reach the socket by its path.
-  await chmod(options.socketPath, 0o600)
-  if (!direct) {
+  try {
+    await chmod(options.socketPath, 0o600)
+  } catch (error) {
+    // The direct owner died meanwhile and finish already removed the socket: the broker is
+    // ending on its own, and the provider it spawned stops with it.
+    if (!(isFinishing() && isMissing(error))) {
+      throw error
+    }
+  }
+  if (!direct && !isFinishing()) {
     // The first socket owner has the same deadline as any later one.
     armOrphanTimer()
   }
@@ -323,4 +334,8 @@ export async function startChatSurviveBroker(
       return ended.promise
     }
   }
+}
+
+function isMissing(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'ENOENT'
 }
