@@ -270,5 +270,11 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-account-move',
     keys: ['account which', 'account move'],
     load: async () => (await import('./fork/account-move-handlers.js')).FORK_ACCOUNT_MOVE_HANDLERS
+  },
+  // SLRM-2096: list unmerged and forgotten work (FORK.md "Lost work").
+  {
+    name: 'fork-lost-work',
+    keys: ['lost-work'],
+    load: async () => (await import('./fork/lost-work-handlers.js')).FORK_LOST_WORK_HANDLERS
   }
 ]

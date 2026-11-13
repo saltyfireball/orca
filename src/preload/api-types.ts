@@ -69,6 +69,7 @@ import type { UiCommandEventApi } from './api/ui-command-event-api'
 import type { UiWindowApi } from './api/ui-window-api'
 import type { UpdaterApi } from './api/updater-api'
 import type { ForkUpdateInstallWaitApi } from '../shared/fork/update-install-wait'
+import type { ForkLostWorkApi } from '../shared/fork/lost-work'
 import type { WorkspaceCleanupApi, WorkspaceSpaceApi } from './api/workspace-cleanup-api'
 import type { LocalhostWorktreeLabelsApi, WorkspacePortsApi } from './api/workspace-port-api'
 import type { LinkPreviewApi } from './api/link-preview-api'
@@ -139,6 +140,7 @@ export type PreloadApi = {
   updater: UpdaterApi
   /** Fork restart guard (SLRM-1569); desktop only. */
   forkUpdateInstallWait?: ForkUpdateInstallWaitApi
+  forkLostWork?: ForkLostWorkApi
   notebook: FilesystemApi['notebook']
   docPreview: DocPreviewApi['docPreview']
   stats: StatsApi

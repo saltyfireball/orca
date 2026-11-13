@@ -22,6 +22,7 @@ import {
   finishWorkspaceCleanupRemovalSnapshotPruneBatch,
   recordWorkspaceCleanupRemovalSnapshotPrune
 } from '../../workspaces/cleanup/workspace-cleanup-removal-snapshot-prune'
+import { installForkLostWork } from '../../fork/lost-work/lost-work-host'
 
 // Module scope preserves old-window scan cancellation across handler re-registration.
 const activeScans = new Map<string, AbortController>()
@@ -172,6 +173,8 @@ export function registerWorkspaceCleanupHandlers(store: Store): void {
       return undefined
     }
   )
+  // Fork (FORK.md "Lost work"): the lost work scan's IPC.
+  installForkLostWork(store)
 }
 
 function isSnapshotPruneBatchId(value: unknown): value is string {
