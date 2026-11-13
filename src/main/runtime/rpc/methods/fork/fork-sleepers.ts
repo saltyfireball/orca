@@ -19,6 +19,7 @@ import {
   type ForkSleepersSleepResult
 } from '../../../../../shared/fork/sleepers-wire'
 import { isForkChatOnScreen } from '../../../../fork/chat-sleep/chat-sleep-sweep'
+import { forkSleeperLifecycleOverlay } from '../../../../fork/sleepers/sleepers-lifecycle'
 import {
   forkSleeperChatFacts,
   forkSleepersServiceDeps
@@ -34,7 +35,11 @@ async function listSleepers(ctx: RpcContext): Promise<ForkSleepersListResult> {
   // Main hears which chats are on screen only while chat sleep is on; the dialog fills the rest.
   const onScreen = new Set(sources.filter((s) => isForkChatOnScreen(s.id)).map((s) => s.id))
   const pinned = new Set(readForkSleepersPinned(ctx.runtime.requireStore().getSettings()))
-  return { now, rows: buildSleeperRows(sources, { now, pinned, onScreen }) }
+  const lifecycle = forkSleeperLifecycleOverlay()
+  return {
+    now,
+    rows: buildSleeperRows(sources, { now, pinned, onScreen, ...lifecycle })
+  }
 }
 
 export const FORK_SLEEPERS_METHODS = [

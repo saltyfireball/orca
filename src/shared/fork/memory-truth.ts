@@ -67,8 +67,12 @@ export type ForkMemoryStatus = {
   /** True while system pressure or swap is past the warning threshold. */
   over: boolean
   reasons: ForkMemoryThresholdReason[]
-  /** Over the threshold with the pause-launches setting on: new agent launches are refused. */
+  /** Over the threshold with the pause-launches setting on and the launch queue off: new agent
+   *  launches are refused. */
   launchesPaused: boolean
+  /** The same, but the launch queue is on: new chat launches wait in the queue instead. Never
+   *  true together with `launchesPaused`, so one launch is never both refused and queued. */
+  launchesHeld: boolean
   settings: ForkMemorySettings
 }
 
@@ -92,8 +96,10 @@ export type ForkMemorySettings = {
   warnPressure: ForkMemoryPressureThreshold
   /** Warn once swap in use reaches this many GB; 0 ignores swap. */
   warnSwapGb: number
-  /** While over the threshold, refuse new agent launches. */
+  /** While over the threshold, refuse new agent launches (or queue them, see `queueLaunches`). */
   pauseLaunches: boolean
+  /** The agent launch queue is on, so a paused chat launch waits in it instead of being refused. */
+  queueLaunches: boolean
   /** Seconds between background system memory checks (the popover samples on its own clock). */
   pollSeconds: number
 }
@@ -102,6 +108,7 @@ export const FORK_MEMORY_SETTING_DEFAULTS: ForkMemorySettings = {
   warnPressure: 'warn',
   warnSwapGb: 8,
   pauseLaunches: false,
+  queueLaunches: false,
   pollSeconds: 15
 }
 
@@ -115,6 +122,8 @@ export type ForkMemoryGlobalSettings = {
   forkMemoryWarnSwapGb?: number
   forkMemoryPauseLaunches?: boolean
   forkMemoryPollSeconds?: number
+  /** The agent launch queue's switch (SLRM-2098), read here so pause and queue never both act. */
+  forkAgentQueueEnabled?: boolean
 }
 
 function finiteIn(value: unknown, min: number, max: number, fallback: number): number {
@@ -135,6 +144,7 @@ export function resolveForkMemorySettings(
         : d.warnPressure,
     warnSwapGb: finiteIn(raw?.forkMemoryWarnSwapGb, 0, FORK_MEMORY_SWAP_GB_MAX, d.warnSwapGb),
     pauseLaunches: raw?.forkMemoryPauseLaunches === true,
+    queueLaunches: raw?.forkAgentQueueEnabled === true,
     pollSeconds: Math.round(
       finiteIn(
         raw?.forkMemoryPollSeconds,
@@ -181,7 +191,15 @@ export function buildForkMemoryStatus(
   settings: ForkMemorySettings
 ): ForkMemoryStatus {
   const { over, reasons } = evaluateForkMemoryThreshold(system, settings)
-  return { system, over, reasons, launchesPaused: over && settings.pauseLaunches, settings }
+  const paused = over && settings.pauseLaunches
+  return {
+    system,
+    over,
+    reasons,
+    launchesPaused: paused && !settings.queueLaunches,
+    launchesHeld: paused && settings.queueLaunches,
+    settings
+  }
 }
 
 export function emptyForkMemoryBreakdown(): ForkMemoryBreakdown {

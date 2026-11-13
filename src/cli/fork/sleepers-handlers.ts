@@ -19,7 +19,9 @@ import type {
 
 const STATE: Record<SleeperState, string> = {
   working: 'working',
+  stalled: 'stalled',
   'needs-input': 'needs input',
+  queued: 'queued',
   'awake-idle': 'awake idle',
   asleep: 'asleep'
 }
@@ -49,8 +51,26 @@ export function formatDuration(ms: number | null): string {
     : `${Math.floor(hours / 24)}d`
 }
 
-function mark(row: SleeperRow): string {
-  return [row.pinned ? 'pinned' : '', row.onScreen ? 'on screen' : '', row.local ? '' : 'remote']
+/** Queued: place, reason and the command that starts it. Stalled: how long it has been quiet. */
+function lifecycleNote(row: SleeperRow, now: number): string {
+  if (row.queue) {
+    const why = row.queue.heldReason ? ` (${row.queue.heldReason})` : ''
+    return `queue #${row.queue.position}${why}, start: orca agent queue start ${row.queue.id}`
+  }
+  if (row.stall) {
+    const stopped = row.stall.liveness === 'stopped' ? ', process stopped' : ''
+    return `quiet ${formatDuration(now - row.stall.quietSince)}${stopped}`
+  }
+  return ''
+}
+
+function mark(row: SleeperRow, now: number): string {
+  return [
+    lifecycleNote(row, now),
+    row.pinned ? 'pinned' : '',
+    row.onScreen ? 'on screen' : '',
+    row.local ? '' : 'remote'
+  ]
     .filter(Boolean)
     .join(', ')
 }
@@ -70,7 +90,7 @@ export function formatSleepers(result: ForkSleepersListResult): string {
       row.workspace,
       row.model ?? '-',
       row.title,
-      mark(row)
+      mark(row, result.now)
     ])
   ]
   const widths = table[0].map((_, col) => Math.max(...table.map((cells) => cells[col].length)))

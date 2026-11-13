@@ -374,6 +374,30 @@ named Orca Fork until SLRM-1367. `main` is always
     remote and paired hosts (they install nothing, so their chats load every server) and
     plugin or claude.ai connector servers, which Claude adds on its own and which any profile
     but "all" leaves out. Headless orcad installs nothing and passes every launch through.
+- **Agent lifecycle, joined up (SLRM-2136).** The fork's chat lifecycle features now work as one
+  set.
+  - Memory pause queues instead of refusing: with "Pause new agents while over" (Memory) and the
+    launch queue both on, a new chat made while memory is past the warning line waits in the
+    launch queue instead of being refused. Its queued banner, tab badge, `orca agent queue list`
+    and the launch command's queued line say "memory is low", and it starts as soon as a sample
+    shows memory recovered (or the pause is turned off), or at once with Start now. With the
+    queue off the launch is refused as before. The shared memory status decides which once
+    (`launchesPaused` refuses, `launchesHeld` queues; never both). Terminal agents cannot wait in
+    the queue, so they are still refused while memory is low.
+  - Sleepers lists two more states: Stalled (from chat stall, with that feature's menu:
+    Interrupt, Release and Wake for a stopped provider) and Queued (from the launch queue, with
+    Start now and Cancel and why it waits). Both show in the dialog, its state filter and sort,
+    and `orca sleepers list [--json]` (which adds the queue place and reason, or how long the
+    chat has been quiet). A queued launch whose chat has no row yet is listed on its own.
+  - A setting hides the sidebar's Sleepers button: `forkSleepersButton` (unset is shown).
+  - Settings > Advanced gathers chat sleep, Sleepers, stalled chats, worker cleanup, launch
+    queue, launch defaults and memory under one "Agent lifecycle" heading, in that order. Each
+    keeps its own section and behavior.
+    Code is in `src/main/fork/memory-truth/memory-launch-hold.ts`,
+    `src/shared/fork/sleepers-lifecycle.ts`, `src/main/fork/sleepers/sleepers-lifecycle.ts`,
+    `src/renderer/src/fork/sleepers/ForkSleepersLifecycleActions.tsx`,
+    `src/renderer/src/fork/sleepers/ForkSleepersSetting.tsx` and
+    `src/renderer/src/fork/ForkAgentLifecycleSettings.tsx`.
 
 ## Patch list
 
@@ -445,6 +469,7 @@ Apply these in this order. Each one is a single commit.
 64. `SLRM-2094 Sleepers: list, sleep, wake and pin chats and terminal agents in one place`
 65. `SLRM-2106 Agent state colors: tabs and agent rows colored by agent state`
 66. `SLRM-2101 MCP profiles: choose which MCP servers a chat loads`
+67. `SLRM-2136 Agent lifecycle: memory pause queues, Sleepers shows stalled and queued`
 
 `AppRootSurfaces.tsx` carries one hook for the fork's always-mounted hosts: `ForkRootHosts`
 (`src/renderer/src/fork/ForkRootHosts.tsx`) renders `ForkChatSleepReporter`,
@@ -669,7 +694,10 @@ Upstream files only get short hooks, which keeps rebases small:
   - `forkTruth?` on `MemorySnapshot` (`process-stats-types.ts`), `ForkMemoryGlobalSettings` in
     `fork-global-settings.ts`.
   - The structured chat create handler calls `assertForkAgentLaunchAllowed()`, and
-    `launchAgentInNewTabWithOutcome` refuses through `forkRefuseAgentLaunchOverMemory()`. The main
+    `openAgentInNewTab` (`launch-agent-in-new-tab.ts`) refuses through
+    `forkRefuseAgentLaunchOverMemory()` right after its route is planned (SLRM-2136 moved it
+    there from `launchAgentInNewTabWithOutcome`, so it knows whether the launch is a native chat
+    that can wait in the queue). The main
     process exposes `isMemoryOverLaunchThreshold()` (`pressure-state.ts`).
   - `src/preload/index.ts` and `api-types.ts` add the optional `forkMemory` bridge.
   - `ResourceUsageStatusSegment.tsx` renders `ForkMemoryStatusCue` and `ForkMemoryTruthSection`;
@@ -743,6 +771,17 @@ Upstream files only get short hooks, which keeps rebases small:
     `fork-launch-defaults` group, and `cli-command-names.ts` lists `launch-defaults`.
   - `AdvancedPane.tsx` renders `ForkLaunchDefaultsSetting`; `forkLaunchDefaults` is in
     `src/shared/fork/fork-global-settings.ts`.
+- Agent lifecycle (SLRM-2136):
+  - `AdvancedPane.tsx` renders one `ForkAgentLifecycleSettings` in place of the six lifecycle
+    settings it rendered (chat sleep, memory, launch queue, chat stall, worker cleanup, launch
+    defaults); where a section above says `AdvancedPane.tsx` renders one of those, it renders
+    through that group now.
+  - The memory hold reaches the queue through the existing `setLaunchHoldReader` seam
+    (`installForkMemoryLaunchHold`, called by `installForkMemoryWatch`); no upstream file
+    changes for it beyond the moved renderer refusal above.
+  - `fork.sleepers.list` adds the chat stall and launch queue entries to its rows;
+    `ForkChatStall.tsx` exports its menu as `ForkChatStallMenu` for the Sleepers rows.
+    `forkSleepersButton` is in `src/shared/fork/fork-global-settings.ts`.
 
 - MCP profiles (SLRM-2101), from `src/main/fork/mcp-profiles/`, `src/cli/fork/mcp-profile-*`
   and `src/renderer/src/fork/mcp-profiles/`:

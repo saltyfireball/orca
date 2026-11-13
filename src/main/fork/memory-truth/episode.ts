@@ -53,7 +53,9 @@ export function forkMemoryNotificationText(
   lines.push(
     status.launchesPaused
       ? t('fork.memory.notify.paused', 'New agents are paused until memory frees up.')
-      : t('fork.memory.notify.hint', 'Close idle sessions to free memory.')
+      : status.launchesHeld
+        ? t('fork.memory.notify.held', 'New chats wait in the launch queue until memory frees up.')
+        : t('fork.memory.notify.hint', 'Close idle sessions to free memory.')
   )
   return {
     title: t('fork.memory.notify.title', 'Memory is running low'),

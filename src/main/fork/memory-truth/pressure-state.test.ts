@@ -53,7 +53,13 @@ describe('memory settings', () => {
         forkMemoryPollSeconds: 1,
         forkMemoryPauseLaunches: 'yes' as never
       })
-    ).toEqual({ warnPressure: 'warn', warnSwapGb: 0, pollSeconds: 5, pauseLaunches: false })
+    ).toEqual({
+      warnPressure: 'warn',
+      warnSwapGb: 0,
+      pollSeconds: 5,
+      pauseLaunches: false,
+      queueLaunches: false
+    })
   })
 })
 
