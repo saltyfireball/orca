@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "state": "in-sync",
+  "reason": null,
+  "upstreamVersion": "1.4.258",
+  "upstreamSha": "c91a7a6ee3dc76090cafb33943961ae2235246d6",
+  "forkBaseVersion": "1.4.258",
+  "forkBaseSha": "c91a7a6ee3dc76090cafb33943961ae2235246d6",
+  "conflicts": [],
+  "since": null,
+  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/43493814819",
+  "checkedAt": "2026-11-13T20:10:32.463Z"
+}
