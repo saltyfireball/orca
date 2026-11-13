@@ -31,6 +31,7 @@ import { installForkChatSleepBridge } from './fork/chat-sleep/chat-sleep-bridge'
 import { installForkMemoryWatch } from './fork/memory-truth/memory-watch'
 import { installForkAgentQueueApp } from './fork/agent-queue/agent-queue-ipc'
 import { installForkChatStallBridge } from './fork/chat-stall/chat-stall-bridge'
+import { installForkWorkerCleanupBridge } from './fork/worker-cleanup/worker-cleanup-bridge'
 import {
   formatProfileStateStartupFailure,
   isDivergedProfileStateFailure,
@@ -220,6 +221,7 @@ if (preflightReady) {
   // Fork (SLRM-2098): the agent launch queue, off unless switched on.
   installForkAgentQueueApp(() => state.store?.getSettings())
   installForkChatStallBridge()
+  installForkWorkerCleanupBridge()
   void app.whenReady().then(async () => {
     try {
       await wslHostsGateReady
