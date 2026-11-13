@@ -23,6 +23,16 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkChatSleepIdleMinutes?: number
     /** Fork chat sleep: chats on screen never sleep; unset is on. */
     forkChatSleepKeepVisible?: boolean
+    /** Fork (SLRM-2098): limit how many agents run at once and queue the rest. Off unless true. */
+    forkAgentQueueEnabled?: boolean
+    /** Fork (SLRM-2098): most agents running at once (all, or user-started when separate); unset is 8. */
+    forkAgentQueueMaxLive?: number
+    /** Fork (SLRM-2098): orchestration workers get their own limit; unset is one shared limit. */
+    forkAgentQueueSeparateLimits?: boolean
+    /** Fork (SLRM-2098): most orchestration workers running at once when separate; unset is 8. */
+    forkAgentQueueMaxWorkers?: number
+    /** Fork (SLRM-2098): waking an existing chat never waits, even past the limit; unset is on. */
+    forkAgentQueueResumeBypass?: boolean
   }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */
