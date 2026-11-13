@@ -6,6 +6,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 import { ScrollToCurrentWorkspaceToolbarButton } from '../worktree-list/navigation/ScrollToCurrentWorkspaceToolbarButton'
 import { SidebarSettingsHelpMenu } from './SidebarSettingsHelpMenu'
 import { selectAppRailVisible } from '@/components/app-rail/app-rail-layout'
+import { ForkSleepersButton } from '@/fork/sleepers/ForkSleepersButton'
 import { useTranslate } from '@/i18n/use-translate'
 import { useAppStore } from '@/store'
 import { hasFeatureInteraction } from '../../../../../shared/feature-education/interactions/feature-interactions'
@@ -76,6 +77,8 @@ const SidebarToolbar = React.memo(function SidebarToolbar({
         </div>
         <div className="flex items-center gap-1">
           <ScrollToCurrentWorkspaceToolbarButton />
+          {/* Fork: Sleepers (FORK.md). */}
+          <ForkSleepersButton />
           <Tooltip open={workspaceBoardMovedHintOpen ? true : undefined}>
             <TooltipTrigger asChild>
               <Button
