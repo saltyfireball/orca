@@ -470,6 +470,7 @@ Apply these in this order. Each one is a single commit.
 65. `SLRM-2106 Agent state colors: tabs and agent rows colored by agent state`
 66. `SLRM-2101 MCP profiles: choose which MCP servers a chat loads`
 67. `SLRM-2136 Agent lifecycle: memory pause queues, Sleepers shows stalled and queued`
+68. `SLRM-2103 Cache-cold cue: a usage ledger and a hint when an idle chat cache has expired`
 
 `AppRootSurfaces.tsx` carries one hook for the fork's always-mounted hosts: `ForkRootHosts`
 (`src/renderer/src/fork/ForkRootHosts.tsx`) renders `ForkChatSleepReporter`,
@@ -490,6 +491,30 @@ Fork-only code lives in `fork/` folders:
 - `config/scripts/fork/`
 - `native/computer-use-macos/Sources/OrcaComputerUseMacOSCore/fork/`
 - `native/computer-use-macos/Tests/OrcaComputerUseMacOSTests/fork/`
+
+- **Usage ledger and cache-cold cue (SLRM-2103).** One small ledger of per-call token usage
+  of native Claude chats, kept by the main process (`src/main/fork/usage-ledger/`).
+  - **The ledger.** A hook in Claude's structured event delivery passes every live frame to it.
+    Assistant frames carry the usage of one API call under its message id (input, output, cache
+    read and cache write, with the 1 h share); the ledger counts each call once, keeping the
+    highest counts a repeated frame reports, and includes sub-agent calls. Root `result` frames
+    end a turn; `system/init` gives billing (`apiKeySource` `none` means an account sign-in, so
+    a subscription); a compaction resets the context size. Transcript imports never pass that
+    hook, so nothing is counted twice. Codex and terminal agents are not counted.
+  - **Saved.** `fork-usage-ledger.json` in the app's data folder, written atomically at most
+    every 10 s and on quit. Per chat: name, workspace, the coordinator that dispatched it (from
+    the agent queue's worker note), billing, turns, and tokens and calls per day and model. Kept
+    `forkUsageRetentionDays` days (90) and at most 2000 chats, oldest dropped first.
+  - **The cue.** When a chat has sat idle past its cache lifetime and its last context is at
+    least `forkCacheColdThresholdTokens` (50000), the composer shows "Cache likely expired: the
+    next message re-reads about N tokens", and the chat's tab and agent rows show a snowflake.
+    The lifetime is the one the usage reported (1 h when the last call wrote 1 h cache, 5 min
+    when it wrote 5 min cache), else `forkCacheWindowMinutes` (5). Nothing shows while a turn
+    runs. "Compact first" sends `/compact`, then any waiting draft through the composer's own
+    send (its handle's `submit`), which queues it behind the compaction. Sending is never
+    blocked.
+  - **Settings** (Settings > Advanced): `forkCacheColdCue` (on), `forkCacheWindowMinutes` (5),
+    `forkCacheColdThresholdTokens` (50000).
 
 Upstream files only get short hooks, which keeps rebases small:
 
@@ -809,6 +834,21 @@ Upstream files only get short hooks, which keeps rebases small:
   - `NativeChatStructuredSessionStatus.tsx` renders `ForkMcpProfileStrip` after
     `ForkAgentQueueBanner`; `AdvancedPane.tsx` renders `ForkMcpProfileSetting` after
     `ForkAgentQueueSetting`; the five settings are in `fork-global-settings.ts`.
+
+- Usage ledger and cache-cold cue (SLRM-2103), from `src/main/fork/usage-ledger/`,
+  `src/shared/fork/usage-ledger.ts` and `src/renderer/src/fork/cache-cold/`:
+  - `emitClaudeStructuredSessionEvent` (`claude-structured-event-delivery.ts`) calls
+    `forkUsageLedgerObserveClaudeEvent(event)` right after the translator handles the event.
+  - `src/main/index.ts` calls `installForkUsageLedger(...)` after the agent queue install; it
+    loads the ledger once the app is ready.
+  - `agent-queue-service.ts` exports `forkAgentQueueWorkerParent` (the dispatching chat).
+  - `src/preload/index.ts` adds `forkUsageLedger` (`src/preload/fork/usage-ledger-bridge.ts`)
+    and `api-types.ts` types it as optional.
+  - `NativeChatComposer.tsx` (the wrapper; the pane is at its line cap) renders
+    `ForkCacheColdCue` above the pane and passes the pane a ref from `useForkComposerHandleRef`,
+    which also hands the forwarded ref on. `ForkTabTitle` and `ForkClaudeAccountAgentRowChip` render the
+    snowflake; `AdvancedPane.tsx` renders `ForkCacheColdSetting` after `ForkAgentQueueSetting`;
+    `ForkUsageLedgerSettings` joins `fork-global-settings.ts`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
