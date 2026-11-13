@@ -282,5 +282,12 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-agent-queue',
     keys: ['agent queue list', 'agent queue start', 'agent queue cancel'],
     load: async () => (await import('./fork/agent-queue-handlers.js')).FORK_AGENT_QUEUE_HANDLERS
+  },
+  // Fork launch defaults: model and effort per kind of launch (FORK.md "Launch defaults").
+  {
+    name: 'fork-launch-defaults',
+    keys: ['launch-defaults'],
+    load: async () =>
+      (await import('./fork/launch-defaults-handlers.js')).FORK_LAUNCH_DEFAULTS_HANDLERS
   }
 ]

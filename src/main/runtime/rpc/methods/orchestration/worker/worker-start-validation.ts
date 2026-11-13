@@ -9,6 +9,7 @@ import {
   resolveWorkerLaunchPreferences
 } from './worker-launch-preferences'
 import type { WorkerStartInput } from './worker-start-schema'
+import { resolveForkWorkerLaunch } from '../../../../../fork/launch-defaults/launch-defaults-worker'
 
 type WorkerStartLaunch = ReturnType<typeof resolveWorkerLaunchPreferences>
 
@@ -150,13 +151,18 @@ function resolveWorkerStartAgent(args: {
     args.runtime.validateOrchestrationAgentLauncher(agent)
     return {
       agent,
-      launch: resolveWorkerLaunchPreferences({
-        agent,
-        openCodeModelLaunchSupported: args.openCodeModelLaunchSupported,
-        createsWorktree: args.createsWorktree,
-        model: args.model,
-        effort: args.effort
-      })
+      // Fork launch defaults: with no --model/--effort the worker default fills in.
+      launch: resolveForkWorkerLaunch(
+        args.runtime,
+        {
+          agent,
+          openCodeModelLaunchSupported: args.openCodeModelLaunchSupported,
+          createsWorktree: args.createsWorktree,
+          model: args.model,
+          effort: args.effort
+        },
+        resolveWorkerLaunchPreferences
+      )
     }
   }
   return {

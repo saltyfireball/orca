@@ -12,6 +12,8 @@ import type { AgentLaunchParams } from '../../../../../shared/rpc-contract/agent
 import { resolveAgentLaunchModeOnHost } from '../../../../agent-launch/agent-launch-mode'
 
 import type { EarlyAgentLaunchTab } from './agent-launch-tab-publication'
+import { applyForkCliLaunchDefault } from '../../../../fork/launch-defaults/launch-defaults-apply'
+import type { ForkLaunchChoice } from '../../../../../shared/fork/launch-defaults/launch-defaults-resolve'
 
 type ResolvedAgentLaunchIntent = Omit<AgentLaunchIntent, 'sessionOptions'> & {
   sessionOptions?: Readonly<NonNullable<AgentLaunchParams['sessionOptions']>>
@@ -88,8 +90,16 @@ export async function resolveUnlaunchedIntent(
   runtime: OrcaRuntimeService,
   early: EarlyAgentLaunchTab | null,
   modeOptions: { terminalOnly?: boolean; callerRendersStructured?: boolean } = {}
-): Promise<{ intent: ResolvedAgentLaunchIntent; decidedMode: AgentLaunchModeReceipt }> {
-  const intent = await agentLaunchIntent(params, runtime, early?.paneKey)
+): Promise<{
+  intent: ResolvedAgentLaunchIntent
+  decidedMode: AgentLaunchModeReceipt
+  forkLaunch?: ForkLaunchChoice
+}> {
+  // Fork launch defaults: a CLI launch with no --model/--effort takes the CLI default.
+  const { intent, forkLaunch } = applyForkCliLaunchDefault(
+    runtime,
+    await agentLaunchIntent(params, runtime, early?.paneKey)
+  )
   await validateReusedTerminal(intent, runtime)
   const preflight = decideAgentLaunchIntentMode({ intent, runtime, ...modeOptions })
   const decidedMode =
@@ -109,5 +119,5 @@ export async function resolveUnlaunchedIntent(
         )
       : preflight
   assertTerminalLaunchAdmissible(intent, decidedMode.mode)
-  return { intent, decidedMode }
+  return { intent, decidedMode, forkLaunch }
 }

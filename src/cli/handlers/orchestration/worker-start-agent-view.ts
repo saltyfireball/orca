@@ -1,5 +1,6 @@
 import { renderOrchestrationArgv, type OrchestrationAgentView } from './agent-view'
 import type { WorkerStartReceipt } from './worker-output'
+import { forkWorkerModelFrom } from '../../fork/launch-defaults-output'
 
 type LaunchChoice = {
   agent?: string | null
@@ -35,6 +36,8 @@ type WorkerStartFields = {
   agent?: string
   model?: string
   effort?: string
+  /** Fork launch defaults: names the default that chose the model. */
+  modelFrom?: string
   mode?: string
   modeDetail?: string
   terminal?: string
@@ -66,6 +69,7 @@ export const WORKER_START_VIEW: OrchestrationAgentView<WorkerStartAgentReceipt, 
         // Null unless requested or chosen by a fallback.
         model: effective?.model ?? requested?.model ?? undefined,
         effort: effective?.effort ?? requested?.effort ?? undefined,
+        modelFrom: forkWorkerModelFrom(value.launch),
         mode: value.mode?.mode,
         modeDetail: fellBack ? value.mode?.detail : undefined,
         // Derived from effects so older runtimes show the handle a reuse needs.
