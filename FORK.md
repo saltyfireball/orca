@@ -831,7 +831,7 @@ makes a local build, `<version>-local.<time>.<sha>`. With `FORK_VERSION` set it 
 
 `.github/workflows/fork-sync.yml` runs every day at 09:17 UTC. You can also run it by hand
 (Actions, Fork sync, Run workflow). Set `force_build` to rebuild and release anyway. It only
-runs in `saltyfireball/orca`. Every third-party action is pinned to a full commit SHA.
+runs in a fork, never in the upstream repository (`stablyai/orca`). Every third-party action is pinned to a full commit SHA.
 
 1. **sync** (ubuntu-latest):
    - Fails at once, with a message, if the `FORK_SYNC_DEPLOY_KEY` secret is empty.
@@ -899,11 +899,16 @@ So `fork-sync.sh detect` works out the base as a SHA:
 1. The record: the file `base` on the status branch (`fork-sync-status`), the SHA the last
    successful sync rebased onto (or found `main` already on). It is written only by the status
    job of a run whose sync job succeeded. It is used while it is an ancestor of `main`.
-2. Without a record, the merge-base of `main` with upstream: the newer of its merge-base with
-   upstream's default branch (`FORK_SYNC_UPSTREAM_BRANCH` overrides) and with the newest tag.
-3. A record older than that merge-base is stale (main resynced by hand, or a run died between
-   the push and the record), so the merge-base wins. A moved tag never makes the merge-base
-   newer than the record, since the dropped commit is not on upstream.
+2. Without a record, the fallback: the nearest to `main` of three upstream commits under it.
+   Two are merge-bases of `main`, with upstream's default branch (`FORK_SYNC_UPSTREAM_BRANCH`
+   overrides) and with the newest tag. The third is the newest stable tag whose commit is under
+   `main`. Upstream tags release commits that are not on its branch, so a fork sitting on such
+   a tag has both merge-bases below it, and a rebase from there would replay upstream's
+   release commit as a fork commit.
+3. A record older than the fallback is stale (main resynced by hand, or a run died between
+   the push and the record), so the fallback wins. A moved tag never makes the fallback newer
+   than the record, since the dropped commit is not on upstream and the tag's new commit is
+   not under `main`.
 
 If the newest tag's commit is an ancestor of the base (a tag re-cut to an older commit), the
 run fails instead of rebasing backwards. `config/scripts/fork/fork-sync.test.mjs` covers a clean
