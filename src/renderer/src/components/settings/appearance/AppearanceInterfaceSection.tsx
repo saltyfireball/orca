@@ -36,6 +36,7 @@ import {
   CodeEditorThemeSelect
 } from './themes/AppearanceThemeControl'
 import { useIconThemePickerLabels, useUiLanguagePickerLabels } from './use-appearance-picker-labels'
+import { ForkCustomAppThemeSetting } from '@/fork/custom-app-theme/ForkCustomAppThemeSetting'
 
 type AppearanceInterfaceSectionProps = {
   settings: GlobalSettings
@@ -197,6 +198,7 @@ export function AppearanceInterfaceSection({
         </SearchableSetting>
       ))}
 
+      <ForkCustomAppThemeSetting settings={settings} updateSettings={updateSettings} />
       {editorThemeSlots.map((slot) => (
         <SearchableSetting
           key={slot.base}

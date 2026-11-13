@@ -37,6 +37,10 @@ import { useAppStore } from '../store'
 import { useDocumentDarkTheme, useSettingsDarkTheme } from '@/hooks/use-document-dark-theme'
 import { useReduceVisualEffects } from '@/hooks/use-reduce-visual-effects'
 import { useSystemPrefersDark } from '@/hooks/theme/use-system-prefers-dark'
+import {
+  useForkCustomAppTheme,
+  useForkCustomAppThemeExtras
+} from '../fork/custom-app-theme/use-fork-custom-app-theme'
 
 /** The Match Terminal app theme while the requested mode's slot selects it, else null. */
 function useTerminalAppTheme(selected: boolean): TerminalAppTheme | null {
@@ -77,10 +81,13 @@ export function useDocumentAppearance(): void {
   const pluginThemes = usePluginThemes()
   const matchTerminal = selected === MATCH_TERMINAL_APP_THEME
   const terminalTheme = useTerminalAppTheme(matchTerminal)
+  const forkCustomTheme = useForkCustomAppTheme(dark) // Fork SLRM-2097: a user theme wins.
   // Why find by id: a disabled or removed plugin drops out of the list, which restores built-in colors.
-  const pluginTheme =
-    pluginThemes.find((entry) => entry.id === selected && (entry.base === 'dark') === dark) ?? null
-  const appTheme = matchTerminal ? terminalTheme : pluginTheme
+  const pluginTheme = forkCustomTheme
+    ? null
+    : (pluginThemes.find((entry) => entry.id === selected && (entry.base === 'dark') === dark) ??
+      null)
+  const appTheme = forkCustomTheme ?? (matchTerminal ? terminalTheme : pluginTheme)
   const editorTheme = findCodeEditorTheme(
     useAppStore((s) => (dark ? s.settings?.editorThemeDark : s.settings?.editorThemeLight)),
     pluginThemes
@@ -88,7 +95,7 @@ export function useDocumentAppearance(): void {
   // Why Match Terminal needn't wait: it derives from settings alone, not the plugin list.
   const pluginThemesLoaded = usePluginThemeStore((s) => s.loaded)
   const appPainted = useRef<Readonly<Record<string, string>>>({})
-  const ready = matchTerminal || pluginThemesLoaded
+  const ready = forkCustomTheme !== null || matchTerminal || pluginThemesLoaded
   usePluginTerminalPaletteRefresh()
   usePluginAppThemeSync()
   useSplitDividerSetting()
@@ -219,4 +226,5 @@ export function useDocumentAppearance(): void {
       rebuildAllTerminalWebglRenderers('code-font-smoothing')
     }
   }, [codeFontSmoothing])
+  useForkCustomAppThemeExtras(dark, appFontFamily)
 }
