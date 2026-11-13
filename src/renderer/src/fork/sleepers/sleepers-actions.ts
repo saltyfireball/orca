@@ -78,6 +78,25 @@ export async function setSleeperPinned(row: SleeperRow, pinned: boolean): Promis
   }
 }
 
+/**
+ * A queued row's Start now and Cancel: the launch queue's own bridge, as its banner uses
+ * (SLRM-2136). False when the row is not queued here or the queue no longer has it.
+ */
+export async function actOnQueuedSleeper(
+  row: SleeperRow,
+  action: 'start' | 'cancel'
+): Promise<boolean> {
+  const bridge = window.api.forkAgentQueue
+  if (!row.queue || !row.local || !bridge) {
+    return false
+  }
+  try {
+    return await bridge[action](row.queue.id)
+  } catch {
+    return false
+  }
+}
+
 /** Open the agent's pane the way its sidebar row does; a chat's provider starts on the next send. */
 export function wakeSleeper(row: SleeperRow): boolean {
   const parsed = parsePaneKey(row.paneKey)
