@@ -21,6 +21,7 @@ import { useNow } from '@/hooks/use-now'
 import { isDelayedUpdatePending } from '../../../../../shared/update-delay'
 import { getReleaseNotesUrlForVersion } from '../../../../../shared/release-channel'
 import { openAppHttpLinkFromAnchor } from '@/lib/browser/navigation/app-http-link-open'
+import { ForkSyncStatusNotice } from '@/fork/sync-status/ForkSyncStatusNotice'
 
 export function GeneralUpdateSettingsSection({
   children
@@ -287,6 +288,7 @@ export function GeneralUpdateSettingsSection({
                       { value0: updaterMessageText(updateStatus) }
                     ))}
         </p>
+        <ForkSyncStatusNotice updateState={updateStatus.state} />
       </SearchableSetting>
       <UpdateDelaySetting />
       {channelSwitcherRevealed ? <ReleaseChannelSection /> : null}

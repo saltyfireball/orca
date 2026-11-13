@@ -2,10 +2,10 @@
 # Keeps upstream workflows from running on the fork. Only fork-sync may run here.
 #   fork-workflow-guard.sh disable          disable every active workflow except fork-sync
 #   fork-workflow-guard.sh cancel-runs SHA  cancel unfinished runs of SHA from any other workflow
-# Needs GH_TOKEN with actions: write.
+# Needs GH_TOKEN with actions: write, and GITHUB_REPOSITORY (owner/name; Actions sets it).
 set -euo pipefail
 
-REPO="saltyfireball/orca"
+REPO="${GITHUB_REPOSITORY:?set GITHUB_REPOSITORY to owner/name}"
 KEEP=".github/workflows/fork-sync.yml"
 
 disable_workflows() {
