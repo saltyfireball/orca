@@ -13,6 +13,10 @@ import {
   normalizeForkChatSleepOnScreen,
   pickForkChatSleepSettings
 } from '../../../shared/fork/chat-sleep'
+import {
+  forkChatStallSweepHooks,
+  type ForkChatStallSweepHooks
+} from '../chat-stall/chat-stall-service'
 
 /** On-screen session ids per reporting window, so a closed window drops only its own. */
 const onScreenBySource = new Map<number, ReadonlySet<string>>()
@@ -46,7 +50,7 @@ export function resetForkChatSleepOnScreen(): void {
   onScreenBySource.clear()
 }
 
-export type ForkChatSleepIdleSweep = {
+export type ForkChatSleepIdleSweep = ForkChatStallSweepHooks & {
   idleMs: () => number | null
   keepAwake: (sessionId: string) => boolean
 }
@@ -68,6 +72,8 @@ export function forkChatSleepIdleSweep(
     }
   }
   return {
+    // Chat stall (FORK.md) rides the same sweep, with its own settings.
+    ...forkChatStallSweepHooks(readSettings),
     idleMs: () => {
       const settings = enabledSettings()
       return settings ? forkChatSleepIdleMinutes(settings) * 60_000 : stockIdleMs()
