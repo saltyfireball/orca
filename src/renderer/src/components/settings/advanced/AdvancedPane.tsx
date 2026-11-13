@@ -19,6 +19,7 @@ import { ForkLostWorkSettings } from '@/fork/lost-work/ForkLostWorkSettings'
 import { ForkAgentStateColorSetting } from '@/fork/agent-state-color/ForkAgentStateColorSetting'
 import { ForkMcpProfileSetting } from '@/fork/mcp-profiles/ForkMcpProfileSetting'
 import { ForkAgentLifecycleSettings } from '@/fork/ForkAgentLifecycleSettings'
+import { ForkCacheColdSetting } from '@/fork/cache-cold/ForkCacheColdSetting'
 
 type AdvancedPaneProps = {
   settings: GlobalSettings
@@ -161,6 +162,7 @@ export function AdvancedPane({ settings, updateSettings }: AdvancedPaneProps): R
       <ForkAgentStateColorSetting settings={settings} updateSettings={updateSettings} />
       <ForkMcpProfileSetting settings={settings} updateSettings={updateSettings} />
       <ForkAgentLifecycleSettings settings={settings} updateSettings={updateSettings} />
+      <ForkCacheColdSetting settings={settings} updateSettings={updateSettings} />
     </div>
   )
 }
