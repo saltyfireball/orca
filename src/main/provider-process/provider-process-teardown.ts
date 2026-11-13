@@ -10,6 +10,7 @@ import {
 import { terminateWindowsProcessTree } from '../pty/process-retirement/windows-process-tree-kill'
 import { recordSelfInitiatedTreeKill } from '../crash-reporting/process-exits/self-initiated-tree-kill-log'
 import { hasErrorCode } from '../daemon/endpoint/identity/daemon-process-inspection'
+import { forkProviderWriterParents } from '../fork/chat-survive/chat-survive-writer'
 
 /** What the teardown observed of the descendants; null when it signalled but observed nothing. */
 export type ProviderProcessTeardownVerdict =
@@ -68,8 +69,9 @@ export function killProviderWriter(
     ((pgid: number, signal: NodeJS.Signals) => process.kill(-pgid, signal))
   let delivered = false
   if (deps.supervised) {
+    const writerParents = forkProviderWriterParents(child.pid, snapshot)
     for (const descendant of snapshot?.descendants ?? []) {
-      if (descendant.ppid === child.pid && descendant.pgid === descendant.pid) {
+      if (writerParents.has(descendant.ppid) && descendant.pgid === descendant.pid) {
         try {
           signalGroup(descendant.pid, 'SIGKILL')
           delivered = true
