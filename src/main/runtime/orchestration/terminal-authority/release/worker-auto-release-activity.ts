@@ -3,6 +3,7 @@ import type { AgentPhase } from '../../../../../shared/agent-status/lifecycle/ag
 import type { AgentSessionStatusSummary } from '../../../../../shared/agent-session/agent-session-wire'
 import { resolveStructuredWorkerIdentityForSession } from '../structured-sessions/structured-worker-authority'
 import type { OrchestrationDb } from '../../db/orchestration-db'
+import { noteForkWorkerTurn } from '../../../../fork/worker-cleanup/worker-cleanup-activity'
 
 // A turn waiting on the user (approval or question) has not finished, so it holds the countdown like working.
 export function terminalPhaseInTurn(phase: AgentPhase | undefined): boolean {
@@ -43,6 +44,7 @@ export class WorkerAutoReleaseActivity {
   }
 
   private apply(paneKey: string, working: boolean): void {
+    noteForkWorkerTurn(paneKey, working)
     try {
       const db = this.getDb()
       if (working) {
