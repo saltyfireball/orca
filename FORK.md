@@ -104,6 +104,17 @@ named Orca Fork until SLRM-1367. `main` is always
   stock same-worktree `+N` disclosure is unchanged. Code is in
   `src/renderer/src/fork/agent-child-tally/`.
 
+- **Custom app themes (SLRM-2097).** Settings > Appearance > Custom app themes loads a whole
+  app theme from pasted text or a file: an Orca theme JSON, a Ghostty or Warp theme, or a
+  base16/base24 scheme, whose palette the importers turn into app colors. A theme carries app
+  color tokens (the plugin theme tokens), an optional terminal palette, and an optional font
+  and radius; values must be colors, sizes are capped. The box validates as you type, shows a
+  live preview, and saves to a list with Use, Rename, Copy JSON, Export and Delete, plus Reset
+  to default. Nothing changes until a theme is used. A used theme paints through the plugin
+  theme path (same contrast checks and startup cache) and its terminal palette becomes a stock
+  custom terminal theme. Format and example: `docs/fork/custom-app-themes.md`. Code is in
+  `src/shared/fork/custom-app-theme/` and `src/renderer/src/fork/custom-app-theme/`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -162,6 +173,7 @@ Apply these in this order. Each one is a single commit.
 52. `SLRM-1966 Follow upstream 1.4.256's moved modules in fork code`
 53. `SLRM-1966 Tint done chat rows and ring tab colors in the collapsed agent strip`
 54. `SLRM-2095 Sidebar agent rows count the workers, sub-agents and tasks they own`
+55. `SLRM-2097 Custom app themes: paste or import a whole app theme`
 
 Fork-only code lives in `fork/` folders:
 
@@ -298,6 +310,16 @@ Upstream files only get short hooks, which keeps rebases small:
   - `SortableTabContextMenu.tsx` renders `ForkMoveAccountTabMenuItems` for a native Claude chat,
     `quick-actions.ts` spreads `getForkClaudeMoveQuickActions()`, and `AppRootSurfaces.tsx`
     mounts `ForkMoveAccountDialogHost`.
+- Custom app themes (SLRM-2097): `useDocumentAppearance`
+  (`src/renderer/src/app-shell/use-document-appearance.ts`) calls `useForkCustomAppTheme`, which
+  takes precedence over the plugin and Match Terminal paint and does not wait for the plugin
+  list, and calls `useForkCustomAppThemeExtras` last for the radius and UI font.
+  `usePluginAppThemeSync` (`plugin-themes.ts`) prefers `activeCustomAppThemePaintId`, so the
+  startup cache of a custom theme is not cleared before the plugin list loads.
+  `AppearanceInterfaceSection.tsx` renders `ForkCustomAppThemeSetting` after the theme slots.
+  The settings `forkCustomAppThemes`, `forkCustomAppThemeDark`, `forkCustomAppThemeLight` and
+  `forkCustomAppThemeTerminalBefore` join `ForkGlobalSettings` in
+  `src/shared/fork/fork-global-settings.ts`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
