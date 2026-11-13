@@ -33,7 +33,7 @@ describe('launch scope', () => {
     const seen = await withForkMcpLaunchScope(
       call('agent.launch', { forkMcpProfile: 'web' }),
       async () => {
-        await new Promise((resolve) => setTimeout(resolve, 1))
+        await new Promise((resolve) => setImmediate(resolve))
         return currentForkMcpLaunchScope()
       }
     )

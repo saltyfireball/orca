@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import { Pin, PinOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { canSleepNow, type SleeperRow, type SleeperState } from '../../../../shared/fork/sleepers'
 import { formatSleeperBytes } from './sleepers-view-model'
 import {
@@ -10,38 +11,38 @@ import {
   sleeperLifecycleDetail
 } from './ForkSleepersLifecycleActions'
 
-export function sleeperStateLabel(state: SleeperState): string {
+export function sleeperStateLabel(state: SleeperState, t: Translate = translate): string {
   switch (state) {
     case 'working':
-      return translate('fork.sleepers.state.working', 'Working')
+      return t('fork.sleepers.state.working', 'Working')
     case 'stalled':
-      return translate('fork.sleepers.state.stalled', 'Stalled')
+      return t('fork.sleepers.state.stalled', 'Stalled')
     case 'needs-input':
-      return translate('fork.sleepers.state.needsInput', 'Needs input')
+      return t('fork.sleepers.state.needsInput', 'Needs input')
     case 'queued':
-      return translate('fork.sleepers.state.queued', 'Queued')
+      return t('fork.sleepers.state.queued', 'Queued')
     case 'awake-idle':
-      return translate('fork.sleepers.state.awakeIdle', 'Awake, idle')
+      return t('fork.sleepers.state.awakeIdle', 'Awake, idle')
     case 'asleep':
-      return translate('fork.sleepers.state.asleep', 'Asleep')
+      return t('fork.sleepers.state.asleep', 'Asleep')
   }
 }
 
-export function sleeperAge(ms: number | null): string {
+export function sleeperAge(ms: number | null, t: Translate = translate): string {
   if (ms === null) {
     return '-'
   }
   const minutes = Math.floor(ms / 60_000)
   if (minutes < 1) {
-    return translate('fork.sleepers.age.now', 'now')
+    return t('fork.sleepers.age.now', 'now')
   }
   if (minutes < 60) {
-    return translate('fork.sleepers.age.minutes', '{{count}}m', { count: minutes })
+    return t('fork.sleepers.age.minutes', '{{count}}m', { count: minutes })
   }
   const hours = Math.floor(minutes / 60)
   return hours < 48
-    ? translate('fork.sleepers.age.hours', '{{count}}h', { count: hours })
-    : translate('fork.sleepers.age.days', '{{count}}d', { count: Math.floor(hours / 24) })
+    ? t('fork.sleepers.age.hours', '{{count}}h', { count: hours })
+    : t('fork.sleepers.age.days', '{{count}}d', { count: Math.floor(hours / 24) })
 }
 
 export type SleeperRowActions = {
@@ -66,25 +67,26 @@ export function ForkSleepersRow({
   selected: boolean
   onSelect: (id: string, selected: boolean) => void
 }): React.JSX.Element {
+  const t = useTranslate()
   const [confirmClose, setConfirmClose] = useState(false)
   const memory = formatSleeperBytes(row.memoryBytes)
   const details = [
     row.kind === 'chat'
-      ? translate('fork.sleepers.kind.chat', 'Chat')
-      : translate('fork.sleepers.kind.terminal', 'Terminal'),
-    sleeperLifecycleDetail(row, now),
+      ? t('fork.sleepers.kind.chat', 'Chat')
+      : t('fork.sleepers.kind.terminal', 'Terminal'),
+    sleeperLifecycleDetail(row, now, t),
     row.workspace,
     row.model ?? row.agent ?? '',
     memory,
-    row.onScreen ? translate('fork.sleepers.onScreen', 'on screen') : '',
-    row.local ? '' : translate('fork.sleepers.remote', 'other host')
+    row.onScreen ? t('fork.sleepers.onScreen', 'on screen') : '',
+    row.local ? '' : t('fork.sleepers.remote', 'other host')
   ].filter(Boolean)
   return (
     <div className="flex items-center gap-3 border-b border-border/50 py-2 text-sm last:border-b-0">
       <input
         type="checkbox"
         className="shrink-0"
-        aria-label={translate('fork.sleepers.select', 'Select {{title}}', { title: row.title })}
+        aria-label={t('fork.sleepers.select', 'Select {{title}}', { title: row.title })}
         checked={selected}
         onChange={(event) => onSelect(row.id, event.target.checked)}
       />
@@ -95,27 +97,27 @@ export function ForkSleepersRow({
         </div>
         <div className="truncate text-xs text-muted-foreground">{details.join(' - ')}</div>
       </div>
-      <div className="w-24 shrink-0 text-xs">{sleeperStateLabel(row.state)}</div>
+      <div className="w-24 shrink-0 text-xs">{sleeperStateLabel(row.state, t)}</div>
       <div
         className="w-20 shrink-0 text-right text-xs text-muted-foreground"
-        title={translate('fork.sleepers.lastActivity', 'Last activity {{age}} ago', {
-          age: sleeperAge(now - row.lastActivityAt)
+        title={t('fork.sleepers.lastActivity', 'Last activity {{age}} ago', {
+          age: sleeperAge(now - row.lastActivityAt, t)
         })}
       >
-        {sleeperAge(row.idleMs)}
+        {sleeperAge(row.idleMs, t)}
       </div>
       <div className="flex w-80 shrink-0 justify-end gap-1">
         <ForkSleepersLifecycleActions row={row} after={actions.after} />
         {canSleepNow(row) ? (
           <Button size="sm" variant="ghost" onClick={() => actions.sleep(row)}>
-            {translate('fork.sleepers.sleep', 'Sleep')}
+            {t('fork.sleepers.sleep', 'Sleep')}
           </Button>
         ) : null}
         {row.worktreeId ? (
           <Button size="sm" variant="ghost" onClick={() => actions.wake(row)}>
             {row.state === 'asleep'
-              ? translate('fork.sleepers.wake', 'Wake')
-              : translate('fork.sleepers.open', 'Open')}
+              ? t('fork.sleepers.wake', 'Wake')
+              : t('fork.sleepers.open', 'Open')}
           </Button>
         ) : null}
         {row.kind === 'chat' && row.local ? (
@@ -124,13 +126,13 @@ export function ForkSleepersRow({
             variant="ghost"
             aria-label={
               row.pinned
-                ? translate('fork.sleepers.unpin', 'Let it sleep on idle')
-                : translate('fork.sleepers.pin', 'Keep awake')
+                ? t('fork.sleepers.unpin', 'Let it sleep on idle')
+                : t('fork.sleepers.pin', 'Keep awake')
             }
             title={
               row.pinned
-                ? translate('fork.sleepers.unpin', 'Let it sleep on idle')
-                : translate('fork.sleepers.pin', 'Keep awake')
+                ? t('fork.sleepers.unpin', 'Let it sleep on idle')
+                : t('fork.sleepers.pin', 'Keep awake')
             }
             onClick={() => actions.pin(row, !row.pinned)}
           >
@@ -147,11 +149,11 @@ export function ForkSleepersRow({
             }}
             onBlur={() => setConfirmClose(false)}
           >
-            {translate('fork.sleepers.confirmClose', 'Close tab?')}
+            {t('fork.sleepers.confirmClose', 'Close tab?')}
           </Button>
         ) : (
           <Button size="sm" variant="ghost" onClick={() => setConfirmClose(true)}>
-            {translate('fork.sleepers.close', 'Close')}
+            {t('fork.sleepers.close', 'Close')}
           </Button>
         )}
       </div>

@@ -12,7 +12,7 @@ import {
   SettingsSubsectionHeader,
   SettingsSwitchRow
 } from '../../components/settings/form-controls/SettingsFormControls'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import { ForkNumberInput } from './ForkNumberInput'
 
 type Props = {
@@ -21,26 +21,27 @@ type Props = {
 }
 
 export function ForkCacheColdSetting({ settings, updateSettings }: Props): React.JSX.Element {
+  const t = useTranslate()
   const config = forkCacheColdConfig(settings)
-  const windowLabel = translate('fork.cacheCold.setting.window', 'Cache lifetime (minutes)')
-  const thresholdLabel = translate('fork.cacheCold.setting.threshold', 'Smallest context (tokens)')
+  const windowLabel = t('fork.cacheCold.setting.window', 'Cache lifetime (minutes)')
+  const thresholdLabel = t('fork.cacheCold.setting.threshold', 'Smallest context (tokens)')
   return (
     <section className="space-y-3">
       <SettingsSubsectionHeader
-        title={translate('fork.cacheCold.setting.title', 'Cache-cold cue')}
-        description={translate(
+        title={t('fork.cacheCold.setting.title', 'Cache-cold cue')}
+        description={t(
           'fork.cacheCold.setting.description',
           'A prompt cache expires when a chat sits idle. The next message then re-reads the whole context at full price. The cue says so on the composer and the chat row, and offers to compact first. Claude chats only.'
         )}
       />
       <SettingsSwitchRow
-        label={translate('fork.cacheCold.setting.enabled', 'Show the cache-cold cue')}
+        label={t('fork.cacheCold.setting.enabled', 'Show the cache-cold cue')}
         checked={config.enabled}
         onChange={() => updateSettings({ forkCacheColdCue: !config.enabled })}
       />
       <SettingsRow
         label={windowLabel}
-        description={translate(
+        description={t(
           'fork.cacheCold.setting.windowHelp',
           'Default {{count}}. Used when the provider does not say; a lifetime the usage reports (5 minutes or 1 hour) wins.',
           { count: FORK_CACHE_WINDOW_DEFAULT_MINUTES }
@@ -58,7 +59,7 @@ export function ForkCacheColdSetting({ settings, updateSettings }: Props): React
       />
       <SettingsRow
         label={thresholdLabel}
-        description={translate(
+        description={t(
           'fork.cacheCold.setting.thresholdHelp',
           'Default {{count}}. Smaller contexts are cheap to re-read, so they get no cue.',
           { count: FORK_CACHE_COLD_DEFAULT_THRESHOLD }

@@ -4,7 +4,7 @@ import {
   SettingsSubsectionHeader,
   SettingsSwitchRow
 } from '../../components/settings/form-controls/SettingsFormControls'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 
 type ForkChildTallySettingProps = {
   settings: GlobalSettings
@@ -15,21 +15,22 @@ export function ForkChildTallySetting({
   settings,
   updateSettings
 }: ForkChildTallySettingProps): React.JSX.Element {
+  const t = useTranslate()
   const shown = settings.forkShowChildTally !== false
   const countFinished = settings.forkChildTallyCountFinished !== false
   const countTasks = settings.forkChildTallyCountTasks !== false
   return (
     <section className="space-y-3">
       <SettingsSubsectionHeader
-        title={translate('fork.childTally.settingTitle', 'Agent child count')}
-        description={translate(
+        title={t('fork.childTally.settingTitle', 'Agent child count')}
+        description={t(
           'fork.childTally.settingDescription',
           'Show how many workers, sub-agents and background tasks each sidebar agent is responsible for.'
         )}
       />
       <SettingsSwitchRow
-        label={translate('fork.childTally.settingLabel', 'Show the child count badge')}
-        description={translate(
+        label={t('fork.childTally.settingLabel', 'Show the child count badge')}
+        description={t(
           'fork.childTally.settingHelp',
           'Running and total, such as 3/12. Hover it for the list.'
         )}
@@ -37,8 +38,8 @@ export function ForkChildTallySetting({
         onChange={() => updateSettings({ forkShowChildTally: !shown })}
       />
       <SettingsSwitchRow
-        label={translate('fork.childTally.finishedLabel', 'Count finished children')}
-        description={translate(
+        label={t('fork.childTally.finishedLabel', 'Count finished children')}
+        description={t(
           'fork.childTally.finishedHelp',
           'When off, the badge shows only the children still running.'
         )}
@@ -47,8 +48,8 @@ export function ForkChildTallySetting({
         onChange={() => updateSettings({ forkChildTallyCountFinished: !countFinished })}
       />
       <SettingsSwitchRow
-        label={translate('fork.childTally.tasksLabel', 'Count background tasks')}
-        description={translate(
+        label={t('fork.childTally.tasksLabel', 'Count background tasks')}
+        description={t(
           'fork.childTally.tasksHelp',
           'Include background shell commands and monitors an agent started.'
         )}

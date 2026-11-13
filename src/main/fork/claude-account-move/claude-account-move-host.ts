@@ -1,7 +1,7 @@
 // SLRM-1503: the move service wired to this process's chat host and Claude account router. Each
 // runtime (this desktop, a paired or SSH host, orcad) builds its own, so a move always runs on the
 // host that owns the chat and uses that host's accounts.
-import { realpathSync } from 'node:fs'
+import { realpath } from 'node:fs/promises'
 import { hostname } from 'node:os'
 import { join } from 'node:path'
 import { agentSessionAccountHomePath } from '../../../shared/agent-session/lifecycle/agent-session-account-home'
@@ -17,18 +17,18 @@ import { claudeSessionAccountPins } from './claude-session-account-pins'
 
 const CALLER_KEY = 'trusted-local:fork-claude-account-move'
 
-function projectsFolder(home: string): string | null {
+async function projectsFolder(home: string): Promise<string | null> {
   try {
-    return realpathSync(join(home, 'projects'))
+    return await realpath(join(home, 'projects'))
   } catch {
     return null
   }
 }
 
 /** Stock account setup links each account's `projects` to System default's, so a resume finds it. */
-export function claudeHomesShareHistory(fromHome: string, toHome: string): boolean {
-  const from = projectsFolder(fromHome)
-  return from === null || from === projectsFolder(toHome)
+export async function claudeHomesShareHistory(fromHome: string, toHome: string): Promise<boolean> {
+  const from = await projectsFolder(fromHome)
+  return from === null || from === (await projectsFolder(toHome))
 }
 
 function hostDeps(
