@@ -34,15 +34,18 @@ function serversText(t: Translate, chat: ForkMcpChatInfo): string {
 }
 
 export function ForkMcpProfileStrip({
-  sessionId
+  sessionId,
+  agent
 }: {
   sessionId: string
+  /** The pane's agent. A chat that has not started has no record yet, so main cannot name it. */
+  agent?: string
 }): React.JSX.Element | null {
   const t = useTranslate()
   const settings = useAppStore((s) => s.settings)
   const { chat, choose } = useForkMcpChat(sessionId)
   const config = forkMcpProfileConfigOf(settings ?? {})
-  if (!chat || !chat.supported) {
+  if (!chat || !(chat.supported || (chat.provider === null && agent === 'claude'))) {
     return null
   }
   if (!forkMcpProfilesInUse(config) && !chat.chosen && !chat.last?.applied) {
@@ -58,6 +61,8 @@ export function ForkMcpProfileStrip({
     >
       <span>
         {label}: <span className="font-medium text-foreground">{running}</span>
+        {/* Nothing recorded yet: the name is what the next start uses, not what runs now. */}
+        {chat.last ? null : ` ${t('fork.mcpProfiles.strip.fromNextStart', '(from next start)')}`}
       </span>
       <select
         aria-label={label}
