@@ -38,6 +38,7 @@ import { PLUGIN_INSTALL_COMMAND_SPECS } from './plugin-install'
 import { WORKSPACE_CLEANUP_COMMAND_SPECS } from './workspace-cleanup'
 // SLRM-1503: orca account which / move (FORK.md).
 import { FORK_ACCOUNT_MOVE_COMMAND_SPECS } from '../fork/account-move-specs'
+import { FORK_LOST_WORK_COMMAND_SPECS } from '../fork/lost-work-specs'
 
 export const COMMAND_SPECS: CommandSpec[] = [
   ...CORE_COMMAND_SPECS,
@@ -77,5 +78,6 @@ export const COMMAND_SPECS: CommandSpec[] = [
   ...PLUGIN_VIEW_COMMAND_SPECS,
   ...PLUGIN_INSTALL_COMMAND_SPECS,
   ...PAIR_COMMAND_SPECS,
-  ...FORK_ACCOUNT_MOVE_COMMAND_SPECS
+  ...FORK_ACCOUNT_MOVE_COMMAND_SPECS,
+  ...FORK_LOST_WORK_COMMAND_SPECS
 ]
