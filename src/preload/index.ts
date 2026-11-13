@@ -98,6 +98,7 @@ import { mobileApi } from './api/mobile/mobile-bridge'
 import { agentStatusApi } from './api/agent-status/agent-status-bridge'
 import { speechApi } from './api/speech/speech-bridge'
 import { forkUpdateInstallWaitApi } from './fork/update-install-wait-bridge'
+import { forkLostWorkApi } from './fork/lost-work-bridge'
 
 installBrowserFindListener()
 
@@ -184,6 +185,7 @@ const api = {
   session: sessionApi,
   updater: updaterApi,
   forkUpdateInstallWait: forkUpdateInstallWaitApi,
+  forkLostWork: forkLostWorkApi,
   docPreview: docPreviewApi,
   notebook: notebookApi,
   fs: fsApi,
