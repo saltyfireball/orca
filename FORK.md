@@ -246,6 +246,41 @@ named Orca Fork until SLRM-1367. `main` is always
   descendant sweep, but `killDelivered` stayed false and the close proof was weaker.
   `forkProviderWriterParents` (`src/main/fork/chat-survive/chat-survive-writer.ts`) also counts
   a direct child that shares the root's group as a writer parent.
+- **Worker cleanup: finished orchestration workers give up their agent (SLRM-2100).** Off by
+  default (`forkWorkerCleanup`, Settings > Advanced). Stock Orca already closes finished workers:
+  when a dispatch settles it arms `auto_release_at` 2 minutes out unless
+  `orchestrationWorkerAutoReleaseEnabled` is false (default on), suspends the countdown while
+  the agent is in a turn, skips workers marked Keep open (`release_state = 'retained'`), archives
+  a terminal worker's output, then closes the pane or stops the chat and hides its tab. It never
+  touches the worktree. It does not wait for the coordinator to read the report, ignore open
+  questions, notice the worker was used again, check for uncommitted or unpushed work, look at
+  merges, or offer Undo. Worker cleanup takes over that release while on:
+  - Stock auto-release (and its federated claims) reads as off while `forkWorkerCleanup` is on;
+    while off, stock runs exactly as before.
+  - A sweep runs every minute over owned workers whose dispatch succeeded or failed and that are
+    not kept or released. It leaves one open while: its agent started a turn after it reported
+    (typed into or sent more work), a question or decision gate is pending, a `worker_done`
+    report is unread, it is in a turn, it has no local git worktree, or git cannot read the
+    worktree. Uncommitted files or commits on no remote hold it open with a mark on its tab and
+    row instead. Only workers that report while the app runs are judged (the turn record is in
+    memory).
+  - Triggers: `forkWorkerCleanupOnDone` (default on) after `forkWorkerCleanupGraceMinutes`
+    (default 5) from the report; `forkWorkerCleanupOnMerged` (default off) as soon as the branch
+    has a merged pull request (`gh`, when installed and signed in; any failure reads as not
+    merged) or made commits that are all on the default branch.
+  - `forkWorkerCleanupAction`: `close` (default) hands the worker to the stock release path
+    (`release_state = 'requested'` with the automatic-close markers, so stock still yields to an
+    agent that starts working again), which archives terminal output and closes the pane or
+    stops the chat and closes its tab. `release` stops a chat's agent and keeps its tab; the next
+    message starts it again. A terminal worker's agent is its pane, so it closes in both modes.
+  - Never deleted: the worktree and branch (lost work owns removal). A closed chat keeps its
+    journal and reopens from the notice's Undo or the closed-tab menu; a closed terminal's output
+    is in the worker archive (`orca orchestration worker-show`) and Undo resumes its
+    conversation in a new terminal, as opening a closed worker does.
+  - Each sweep that cleans up shows "N finished workers closed." with Undo. Undo reopens closed
+    chat tabs, resumes closed terminals, and marks released chats Keep open.
+    Code is in `src/shared/fork/worker-cleanup.ts`, `src/main/fork/worker-cleanup/`,
+    `src/preload/fork/worker-cleanup-bridge.ts` and `src/renderer/src/fork/worker-cleanup/`.
 
 ## Patch list
 
@@ -312,6 +347,7 @@ Apply these in this order. Each one is a single commit.
 59. `SLRM-2099 Truthful memory: whole process trees, system memory and a warning`
 60. `SLRM-2098 Agent launch queue: a limit on running agents with a queue for the rest`
 61. `SLRM-2127 Chat stall marks stuck chats, writer kill under a broker, broker test hang`
+62. `SLRM-2100 Worker cleanup: finished workers give up their agent, with guards and Undo`
 
 Fork-only code lives in `fork/` folders:
 
@@ -551,6 +587,20 @@ Upstream files only get short hooks, which keeps rebases small:
     `ForkTabTitle` renders `ForkAgentQueueTabBadge`; `AdvancedPane.tsx` renders
     `ForkAgentQueueSetting` after `ForkChildTallySetting`; the five settings are in
     `fork-global-settings.ts`.
+- Worker cleanup (SLRM-2100), from `src/main/fork/worker-cleanup/`:
+  - `orchestration-database-binding.ts`: `db.workerAutoReleaseEnabled` also requires
+    `!forkWorkerCleanupOwnsRelease(settings)`, one `installForkWorkerCleanup(this, this.store)`
+    call starts the sweep, and the settings listener rearms the stock scheduler when
+    `forkWorkerCleanup` changes too.
+  - `WorkerAutoReleaseActivity.apply` calls `noteForkWorkerTurn(paneKey, working)` first, so the
+    sweep knows when a worker was used after it reported.
+  - `src/main/index.ts` calls `installForkWorkerCleanupBridge()` after
+    `installForkChatSleepBridge()`. `src/preload/index.ts` adds `forkWorkerCleanup`
+    (`src/preload/fork/worker-cleanup-bridge.ts`) and `api-types.ts` types it as optional.
+  - `AppRootSurfaces.tsx` mounts `ForkWorkerCleanupReporter` and `AdvancedPane.tsx` renders
+    `ForkWorkerCleanupSetting`. The held mark renders inside the existing `ForkTabTitle` and
+    `ForkClaudeAccountAgentRowChip` hooks. The settings are in
+    `src/shared/fork/fork-global-settings.ts`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
