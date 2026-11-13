@@ -1155,6 +1155,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.sleepers.list': ForkSleepersListParams,
   'fork.sleepers.pin': ForkSleepersPinParams,
   'fork.sleepers.sleep': ForkSleepersSleepParams,
+  'fork.usageLedger.report': ForkUsageReportParams,
   'git.abortMerge': WorktreeSelectorOfGitParams,
   'git.abortRebase': WorktreeSelectorOfGitParams,
   'git.atRiskLocalFiles': WorktreeSelectorOfGitParams,
