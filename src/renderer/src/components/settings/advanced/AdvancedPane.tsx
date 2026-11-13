@@ -16,12 +16,7 @@ import { ForkChatSurviveSetting } from '@/fork/ForkChatSurviveSetting'
 import { ForkAccountChipSetting } from '@/fork/claude-account-chip/ForkAccountChipSetting'
 import { ForkChildTallySetting } from '@/fork/agent-child-tally/ForkChildTallySetting'
 import { ForkLostWorkSettings } from '@/fork/lost-work/ForkLostWorkSettings'
-import { ForkChatSleepSetting } from '@/fork/chat-sleep/ForkChatSleepSetting'
-import { ForkMemorySettings } from '@/fork/memory-truth/ForkMemorySettings'
-import { ForkAgentQueueSetting } from '@/fork/agent-queue/ForkAgentQueueSetting'
-import { ForkChatStallSetting } from '@/fork/chat-stall/ForkChatStallSetting'
-import { ForkWorkerCleanupSetting } from '@/fork/worker-cleanup/ForkWorkerCleanupSetting'
-import { ForkLaunchDefaultsSetting } from '@/fork/launch-defaults/ForkLaunchDefaultsSetting'
+import { ForkAgentLifecycleSettings } from '@/fork/ForkAgentLifecycleSettings'
 
 type AdvancedPaneProps = {
   settings: GlobalSettings
@@ -161,12 +156,7 @@ export function AdvancedPane({ settings, updateSettings }: AdvancedPaneProps): R
       <ForkAccountChipSetting settings={settings} updateSettings={updateSettings} />
       <ForkChildTallySetting settings={settings} updateSettings={updateSettings} />
       <ForkLostWorkSettings settings={settings} updateSettings={updateSettings} />
-      <ForkChatSleepSetting settings={settings} updateSettings={updateSettings} />
-      <ForkMemorySettings settings={settings} updateSettings={updateSettings} />
-      <ForkAgentQueueSetting settings={settings} updateSettings={updateSettings} />
-      <ForkChatStallSetting settings={settings} updateSettings={updateSettings} />
-      <ForkWorkerCleanupSetting settings={settings} updateSettings={updateSettings} />
-      <ForkLaunchDefaultsSetting settings={settings} updateSettings={updateSettings} />
+      <ForkAgentLifecycleSettings settings={settings} updateSettings={updateSettings} />
     </div>
   )
 }

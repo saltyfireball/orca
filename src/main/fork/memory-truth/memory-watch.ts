@@ -10,6 +10,7 @@ import {
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { translateMain } from '../../i18n/main-i18n'
 import { installForkChatRecordSource } from './chat-roots'
+import { installForkMemoryLaunchHold } from './memory-launch-hold'
 import {
   createForkMemoryEpisode,
   forkMemoryNotificationText,
@@ -30,7 +31,13 @@ let lastPushed = ''
 
 function push(status: ForkMemoryStatus): void {
   // Pushed on every sample; skip windows when nothing they show changed.
-  const key = JSON.stringify([status.over, status.reasons, status.launchesPaused, status.settings])
+  const key = JSON.stringify([
+    status.over,
+    status.reasons,
+    status.launchesPaused,
+    status.launchesHeld,
+    status.settings
+  ])
   const sampleKey = JSON.stringify([status.system?.pressure, status.system?.swapUsed])
   if (`${key}${sampleKey}` === lastPushed) {
     return
@@ -70,6 +77,7 @@ export function installForkMemoryWatch(
   }
   installed = true
   installForkMemorySettingsReader(readSettings)
+  installForkMemoryLaunchHold()
   installForkChatRecordSource(() => {
     const host = getStructuredAgentSessionHost()
     const store = host?.deps.store

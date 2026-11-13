@@ -18,7 +18,12 @@ export type ForkAgentQueueEntry = {
   queuedAt: number
   /** Set for an orchestration worker. */
   dispatchId?: string
+  /** Why every launch waits now even with free slots (a hold such as low memory), if one does. */
+  heldReason?: string
 }
+
+/** The hold reason memory truth's "Pause new agents" gives while the queue is on (SLRM-2136). */
+export const FORK_AGENT_QUEUE_MEMORY_HOLD_REASON = 'memory is low'
 
 export type ForkAgentQueueSnapshot = {
   enabled: boolean
@@ -102,6 +107,9 @@ export type ForkAgentQueueStatus =
   | { state: 'not-queued' }
 
 /** The line launch commands print for a queued launch. */
-export function forkAgentQueuedLine(entry: Pick<ForkAgentQueueEntry, 'position' | 'id'>): string {
-  return `queued, position ${entry.position} (start now: orca agent queue start ${entry.id})`
+export function forkAgentQueuedLine(
+  entry: Pick<ForkAgentQueueEntry, 'position' | 'id' | 'heldReason'>
+): string {
+  const why = entry.heldReason ? `, ${entry.heldReason}` : ''
+  return `queued, position ${entry.position}${why} (start now: orca agent queue start ${entry.id})`
 }

@@ -1,19 +1,45 @@
 // Sleepers (FORK.md): one list of every native chat and terminal agent, with its sleep state,
 // so a user can see what is holding a process and put it to sleep, wake it, or pin it awake.
 // Both the desktop dialog and `orca sleepers` build their rows here from the same inputs.
+import type { ForkChatStallLiveness } from './chat-stall'
 import type { ForkGlobalSettings } from './fork-global-settings'
 
 export type SleeperKind = 'chat' | 'terminal'
 
-/** `needs-input` is a blocked or waiting agent: it asked the user something. */
-export type SleeperState = 'working' | 'needs-input' | 'awake-idle' | 'asleep'
+/**
+ * `needs-input` is a blocked or waiting agent: it asked the user something. `stalled` is a chat
+ * the chat stall monitor flagged (a turn with no provider output too long); `queued` is a launch
+ * waiting in the agent launch queue (SLRM-2136).
+ */
+export type SleeperState =
+  | 'working'
+  | 'stalled'
+  | 'needs-input'
+  | 'queued'
+  | 'awake-idle'
+  | 'asleep'
 
 export const SLEEPER_STATES: readonly SleeperState[] = [
   'working',
+  'stalled',
   'needs-input',
+  'queued',
   'awake-idle',
   'asleep'
 ]
+
+/** The chat stall monitor's facts for a stalled row; its actions key on the session id. */
+export type SleeperStall = {
+  quietSince: number
+  liveness: ForkChatStallLiveness
+}
+
+/** The launch queue's facts for a queued row; Start now and Cancel take `id`. */
+export type SleeperQueue = {
+  id: string
+  position: number
+  heldReason?: string
+}
 
 /** What one source (the runtime's agent rows, or the renderer's status feed) knows of an agent. */
 export type SleeperSource = {
@@ -47,6 +73,8 @@ export type SleeperRow = Omit<SleeperSource, 'status' | 'processAlive' | 'hibern
   onScreen: boolean
   /** Bytes, only when the resource monitor already sampled this pane. */
   memoryBytes: number | null
+  stall?: SleeperStall
+  queue?: SleeperQueue
 }
 
 export function deriveSleeperState(
@@ -69,6 +97,54 @@ export type SleeperOverlay = {
   pinned: ReadonlySet<string>
   onScreen: ReadonlySet<string>
   memoryByPaneKey?: ReadonlyMap<string, number>
+  /** Chat stall entries by session id (SLRM-2136). */
+  stalled?: ReadonlyMap<string, SleeperStall>
+  /** Launch queue entries by session id; ones no source shows are listed on their own. */
+  queued?: ReadonlyMap<string, SleeperQueue & { label: string; queuedAt: number }>
+}
+
+/** A queued launch wins over a stall (it has no running turn), then the source's own state. */
+function lifecycleOf(
+  id: string,
+  kind: SleeperKind,
+  overlay: SleeperOverlay
+): Pick<SleeperRow, 'stall' | 'queue'> & { state?: SleeperState } {
+  const queued = kind === 'chat' ? overlay.queued?.get(id) : undefined
+  if (queued) {
+    const { label: _label, queuedAt: _at, ...queue } = queued
+    return { state: 'queued', queue }
+  }
+  const stall = kind === 'chat' ? overlay.stalled?.get(id) : undefined
+  return stall ? { state: 'stalled', stall } : {}
+}
+
+/** A queued launch the ps sources do not show yet: its chat has no process or row so far. */
+function queuedOnlyRow(
+  id: string,
+  queued: SleeperQueue & { label: string; queuedAt: number },
+  overlay: SleeperOverlay
+): SleeperRow {
+  const { label, queuedAt, ...queue } = queued
+  return {
+    id,
+    kind: 'chat',
+    paneKey: id,
+    worktreeId: null,
+    workspace: '',
+    title: label,
+    agent: null,
+    model: null,
+    stateStartedAt: queuedAt,
+    updatedAt: queuedAt,
+    local: true,
+    state: 'queued',
+    idleMs: null,
+    lastActivityAt: queuedAt,
+    pinned: overlay.pinned.has(id),
+    onScreen: overlay.onScreen.has(id),
+    memoryBytes: null,
+    queue
+  }
 }
 
 export function buildSleeperRows(
@@ -83,7 +159,8 @@ export function buildSleeperRows(
     }
     seen.add(source.id)
     const { status: _status, processAlive: _alive, hibernated: _hibernated, ...rest } = source
-    const state = deriveSleeperState(source)
+    const lifecycle = lifecycleOf(source.id, source.kind, overlay)
+    const state = lifecycle.state ?? deriveSleeperState(source)
     const idle = state === 'awake-idle' || state === 'asleep'
     rows.push({
       ...rest,
@@ -92,8 +169,16 @@ export function buildSleeperRows(
       lastActivityAt: source.updatedAt,
       pinned: source.kind === 'chat' && overlay.pinned.has(source.id),
       onScreen: overlay.onScreen.has(source.id),
-      memoryBytes: overlay.memoryByPaneKey?.get(source.paneKey) ?? null
+      memoryBytes: overlay.memoryByPaneKey?.get(source.paneKey) ?? null,
+      ...(lifecycle.stall ? { stall: lifecycle.stall } : {}),
+      ...(lifecycle.queue ? { queue: lifecycle.queue } : {})
     })
+  }
+  for (const [id, queued] of overlay.queued ?? []) {
+    if (!seen.has(id)) {
+      seen.add(id)
+      rows.push(queuedOnlyRow(id, queued, overlay))
+    }
   }
   return rows
 }
@@ -171,7 +256,20 @@ export function resolveSleeper(rows: readonly SleeperRow[], query: string): Slee
   if (matches.length === 1) {
     return { ok: true, row: matches[0] }
   }
-  return { ok: false, error: matches.length === 0 ? 'not-found' : 'ambiguous', matches }
+  return {
+    ok: false,
+    error: matches.length === 0 ? 'not-found' : 'ambiguous',
+    matches
+  }
+}
+
+/** The sidebar's Sleepers button shows unless the setting is false (SLRM-2136). */
+export function forkSleepersButtonShown(settings: unknown): boolean {
+  return !(
+    typeof settings === 'object' &&
+    settings !== null &&
+    Reflect.get(settings, 'forkSleepersButton') === false
+  )
 }
 
 /** Most pinned chats kept; a hand-edited list past it is cut. */

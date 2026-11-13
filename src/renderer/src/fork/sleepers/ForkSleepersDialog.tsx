@@ -85,7 +85,8 @@ function Body(): React.JSX.Element {
       }
     },
     pin: (row, pinned) => after(setSleeperPinned(row, pinned)),
-    close: (row) => after(closeSleeper(row))
+    close: (row) => after(closeSleeper(row)),
+    after
   }
   const bulk = (action: SleeperBulkAction): void => {
     const targets = sleeperBulkTargets(shown, selected, action)

@@ -53,6 +53,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkLaunchDefaults?: ForkLaunchDefaultsSettings
     /** Fork sleepers: native chat session ids that never auto-sleep; unset is none. */
     forkSleepersPinned?: string[]
+    /** Fork sleepers: the sidebar toolbar's Sleepers button; unset is shown. */
+    forkSleepersButton?: boolean
   }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */

@@ -6,12 +6,17 @@ import type { LaunchAgentInNewTabArgs } from '@/lib/agent-session/launch/new-tab
 import type { AgentTabLaunchOutcome } from '@/lib/agent-session/launch/new-tab/launch-agent-in-new-tab-host-agents'
 import { forkMemoryLaunchRefusal } from './memory-status'
 
-/** The refused outcome, or null when the launch may go ahead. */
+/**
+ * The refused outcome, or null when the launch may go ahead. `route` is the planned route: a
+ * native chat can wait in the launch queue (SLRM-2136), so with the queue on only other routes
+ * are refused here.
+ */
 export function forkRefuseAgentLaunchOverMemory(
   args: LaunchAgentInNewTabArgs,
-  notifyFailure: boolean
+  notifyFailure: boolean,
+  route?: string
 ): AgentTabLaunchOutcome | null {
-  const message = forkMemoryLaunchRefusal()
+  const message = forkMemoryLaunchRefusal(route === 'structured-native-chat')
   if (!message) {
     return null
   }

@@ -50,11 +50,6 @@ export function launchAgentInNewTabWithOutcome(
   notifyFailure = true
 ): AgentTabLaunchOutcome {
   const notify = () => notifyAgentLaunchFailure(args.agent)
-  // Fork (SLRM-2099): the opt-in pause on new agents while system memory is over the threshold.
-  const memoryRefusal = forkRefuseAgentLaunchOverMemory(args, notifyFailure)
-  if (memoryRefusal) {
-    return memoryRefusal
-  }
   try {
     return openAgentInNewTab(args, notifyFailure, notify)
   } catch {
@@ -120,6 +115,11 @@ function openAgentInNewTab(
     )
   }
   const { plan } = route
+  // Fork (SLRM-2099, SLRM-2136): the memory pause; with the launch queue on, a chat waits there.
+  const memoryRefusal = forkRefuseAgentLaunchOverMemory(args, notifyFailure, plan?.route)
+  if (memoryRefusal) {
+    return memoryRefusal
+  }
   if (plan?.route === 'structured-native-chat') {
     const structured = launchStructuredAgentFromNewTab({
       plan,

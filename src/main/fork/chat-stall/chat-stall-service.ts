@@ -58,6 +58,11 @@ export function forkChatStallMonitor(): ForkChatStallMonitor {
   return monitor
 }
 
+/** Stalled chats now, without creating the monitor when no sweep ever ran (Sleepers lists them). */
+export function forkChatStallEntries(): ForkChatStallEntry[] {
+  return monitor ? monitor.entries() : []
+}
+
 /** The sweep deps for the local host; settings are read on every check. */
 export function forkChatStallSweepHooks(settings: () => unknown): ForkChatStallSweepHooks {
   readSettings = settings
