@@ -34,6 +34,7 @@ import { resolveRowProgramStatus } from '@/lib/program-status/agent-row-presenta
 import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { ForkAgentRowTabTint } from '@/fork/agent-row-tab-tint/ForkAgentRowTabTint'
 import { ForkAgentRowChildTally } from '@/fork/agent-child-tally/ForkAgentChildTallyBadge'
+import { forkAgentRowTitle } from '@/fork/launch-defaults/fork-agent-row-launch'
 
 function getCompactAgentPrimary(
   agent: DashboardAgentRowData,
@@ -173,7 +174,10 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
     forkNamed && text === primary ? forkMarkedNameText(t, text) : text
   const shownNode = (text: string): React.ReactNode =>
     forkNamed && text === primary ? <ForkMarkedName name={text} /> : text
-  const rowTitle = `${shownText(leadingText)}${trailingText ? ` - ${shownText(trailingText)}` : ''}`
+  const rowTitle = forkAgentRowTitle(
+    `${shownText(leadingText)}${trailingText ? ` - ${shownText(trailingText)}` : ''}`,
+    agent.entry.orchestration?.forkLaunch
+  )
   const model = agent.entry.model?.trim() ?? ''
   const shortTime = getCompactAgentTime(agent, now)
   const cacheTimer = usePromptCacheCountdownForPane(agent.paneKey, cacheTimerActive)
