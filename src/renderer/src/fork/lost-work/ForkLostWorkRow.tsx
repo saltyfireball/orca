@@ -2,7 +2,7 @@
 import React from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/class-names'
 import { translate } from '@/i18n/i18n'
 import type { LostWorkItem, LostWorkRisk } from '../../../../shared/fork/lost-work'
 import { canOpenLostWork, canPushLostWork, canSaveLostWork } from './lost-work-actions'
