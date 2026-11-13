@@ -21,6 +21,10 @@ import { installForkRestartGuard } from './fork/restart-guard/restart-guard'
 import { installForkChatSleepBridge } from './fork/chat-sleep/chat-sleep-bridge'
 import { installForkMemoryWatch } from './fork/memory-truth/memory-watch'
 import { installForkAgentQueueApp } from './fork/agent-queue/agent-queue-ipc'
+import {
+  installForkUsageLedger,
+  forkUsageLedgerStoreReader
+} from './fork/usage-ledger/usage-ledger-ipc'
 import { shouldActivateDesktopForSecondInstance } from './startup/single-instance-lock'
 import { resolveOsOpenedDocuments } from './startup/os-opened-documents'
 import {
@@ -179,6 +183,8 @@ if (preflightReady) {
   installForkMemoryWatch(() => state.store?.getSettings())
   // Fork (SLRM-2098): the agent launch queue, off unless switched on.
   installForkAgentQueueApp(() => state.store?.getSettings())
+  // Fork (SLRM-2103/2104): the usage ledger behind the cache-cold cue and the usage report.
+  installForkUsageLedger(() => forkUsageLedgerStoreReader(state.store))
   void app.whenReady().then(async () => {
     try {
       await initializeMainProcessReady({

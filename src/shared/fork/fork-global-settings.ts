@@ -1,10 +1,12 @@
 import type { ForkCustomAppThemeSettings } from './custom-app-theme/custom-app-theme-settings'
 import type { LostWorkSettings } from './lost-work'
 import type { ForkMemoryGlobalSettings } from './memory-truth'
+import type { ForkUsageLedgerSettings } from './usage-ledger'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
-  ForkMemoryGlobalSettings & {
+  ForkMemoryGlobalSettings &
+  ForkUsageLedgerSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */
     forkLostWork?: LostWorkSettings
     /** Fork (SLRM-1394): Claude chats keep running through an app restart. Off unless true. */

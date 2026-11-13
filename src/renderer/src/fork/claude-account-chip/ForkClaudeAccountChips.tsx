@@ -16,6 +16,7 @@ import {
   useClaudeAccountForWorktree
 } from './use-claude-account'
 import { ForkChatSleepRowMark, ForkChatSleepTabMark } from '../chat-sleep/ForkChatSleep'
+import { ForkCacheColdMark, ForkCacheColdRowMark } from '../cache-cold/ForkCacheColdCue'
 
 type SlotProps = Pick<ForkClaudeAccountChipProps, 'className' | 'onOpenMenu' | 'menu'>
 
@@ -56,6 +57,7 @@ export function ForkTabTitle({
     <>
       <span className={`${TAB_LABEL_WIDTH_CLASSES} mr-1`}>{title}</span>
       <ForkChatSleepTabMark worktreeId={chip.tab.worktreeId} sessionId={chip.chat?.sessionId} />
+      <ForkCacheColdMark sessionId={chip.chat?.sessionId} className="mr-1 inline-flex shrink-0" />
       {/* SLRM-2098: queued for a free agent slot. */}
       <ForkAgentQueueTabBadge sessionId={chip.chat?.sessionId} />
       <ForkClaudeAccountTabChip {...chip} />
@@ -73,7 +75,7 @@ export function ForkClaudeAccountWorktreeChip({
   return <ForkClaudeAccountChip resolution={resolution} menu={menu} {...slot} />
 }
 
-/** An agent row in the dashboard or a worktree card, with chat sleep's moon. */
+/** An agent row in the dashboard or a worktree card, with chat sleep's moon and the cache cue. */
 export function ForkClaudeAccountAgentRowChip({
   agent,
   ...slot
@@ -85,6 +87,7 @@ export function ForkClaudeAccountAgentRowChip({
   return (
     <>
       <ForkChatSleepRowMark agent={agent} />
+      <ForkCacheColdRowMark agent={agent} />
       <ForkClaudeAccountChip resolution={resolution} menu={menu} {...slot} />
     </>
   )

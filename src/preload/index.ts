@@ -68,6 +68,7 @@ import { forkLostWorkApi } from './fork/lost-work-bridge'
 import { forkChatSleepApi } from './fork/chat-sleep-bridge'
 import { forkMemoryApi } from './fork/memory-truth-bridge'
 import { forkAgentQueueApi } from './fork/agent-queue-bridge'
+import { forkUsageLedgerApi } from './fork/usage-ledger-bridge'
 import { docPreviewApi } from './api/doc-preview-bridge'
 import { notebookApi } from './api/notebook-bridge'
 import { fsApi } from './api/fs-bridge'
@@ -179,6 +180,7 @@ const api = {
   forkChatSleep: forkChatSleepApi,
   forkMemory: forkMemoryApi,
   forkAgentQueue: forkAgentQueueApi,
+  forkUsageLedger: forkUsageLedgerApi,
   docPreview: docPreviewApi,
   notebook: notebookApi,
   fs: fsApi,

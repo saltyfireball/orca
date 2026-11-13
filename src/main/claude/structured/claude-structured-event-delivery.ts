@@ -1,5 +1,6 @@
 import { ClaudePluginInputError } from '../claude-plugin-ui'
 import { claudePromptCardWritten } from '../claude-child-work-evidence'
+import { forkUsageLedgerObserveClaudeEvent } from '../../fork/usage-ledger/usage-ledger-service'
 import type {
   ClaudeAcquisitionAttempt,
   ClaudeSessionExit,
@@ -44,6 +45,7 @@ export function emitClaudeStructuredSessionEvent({
     session.events?.publish()
   }
   session?.translator?.handle(event)
+  forkUsageLedgerObserveClaudeEvent(event)
   if (event.type !== 'retiring') {
     deps.onEvent?.(event)
   }
