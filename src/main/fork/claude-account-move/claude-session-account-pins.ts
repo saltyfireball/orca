@@ -1,7 +1,8 @@
 // SLRM-1503: which Claude account a moved native chat launches under, by Orca session id. A pin
 // outranks the global selection for that one chat only, so moving one chat leaves the others on
 // whatever account they follow. Kept on the host that runs the chat (each runtime has its own).
-import { existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
+import { mkdir } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { writeFileAtomically } from '../../filesystem/atomic-file-publication'
 import { getProfileUserDataPath } from '../../orca-profiles/profile-storage-paths'
@@ -15,10 +16,8 @@ type PinFile = { version: 1; pins: Record<string, { accountId: string }> }
 
 function readPinFile(path: string): Map<string, ClaudeSessionPin> {
   const pins = new Map<string, ClaudeSessionPin>()
-  if (!existsSync(path)) {
-    return pins
-  }
   try {
+    // One read per process, cached: launches read pins synchronously and must not start unpinned.
     const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'))
     const entries =
       parsed && typeof parsed === 'object' && 'pins' in parsed && parsed.pins
@@ -32,6 +31,9 @@ function readPinFile(path: string): Map<string, ClaudeSessionPin> {
       }
     }
   } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return pins
+    }
     // An unreadable file pins nothing: every chat then follows the global selection, as stock does.
     console.warn('[fork-claude-account-move] Could not read session pins:', error)
   }
@@ -40,6 +42,8 @@ function readPinFile(path: string): Map<string, ClaudeSessionPin> {
 
 export class ClaudeSessionAccountPins {
   private cache: Map<string, ClaudeSessionPin> | null = null
+  // Writes run one at a time, each saving the pins as they are when it starts.
+  private writes: Promise<void> = Promise.resolve()
 
   constructor(private readonly path: string) {}
 
@@ -54,20 +58,20 @@ export class ClaudeSessionAccountPins {
     return pins.has(sessionId) ? (pins.get(sessionId) ?? null) : undefined
   }
 
-  set(sessionId: string, pin: ClaudeSessionPin | undefined): void {
+  set(sessionId: string, pin: ClaudeSessionPin | undefined): Promise<void> {
     const pins = this.pins()
     if (pin === undefined) {
       if (!pins.delete(sessionId)) {
-        return
+        return this.writes
       }
     } else {
       pins.set(sessionId, pin)
     }
-    this.write(pins)
+    return this.write(pins)
   }
 
   /** Drop every pin naming `accountId`, e.g. when that account is removed. */
-  forgetAccount(accountId: string): void {
+  forgetAccount(accountId: string): Promise<void> {
     const pins = this.pins()
     let changed = false
     for (const [sessionId, pin] of pins) {
@@ -76,18 +80,23 @@ export class ClaudeSessionAccountPins {
         changed = true
       }
     }
-    if (changed) {
-      this.write(pins)
-    }
+    return changed ? this.write(pins) : this.writes
   }
 
-  private write(pins: Map<string, ClaudeSessionPin>): void {
-    const file: PinFile = { version: 1, pins: {} }
-    for (const [sessionId, pin] of pins) {
-      file.pins[sessionId] = { accountId: pin ?? SYSTEM_DEFAULT }
+  /** The in-memory pins change at once; the file follows in call order. Rejects if this write fails. */
+  private write(pins: Map<string, ClaudeSessionPin>): Promise<void> {
+    const save = async (): Promise<void> => {
+      const file: PinFile = { version: 1, pins: {} }
+      for (const [sessionId, pin] of pins) {
+        file.pins[sessionId] = { accountId: pin ?? SYSTEM_DEFAULT }
+      }
+      await mkdir(dirname(this.path), { recursive: true, mode: 0o700 })
+      // Upstream's writer keeps its Windows ACL repair and rename retry for this small file.
+      writeFileAtomically(this.path, `${JSON.stringify(file, null, 2)}\n`, { mode: 0o600 })
     }
-    mkdirSync(dirname(this.path), { recursive: true, mode: 0o700 })
-    writeFileAtomically(this.path, `${JSON.stringify(file, null, 2)}\n`, { mode: 0o600 })
+    const run = this.writes.then(save, save)
+    this.writes = run.catch(() => undefined)
+    return run
   }
 }
 

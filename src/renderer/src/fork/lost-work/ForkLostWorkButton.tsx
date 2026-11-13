@@ -2,10 +2,11 @@
 // Hidden when this build's preload has no lost work bridge (a web or remote client).
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import { ForkLostWorkDialog } from './ForkLostWorkDialog'
 
 export function ForkLostWorkButton(): React.JSX.Element | null {
+  const t = useTranslate()
   const [open, setOpen] = useState(false)
   if (!window.api?.forkLostWork) {
     return null
@@ -13,7 +14,7 @@ export function ForkLostWorkButton(): React.JSX.Element | null {
   return (
     <>
       <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
-        {translate('fork.lostWork.button', 'Lost work')}
+        {t('fork.lostWork.button', 'Lost work')}
       </Button>
       <ForkLostWorkDialog open={open} onOpenChange={setOpen} />
     </>

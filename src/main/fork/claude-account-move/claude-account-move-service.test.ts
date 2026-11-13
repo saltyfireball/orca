@@ -62,11 +62,17 @@ function fakeHost(input: {
     },
     systemHome: () => SYSTEM,
     selectedAccountId: () => input.selected ?? null,
-    sharesHistory: (_from, to) => !(input.isolated ?? []).some((id) => home(id) === to),
+    sharesHistory: async (_from, to) => !(input.isolated ?? []).some((id) => home(id) === to),
     prepareAccount: vi.fn(async () => {}),
     pins: {
       get: (id) => (pins.has(id) ? (pins.get(id) ?? null) : undefined),
-      set: (id, pin) => (pin === undefined ? pins.delete(id) : pins.set(id, pin))
+      set: async (id, pin) => {
+        if (pin === undefined) {
+          pins.delete(id)
+        } else {
+          pins.set(id, pin)
+        }
+      }
     },
     stopTurn: vi.fn(async () => true)
   }
@@ -108,7 +114,7 @@ describe('ClaudeAccountMoveService', () => {
     expect(host.deps.stopTurn).not.toHaveBeenCalled()
     expect(service.which({ sessionId: 's1' }).sessions[0]).toMatchObject({ pending: true })
 
-    expect(service.cancel('s1')).toEqual({ cancelled: true })
+    expect(await service.cancel('s1')).toEqual({ cancelled: true })
     expect(host.pins.has('s1')).toBe(false)
 
     const now = await service.move({ accountId: 'b', sessionId: 's1', now: true })
