@@ -37,6 +37,7 @@ import {
   refusedStructuredAgentSessionStart,
   structuredAgentSessionStartParams
 } from './structured-agent-session-start-eligibility'
+import { forkAgentQueueClaimStart } from '../../../fork/agent-queue/agent-queue-native-hook'
 
 /** Preserve attach refusal verdicts so callers distinguish recovery in progress from permanent loss. */
 export type StructuredAgentSessionResumeOutcome =
@@ -89,15 +90,18 @@ export function claimStructuredAgentSessionAgent(
   if (child && !child.close) {
     return { outcome: Promise.resolve({ ok: true }) }
   }
-  return {
-    outcome: registerStructuredAgentSessionStart(
-      context,
-      sessionId,
-      startedFor,
-      (lock, attemptId) =>
-        runStart(context, sessionId, startedFor, lock, attemptId, telemetryCallerKey)
-    )
-  }
+  // Fork (SLRM-2098): the agent launch queue may hold this start (FORK.md).
+  return forkAgentQueueClaimStart(
+    context,
+    sessionId,
+    (refused) =>
+      registerStructuredAgentSessionStart(context, sessionId, startedFor, (lock, attemptId) =>
+        refused
+          ? Promise.resolve(refused)
+          : runStart(context, sessionId, startedFor, lock, attemptId, telemetryCallerKey)
+      ),
+    () => claimStructuredAgentSessionAgent(context, sessionId, startedFor, telemetryCallerKey)
+  )
 }
 
 export async function startStructuredAgentSessionAgent(

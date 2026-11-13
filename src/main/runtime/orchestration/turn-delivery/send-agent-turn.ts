@@ -16,6 +16,7 @@ import {
   dispatchPreambleSendOptions,
   type DispatchPreambleSendOptions
 } from '../workers/launch/worker-dispatch-preamble'
+import { forkAgentQueueRaceSettlement } from '../../../fork/agent-queue/agent-queue-service'
 import type { RuntimeAgentPromptWriteOptions } from '../../terminal/input/agent-prompt-write-options'
 
 /** now steers a running turn; queue holds busy-chat input until its turn ends. */
@@ -156,11 +157,13 @@ async function sendStructuredSessionTurn(
     return { kind: 'sent', clientMessageId, submission: answered }
   }
   // Wait on the answered id: replayed queued drafts may have dispatched under a new id.
-  const settled = await send.host
-    .waitForSendSettlement(send.sessionId, answered.clientMessageId, {
+  // Fork (SLRM-2098): a chat held in the agent launch queue stops this wait at once (FORK.md).
+  const settled = await forkAgentQueueRaceSettlement(
+    send.sessionId,
+    send.host.waitForSendSettlement(send.sessionId, answered.clientMessageId, {
       budgetMs: send.budgetMs ?? ORCHESTRATION_READINESS_TIMEOUT_MS
     })
-    .catch(() => undefined)
+  ).catch(() => undefined)
   return {
     kind: 'sent',
     clientMessageId,

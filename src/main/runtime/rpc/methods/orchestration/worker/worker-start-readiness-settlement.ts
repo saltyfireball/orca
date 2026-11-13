@@ -21,6 +21,7 @@ import {
   type WorkerEffect,
   type WorkerSetupReceipt
 } from './worker-topology'
+import { forkAgentQueueNoteWorker } from '../../../../../fork/agent-queue/agent-queue-service'
 
 /** Claim ready only for proven turn start or unsupported observation; supported-but-unobserved starts remain start_unknown. */
 export async function deliverAndSettleWorkerStartReadiness(args: {
@@ -51,6 +52,12 @@ export async function deliverAndSettleWorkerStartReadiness(args: {
   onStage: (stage: 'dispatch_input' | 'turn_observation') => void
 }): Promise<unknown> {
   const { runtime, db, run, task, structuredSession, terminalHandle, effects } = args
+  // Fork (SLRM-2098): the agent launch queue ranks this chat as a worker of its coordinator.
+  forkAgentQueueNoteWorker({
+    session: structuredSession?.identity ?? null,
+    from: args.coordinatorHandle,
+    dispatchId: args.dispatchId
+  })
 
   args.onStage('dispatch_input')
   const deliveryStartedAt = Date.now()

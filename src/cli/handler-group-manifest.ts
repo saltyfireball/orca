@@ -276,5 +276,11 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-lost-work',
     keys: ['lost-work'],
     load: async () => (await import('./fork/lost-work-handlers.js')).FORK_LOST_WORK_HANDLERS
+  },
+  // SLRM-2098: the agent launch queue (FORK.md).
+  {
+    name: 'fork-agent-queue',
+    keys: ['agent queue list', 'agent queue start', 'agent queue cancel'],
+    load: async () => (await import('./fork/agent-queue-handlers.js')).FORK_AGENT_QUEUE_HANDLERS
   }
 ]

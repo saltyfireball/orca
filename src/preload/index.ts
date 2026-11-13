@@ -67,6 +67,7 @@ import { forkUpdateInstallWaitApi } from './fork/update-install-wait-bridge'
 import { forkLostWorkApi } from './fork/lost-work-bridge'
 import { forkChatSleepApi } from './fork/chat-sleep-bridge'
 import { forkMemoryApi } from './fork/memory-truth-bridge'
+import { forkAgentQueueApi } from './fork/agent-queue-bridge'
 import { docPreviewApi } from './api/doc-preview-bridge'
 import { notebookApi } from './api/notebook-bridge'
 import { fsApi } from './api/fs-bridge'
@@ -177,6 +178,7 @@ const api = {
   forkLostWork: forkLostWorkApi,
   forkChatSleep: forkChatSleepApi,
   forkMemory: forkMemoryApi,
+  forkAgentQueue: forkAgentQueueApi,
   docPreview: docPreviewApi,
   notebook: notebookApi,
   fs: fsApi,

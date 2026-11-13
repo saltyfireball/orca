@@ -32,6 +32,11 @@ import {
   DesktopBrowserBridgeResultParams
 } from '../desktop-browser-bridge-protocol'
 import {
+  ForkAgentQueueListParams,
+  ForkAgentQueueStatusParams,
+  ForkAgentQueueTicketParams
+} from '../fork/agent-queue'
+import {
   ForkClaudeAccountCancelParams,
   ForkClaudeAccountMoveParams,
   ForkClaudeAccountWhichParams
@@ -1109,6 +1114,10 @@ export const RPC_PARAMS_BY_METHOD = {
   'folderWorkspace.getPathStatus': FolderWorkspacePathStatus,
   'folderWorkspace.list': null,
   'folderWorkspace.update': FolderWorkspaceUpdate,
+  'fork.agentQueue.cancel': ForkAgentQueueTicketParams,
+  'fork.agentQueue.list': ForkAgentQueueListParams,
+  'fork.agentQueue.start': ForkAgentQueueTicketParams,
+  'fork.agentQueue.status': ForkAgentQueueStatusParams,
   'fork.claudeAccount.cancel': ForkClaudeAccountCancelParams,
   'fork.claudeAccount.move': ForkClaudeAccountMoveParams,
   'fork.claudeAccount.which': ForkClaudeAccountWhichParams,

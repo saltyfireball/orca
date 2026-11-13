@@ -72,6 +72,7 @@ import type { ForkUpdateInstallWaitApi } from '../shared/fork/update-install-wai
 import type { ForkLostWorkApi } from '../shared/fork/lost-work'
 import type { ForkChatSleepApi } from '../shared/fork/chat-sleep'
 import type { ForkMemoryApi } from '../shared/fork/memory-truth'
+import type { ForkAgentQueueApi } from '../shared/fork/agent-queue'
 import type { WorkspaceCleanupApi, WorkspaceSpaceApi } from './api/workspace-cleanup-api'
 import type { LocalhostWorktreeLabelsApi, WorkspacePortsApi } from './api/workspace-port-api'
 import type { LinkPreviewApi } from './api/link-preview-api'
@@ -147,6 +148,7 @@ export type PreloadApi = {
   forkChatSleep?: ForkChatSleepApi
   /** Fork memory warning (SLRM-2099); desktop only. */
   forkMemory?: ForkMemoryApi
+  forkAgentQueue?: ForkAgentQueueApi
   notebook: FilesystemApi['notebook']
   docPreview: DocPreviewApi['docPreview']
   stats: StatsApi

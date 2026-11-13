@@ -24,6 +24,7 @@ import { printLineageSummary } from './worktree-lineage-summary'
 import { printHookWarning } from './worktree-removal-warnings'
 import { withSetupDecisionRecovery } from './worktree-setup-decision-recovery'
 import { withCliAgentLaunchRecovery } from '../agent-launch-recovery'
+import { noteForkQueuedAgentLaunch } from '../fork/agent-queue-launch-note'
 
 type WorktreeAgentLaunchResult = Pick<
   RuntimeWorktreeCreateResult,
@@ -128,6 +129,8 @@ export async function createWorktreeWithAgent(args: {
       formatAgentLaunch(value.launch)
     ].join('\n')
   )
+  // Fork (SLRM-2098): says so when the launch waits in the agent queue (FORK.md).
+  await noteForkQueuedAgentLaunch(client, launched.result.outcome, json)
 }
 
 /** Reporting, never a reason to fail: the agent already runs, and a retry would start a second. */

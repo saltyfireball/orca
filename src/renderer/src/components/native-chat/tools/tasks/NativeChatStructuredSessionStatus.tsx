@@ -8,6 +8,7 @@ import {
   type StructuredSessionBackgroundTasksView
 } from '../../../../../../shared/structured-session-background-tasks-view'
 import { useStructuredSessionChildRowContext } from './use-structured-session-child-row-context'
+import { ForkAgentQueueBanner } from '../../../../fork/agent-queue/ForkAgentQueueBanner'
 
 type StoppingBackgroundTasks = {
   sessionId: string
@@ -101,6 +102,8 @@ export function NativeChatStructuredSessionStatus(props: {
 
   return (
     <>
+      {/* Fork (SLRM-2098): queued for a free agent slot (FORK.md). */}
+      <ForkAgentQueueBanner sessionId={props.sessionId} />
       {props.tasks.backgroundTasks.show ? (
         <NativeChatBackgroundTasksStatus
           isVisible={props.isVisible}
