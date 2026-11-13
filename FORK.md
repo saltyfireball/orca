@@ -182,6 +182,41 @@ named Orca Fork until SLRM-1367. `main` is always
   8, 0 is off), pause new agents (default off) and poll seconds (default 15). Code is in
   `src/main/fork/memory-truth/`, `src/renderer/src/fork/memory-truth/`,
   `src/shared/fork/memory-truth.ts` and `src/cli/fork/memory-truth-format.ts`.
+- **Agent launch queue (SLRM-2098).** A limit on how many agents run at once, with a queue for
+  the rest. Off by default; Settings > Advanced turns it on.
+  - **The gate.** Every native chat provider start passes one main-process gate
+    (`src/main/fork/agent-queue/`): a new chat's first message, `orca agent launch`,
+    `orca worktree create` with an agent, `orca orchestration worker-start`, the UI's new-agent
+    actions and queued messages all start the provider through `claimStructuredAgentSessionAgent`,
+    which the gate wraps. Past the limit the chat tab opens at once and shows "Queued (position
+    N)" with Start now and Cancel; the tab title carries a small queued badge. Messages sent to a
+    queued chat stay in its journal and go out when it starts.
+  - **Order.** First in, first out, with user-started launches ahead of orchestration workers.
+    Start now skips the queue for one launch; Cancel drops it and the waiting message shows as
+    not sent (sending again queues again).
+  - **What counts as running.** Only agents whose provider process is running: a chat while
+    this app owns its provider child (`hostExecutionOwned`), a terminal while an agent runs in
+    its pane. A chat that sleeps, ends or crashes frees its slot; the gate notices on its next
+    check (every 2 s while anything waits) and on every new launch. It reads only that live
+    state, so it composes with anything else that sleeps or stops chats.
+  - **Deadlock rule.** A worker whose coordinator is running and waiting on it is let through
+    when every running agent in its pool is itself waiting on a queued worker.
+  - **CLI.** A launch that queues prints `queued, position N (start now: orca agent queue start
+    <id>)` and exits 0 (on stderr with `--json`). `orca agent queue list [--json]`,
+    `orca agent queue start <id>` and `orca agent queue cancel <id>` go over runtime RPC
+    (`fork.agentQueue.list`, `.status`, `.start`, `.cancel`), so they reach paired hosts too.
+  - **Memory seam.** `shouldHoldLaunches(): {hold, reason?}` in
+    `src/main/fork/agent-queue/launch-hold.ts`, installed with `setLaunchHoldReader`. While it
+    holds, new launches queue even with free slots. Nothing measures memory yet; the default
+    never holds.
+  - **Settings** (Settings > Advanced): `forkAgentQueueEnabled` (off), `forkAgentQueueMaxLive`
+    (8), `forkAgentQueueSeparateLimits` (off: workers share the one limit; on: they get
+    `forkAgentQueueMaxWorkers`, 8, and `MaxLive` covers user-started agents only) and
+    `forkAgentQueueResumeBypass` (on: waking an existing chat never waits).
+  - **Not covered.** Agents launched into a terminal pane (terminal-only launches and
+    terminal-mode workers) count as running but are never queued. orcad (headless) installs no
+    settings reader, so the queue is off there. A paired remote host queues its own launches,
+    but this window's banner reads only the local queue.
 
 ## Patch list
 
@@ -246,6 +281,7 @@ Apply these in this order. Each one is a single commit.
 57. `SLRM-2093 Chat sleep: idle native chats give up their provider, on screen chats stay awake`
 58. `SLRM-2105 Follow upstream 1.4.258's moved modules in fork code`
 59. `SLRM-2099 Truthful memory: whole process trees, system memory and a warning`
+60. `SLRM-2098 Agent launch queue: a limit on running agents with a queue for the rest`
 
 Fork-only code lives in `fork/` folders:
 
@@ -437,6 +473,34 @@ Upstream files only get short hooks, which keeps rebases small:
     `withForkMemoryTruth`.
   - Not gated: terminal agents launched through the CLI or RPC. Headless `orcad` uses default
     settings and does not count native chats.
+- Agent launch queue (SLRM-2098), from `src/main/fork/agent-queue/`, `src/cli/fork/agent-queue-*`
+  and `src/renderer/src/fork/agent-queue/`:
+  - `claimStructuredAgentSessionAgent` (`structured-agent-session-agent-start.ts`) returns
+    `forkAgentQueueClaimStart(...)` around its stock `registerStructuredAgentSessionStart` call,
+    with a refusal path for a cancelled launch and a re-claim callback. Off and nothing waiting,
+    it calls the stock start directly.
+  - `deliverAndSettleWorkerStartReadiness` (`worker-start-readiness-settlement.ts`) calls
+    `forkAgentQueueNoteWorker` once, so the gate ranks the chat as a worker of its coordinator.
+  - `sendStructuredSessionTurn` (`send-agent-turn.ts`) wraps its settlement wait in
+    `forkAgentQueueRaceSettlement`, which ends the wait at once for a queued chat so a worker
+    start reports instead of blocking until a slot frees.
+  - `src/main/index.ts` calls `installForkAgentQueueApp(() => state.store?.getSettings())`
+    after the memory watch install. Settings are read on each launch and on the queue's 2 s
+    check, so no settings-change subscription is needed.
+  - `rpc-method-registry.ts` spreads `FORK_AGENT_QUEUE_METHODS` last and the generated
+    `rpc-params-catalog.generated.ts` lists their params; `src/cli/specs/index.ts` spreads
+    `FORK_AGENT_QUEUE_COMMAND_SPECS` last and `handler-group-manifest.ts` adds the
+    `fork-agent-queue` group last.
+  - `agent-launch.ts` and `worktree-create-agent-launch.ts` call `noteForkQueuedAgentLaunch`
+    after printing; `worker-launch-handler.ts` reads `readForkQueuedLaunch` before setting the
+    exit code (a queued worker exits 0) and prints `printForkQueuedLaunch` after the result.
+  - `src/preload/index.ts` adds `forkAgentQueue` (`src/preload/fork/agent-queue-bridge.ts`) and
+    `api-types.ts` types it as optional.
+  - `NativeChatStructuredSessionStatus.tsx` renders `ForkAgentQueueBanner` first (it sits right
+    under the queued-message list; `NativeChatStructuredSession.tsx` is at max-lines);
+    `ForkTabTitle` renders `ForkAgentQueueTabBadge`; `AdvancedPane.tsx` renders
+    `ForkAgentQueueSetting` after `ForkChildTallySetting`; the five settings are in
+    `fork-global-settings.ts`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
