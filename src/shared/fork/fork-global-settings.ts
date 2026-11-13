@@ -4,6 +4,12 @@ export type ForkGlobalSettings = {
   forkChatSurvive?: boolean
   /** Fork (SLRM-1503): show which Claude account each session runs on; unset is on. */
   forkShowAccountChip?: boolean
+  /** Fork (SLRM-2095): the running/total child count on sidebar agent rows; unset is on. */
+  forkShowChildTally?: boolean
+  /** Fork (SLRM-2095): finished children count toward that total; unset is on. */
+  forkChildTallyCountFinished?: boolean
+  /** Fork (SLRM-2095): background shell tasks and monitors count as children; unset is on. */
+  forkChildTallyCountTasks?: boolean
 }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */
