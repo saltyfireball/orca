@@ -37,26 +37,42 @@ export function useForkUsageReportOpen(): boolean {
 export const FORK_USAGE_RANGES = [1, 7, 30, null] as const
 export type ForkUsageRange = (typeof FORK_USAGE_RANGES)[number]
 
+type ReportSetters = {
+  setReport: (report: ForkUsageReport) => void
+  setError: (error: string | null) => void
+  setLoading: (loading: boolean) => void
+}
+
+/** One load of the report into the hook's state; kept out of the hook so the compiler can compile it. */
+async function loadForkUsageReport(
+  by: ForkUsageReportGroup,
+  days: ForkUsageRange,
+  { setReport, setError, setLoading }: ReportSetters
+): Promise<void> {
+  const api = window.api?.forkUsageLedger
+  if (!api) {
+    setError('unavailable')
+    return
+  }
+  setLoading(true)
+  try {
+    setReport(await api.report({ by, ...(days === null ? {} : { days }) }))
+    setError(null)
+  } catch (caught) {
+    setError(caught instanceof Error ? caught.message : String(caught))
+  } finally {
+    setLoading(false)
+  }
+}
+
 export function useForkUsageReport(by: ForkUsageReportGroup, days: ForkUsageRange) {
   const [report, setReport] = useState<ForkUsageReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const load = useCallback(async () => {
-    const api = window.api?.forkUsageLedger
-    if (!api) {
-      setError('unavailable')
-      return
-    }
-    setLoading(true)
-    try {
-      setReport(await api.report({ by, ...(days === null ? {} : { days }) }))
-      setError(null)
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught))
-    } finally {
-      setLoading(false)
-    }
-  }, [by, days])
+  const load = useCallback(
+    () => loadForkUsageReport(by, days, { setReport, setError, setLoading }),
+    [by, days]
+  )
   useEffect(() => {
     void load()
   }, [load])

@@ -4,8 +4,8 @@ import { continuationContextReader as contextReader } from '../recovery/structur
 import { structuredAgentStartJournal } from '../acquisition/structured-agent-start-journal'
 import { StructuredConversationCommandController as CommandController } from '../operations/structured-conversation-command-controller'
 
-import { createStartupRecovery } from '../recovery/structured-agent-session-restart-reconcile'
-import { forkChatSurviveRecover } from '../../../fork/chat-survive/chat-survive-adopt'
+// Fork (SLRM-1394): the startup recovery import comes through the fork hook module (max-lines).
+import { createStartupRecovery, forkChatSurviveRecover } from '../../../fork/session-host-hooks'
 import { StructuredAgentSessionTaskQueue } from './structured-agent-session-task-queue'
 import { StructuredAgentSessionHostRuntimeState } from './structured-agent-session-host-runtime-state'
 import { structuredAgentSessionEntryDelegates } from '../acquisition/structured-agent-session-entry-delegates'

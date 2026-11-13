@@ -123,7 +123,7 @@ export async function preparePtyIpcSpawnPreflight(ctx: PtyIpcSpawnState): Promis
       ? await ctx.deps.prepareClaudeAuth(ctx.codexSelectionTarget)
       : null
   // SLRM-1503: a pane restarted by an account move runs that account (FORK.md).
-  ;({ env: args.env, auth: ctx.claudeAuth } = forkPinTerminalClaudeAccount(
+  ;({ env: args.env, auth: ctx.claudeAuth } = await forkPinTerminalClaudeAccount(
     args.env,
     ctx.codexSelectionTarget,
     ctx.claudeAuth
