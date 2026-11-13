@@ -81,6 +81,7 @@ export const CLI_COMMAND_NAMES = [
   'sheets',
   'skills',
   'slack',
+  'sleepers',
   'snapshot',
   'speech',
   'status',
