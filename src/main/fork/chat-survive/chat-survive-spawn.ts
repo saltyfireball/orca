@@ -2,7 +2,6 @@
 // Off unless the forkChatSurvive setting is on. Any doubt (no config, an unexpected spawn, no
 // private socket folder, no broker entry on disk, a spawn that throws) spawns exactly as today,
 // so there is never a second writer and never a provider without its supervisor.
-import { chmodSync, existsSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import type { PipedProcessSpawner, PipedProcessSpec } from '@orca/process-host/process-spec'
@@ -15,14 +14,14 @@ import {
   takeChatSurviveClaim
 } from './chat-survive-claims'
 import { chatSurviveLaunchHash } from './chat-survive-launch-hash'
+import { isProviderSupervisorSpawn, planChatSurviveBrokerSpawn } from './chat-survive-launch'
+import { chatSurviveReadySocketDir } from './chat-survive-launch-ready'
 import {
-  chatSurviveSocketDir,
-  isProviderSupervisorSpawn,
-  planChatSurviveBrokerSpawn
-} from './chat-survive-launch'
-import {
+  dropChatSurviveBroker,
   registerChatSurviveBroker,
+  removeChatSurviveRecord,
   writeChatSurviveRecord,
+  type ChatSurviveEntry,
   type ChatSurviveRecord
 } from './chat-survive-registry'
 import { createChatSurviveStreamTracker } from './chat-survive-stream-mark'
@@ -78,18 +77,25 @@ function launchField(launch: string | null): { launch?: string } {
   return launch === null ? {} : { launch }
 }
 
-function writeRecord(dir: string, name: string, record: ChatSurviveRecord): string | null {
-  try {
-    mkdirSync(dir, { recursive: true, mode: 0o700 })
-    // mkdir leaves the mode of a folder that already exists alone; tokens live here.
-    chmodSync(dir, 0o700)
-    const path = join(dir, name)
-    writeChatSurviveRecord(path, record)
-    return path
-  } catch {
+/**
+ * Saves the record off the spawn path; the broker is watched from now on either way. A record that
+ * cannot be saved drops the broker from hand-off, so it stops at quit as today, and its exit
+ * removes the record after any write still in flight.
+ */
+function saveRecord(
+  child: ChildProcessWithoutNullStreams,
+  path: string,
+  record: ChatSurviveRecord,
+  entry: ChatSurviveEntry | null,
+  options: { privateDir?: boolean } = {}
+): void {
+  void writeChatSurviveRecord(path, record, options).catch(() => {
     // Without a record the broker cannot be adopted later; it still stops on the next app start.
-    return null
-  }
+    if (entry) {
+      dropChatSurviveBroker(entry)
+    }
+  })
+  child.once('exit', () => void removeChatSurviveRecord(path))
 }
 
 /**
@@ -131,19 +137,15 @@ function adoptedChild(
     mark: claim.mark,
     tracker
   })
-  // Without its record the broker could not be adopted again; it still stops as today then.
-  try {
-    writeChatSurviveRecord(claim.recordPath, claim.record)
-    child.once('exit', () => rmSync(claim.recordPath, { force: true }))
-    registerChatSurviveBroker({
-      child,
-      record: claim.record,
-      recordPath: claim.recordPath,
-      adopted: { tracker, fenceFloor: claim.fence }
-    })
-  } catch {
-    // The record is gone or unwritable: this run owns the provider and stops it at quit.
-  }
+  // Without its record the broker could not be adopted again; this run then owns the provider and
+  // stops it at quit, as today.
+  const entry = registerChatSurviveBroker({
+    child,
+    record: claim.record,
+    recordPath: claim.recordPath,
+    adopted: { tracker, fenceFloor: claim.fence }
+  })
+  saveRecord(child, claim.recordPath, claim.record, entry)
   return child
 }
 
@@ -155,7 +157,8 @@ export function forkChatSurviveSpawner(
   base: PipedProcessSpawner,
   platform: NodeJS.Platform,
   env: Record<string, string | undefined>,
-  socketDir: () => string | null = chatSurviveSocketDir
+  /** The private socket folder, or null when it or the broker entry is not ready. */
+  readySocketDir: (entryPath: string) => string | null = chatSurviveReadySocketDir
 ): PipedProcessSpawner {
   return (spec) => {
     const adopted = adoptedChild(spec, env)
@@ -163,12 +166,12 @@ export function forkChatSurviveSpawner(
       return adopted
     }
     const config = platform === 'darwin' || platform === 'linux' ? chatSurviveConfig() : null
-    if (!config || !existsSync(config.entryPath)) {
+    if (!config) {
       return base(spec)
     }
     const plan = planChatSurviveBrokerSpawn(spec, {
       entryPath: config.entryPath,
-      socketDir: socketDir()
+      socketDir: readySocketDir(config.entryPath)
     })
     if (!plan) {
       return base(spec)
@@ -187,13 +190,13 @@ export function forkChatSurviveSpawner(
       token: plan.token,
       ...launchField(chatSurviveLaunchHash(spec, env))
     }
-    const recordPath = writeRecord(config.recordDir, chatSurviveRecordName(env, brokerPid), record)
-    if (recordPath) {
-      child.once('exit', () => rmSync(recordPath, { force: true }))
-      if (sessionId !== null) {
-        registerChatSurviveBroker({ child, record: { ...record, sessionId }, recordPath })
-      }
-    }
+    const recordPath = join(config.recordDir, chatSurviveRecordName(env, brokerPid))
+    // Registered now, so its output is counted from the first byte; the record follows.
+    const entry =
+      sessionId === null
+        ? null
+        : registerChatSurviveBroker({ child, record: { ...record, sessionId }, recordPath })
+    saveRecord(child, recordPath, record, entry, { privateDir: true })
     return child
   }
 }

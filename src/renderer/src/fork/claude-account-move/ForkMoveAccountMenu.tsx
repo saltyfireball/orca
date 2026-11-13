@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { useAppStore } from '@/store'
 import type { ForkClaudeMoveResponse } from '../../../../shared/fork/claude-account-move'
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
@@ -41,21 +42,22 @@ function AccountItems({
   scope,
   onMoved
 }: ForkMoveAccountMenuProps & { Item: ItemComponent; open: boolean }): React.JSX.Element {
+  const t = useTranslate()
   const { choices, currentAccountId, failed } = useForkClaudeMoveAccounts(target, open, scope)
   const note = (text: string) => <Item disabled>{text}</Item>
   if (!target) {
-    return note(translate('fork.accountMove.noHost', 'This host cannot move Claude chats.'))
+    return note(t('fork.accountMove.noHost', 'This host cannot move Claude chats.'))
   }
   if (failed) {
-    return note(translate('fork.accountMove.readFailed', "Could not read this host's accounts."))
+    return note(t('fork.accountMove.readFailed', "Could not read this host's accounts."))
   }
   if (!choices) {
-    return note(translate('fork.accountMove.loading', 'Loading accounts...'))
+    return note(t('fork.accountMove.loading', 'Loading accounts...'))
   }
   // A single chat lists only the accounts it is not already on.
   const others = choices.filter((choice) => choice.id !== currentAccountId)
   if (others.length === 0) {
-    return note(translate('fork.accountMove.noOthers', 'No other Claude accounts on this host.'))
+    return note(t('fork.accountMove.noOthers', 'No other Claude accounts on this host.'))
   }
   return (
     <>
@@ -69,17 +71,17 @@ function AccountItems({
           }}
         >
           <span className="min-w-0 truncate">{choice.label}</span>
-          <span className="ml-auto pl-4 text-xs text-muted-foreground">{usageText(choice)}</span>
+          <span className="ml-auto pl-4 text-xs text-muted-foreground">{usageText(choice, t)}</span>
         </Item>
       ))}
     </>
   )
 }
 
-function menuTitle(scope: ForkClaudeMoveScope): string {
+function menuTitle(scope: ForkClaudeMoveScope, t: Translate = translate): string {
   return 'sessionId' in scope
-    ? translate('fork.accountMove.chatTitle', 'Move this chat to account')
-    : translate('fork.accountMove.worktreeTitle', "Move this worktree's chats to account")
+    ? t('fork.accountMove.chatTitle', 'Move this chat to account')
+    : t('fork.accountMove.worktreeTitle', "Move this worktree's chats to account")
 }
 
 /** A dropdown around `trigger` (rendered as the DropdownMenuTrigger's asChild child). */
@@ -91,12 +93,13 @@ export function ForkMoveAccountMenu({
   trigger: React.ReactElement
   align?: 'start' | 'center' | 'end'
 }): React.JSX.Element {
+  const t = useTranslate()
   const [open, setOpen] = useState(false)
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
       <DropdownMenuContent align={align} className="min-w-[16rem]">
-        <DropdownMenuLabel>{menuTitle(props.scope)}</DropdownMenuLabel>
+        <DropdownMenuLabel>{menuTitle(props.scope, t)}</DropdownMenuLabel>
         <AccountItems {...props} Item={DropdownMenuItem} open={open} />
       </DropdownMenuContent>
     </DropdownMenu>
@@ -105,13 +108,14 @@ export function ForkMoveAccountMenu({
 
 /** A "Move to account" submenu for a right-click menu. */
 export function ForkMoveAccountContextSubmenu(props: ForkMoveAccountMenuProps): React.JSX.Element {
+  const t = useTranslate()
   const [open, setOpen] = useState(false)
   return (
     <ContextMenuSub open={open} onOpenChange={setOpen}>
       <ContextMenuSubTrigger>
         {'sessionId' in props.scope
-          ? translate('fork.accountMove.chatSubmenu', 'Move chat to account')
-          : translate('fork.accountMove.worktreeSubmenu', 'Move chats to account')}
+          ? t('fork.accountMove.chatSubmenu', 'Move chat to account')
+          : t('fork.accountMove.worktreeSubmenu', 'Move chats to account')}
       </ContextMenuSubTrigger>
       <ContextMenuSubContent className="min-w-[16rem]">
         <AccountItems {...props} Item={ContextMenuItem} open={open} />

@@ -7,7 +7,7 @@ import { Card } from './ui/card'
 import { Button } from './ui/button'
 import { useTranslate } from '@/i18n/use-translate'
 import { handleForkRestartHeld } from '@/fork/restart-guard-held-toast'
-import { forkUpdateWaitingCard } from '@/fork/update-install-wait/ForkUpdateWaitingContent'
+import { ForkUpdateCardContent } from '@/fork/update-install-wait/ForkUpdateWaitingContent'
 import { useForkUpdateInstallWait } from '@/fork/update-install-wait/use-fork-update-install-wait'
 import { updaterMessageText } from '@/app-shell/updates/updater-message-copy'
 import { UpdateCardStateContent } from './maintenance/update-card/UpdateCardStateContent'
@@ -231,28 +231,30 @@ export function UpdateCard(): React.JSX.Element | null {
     }
   }
 
-  const cardContent = forkUpdateWaitingCard(
-    status,
-    forkUpdateWait,
-    handleCollapseWithAnimation
-  ) ?? (
-    <UpdateCardStateContent
+  const cardContent = (
+    <ForkUpdateCardContent
       status={status}
-      changelog={changelog}
-      errorCard={errorCard}
-      linuxPackageRecovery={linuxPackageRecovery}
-      isLocalBuild={isLocalBuild}
-      hasStartedDownload={hasStartedDownload.current}
-      prefersReducedMotion={prefersReducedMotion}
-      mediaFailed={mediaFailed}
-      mediaLoaded={mediaLoaded}
-      onMediaError={() => setMediaFailed(true)}
-      onMediaLoad={() => setMediaLoaded(true)}
-      onUpdate={handleUpdate}
-      onInstallRetry={handleInstallRetry}
-      onDismiss={handleDismissWithAnimation}
+      wait={forkUpdateWait}
       onCollapse={handleCollapseWithAnimation}
-    />
+    >
+      <UpdateCardStateContent
+        status={status}
+        changelog={changelog}
+        errorCard={errorCard}
+        linuxPackageRecovery={linuxPackageRecovery}
+        isLocalBuild={isLocalBuild}
+        hasStartedDownload={hasStartedDownload.current}
+        prefersReducedMotion={prefersReducedMotion}
+        mediaFailed={mediaFailed}
+        mediaLoaded={mediaLoaded}
+        onMediaError={() => setMediaFailed(true)}
+        onMediaLoad={() => setMediaLoaded(true)}
+        onUpdate={handleUpdate}
+        onInstallRetry={handleInstallRetry}
+        onDismiss={handleDismissWithAnimation}
+        onCollapse={handleCollapseWithAnimation}
+      />
+    </ForkUpdateCardContent>
   )
 
   const animationClass = prefersReducedMotion

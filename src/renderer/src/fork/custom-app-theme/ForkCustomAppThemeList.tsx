@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import {
   exportCustomAppTheme,
@@ -56,6 +57,7 @@ export function ForkCustomAppThemeList({
   dark,
   withTerminal
 }: Props): React.JSX.Element {
+  const t = useTranslate()
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null)
 
   const commitRename = (): void => {
@@ -72,7 +74,7 @@ export function ForkCustomAppThemeList({
   if (themes.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">
-        {translate('fork.customAppTheme.none', 'No saved themes yet.')}
+        {t('fork.customAppTheme.none', 'No saved themes yet.')}
       </p>
     )
   }
@@ -91,7 +93,7 @@ export function ForkCustomAppThemeList({
                   autoFocus
                   value={renaming.name}
                   maxLength={80}
-                  aria-label={translate('fork.customAppTheme.renameLabel', 'Theme name')}
+                  aria-label={t('fork.customAppTheme.renameLabel', 'Theme name')}
                   onChange={(event) => setRenaming({ id: theme.id, name: event.target.value })}
                   onBlur={commitRename}
                   onKeyDown={(event) => {
@@ -107,12 +109,12 @@ export function ForkCustomAppThemeList({
               )}
               <div className="text-xs text-muted-foreground">
                 {theme.base === 'dark'
-                  ? translate('fork.customAppTheme.baseDark', 'Dark')
-                  : translate('fork.customAppTheme.baseLight', 'Light')}
+                  ? t('fork.customAppTheme.baseDark', 'Dark')
+                  : t('fork.customAppTheme.baseLight', 'Light')}
                 {theme.terminal
-                  ? `, ${translate('fork.customAppTheme.hasTerminal', 'terminal colors')}`
+                  ? `, ${t('fork.customAppTheme.hasTerminal', 'terminal colors')}`
                   : ''}
-                {inUse ? `, ${translate('fork.customAppTheme.inUse', 'in use')}` : ''}
+                {inUse ? `, ${t('fork.customAppTheme.inUse', 'in use')}` : ''}
               </div>
             </div>
             <Button
@@ -126,27 +128,27 @@ export function ForkCustomAppThemeList({
                 }
               }}
             >
-              {translate('fork.customAppTheme.use', 'Use')}
+              {t('fork.customAppTheme.use', 'Use')}
             </Button>
             <Button
               size="xs"
               variant="ghost"
               onClick={() => setRenaming({ id: theme.id, name: theme.name })}
             >
-              {translate('fork.customAppTheme.rename', 'Rename')}
+              {t('fork.customAppTheme.rename', 'Rename')}
             </Button>
             <Button size="xs" variant="ghost" onClick={() => void copyTheme(theme)}>
-              {translate('fork.customAppTheme.copy', 'Copy JSON')}
+              {t('fork.customAppTheme.copy', 'Copy JSON')}
             </Button>
             <Button size="xs" variant="ghost" onClick={() => downloadTheme(theme)}>
-              {translate('fork.customAppTheme.export', 'Export')}
+              {t('fork.customAppTheme.export', 'Export')}
             </Button>
             <Button
               size="xs"
               variant="ghost"
               onClick={() => updateSettings(deleteCustomAppThemeUpdate(settings, theme.id))}
             >
-              {translate('fork.customAppTheme.delete', 'Delete')}
+              {t('fork.customAppTheme.delete', 'Delete')}
             </Button>
           </li>
         )

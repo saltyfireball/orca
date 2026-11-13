@@ -3,7 +3,7 @@
 // it at full price. Offers to compact first. Never holds a send back.
 import React, { useCallback, useRef, useState } from 'react'
 import { Snowflake } from 'lucide-react'
-import { translate } from '@/i18n/i18n'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { useAppStore } from '@/store'
 import { readNativeChatDraftCache } from '@/components/native-chat/drafts/native-chat-draft-views'
 import { formatForkTokens } from '../../../../shared/fork/usage-ledger'
@@ -19,8 +19,8 @@ export type ForkCacheColdTransport = {
 
 export const FORK_COMPACT_COMMAND = '/compact'
 
-function coldLabel(tokens: number): string {
-  return translate(
+function coldLabel(tokens: number, t: Translate): string {
+  return t(
     'fork.cacheCold.cue',
     'Cache likely expired: the next message re-reads about {{tokens}} tokens.',
     { tokens: formatForkTokens(tokens) }
@@ -64,6 +64,7 @@ export function ForkCacheColdCue({
   const transport = composer.structuredTransport
   const hidden = Boolean(composer.editSession || composer.launchPrompt)
   const verdict = useForkCacheCold(hidden ? undefined : transport?.sessionId)
+  const t = useTranslate()
   const [busy, setBusy] = useState(false)
   if (!transport || !verdict.cold) {
     return null
@@ -83,23 +84,32 @@ export function ForkCacheColdCue({
       data-fork-cache-cold=""
     >
       <Snowflake className="size-3 shrink-0" aria-hidden />
-      <span className="min-w-0 truncate">{coldLabel(verdict.tokens)}</span>
+      <span className="min-w-0 truncate">{coldLabel(verdict.tokens, t)}</span>
       {canCompact ? (
         <button
           type="button"
           className="shrink-0 rounded px-1 underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
           disabled={busy}
-          title={translate(
+          title={t(
             'fork.cacheCold.compactHelp',
             'Run /compact now, then send your message (if any) on the smaller context.'
           )}
           onClick={compactFirst}
         >
-          {translate('fork.cacheCold.compact', 'Compact first')}
+          {t('fork.cacheCold.compact', 'Compact first')}
         </button>
       ) : null}
     </div>
   )
+}
+
+/** Sets a forwarded ref, outside the hook so the compiler never sees the caller's ref mutated. */
+function setForwardedRef<T>(ref: React.ForwardedRef<T>, value: T | null): void {
+  if (typeof ref === 'function') {
+    ref(value)
+  } else if (ref) {
+    ref.current = value
+  }
 }
 
 /** Hands the composer handle to both the caller's ref and the cue. */
@@ -110,11 +120,7 @@ export function useForkComposerHandleRef<T>(
   const merged = useCallback(
     (value: T | null) => {
       own.current = value
-      if (typeof ref === 'function') {
-        ref(value)
-      } else if (ref) {
-        ref.current = value
-      }
+      setForwardedRef(ref, value)
     },
     [ref]
   )
@@ -148,10 +154,11 @@ export function ForkCacheColdMark({
   className?: string
 }): React.JSX.Element | null {
   const verdict = useForkCacheCold(sessionId)
+  const t = useTranslate()
   if (!verdict.cold) {
     return null
   }
-  const label = coldLabel(verdict.tokens)
+  const label = coldLabel(verdict.tokens, t)
   return (
     <span className={className} title={label} data-fork-cache-cold="">
       <Snowflake className="size-[13px] text-muted-foreground" aria-label={label} />
