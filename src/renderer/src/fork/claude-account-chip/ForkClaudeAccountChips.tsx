@@ -4,6 +4,7 @@ import React from 'react'
 import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
 import { TAB_LABEL_WIDTH_CLASSES } from '@/components/tab-bar/tab-width-rules'
 import { ForkClaudeAccountChip, type ForkClaudeAccountChipProps } from './ForkClaudeAccountChip'
+import { ForkAgentQueueTabBadge } from '../agent-queue/ForkAgentQueueBanner'
 import {
   useAgentRowMoveMenu,
   useChatTabMoveMenu,
@@ -55,6 +56,8 @@ export function ForkTabTitle({
     <>
       <span className={`${TAB_LABEL_WIDTH_CLASSES} mr-1`}>{title}</span>
       <ForkChatSleepTabMark worktreeId={chip.tab.worktreeId} sessionId={chip.chat?.sessionId} />
+      {/* SLRM-2098: queued for a free agent slot. */}
+      <ForkAgentQueueTabBadge sessionId={chip.chat?.sessionId} />
       <ForkClaudeAccountTabChip {...chip} />
     </>
   )

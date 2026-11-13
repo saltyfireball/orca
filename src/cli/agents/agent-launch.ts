@@ -13,6 +13,7 @@ import {
   getRequiredWorktreeSelector,
   resolveCurrentWorktreeSelector
 } from '../workspace-selection/workspace-selector'
+import { noteForkQueuedAgentLaunch } from '../fork/agent-queue-launch-note'
 
 export const AGENT_LAUNCH_HANDLERS: Record<string, CommandHandler> = {
   'agent launch': async ({ flags, client, cwd, json, rawArgs }) => {
@@ -54,5 +55,7 @@ export const AGENT_LAUNCH_HANDLERS: Record<string, CommandHandler> = {
       rawArgs
     )
     printResult(result, json, formatAgentLaunch)
+    // Fork (SLRM-2098): says so when the launch waits in the agent queue (FORK.md).
+    await noteForkQueuedAgentLaunch(client, result.result.outcome, json)
   }
 }
