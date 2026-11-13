@@ -73,6 +73,34 @@ describe('formatSleepers', () => {
   })
 })
 
+describe('formatSleepers lifecycle rows (SLRM-2136)', () => {
+  it('says why a queued chat waits and how to start it, and how long a stall has been quiet', () => {
+    const text = formatSleepers({
+      now: 60 * 60_000,
+      rows: [
+        row({
+          id: 'cccccccc-3333',
+          title: 'Held',
+          state: 'queued',
+          idleMs: null,
+          queue: { id: 't9', position: 1, heldReason: 'memory is low' }
+        }),
+        row({
+          id: 'dddddddd-4444',
+          title: 'Stuck',
+          state: 'stalled',
+          idleMs: null,
+          stall: { quietSince: 15 * 60_000, liveness: 'stopped' }
+        })
+      ]
+    })
+    expect(text).toMatch(
+      /cccccccc\s+chat\s+queued\s+.*Held\s+queue #1 \(memory is low\), start: orca agent queue start t9/
+    )
+    expect(text).toMatch(/dddddddd\s+chat\s+stalled\s+.*Stuck\s+quiet 45m, process stopped/)
+  })
+})
+
 describe('pickSleeper', () => {
   const rows = [row({ id: 'abc-1' }), row({ id: 'abd-2' })]
 
