@@ -23,6 +23,7 @@ import { installForkMemoryWatch } from './fork/memory-truth/memory-watch'
 import { installForkAgentQueueApp } from './fork/agent-queue/agent-queue-ipc'
 import { installForkChatStallBridge } from './fork/chat-stall/chat-stall-bridge'
 import { installForkWorkerCleanupBridge } from './fork/worker-cleanup/worker-cleanup-bridge'
+import { installForkSyncStatusBridge } from './fork/sync-status/sync-status-bridge'
 import { shouldActivateDesktopForSecondInstance } from './startup/single-instance-lock'
 import { resolveOsOpenedDocuments } from './startup/os-opened-documents'
 import {
@@ -183,6 +184,7 @@ if (preflightReady) {
   installForkAgentQueueApp(() => state.store?.getSettings())
   installForkChatStallBridge()
   installForkWorkerCleanupBridge()
+  installForkSyncStatusBridge()
   void app.whenReady().then(async () => {
     try {
       await initializeMainProcessReady({

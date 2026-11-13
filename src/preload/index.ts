@@ -70,6 +70,7 @@ import { forkMemoryApi } from './fork/memory-truth-bridge'
 import { forkAgentQueueApi } from './fork/agent-queue-bridge'
 import { forkChatStallApi } from './fork/chat-stall-bridge'
 import { forkWorkerCleanupApi } from './fork/worker-cleanup-bridge'
+import { forkSyncStatusApi } from './fork/sync-status-bridge'
 import { docPreviewApi } from './api/doc-preview-bridge'
 import { notebookApi } from './api/notebook-bridge'
 import { fsApi } from './api/fs-bridge'
@@ -183,6 +184,7 @@ const api = {
   forkAgentQueue: forkAgentQueueApi,
   forkChatStall: forkChatStallApi,
   forkWorkerCleanup: forkWorkerCleanupApi,
+  forkSyncStatus: forkSyncStatusApi,
   docPreview: docPreviewApi,
   notebook: notebookApi,
   fs: fsApi,

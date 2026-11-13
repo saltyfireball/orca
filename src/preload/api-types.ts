@@ -74,6 +74,7 @@ import type { ForkChatSleepApi } from '../shared/fork/chat-sleep'
 import type { ForkMemoryApi } from '../shared/fork/memory-truth'
 import type { ForkAgentQueueApi } from '../shared/fork/agent-queue'
 import type { ForkChatStallApi } from '../shared/fork/chat-stall'
+import type { ForkSyncStatusApi } from '../shared/fork/fork-sync-status'
 import type { ForkWorkerCleanupApi } from '../shared/fork/worker-cleanup'
 import type { WorkspaceCleanupApi, WorkspaceSpaceApi } from './api/workspace-cleanup-api'
 import type { LocalhostWorktreeLabelsApi, WorkspacePortsApi } from './api/workspace-port-api'
@@ -154,6 +155,8 @@ export type PreloadApi = {
   /** Fork chat stall; desktop only. */
   forkChatStall?: ForkChatStallApi
   forkWorkerCleanup?: ForkWorkerCleanupApi
+  /** Fork sync status; desktop only. */
+  forkSyncStatus?: ForkSyncStatusApi
   notebook: FilesystemApi['notebook']
   docPreview: DocPreviewApi['docPreview']
   stats: StatsApi

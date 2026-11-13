@@ -62,6 +62,10 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkAgentStateColorsStrength?: 'accent' | 'tint'
     /** Fork agent state colors: per state 'none', a theme color id or a hex; unset keys use defaults. */
     forkAgentStateColorsByState?: Partial<Record<ForkAgentColorState, string>>
+    /** Fork sync status: say when the fork is behind upstream or its last sync failed; unset is on. */
+    forkSyncNotice?: boolean
+    /** Fork sync status: days without a new status before it is called stale; unset is 3, 0 is off. */
+    forkSyncNoticeStaleDays?: number
   }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */

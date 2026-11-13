@@ -23,6 +23,7 @@ import { ForkChatStallSetting } from '@/fork/chat-stall/ForkChatStallSetting'
 import { ForkWorkerCleanupSetting } from '@/fork/worker-cleanup/ForkWorkerCleanupSetting'
 import { ForkLaunchDefaultsSetting } from '@/fork/launch-defaults/ForkLaunchDefaultsSetting'
 import { ForkAgentStateColorSetting } from '@/fork/agent-state-color/ForkAgentStateColorSetting'
+import { ForkSyncNoticeSetting } from '@/fork/sync-status/ForkSyncNoticeSetting'
 
 type AdvancedPaneProps = {
   settings: GlobalSettings
@@ -169,6 +170,7 @@ export function AdvancedPane({ settings, updateSettings }: AdvancedPaneProps): R
       <ForkWorkerCleanupSetting settings={settings} updateSettings={updateSettings} />
       <ForkLaunchDefaultsSetting settings={settings} updateSettings={updateSettings} />
       <ForkAgentStateColorSetting settings={settings} updateSettings={updateSettings} />
+      <ForkSyncNoticeSetting settings={settings} updateSettings={updateSettings} />
     </div>
   )
 }
