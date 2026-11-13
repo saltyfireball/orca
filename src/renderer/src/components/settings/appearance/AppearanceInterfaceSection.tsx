@@ -33,6 +33,7 @@ import {
 } from './themes/AppearanceThemeControl'
 import { useIconThemePickerLabels } from './use-appearance-picker-labels'
 import { AppearanceLanguageSetting } from './AppearanceLanguageSetting'
+import { ForkCustomAppThemeSetting } from '@/fork/custom-app-theme/ForkCustomAppThemeSetting'
 
 type AppearanceInterfaceSectionProps = {
   settings: GlobalSettings
@@ -168,6 +169,7 @@ export function AppearanceInterfaceSection({
         </SearchableSetting>
       ))}
 
+      <ForkCustomAppThemeSetting settings={settings} updateSettings={updateSettings} />
       {editorThemeSlots.map((slot) => (
         <SearchableSetting
           key={slot.base}
