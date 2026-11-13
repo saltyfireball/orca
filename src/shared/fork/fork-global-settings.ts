@@ -15,6 +15,12 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings & {
   forkChildTallyCountFinished?: boolean
   /** Fork (SLRM-2095): background shell tasks and monitors count as children; unset is on. */
   forkChildTallyCountTasks?: boolean
+  /** Fork chat sleep: idle native chats give up their provider process. Off unless true. */
+  forkChatSleep?: boolean
+  /** Fork chat sleep: minutes a chat sits idle before it sleeps; unset is 30. */
+  forkChatSleepIdleMinutes?: number
+  /** Fork chat sleep: chats on screen never sleep; unset is on. */
+  forkChatSleepKeepVisible?: boolean
 }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */
