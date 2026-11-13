@@ -65,6 +65,7 @@ import { sessionApi } from './api/session-bridge'
 import { updaterApi } from './api/updater-bridge'
 import { forkUpdateInstallWaitApi } from './fork/update-install-wait-bridge'
 import { forkLostWorkApi } from './fork/lost-work-bridge'
+import { forkChatSleepApi } from './fork/chat-sleep-bridge'
 import { docPreviewApi } from './api/doc-preview-bridge'
 import { notebookApi } from './api/notebook-bridge'
 import { fsApi } from './api/fs-bridge'
@@ -173,6 +174,7 @@ const api = {
   updater: updaterApi,
   forkUpdateInstallWait: forkUpdateInstallWaitApi,
   forkLostWork: forkLostWorkApi,
+  forkChatSleep: forkChatSleepApi,
   docPreview: docPreviewApi,
   notebook: notebookApi,
   fs: fsApi,
