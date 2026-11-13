@@ -68,6 +68,7 @@ import { FORK_CLAUDE_ACCOUNT_MOVE_METHODS } from './fork/fork-claude-account-mov
 import { FORK_LOST_WORK_METHODS } from './fork/fork-lost-work'
 import { FORK_AGENT_QUEUE_METHODS } from './fork/fork-agent-queue'
 import { FORK_LAUNCH_DEFAULTS_METHODS } from './fork/fork-launch-defaults'
+import { FORK_SETTINGS_METHODS } from './fork/fork-settings'
 import { FORK_SLEEPERS_METHODS } from './fork/fork-sleepers'
 import { FORK_MCP_PROFILE_METHODS } from './fork/fork-mcp-profiles'
 import { FORK_USAGE_REPORT_METHODS } from './fork/fork-usage-report'
@@ -183,5 +184,6 @@ export const ALL_RPC_METHODS = [
   // Fork: MCP servers and profiles (FORK.md).
   ...FORK_MCP_PROFILE_METHODS,
   // SLRM-2104: the usage report behind `orca usage-report` (FORK.md).
-  ...FORK_USAGE_REPORT_METHODS
+  ...FORK_USAGE_REPORT_METHODS,
+  ...FORK_SETTINGS_METHODS
 ]

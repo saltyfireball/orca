@@ -5,8 +5,12 @@ import { formatCommandScopedFlagHelp } from './command-scoped-flag-help'
 import { FLAG_HELP_TEXT } from './flag-help-text'
 import { ROOT_HELP_TEXT_PRIMARY } from './root-help-text-primary'
 import { ROOT_HELP_TEXT_SECONDARY } from './root-help-text-secondary'
+import { forkSettingsFlagHelp, withForkSettingsRootHelp } from './fork/settings-specs'
 
-const ROOT_HELP_TEXT = [ROOT_HELP_TEXT_PRIMARY, ROOT_HELP_TEXT_SECONDARY].join('\n')
+// Fork (FORK.md "Settings from the CLI"): adds the Settings section.
+const ROOT_HELP_TEXT = withForkSettingsRootHelp(
+  [ROOT_HELP_TEXT_PRIMARY, ROOT_HELP_TEXT_SECONDARY].join('\n')
+)
 
 export function printHelp(specs: CommandSpec[], commandPath: string[] = []): void {
   const exactSpec = findCommandSpec(specs, commandPath)
@@ -81,7 +85,9 @@ export function formatGroupHelp(specs: CommandSpec[], groupPath: string[]): stri
 
 function formatCommandFlagHelp(flag: string, commandPath: string[]): string {
   const command = commandPath.join(' ')
-  const scopedHelp = formatCommandScopedFlagHelp(command, flag)
+  // Fork (FORK.md "Settings from the CLI"): option text of the `orca settings` commands.
+  const scopedHelp =
+    forkSettingsFlagHelp(command, flag) ?? formatCommandScopedFlagHelp(command, flag)
   if (scopedHelp) {
     return scopedHelp
   }
