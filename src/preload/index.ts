@@ -106,6 +106,7 @@ import { forkChatStallApi } from './fork/chat-stall-bridge'
 import { forkWorkerCleanupApi } from './fork/worker-cleanup-bridge'
 import { forkMcpProfilesApi } from './fork/mcp-profiles-bridge'
 import { forkUsageLedgerApi } from './fork/usage-ledger-bridge'
+import { forkSyncStatusApi } from './fork/sync-status-bridge'
 
 installBrowserFindListener()
 
@@ -200,6 +201,7 @@ const api = {
   forkWorkerCleanup: forkWorkerCleanupApi,
   forkMcpProfiles: forkMcpProfilesApi,
   forkUsageLedger: forkUsageLedgerApi,
+  forkSyncStatus: forkSyncStatusApi,
   docPreview: docPreviewApi,
   notebook: notebookApi,
   fs: fsApi,
