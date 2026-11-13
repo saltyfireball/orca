@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { translate } from '@/i18n/i18n'
+import { openAppHttpLink } from '@/lib/browser/navigation/app-http-link-open'
 import type {
   LostWorkActionResult,
   LostWorkItem,
@@ -21,6 +22,72 @@ export type LostWorkPendingDelete = { items: LostWorkItem[]; stage: 1 | 2 }
 
 let scanCounter = 0
 
+function nextScanId(): string {
+  scanCounter += 1
+  return `lost-work-${Date.now()}-${scanCounter}`
+}
+
+/** Runs `run` on each item in turn; a rejected run counts as a failure, so this never throws. */
+async function runItems(
+  items: readonly LostWorkItem[],
+  run: (item: LostWorkItem) => Promise<LostWorkActionResult>
+): Promise<{ failures: string[]; files: string[] }> {
+  const failures: string[] = []
+  const files: string[] = []
+  for (const item of items) {
+    const outcome = await run(item).catch((error: unknown): LostWorkActionResult => ({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error)
+    }))
+    if (outcome.ok) {
+      files.push(...(outcome.files ?? []))
+    } else {
+      failures.push(`${item.branch ?? item.path ?? item.repoName}: ${outcome.error}`)
+    }
+  }
+  return { failures, files }
+}
+
+function toastOutcome(failures: readonly string[], files: readonly string[]): void {
+  if (failures.length > 0) {
+    toast.error(
+      translate('fork.lostWork.someFailed', '{{count}} of the items failed', {
+        count: failures.length
+      }),
+      { description: failures.slice(0, 5).join('\n') }
+    )
+  } else if (files.length > 0) {
+    toast.success(
+      translate('fork.lostWork.saved', 'Saved {{count}} files', { count: files.length }),
+      { description: files.slice(0, 5).join('\n') }
+    )
+  } else {
+    toast.success(translate('fork.lostWork.done', 'Done'))
+  }
+}
+
+/** Scans once. Resolves with the result, or null after a failure (toasted unless a cancel). */
+async function scanOnce(
+  lostWork: NonNullable<typeof window.api.forkLostWork>,
+  id: string,
+  isCurrent: () => boolean
+): Promise<LostWorkScanResult | null> {
+  try {
+    return await lostWork.scan({ scanId: id })
+  } catch (error) {
+    if (isCurrent()) {
+      // A cancel rejects the scan; only a real failure is worth a toast.
+      const message = error instanceof Error ? error.message : String(error)
+      if (!/cancel/i.test(message)) {
+        toast.error(translate('fork.lostWork.scanFailed', 'Lost work scan failed'), {
+          description: message
+        })
+      }
+    }
+    return null
+  }
+}
+
 export function useForkLostWork() {
   const [result, setResult] = useState<LostWorkScanResult | null>(null)
   const [scanning, setScanning] = useState(false)
@@ -34,32 +101,19 @@ export function useForkLostWork() {
     if (!lostWork) {
       return
     }
-    const id = `lost-work-${Date.now()}-${++scanCounter}`
+    const id = nextScanId()
     scanId.current = id
     setScanning(true)
-    try {
-      const next = await lostWork.scan({ scanId: id })
-      if (scanId.current === id) {
+    const next = await scanOnce(lostWork, id, () => scanId.current === id)
+    if (scanId.current === id) {
+      if (next) {
         setResult(next)
         setSelected(
           (current) => new Set(next.items.filter((i) => current.has(i.id)).map((i) => i.id))
         )
       }
-    } catch (error) {
-      if (scanId.current === id) {
-        // A cancel rejects the scan; only a real failure is worth a toast.
-        const message = error instanceof Error ? error.message : String(error)
-        if (!/cancel/i.test(message)) {
-          toast.error(translate('fork.lostWork.scanFailed', 'Lost work scan failed'), {
-            description: message
-          })
-        }
-      }
-    } finally {
-      if (scanId.current === id) {
-        scanId.current = null
-        setScanning(false)
-      }
+      scanId.current = null
+      setScanning(false)
     }
   }, [])
 
@@ -82,38 +136,9 @@ export function useForkLostWork() {
       rescan: boolean
     ) => {
       setBusy(true)
-      const failures: string[] = []
-      const files: string[] = []
-      try {
-        for (const item of items) {
-          const outcome = await run(item).catch((error: unknown): LostWorkActionResult => ({
-            ok: false,
-            error: error instanceof Error ? error.message : String(error)
-          }))
-          if (outcome.ok) {
-            files.push(...(outcome.files ?? []))
-          } else {
-            failures.push(`${item.branch ?? item.path ?? item.repoName}: ${outcome.error}`)
-          }
-        }
-      } finally {
-        setBusy(false)
-      }
-      if (failures.length > 0) {
-        toast.error(
-          translate('fork.lostWork.someFailed', '{{count}} of the items failed', {
-            count: failures.length
-          }),
-          { description: failures.slice(0, 5).join('\n') }
-        )
-      } else if (files.length > 0) {
-        toast.success(
-          translate('fork.lostWork.saved', 'Saved {{count}} files', { count: files.length }),
-          { description: files.slice(0, 5).join('\n') }
-        )
-      } else {
-        toast.success(translate('fork.lostWork.done', 'Done'))
-      }
+      const { failures, files } = await runItems(items, run)
+      setBusy(false)
+      toastOutcome(failures, files)
       if (rescan) {
         await scan()
       }
@@ -138,12 +163,12 @@ export function useForkLostWork() {
 
   const openPullRequest = useCallback(async (item: LostWorkItem) => {
     if (item.pullRequest) {
-      await window.api.shell.openUrl(item.pullRequest.url)
+      openAppHttpLink(item.pullRequest.url)
       return
     }
     const outcome = await actOnLostWork(item, 'create-pull-request')
     if (outcome.ok && outcome.url) {
-      await window.api.shell.openUrl(outcome.url)
+      openAppHttpLink(outcome.url)
     } else if (!outcome.ok) {
       toast.error(translate('fork.lostWork.pullRequestFailed', 'Could not open a pull request'), {
         description: outcome.error

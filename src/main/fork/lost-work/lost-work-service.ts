@@ -1,7 +1,7 @@
 // SLRM-2096 (FORK.md "Lost work"): the lost work scan and actions wired to this process's projects,
 // git and gh. No Electron here, so the `fork.lostWork.scan` RPC can import it on any host; the
 // desktop's IPC host sets the store when it installs.
-import { existsSync } from 'node:fs'
+import { access } from 'node:fs/promises'
 import type { Store } from '../../persistence/loading-store/store'
 import { gitExecFileAsync } from '../../git/command-runner/git-exec-file'
 import { ghExecFileAsync } from '../../git/command-runner/hosted-cli/gh-exec-file'
@@ -31,6 +31,16 @@ export function forkLostWorkStore(): Store | null {
   return installedStore
 }
 
+/** existsSync without blocking main: true when the path resolves, false on any error. */
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
 const git: LostWorkGit = async (args, options) =>
   (await gitExecFileAsync(args, { cwd: options.cwd, signal: options.signal, stdin: options.stdin }))
     .stdout
@@ -57,7 +67,7 @@ function deps(store: Store): LostWorkScanDeps & LostWorkActionDeps {
       return repo ? (await listCleanupGitWorktrees(store, repo, false, signal)).gitWorktrees : []
     },
     isTracked: (worktreeId) => store.getWorktreeMeta(worktreeId) !== undefined,
-    pathExists: existsSync,
+    pathExists,
     lookupPullRequests: async (repo, limit, signal) => {
       try {
         const { stdout } = await ghExecFileAsync(lostWorkPullRequestArgs(limit), {
