@@ -4,7 +4,7 @@
 import { existsSync } from 'node:fs'
 import type { Store } from '../../persistence/loading-store/store'
 import { gitExecFileAsync } from '../../git/command-runner/git-exec-file'
-import { ghExecFileAsync } from '../../git/command-runner/gh-exec-file'
+import { ghExecFileAsync } from '../../git/command-runner/hosted-cli/gh-exec-file'
 import { listCleanupGitWorktrees } from '../../ipc/workspace-cleanup/workspace-cleanup-worktree-listing'
 import { isFolderRepo } from '../../../shared/repo-kind'
 import { getRepoExecutionHostId, LOCAL_EXECUTION_HOST_ID } from '../../../shared/execution-host'
