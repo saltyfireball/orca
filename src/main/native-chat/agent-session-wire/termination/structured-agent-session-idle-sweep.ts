@@ -42,6 +42,8 @@ export type StructuredAgentSessionIdleSweepDeps = {
   intervalMs?: number
   /** Read every tick so a settings change applies without a restart; null never stops a chat. */
   idleMs?: () => number | null
+  /** Fork chat sleep: true keeps an idle chat awake this tick (a chat on screen). */
+  keepAwake?: (sessionId: string) => boolean
 }
 
 export type StructuredAgentSessionChildWorkReads = {
@@ -153,6 +155,10 @@ export class StructuredAgentSessionIdleSweep {
     }
     // Renew owed work every tick to allow a full window for the lead’s post-child wake-up.
     if (session.child && session.child.phase !== 'starting' && this.owesWork(sessionId, session)) {
+      this.deps.sessions.touch(sessionId)
+      return null
+    }
+    if (this.deps.keepAwake?.(sessionId)) {
       this.deps.sessions.touch(sessionId)
       return null
     }

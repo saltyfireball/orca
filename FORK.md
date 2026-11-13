@@ -86,6 +86,28 @@ named Orca Fork until SLRM-1367. `main` is always
   card collapses its agents into the small icon strip, each icon whose tab has a color gets a
   thin ring in it, from the same resolver. A chat that has never had a prompt has no status
   entry, so it has no row to tint. Code is in `src/renderer/src/fork/agent-row-tab-tint/`.
+- **Chat sleep: idle native chats give up their provider process (SLRM-2093).** Off by default
+  (`forkChatSleep`, Settings > Advanced). Stock Orca already has an idle sweep for native chats
+  (`StructuredAgentSessionIdleSweep`, every 5 minutes, window from Stop idle chats,
+  `nativeChatIdleStopMinutes`): it stops an idle chat's provider and closes the conversation at
+  rest, and the next send (typed, an orchestration letter or the CLI) opens it again and starts
+  a provider on the same session. Upstream's experimental Agent sleep
+  (`experimentalAgentHibernation`) only covers terminal agents. Chat sleep reuses the stock
+  sweep rather than adding a second path:
+  - While on, the sweep's window is `forkChatSleepIdleMinutes` (default 30) instead of the stock
+    setting. While off, the sweep runs on the stock setting exactly as before.
+  - With `forkChatSleepKeepVisible` (default on), a chat that is the active tab of any tab group
+    in the open workspace is kept awake and its idle clock restarts, so it sleeps a full window
+    after it leaves the screen. The renderer reports those session ids over
+    `fork:chatSleep:onScreen`; a closed window's list is dropped. This covers chats this desktop
+    hosts; chats on paired hosts follow their own host's sweep.
+  - The sweep's own owed-work check still runs first, so a chat with a running turn, a queued or
+    mid-delivery send, an open dispatch, a pending prompt, open child work or a provider that
+    does not confirm it is idle is never put to sleep.
+  - A sleeping chat (settled, no host running its provider) shows a moon after its tab title and
+    on its dashboard and worktree card row, and its compact sidebar row is dimmed.
+    Code is in `src/shared/fork/chat-sleep.ts`, `src/main/fork/chat-sleep/` and
+    `src/renderer/src/fork/chat-sleep/`.
 
 ## Patch list
 
@@ -144,6 +166,7 @@ Apply these in this order. Each one is a single commit.
 51. `SLRM-1966 Sidebar agent rows wear their tab's color dot`
 52. `SLRM-1966 Follow upstream 1.4.256's moved modules in fork code`
 53. `SLRM-1966 Tint done chat rows and ring tab colors in the collapsed agent strip`
+54. `SLRM-2093 Chat sleep: idle native chats give up their provider, on screen chats stay awake`
 
 Fork-only code lives in `fork/` folders:
 
@@ -256,6 +279,17 @@ Upstream files only get short hooks, which keeps rebases small:
   `card-identity-parts.tsx` adds `ForkClaudeAccountWorktreeChip` after the title;
   `AdvancedPane.tsx` renders `ForkAccountChipSetting`. The chip reads chats through the move
   RPC, so it adds no RPC hook of its own.
+- Chat sleep (SLRM-2093): `StructuredAgentSessionIdleSweepDeps` takes an optional `keepAwake`,
+  and `tickUnderSerialize` renews and skips a kept-awake session right after its owed-work check
+  (one field, four lines). `workspace-process-listing.ts` passes its `idleSweep` through
+  `forkChatSleepIdleSweep` (`src/main/fork/chat-sleep/chat-sleep-sweep.ts`), which keeps the
+  stock window while the setting is off. `src/main/index.ts` calls
+  `installForkChatSleepBridge()` after `installForkRestartGuard()`. `src/preload/index.ts` adds
+  `forkChatSleep` (`src/preload/fork/chat-sleep-bridge.ts`) and `api-types.ts` types it as
+  optional. `AppRootSurfaces.tsx` mounts `ForkChatSleepReporter` and `AdvancedPane.tsx` renders
+  `ForkChatSleepSetting`. The moon and the dim render inside the existing fork hooks
+  (`ForkTabTitle`, `ForkClaudeAccountAgentRowChip`, `ForkAgentRowTabTint`), so they add no
+  upstream lines of their own. The settings are in `src/shared/fork/fork-global-settings.ts`.
 - Account move (SLRM-1503), from `src/main/fork/claude-account-move/` and
   `src/renderer/src/fork/claude-account-move/`:
   - `prepareClaudeLaunchAccount` (`claude-launch-account.ts`) takes an optional `sessionId` and

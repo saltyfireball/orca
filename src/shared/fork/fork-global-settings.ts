@@ -4,6 +4,12 @@ export type ForkGlobalSettings = {
   forkChatSurvive?: boolean
   /** Fork (SLRM-1503): show which Claude account each session runs on; unset is on. */
   forkShowAccountChip?: boolean
+  /** Fork chat sleep: idle native chats give up their provider process. Off unless true. */
+  forkChatSleep?: boolean
+  /** Fork chat sleep: minutes a chat sits idle before it sleeps; unset is 30. */
+  forkChatSleepIdleMinutes?: number
+  /** Fork chat sleep: chats on screen never sleep; unset is on. */
+  forkChatSleepKeepVisible?: boolean
 }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */
