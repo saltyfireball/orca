@@ -19,6 +19,7 @@ import { initializeMainProcessReady } from './startup/main-process-ready'
 import { installMainProcessQuitHandlers } from './startup/main-process-quit'
 import { installForkRestartGuard } from './fork/restart-guard/restart-guard'
 import { installForkChatSleepBridge } from './fork/chat-sleep/chat-sleep-bridge'
+import { installForkMemoryWatch } from './fork/memory-truth/memory-watch'
 import { shouldActivateDesktopForSecondInstance } from './startup/single-instance-lock'
 import { resolveOsOpenedDocuments } from './startup/os-opened-documents'
 import {
@@ -173,6 +174,8 @@ if (preflightReady) {
   installMainProcessQuitHandlers()
   installForkRestartGuard()
   installForkChatSleepBridge()
+  // Fork (SLRM-2099): memory warning, notification and the opt-in launch pause.
+  installForkMemoryWatch(() => state.store?.getSettings())
   void app.whenReady().then(async () => {
     try {
       await initializeMainProcessReady({
