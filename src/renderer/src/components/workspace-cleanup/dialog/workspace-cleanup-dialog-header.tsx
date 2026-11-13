@@ -7,6 +7,7 @@ import { cn } from '@/lib/class-names'
 import { useTranslate } from '@/i18n/use-translate'
 import type { WorkspaceCleanupScanProgress } from '../../../../../shared/workspace-cleanup/workspace-cleanup'
 import { WorkspaceCleanupFreshness } from './workspace-cleanup-freshness'
+import { ForkLostWorkButton } from '@/fork/lost-work/ForkLostWorkButton'
 
 export function WorkspaceCleanupDialogHeader({
   loading,
@@ -34,6 +35,8 @@ export function WorkspaceCleanupDialogHeader({
             {t('common.delete', 'Delete')}
           </DialogTitle>
           <div className="flex shrink-0 items-center gap-1">
+            {/* Fork (FORK.md "Lost work"). */}
+            <ForkLostWorkButton />
             <WorkspaceCleanupFreshness
               scannedAt={scannedAt}
               refreshing={loading}
