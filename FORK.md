@@ -87,6 +87,23 @@ named Orca Fork until SLRM-1367. `main` is always
   thin ring in it, from the same resolver. A chat that has never had a prompt has no status
   entry, so it has no row to tint. Code is in `src/renderer/src/fork/agent-row-tab-tint/`.
 
+- **Sidebar agent rows count their children (SLRM-2095).** A compact agent row shows a small
+  `running/total` badge (for example `3/12`) for everything that agent is responsible for, and
+  hovering it lists each child by name, kind and state, indented by lineage. Children are:
+  orchestration workers the chat dispatched, in any worktree (from the runtime orchestration
+  contexts' parent pane, falling back to the parent's terminal handle); the workers those
+  workers dispatched, transitively; and each session's own child work, meaning sub-agents and
+  background shell tasks or monitors, nested ones included. When a card collapses its agents
+  into the icon strip, the strip shows one total for the card, each child counted once.
+  Settings > Advanced has three switches, all on by default: show the badge
+  (`forkShowChildTally`), count finished children in the total (`forkChildTallyCountFinished`;
+  off shows only the running count) and count background tasks (`forkChildTallyCountTasks`).
+  Limits: a pane carries only its latest dispatch, so earlier dispatches to the same pane are
+  not counted; a finished worker drops out once its dispatch is more than 30 minutes old or its
+  pane is gone; hosts that publish no child-work views report only running sub-agents. The
+  stock same-worktree `+N` disclosure is unchanged. Code is in
+  `src/renderer/src/fork/agent-child-tally/`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -144,6 +161,7 @@ Apply these in this order. Each one is a single commit.
 51. `SLRM-1966 Sidebar agent rows wear their tab's color dot`
 52. `SLRM-1966 Follow upstream 1.4.256's moved modules in fork code`
 53. `SLRM-1966 Tint done chat rows and ring tab colors in the collapsed agent strip`
+54. `SLRM-2095 Sidebar agent rows count the workers, sub-agents and tasks they own`
 
 Fork-only code lives in `fork/` folders:
 
@@ -169,6 +187,9 @@ Upstream files only get short hooks, which keeps rebases small:
 - One element and a `relative` class in `worktree-card-compact-agent-row.tsx` for the row
   tint, and an import, one element and a `relative` class on the strip icon in
   `worktree-card-compact-agents.tsx` for the icon ring (SLRM-1966).
+- An import and one element in each of those two files for the child count:
+  `ForkAgentRowChildTally` before the row's `+N` span and `ForkAgentStripChildTally` after the
+  strip's hidden-agent count (SLRM-2095).
 - The updater feed repoints.
 - One call each in `release-channel.ts`, `updater-release-builds.ts` and
   `electron-updater-loader.ts`.
@@ -246,8 +267,10 @@ Upstream files only get short hooks, which keeps rebases small:
   runner ran outside `pnpm run`.
 - Fork settings (SLRM-1503): `global-settings-types.ts` builds `GlobalSettings` on
   `WithForkSettings<GlobalSettingsBase>` (`src/shared/fork/fork-global-settings.ts`, one import
-  and one changed line), which adds `forkChatSurvive` and `forkShowAccountChip`; the file is at
-  max-lines.
+  and one changed line), which adds `forkChatSurvive`, `forkShowAccountChip` and the SLRM-2095
+  child count switches (`forkShowChildTally`, `forkChildTallyCountFinished`,
+  `forkChildTallyCountTasks`); the file is at max-lines. `AdvancedPane.tsx` renders
+  `ForkChildTallySetting` after `ForkAccountChipSetting` (SLRM-2095).
 - Account chip hooks (SLRM-1503): `SortableTab.tsx` renders its title through `ForkTabTitle`
   (the stock title span plus the chip, one line, swapping the `TAB_LABEL_WIDTH_CLASSES` import
   so the file stays at max-lines); `DashboardAgentRow.tsx` renders
