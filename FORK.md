@@ -164,6 +164,25 @@ named Orca Fork until SLRM-1367. `main` is always
     Code is in `src/shared/fork/chat-sleep.ts`, `src/main/fork/chat-sleep/` and
     `src/renderer/src/fork/chat-sleep/`.
 
+- **Truthful memory in the Resource Usage popover (SLRM-2099).** Stock counts only each
+  terminal's direct process, so a Mac with dozens of agents can show a few GB while the agents
+  hold tens. The fork walks every session's whole process tree from one process-table snapshot
+  per poll: terminal PTYs under the terminal host, native chat providers (their lease's owner
+  pid) and the tool servers they start. A child that was reparented when its parent exited is
+  still found, by the session it belonged to last poll (same pid and name) or by a process
+  group the session leads. Each process counts once. Memory is the physical footprint on macOS,
+  PSS (plus swapped PSS) on Linux and private bytes on Windows. The popover shows system memory
+  (used, compressed, swap, pressure level), the grand total, the app's own share (Electron,
+  helpers, terminal host), and each workspace and session split into agent, tool servers,
+  shells and other. When pressure or swap passes a threshold, a warning icon shows in the
+  status bar and one notification fires per episode. An optional setting, off by default,
+  pauses new agent launches while over, with a message where the launch was refused.
+  `orca diagnostics` prints the same numbers, and `--json` includes them as `forkTruth`.
+  Settings are in Advanced: warn at pressure level (default warning), warn at swap GB (default
+  8, 0 is off), pause new agents (default off) and poll seconds (default 15). Code is in
+  `src/main/fork/memory-truth/`, `src/renderer/src/fork/memory-truth/`,
+  `src/shared/fork/memory-truth.ts` and `src/cli/fork/memory-truth-format.ts`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -226,6 +245,7 @@ Apply these in this order. Each one is a single commit.
 56. `SLRM-2096 Lost work: find and handle unmerged or lost work across agent worktrees`
 57. `SLRM-2093 Chat sleep: idle native chats give up their provider, on screen chats stay awake`
 58. `SLRM-2105 Follow upstream 1.4.258's moved modules in fork code`
+59. `SLRM-2099 Truthful memory: whole process trees, system memory and a warning`
 
 Fork-only code lives in `fork/` folders:
 
@@ -398,6 +418,25 @@ Upstream files only get short hooks, which keeps rebases small:
   - `workspace-cleanup-dialog-header.tsx` renders `ForkLostWorkButton`, hidden without the
     bridge; `AdvancedPane.tsx` renders `ForkLostWorkSettings`; `forkLostWork` is in
     `src/shared/fork/fork-global-settings.ts`.
+
+- Memory truth (SLRM-2099):
+  - `src/main/memory/collector.ts` reads the process table through
+    `readForkUnixProcessTable()` (adds the process group) and returns
+    `forkAugmentMemorySnapshot(...)`, which adds `forkTruth` and makes the stock rows and totals
+    count whole trees. The collector stays electron-free: chat roots and settings are injected
+    by `installForkMemoryWatch`, called in `src/main/index.ts` after `installForkRestartGuard()`
+    (one line; it waits for app ready before its first sample).
+  - `forkTruth?` on `MemorySnapshot` (`process-stats-types.ts`), `ForkMemoryGlobalSettings` in
+    `fork-global-settings.ts`.
+  - The structured chat create handler calls `assertForkAgentLaunchAllowed()`, and
+    `launchAgentInNewTabWithOutcome` refuses through `forkRefuseAgentLaunchOverMemory()`. The main
+    process exposes `isMemoryOverLaunchThreshold()` (`pressure-state.ts`).
+  - `src/preload/index.ts` and `api-types.ts` add the optional `forkMemory` bridge.
+  - `ResourceUsageStatusSegment.tsx` renders `ForkMemoryStatusCue` and `ForkMemoryTruthSection`;
+    `AdvancedPane.tsx` renders `ForkMemorySettings`; `orca diagnostics` wraps its formatter in
+    `withForkMemoryTruth`.
+  - Not gated: terminal agents launched through the CLI or RPC. Headless `orcad` uses default
+    settings and does not count native chats.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

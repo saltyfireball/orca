@@ -100,6 +100,7 @@ import { speechApi } from './api/speech/speech-bridge'
 import { forkUpdateInstallWaitApi } from './fork/update-install-wait-bridge'
 import { forkLostWorkApi } from './fork/lost-work-bridge'
 import { forkChatSleepApi } from './fork/chat-sleep-bridge'
+import { forkMemoryApi } from './fork/memory-truth-bridge'
 
 installBrowserFindListener()
 
@@ -188,6 +189,7 @@ const api = {
   forkUpdateInstallWait: forkUpdateInstallWaitApi,
   forkLostWork: forkLostWorkApi,
   forkChatSleep: forkChatSleepApi,
+  forkMemory: forkMemoryApi,
   docPreview: docPreviewApi,
   notebook: notebookApi,
   fs: fsApi,
