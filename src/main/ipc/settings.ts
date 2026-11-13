@@ -19,6 +19,7 @@ import { isAgentStatusHooksEnabledForAgent } from '../../shared/agent-hook-liste
 import { recordManagedHookInstallFailure } from '../agent-hooks/installation/install-telemetry'
 import { applyElectronProxySettings } from '../network/proxy-settings'
 import { applyBrowserSessionProxies } from '../browser/sessions/proxy/browser-session-proxy'
+import { forkCaptureSettingsSet } from '../fork/settings-cli/settings-cli-apply'
 import { applyProxyToElectronUpdaterSession } from '../updater/lifecycle/electron-updater-proxy-session'
 import { browserSessionRegistry } from '../browser/sessions/profiles/browser-session-registry'
 import { sanitizeNetworkSettings } from './network-settings-sanitization'
@@ -107,7 +108,8 @@ export function registerSettingsHandlers(
     event.returnValue = readSettingsWithRuntimeEnvironmentPreference(store, registryRoot())
   })
 
-  ipcMain.handle('settings:set', async (event, args: Partial<GlobalSettings>) => {
+  // Fork (FORK.md "Settings from the CLI"): `orca settings` writes through this same handler.
+  const settingsSet = forkCaptureSettingsSet(async (event, args: Partial<GlobalSettings>) => {
     const sanitizedArgs = sanitizeRendererSettingsUpdate(args)
     // Generic settings writers cannot change the server preference owned by Advanced controls.
     delete sanitizedArgs.activeRuntimeEnvironmentId
@@ -285,6 +287,7 @@ export function registerSettingsHandlers(
 
     return store.getSettings()
   })
+  ipcMain.handle('settings:set', settingsSet)
 
   ipcMain.handle(
     'settings:set-active-runtime-environment-preference',
