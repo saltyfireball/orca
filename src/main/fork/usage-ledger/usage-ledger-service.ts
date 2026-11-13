@@ -1,0 +1,151 @@
+// SLRM-2103 (FORK.md "Usage ledger and cache-cold cue"): the main process's one ledger. A hook in
+// Claude's structured event delivery feeds it live frames (transcript imports never pass there,
+// so nothing is counted twice); the cache cue and the usage report read it.
+import type { ClaudeStructuredSessionEvent } from '../../claude/structured/claude-structured-session-event'
+import { longContextTurnTokens } from '../../claude-usage/claude-model-pricing'
+import {
+  forkUsageRetentionDays,
+  type ForkCacheState,
+  type ForkUsageLedgerSettings
+} from '../../../shared/fork/usage-ledger'
+import { claudeUsageObservation } from './claude-usage-frames'
+import { LedgerFileWriter, readLedgerFile, writeLedgerFile } from './usage-ledger-file'
+import { UsageLedger, type UsageChatMeta } from './usage-ledger'
+import type { UsageLedgerData } from './usage-ledger-model'
+
+export type UsageLedgerServiceDeps = {
+  filePath: string
+  readSettings: () => ForkUsageLedgerSettings | undefined
+  /** Name, workspace and dispatcher of a chat, read when it is first seen and after each turn. */
+  chatMeta: (sessionId: string) => UsageChatMeta | undefined
+  now?: () => number
+}
+
+const PRUNE_EVERY_MS = 60 * 60_000
+const CHANGE_PUSH_DELAY_MS = 500
+/** Most chats sent to the window: the cue only matters for recent ones. */
+const CACHE_STATES_SENT = 200
+
+let ledger: UsageLedger | null = null
+let service: UsageLedgerServiceDeps | null = null
+let writer: LedgerFileWriter | null = null
+let pushTimer: ReturnType<typeof setTimeout> | null = null
+const changeListeners = new Set<() => void>()
+
+function notifyCacheChanged(): void {
+  if (pushTimer) {
+    return
+  }
+  pushTimer = setTimeout(() => {
+    pushTimer = null
+    for (const listener of changeListeners) {
+      listener()
+    }
+  }, CHANGE_PUSH_DELAY_MS)
+  pushTimer.unref?.()
+}
+
+function prune(): void {
+  if (ledger?.prune(forkUsageRetentionDays(service?.readSettings()))) {
+    writer?.schedule()
+  }
+}
+
+/** Main-process start-up: load the saved ledger and start counting. Returns the quit flush. */
+export function installForkUsageLedgerService(deps: UsageLedgerServiceDeps): () => void {
+  service = deps
+  const now = deps.now ?? Date.now
+  ledger = new UsageLedger(
+    {
+      now,
+      isLongContext: (model, call) => longContextTurnTokens(model, call) !== undefined
+    },
+    readLedgerFile(deps.filePath)
+  )
+  const current = ledger
+  writer = new LedgerFileWriter(() => writeLedgerFile(deps.filePath, current.snapshot()))
+  prune()
+  setInterval(prune, PRUNE_EVERY_MS).unref?.()
+  return () => writer?.flush()
+}
+
+function refreshMeta(sessionId: string): void {
+  try {
+    const meta = service?.chatMeta(sessionId)
+    if (meta) {
+      ledger?.noteMeta(sessionId, meta)
+    }
+  } catch {
+    // Names are a nicety; a host that is shutting down simply leaves the last ones.
+  }
+}
+
+/** Hook (Claude structured event delivery): every event of every live Claude chat. */
+export function forkUsageLedgerObserveClaudeEvent(event: ClaudeStructuredSessionEvent): void {
+  if (!ledger) {
+    return
+  }
+  try {
+    if (event.type === 'ended') {
+      if (ledger.noteEnded(event.sessionId)) {
+        notifyCacheChanged()
+      }
+      return
+    }
+    if (event.type !== 'message') {
+      return
+    }
+    if (event.startsTurn) {
+      ledger.noteTurnStart(event.sessionId)
+      notifyCacheChanged()
+    }
+    const observation = claudeUsageObservation(event.message)
+    if (!observation) {
+      return
+    }
+    const known = ledger.has(event.sessionId)
+    const changed = ledger.observe(event.sessionId, observation)
+    if (!known || observation.kind === 'turn-end') {
+      refreshMeta(event.sessionId)
+    }
+    writer?.schedule()
+    if (changed) {
+      notifyCacheChanged()
+    }
+  } catch (error) {
+    // Counting must never disturb the chat itself.
+    console.warn('[fork-usage-ledger] Could not record usage:', error)
+  }
+}
+
+/** The most recently used chats' prompt caches, newest first. */
+export function forkUsageLedgerCacheStates(): ForkCacheState[] {
+  return (ledger?.cacheStates() ?? [])
+    .sort((left, right) => right.lastAt - left.lastAt)
+    .slice(0, CACHE_STATES_SENT)
+}
+
+export function onForkUsageLedgerCacheChanged(listener: () => void): () => void {
+  changeListeners.add(listener)
+  return () => changeListeners.delete(listener)
+}
+
+/** Everything recorded, for the usage report; read-only. */
+export function forkUsageLedgerData(): UsageLedgerData | null {
+  return ledger?.snapshot() ?? null
+}
+
+/** Clear history: forget all recorded usage and save the empty ledger at once. */
+export function forkUsageLedgerClear(): void {
+  if (!ledger) {
+    return
+  }
+  ledger.clear()
+  writer?.schedule()
+  writer?.flush()
+  notifyCacheChanged()
+}
+
+export function forkUsageLedgerSettings(): ForkUsageLedgerSettings | undefined {
+  return service?.readSettings()
+}
