@@ -458,6 +458,45 @@ named Orca Fork until SLRM-1367. `main` is always
       `fork.customAppTheme.preview.*` keys.
     - Lost work pull request links open through `openAppHttpLink`, so they follow the app's
       link setting.
+- **Settings from the CLI (SLRM-2160).** `orca settings` reads and writes the app's whole
+  global settings object from a terminal or through one file, so no setting needs the Settings
+  screen.
+  - `orca settings list [--changed] [--filter TEXT]` prints every key with its value, default,
+    type and a one-line description, grouped by area, and marks a value that differs from its
+    default. `orca settings get KEY` shows one in full.
+  - `orca settings set KEY VALUE` reads VALUE as JSON, or as plain text when it is not JSON.
+    `orca settings reset KEY...` puts keys back to their default.
+  - `orca settings export [--file F] [--changed-only]` writes every setting as one JSON file
+    with comments (JSONC): grouped by area in a fixed order, each key under its description,
+    type and default. `orca settings apply --file F [--dry-run]` reads it back, prints each
+    change as key, old value and new value, and leaves alone every key the file does not name.
+  - A write is checked as a whole first. An unknown key, a value of the wrong type or a
+    read-only key is refused with the key named, and then nothing is written.
+  - A write goes through the app's own `settings:set` handler, the one the Settings screen
+    uses, so its guards, normalization and side effects all run and every open window gets
+    `settings:changed`. The reply says when the app stored something other than what was asked.
+  - Read-only from the CLI, each with its reason: the keys `settings:set` drops
+    (`activeRuntimeEnvironmentId`, `floatingTerminalTrustedCwds`, `antigravityChatAuth`,
+    `pluginConsents`, `disabledPlugins`, `pluginExternalHostGrants`);
+    `browserPasswordsFillRequiresReauth`, which needs the owner's confirmation; the limits on
+    agents that upstream keeps out of its CLI (`nestedWorkerMaxDepth`, `artifactSharingEnabled`,
+    `agentSkillSharingEnabled`), since agents run this CLI; the managed account lists and
+    selections; and the one-time migration markers. The lists are in
+    `src/shared/fork/settings-catalog/settings-access.ts`.
+  - Secrets are never shown, exported or returned over RPC: `opencodeSessionCookie`,
+    `httpProxyUrl` (it can hold a user and password) and `agentDefaultEnv` (API keys). They
+    show as set or not set and can still be written with `orca settings set`.
+  - The catalog (`src/shared/fork/settings-catalog/`) has one entry per key of
+    `GlobalSettings`: type, description and area. Its rows are generated from the type and its
+    doc comments by `pnpm run generate:fork-settings-catalog`
+    (`config/scripts/fork/generate-fork-settings-catalog.mjs`); a key with no doc comment gets
+    its description from `config/scripts/fork/settings-catalog-rules.mjs`, which also sorts
+    keys into areas. Defaults are read from `getDefaultSettings` when a command runs, not
+    stored. The type check fails when a settings key has no row or a row names a key that is
+    gone, and `settings-catalog.test.ts` fails when the generated files are out of date or a
+    key of the default settings has no entry. After adding or removing a setting, run the
+    generator.
+  - It adds no setting and nothing on screen.
 
 ## Patch list
 
@@ -534,6 +573,7 @@ Apply these in this order. Each one is a single commit.
 69. `SLRM-2104 Usage report: tokens and estimated cost per chat, coordinator, workspace, day or card`
 70. `SLRM-2105 Sync status: fork-sync publishes its outcome, the update check shows when the fork is behind`
 71. `SLRM-2138 Fork main passes every push and pull request check`
+72. `SLRM-2160 Settings from the CLI: orca settings lists, edits, exports and applies every setting`
 
 `AppRootSurfaces.tsx` carries one hook for the fork's always-mounted hosts: `ForkRootHosts`
 (`src/renderer/src/fork/ForkRootHosts.tsx`) renders `ForkChatSleepReporter`,
@@ -977,6 +1017,21 @@ Upstream files only get short hooks, which keeps rebases small:
     `ForkCacheColdSetting`.
   - The SLRM-2103 ledger IPC and preload bridge (fork files) gain `report`, `clear` and
     `defaultPrices`.
+
+- Settings from the CLI (SLRM-2160), from `src/shared/fork/settings-catalog/`,
+  `src/shared/fork/settings-wire.ts`, `src/main/fork/settings-cli/` and
+  `src/cli/fork/settings-*.ts`:
+  - `src/main/ipc/settings.ts` passes its `settings:set` handler through
+    `forkCaptureSettingsSet` before registering it, unchanged, so the fork RPC can call the
+    same function. Nothing in the handler is edited.
+  - `rpc-method-registry.ts` registers `FORK_SETTINGS_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-settings.ts`): `fork.settings.get` and
+    `fork.settings.update`; `rpc-params-catalog.generated.ts` is regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_SETTINGS_COMMAND_SPECS`, the manifest lists the
+    `fork-settings` group, and `cli-command-names.ts` lists `settings`.
+  - `src/cli/help.ts` wraps the root help in `withForkSettingsRootHelp`, which adds the
+    "Settings:" section, and asks `forkSettingsFlagHelp` first for an option's help line.
+  - `package.json` gains the `generate:fork-settings-catalog` script.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
