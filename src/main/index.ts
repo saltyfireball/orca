@@ -18,6 +18,7 @@ import { registerMainProcessIpcHandlers } from './startup/main-process-ipc-boots
 import { initializeMainProcessReady } from './startup/main-process-ready'
 import { installMainProcessQuitHandlers } from './startup/main-process-quit'
 import { installForkRestartGuard } from './fork/restart-guard/restart-guard'
+import { installForkChatSleepBridge } from './fork/chat-sleep/chat-sleep-bridge'
 import { shouldActivateDesktopForSecondInstance } from './startup/single-instance-lock'
 import { resolveOsOpenedDocuments } from './startup/os-opened-documents'
 import {
@@ -171,6 +172,7 @@ if (preflightReady) {
   registerMainProcessIpcHandlers()
   installMainProcessQuitHandlers()
   installForkRestartGuard()
+  installForkChatSleepBridge()
   void app.whenReady().then(async () => {
     try {
       await initializeMainProcessReady({
