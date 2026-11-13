@@ -43,6 +43,7 @@ import {
 } from '../fork/claude-account-move'
 import { ForkLostWorkScanParams } from '../fork/lost-work'
 import { ForkMcpChatParams, ForkMcpChatSetParams, ForkMcpListParams } from '../fork/mcp-profiles'
+import { ForkSettingsGetParams, ForkSettingsUpdateParams } from '../fork/settings-wire'
 import {
   ForkSleepersListParams,
   ForkSleepersPinParams,
@@ -1133,6 +1134,8 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.mcpProfiles.chat': ForkMcpChatParams,
   'fork.mcpProfiles.list': ForkMcpListParams,
   'fork.mcpProfiles.set': ForkMcpChatSetParams,
+  'fork.settings.get': ForkSettingsGetParams,
+  'fork.settings.update': ForkSettingsUpdateParams,
   'fork.sleepers.list': ForkSleepersListParams,
   'fork.sleepers.pin': ForkSleepersPinParams,
   'fork.sleepers.sleep': ForkSleepersSleepParams,

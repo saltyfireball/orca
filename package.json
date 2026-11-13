@@ -87,6 +87,7 @@
     "generate:plugin-author-typings": "node config/scripts/plugin-authoring/generated-contracts/generate-plugin-author-typings.mjs",
     "validate:plugin": "node config/scripts/plugin-authoring/content-validation/validate-plugin-files.mjs",
     "generate:rpc-params-catalog": "node config/scripts/plugin-authoring/rpc-catalog/generate-rpc-params-catalog.mjs",
+    "generate:fork-settings-catalog": "node config/scripts/fork/generate-fork-settings-catalog.mjs",
     "verify:rpc-params-catalog": "node config/scripts/plugin-authoring/rpc-catalog/generate-rpc-params-catalog.mjs --check",
     "generate:acp-protocol": "node config/scripts/acp/generate-protocol.mjs",
     "verify:acp-protocol": "node config/scripts/acp/generate-protocol.mjs --check",
