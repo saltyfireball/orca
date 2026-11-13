@@ -101,6 +101,7 @@ import { forkUpdateInstallWaitApi } from './fork/update-install-wait-bridge'
 import { forkLostWorkApi } from './fork/lost-work-bridge'
 import { forkChatSleepApi } from './fork/chat-sleep-bridge'
 import { forkMemoryApi } from './fork/memory-truth-bridge'
+import { forkAgentQueueApi } from './fork/agent-queue-bridge'
 
 installBrowserFindListener()
 
@@ -190,6 +191,7 @@ const api = {
   forkLostWork: forkLostWorkApi,
   forkChatSleep: forkChatSleepApi,
   forkMemory: forkMemoryApi,
+  forkAgentQueue: forkAgentQueueApi,
   docPreview: docPreviewApi,
   notebook: notebookApi,
   fs: fsApi,

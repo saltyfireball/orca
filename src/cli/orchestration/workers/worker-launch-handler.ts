@@ -21,6 +21,7 @@ import { explainOlderRuntimeRunRequired } from '../recovery/older-runtime-run-bi
 import { withResolvedNextCommands } from '../recovery/orchestration-mutation-recovery'
 import { readTextOrFileFlag } from '../../arguments/command-body-input'
 import { refuseAgentServerRoute } from '../identity/agent-server-route'
+import { printForkQueuedLaunch, readForkQueuedLaunch } from '../../fork/agent-queue-launch-note'
 
 export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler> = {
   'orchestration worker-start': async (ctx) => {
@@ -89,7 +90,12 @@ export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler>
     }).catch(async (error: unknown) => {
       throw await explainOlderRuntimeRunRequired(client, error)
     })
-    if (result.result.state !== 'ready') {
+    // Fork (SLRM-2098): a worker waiting in the agent queue is started, not failed (FORK.md).
+    const forkQueued =
+      result.result.state === 'ready'
+        ? null
+        : await readForkQueuedLaunch(client, { dispatchId: result.result.dispatchId })
+    if (result.result.state !== 'ready' && !forkQueued) {
       process.exitCode = 1
     }
     const keepOpenState =
@@ -114,6 +120,7 @@ export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler>
     } else {
       printOrchestrationResult(renderedResult, json, WORKER_START_VIEW)
     }
+    printForkQueuedLaunch(forkQueued, json)
     // Only an explicit --keep-open fails the start; a new workspace's default is best effort.
     if (flags.has('keep-open') && keepOpenState && keepOpenState !== 'retained') {
       const dispatchId = result.result.dispatchId
