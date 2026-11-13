@@ -44,6 +44,12 @@ export type StructuredAgentSessionIdleSweepDeps = {
   idleMs?: () => number | null
   /** Fork chat sleep: true keeps an idle chat awake this tick (a chat on screen). */
   keepAwake?: (sessionId: string) => boolean
+  /** Fork chat stall: judges a chat held busy (null input: not held); release retires it. */
+  stall?: (
+    sessionId: string,
+    input: { progress: string; ownerPid: number | null } | null
+  ) => Promise<'hold' | 'release'>
+  attachStall?: (tick: () => Promise<void>) => void
 }
 
 export type StructuredAgentSessionChildWorkReads = {
@@ -84,6 +90,7 @@ export class StructuredAgentSessionIdleSweep {
       this.deps.intervalMs ?? STRUCTURED_AGENT_SESSION_IDLE_SWEEP_INTERVAL_MS
     )
     this.timer.unref?.()
+    this.deps.attachStall?.(() => this.tick())
   }
 
   dispose(): void {
@@ -155,9 +162,22 @@ export class StructuredAgentSessionIdleSweep {
     }
     // Renew owed work every tick to allow a full window for the lead’s post-child wake-up.
     if (session.child && session.child.phase !== 'starting' && this.owesWork(sessionId, session)) {
+      const cursor = session.journal.cursor()
+      const ownerPid =
+        this.deps.store.getConversation(sessionId)?.ownerObservation?.ownerProcess?.pid ?? null
+      const stall = this.deps.stall?.(sessionId, {
+        progress: `${cursor.epoch}:${cursor.sequence}`,
+        ownerPid
+      })
+      if ((await stall) === 'release') {
+        await this.deps.stopAgent(sessionId)
+        await this.deps.closeConversation(sessionId)
+        return null
+      }
       this.deps.sessions.touch(sessionId)
       return null
     }
+    await this.deps.stall?.(sessionId, null)
     if (this.deps.keepAwake?.(sessionId)) {
       this.deps.sessions.touch(sessionId)
       return null

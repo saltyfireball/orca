@@ -33,6 +33,11 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkAgentQueueMaxWorkers?: number
     /** Fork (SLRM-2098): waking an existing chat never waits, even past the limit; unset is on. */
     forkAgentQueueResumeBypass?: boolean
+    /** Fork chat stall: minutes without provider output before an open turn is marked stalled;
+     *  unset is 30, 0 is off. */
+    forkChatStallMinutes?: number
+    /** Fork chat stall: release a long-stalled chat whose provider is stopped or gone. Off unless true. */
+    forkChatStallAutoRelease?: boolean
   }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */
