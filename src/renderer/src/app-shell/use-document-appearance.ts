@@ -31,6 +31,7 @@ import { usePluginFontRegistration } from '../store/plugins/appearance/plugin-fo
 import { scheduleRuntimeGraphSync } from '../runtime/sync-runtime-graph/graph-sync-scheduler'
 import { useAppStore } from '../store'
 import { useReduceVisualEffects } from '@/hooks/use-reduce-visual-effects'
+import { useForkCustomAppThemeExtras } from '../fork/custom-app-theme/use-fork-custom-app-theme'
 
 export function useDocumentAppearance(): void {
   const {
@@ -171,4 +172,5 @@ export function useDocumentAppearance(): void {
       rebuildAllTerminalWebglRenderers('code-font-smoothing')
     }
   }, [codeFontSmoothing])
+  useForkCustomAppThemeExtras(dark, appFontFamily)
 }
