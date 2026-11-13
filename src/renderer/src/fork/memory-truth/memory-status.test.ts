@@ -30,4 +30,15 @@ describe('forkMemoryLaunchRefusal', () => {
     )
     expect(forkMemoryLaunchRefusal()).toMatch(/New agents are paused.*Pause new agents/)
   })
+
+  it('with the launch queue on, lets a native chat through to wait and refuses a terminal agent', () => {
+    setForkMemoryStatusForTests(
+      buildForkMemoryStatus(
+        critical,
+        resolveForkMemorySettings({ forkMemoryPauseLaunches: true, forkAgentQueueEnabled: true })
+      )
+    )
+    expect(forkMemoryLaunchRefusal(true)).toBeNull()
+    expect(forkMemoryLaunchRefusal(false)).toMatch(/terminal agents are paused/)
+  })
 })
