@@ -59,6 +59,7 @@ import {
 import { isWorkspaceNotificationMuted } from '../../push/notifications/workspace-notification-mute'
 import { WorkerAutoReleaseActivity } from '../../orchestration/terminal-authority/release/worker-auto-release-activity'
 import { nativeChatIdleStopMs } from '../../../../shared/native-chat/settings/native-chat-idle-stop'
+import { forkChatSleepIdleSweep } from '../../../fork/chat-sleep/chat-sleep-sweep'
 import { prWatchWorkspaceSources } from '../../agent-session/lifecycle/pr-watch-workspace-sources'
 import { startPRWatchRuntime } from '../../agent-session/lifecycle/pr-watch-runtime'
 const DEFAULT_WORKTREE_PS_LIMIT = 200
@@ -269,7 +270,10 @@ export abstract class OrcaRuntimeWithGetWorktreePs extends RuntimeChatWorkerEven
       ...this.botStructuredSessionHostDeps(() => this.requireStore()),
       claudeCliFlags: claudeCliFlagSupport,
       usageLimitAutoContinue: this.usageLimitAutoContinueHostDeps(),
-      idleSweep: { idleMs: () => nativeChatIdleStopMs(this.requireStore().getSettings()) },
+      idleSweep: forkChatSleepIdleSweep(
+        () => this.requireStore().getSettings(),
+        () => nativeChatIdleStopMs(this.requireStore().getSettings())
+      ),
       nativeChatVisuals: {
         isEnabled: () => this.requireStore().getSettings().nativeChatInlineVisuals !== false
       },
