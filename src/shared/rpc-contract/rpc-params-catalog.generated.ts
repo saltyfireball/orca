@@ -1157,6 +1157,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.claudeAccount.cancel': ForkClaudeAccountCancelParams,
   'fork.claudeAccount.move': ForkClaudeAccountMoveParams,
   'fork.claudeAccount.which': ForkClaudeAccountWhichParams,
+  'fork.lostWork.scan': ForkLostWorkScanParams,
   'git.abortMerge': WorktreeSelectorOfGitParams,
   'git.abortRebase': WorktreeSelectorOfGitParams,
   'git.atRiskLocalFiles': WorktreeSelectorOfGitParams,
