@@ -282,5 +282,11 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-agent-queue',
     keys: ['agent queue list', 'agent queue start', 'agent queue cancel'],
     load: async () => (await import('./fork/agent-queue-handlers.js')).FORK_AGENT_QUEUE_HANDLERS
+  },
+  // Fork: MCP servers and profiles (FORK.md "MCP profiles").
+  {
+    name: 'fork-mcp-profile',
+    keys: ['mcp-profile list', 'mcp-profile show', 'mcp-profile set'],
+    load: async () => (await import('./fork/mcp-profile-handlers.js')).FORK_MCP_PROFILE_HANDLERS
   }
 ]

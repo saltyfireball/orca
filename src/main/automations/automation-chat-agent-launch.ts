@@ -3,7 +3,8 @@ import { automationLaunchInputs } from '../../shared/automations/launch/automati
 import type { Automation } from '../../shared/automations/automation-definition'
 import type { AutomationRun } from '../../shared/automations/history/automation-run'
 import type { OrcaRuntimeService } from '../runtime/orca-runtime'
-import { launchAgentOnHost } from '../runtime/rpc/methods/agent-launch/agent-launch'
+// Fork (FORK.md "MCP profiles"): automation chats launch in the background launch scope.
+import { launchBackgroundAgentOnHost as launchAgentOnHost } from '../fork/mcp-profiles/mcp-background-launch'
 import { reuseAutomationChat } from './automation-chat-session-reuse'
 import { buildHeadlessAutomationWorkspaceName } from './automation-workspace-create'
 import type { AutomationRunTargetResult } from './run-target-resolution'

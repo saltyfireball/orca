@@ -38,8 +38,10 @@ import { PLUGIN_INSTALL_COMMAND_SPECS } from './plugin-install'
 import { FORK_ACCOUNT_MOVE_COMMAND_SPECS } from '../fork/account-move-specs'
 import { FORK_LOST_WORK_COMMAND_SPECS } from '../fork/lost-work-specs'
 import { FORK_AGENT_QUEUE_COMMAND_SPECS } from '../fork/agent-queue-specs'
+import { FORK_MCP_PROFILE_COMMAND_SPECS, withForkMcpProfileFlag } from '../fork/mcp-profile-specs'
 
-export const COMMAND_SPECS: CommandSpec[] = [
+// Fork: --mcp-profile on the commands that start agents (FORK.md "MCP profiles").
+export const COMMAND_SPECS: CommandSpec[] = withForkMcpProfileFlag([
   ...CORE_COMMAND_SPECS,
   ...REFERENCE_COMMAND_SPECS,
   ...ARTIFACT_COMMAND_SPECS,
@@ -77,5 +79,6 @@ export const COMMAND_SPECS: CommandSpec[] = [
   ...PAIR_COMMAND_SPECS,
   ...FORK_ACCOUNT_MOVE_COMMAND_SPECS,
   ...FORK_LOST_WORK_COMMAND_SPECS,
-  ...FORK_AGENT_QUEUE_COMMAND_SPECS
-]
+  ...FORK_AGENT_QUEUE_COMMAND_SPECS,
+  ...FORK_MCP_PROFILE_COMMAND_SPECS
+])

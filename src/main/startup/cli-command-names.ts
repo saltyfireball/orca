@@ -48,6 +48,7 @@ export const CLI_COMMAND_NAMES = [
   'jira',
   'linear',
   'lost-work',
+  'mcp-profile',
   'mouse',
   'network',
   'open',

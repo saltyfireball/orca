@@ -36,6 +36,7 @@ import {
   pendingAgentSessionRewindFork,
   type AgentSessionRewindFork
 } from '../../../../shared/agent-session/lifecycle/agent-session-rewind'
+import { forkMcpClaudeExtraArgs } from '../../../fork/mcp-profiles/mcp-claude-launch'
 
 export const CLAUDE_DEFAULT_SETTING_SOURCES = ['user', 'project', 'local'] as const
 export const CLAUDE_SESSION_STATE_EVENTS_ENV = 'CLAUDE_CODE_EMIT_SESSION_STATE_EVENTS'
@@ -298,7 +299,9 @@ export function claudeStructuredLaunchPart(
             ...configured.extraArgs,
             ...CLAUDE_STRUCTURED_BASE_OPTIONS.extraArgs,
             ...permission.extraArgs,
-            ...thinkingDisplayArgs
+            ...thinkingDisplayArgs,
+            // Fork (FORK.md "MCP profiles"): the chat's MCP profile, when it narrows the servers.
+            ...(await forkMcpClaudeExtraArgs(record, cwd, launchHome, env, configured.extraArgs))
           },
           // Claude owns where a resumed conversation continues; the stored leaf is Orca's bookkeeping.
           ...(resumesTranscript

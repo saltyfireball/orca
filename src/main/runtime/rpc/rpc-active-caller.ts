@@ -1,6 +1,8 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { isOrcaSessionId } from '../../../shared/orca-session-address'
 import { isAgentRpcCaller, type RpcCallerIdentity } from './rpc-caller-identity'
+// Fork (FORK.md "MCP profiles"): the dispatcher's launch-scope hook, imported with this module.
+export { withForkMcpLaunchScope } from '../../fork/mcp-profiles/mcp-launch-scope'
 
 type ActiveRpcCall = {
   caller: RpcCallerIdentity | undefined

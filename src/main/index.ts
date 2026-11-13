@@ -21,6 +21,7 @@ import { installForkRestartGuard } from './fork/restart-guard/restart-guard'
 import { installForkChatSleepBridge } from './fork/chat-sleep/chat-sleep-bridge'
 import { installForkMemoryWatch } from './fork/memory-truth/memory-watch'
 import { installForkAgentQueueApp } from './fork/agent-queue/agent-queue-ipc'
+import { installForkMcpProfilesApp } from './fork/mcp-profiles/mcp-profiles-ipc'
 import { shouldActivateDesktopForSecondInstance } from './startup/single-instance-lock'
 import { resolveOsOpenedDocuments } from './startup/os-opened-documents'
 import {
@@ -179,6 +180,8 @@ if (preflightReady) {
   installForkMemoryWatch(() => state.store?.getSettings())
   // Fork (SLRM-2098): the agent launch queue, off unless switched on.
   installForkAgentQueueApp(() => state.store?.getSettings())
+  // Fork: MCP profiles; every chat loads every server until profiles are set.
+  installForkMcpProfilesApp(() => state.store?.getSettings())
   void app.whenReady().then(async () => {
     try {
       await initializeMainProcessReady({

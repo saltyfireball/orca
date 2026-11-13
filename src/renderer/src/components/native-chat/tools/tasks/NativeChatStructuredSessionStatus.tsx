@@ -9,6 +9,7 @@ import {
 } from '../../../../../../shared/structured-session-background-tasks-view'
 import { useStructuredSessionChildRowContext } from './use-structured-session-child-row-context'
 import { ForkAgentQueueBanner } from '../../../../fork/agent-queue/ForkAgentQueueBanner'
+import { ForkMcpProfileStrip } from '../../../../fork/mcp-profiles/ForkMcpProfileStrip'
 
 type StoppingBackgroundTasks = {
   sessionId: string
@@ -104,6 +105,8 @@ export function NativeChatStructuredSessionStatus(props: {
     <>
       {/* Fork (SLRM-2098): queued for a free agent slot (FORK.md). */}
       <ForkAgentQueueBanner sessionId={props.sessionId} />
+      {/* Fork: the chat's MCP profile (FORK.md "MCP profiles"). */}
+      <ForkMcpProfileStrip sessionId={props.sessionId} />
       {props.tasks.backgroundTasks.show ? (
         <NativeChatBackgroundTasksStatus
           isVisible={props.isVisible}
