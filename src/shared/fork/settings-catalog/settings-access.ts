@@ -102,10 +102,16 @@ const READ_ONLY = new Map<string, ForkSettingReadOnlyKind>([
 
 /**
  * Settings whose value is, or may carry, a credential: a session cookie, a proxy URL with a
- * user and password in it, and per-agent environment values (API keys). `orca settings` says
+ * user and password in it, per-agent environment values (API keys), and a webhook address
+ * (its path or query is usually the token that lets anyone post to it). `orca settings` says
  * whether each is set and never prints, exports or returns the value.
  */
-const SECRETS: SettingsKey[] = ['opencodeSessionCookie', 'httpProxyUrl', 'agentDefaultEnv']
+const SECRETS: SettingsKey[] = [
+  'opencodeSessionCookie',
+  'httpProxyUrl',
+  'agentDefaultEnv',
+  'forkInboxNotifyWebhookUrl'
+]
 const SECRET_SET: ReadonlySet<string> = new Set(SECRETS)
 
 export const FORK_SETTINGS_SECRET_KEYS: readonly string[] = SECRETS
