@@ -11,6 +11,16 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Waking an existing chat never waits, even past the limit; unset is on.","o":true}',
   forkAgentQueueSeparateLimits:
     '{"t":{"k":"boolean"},"d":"Orchestration workers get their own limit; unset is one shared limit.","o":true}',
+  forkBoundaryCompactIdleSeconds:
+    '{"t":{"k":"number"},"d":"Boundary compaction: seconds a chat rests after its turn before it may be compacted; unset is 120.","o":true}',
+  forkBoundaryCompactMaxWaitMinutes:
+    '{"t":{"k":"number"},"d":"Boundary compaction: minutes of rest after which a chat is compacted even on a warm cache; unset is 20.","o":true}',
+  forkBoundaryCompactMode:
+    '{"t":{"k":"enum","values":["off","on"]},"d":"Boundary compaction: \'on\' asks an idle native chat to compact between turns once its context is large; unset is \'off\'.","o":true}',
+  forkBoundaryCompactPreferCold:
+    '{"t":{"k":"boolean"},"d":"Boundary compaction: wait until the chat\'s prompt cache has expired; unset is on.","o":true}',
+  forkBoundaryCompactThresholdTokens:
+    '{"t":{"k":"number"},"d":"Boundary compaction: context size, in tokens, from which a chat is compacted; unset is 120000.","o":true}',
   forkChildTallyCountFinished:
     '{"t":{"k":"boolean"},"d":"Finished children count toward that total; unset is on.","o":true}',
   forkChildTallyCountTasks:
