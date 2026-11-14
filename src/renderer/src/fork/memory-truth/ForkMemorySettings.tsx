@@ -1,4 +1,4 @@
-// SLRM-2099: Settings > Advanced > Memory. When to warn about system memory, whether to pause new
+// SLRM-2099: Settings > Blackfish > Memory. When to warn about system memory, whether to pause new
 // agents while over that line, and how often the background check runs.
 import { useEffect } from 'react'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'

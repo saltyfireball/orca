@@ -1,6 +1,6 @@
 // SLRM-2104 (FORK.md "Usage and cost report"): tokens and estimated cost of native Claude chats,
 // per chat, coordinator, workspace, day or card. Mounted once at the app root; opened from the
-// command palette and from Settings > Advanced > Usage report.
+// command palette and from Settings > Blackfish > Usage report.
 import React, { useState } from 'react'
 import {
   Dialog,
@@ -125,7 +125,7 @@ function DialogBody(): React.JSX.Element {
         <DialogDescription>
           {t(
             'fork.usageReport.description',
-            'Tokens of native Claude chats, sub-agents included. Costs are estimates from the price table in Settings > Advanced > Usage report; chats on a subscription are not billed per token.'
+            'Tokens of native Claude chats, sub-agents included. Costs are estimates from the price table in Settings > Blackfish > Usage report; chats on a subscription are not billed per token.'
           )}
         </DialogDescription>
       </DialogHeader>

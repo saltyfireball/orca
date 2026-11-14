@@ -81,7 +81,7 @@ export function forkMemoryLaunchRefusal(queueable = false): string | null {
   if (latest?.launchesHeld === true && !queueable) {
     return translate(
       'fork.memory.launchPausedTerminal',
-      'New terminal agents are paused: system memory is past the warning threshold. Chats wait in the launch queue, terminal agents cannot. Close some sessions, or turn off "Pause new agents" in Settings > Advanced > Memory.'
+      'New terminal agents are paused: system memory is past the warning threshold. Chats wait in the launch queue, terminal agents cannot. Close some sessions, or turn off "Pause new agents" in Settings > Blackfish > Memory.'
     )
   }
   if (latest?.launchesPaused !== true) {
@@ -89,6 +89,6 @@ export function forkMemoryLaunchRefusal(queueable = false): string | null {
   }
   return translate(
     'fork.memory.launchPaused',
-    'New agents are paused: system memory is past the warning threshold. Close some sessions, or turn off "Pause new agents" in Settings > Advanced > Memory.'
+    'New agents are paused: system memory is past the warning threshold. Close some sessions, or turn off "Pause new agents" in Settings > Blackfish > Memory.'
   )
 }
