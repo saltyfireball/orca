@@ -1,4 +1,13 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync
+} from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -13,8 +22,15 @@ import { proveClaudeChildExit } from '../../claude/child-process/claude-agent-sd
 import { createClaudeCodeProcessSpawn } from '../../claude/child-process/claude-agent-sdk-process-spawn'
 import { PassThrough } from 'node:stream'
 import { CHAT_SURVIVE_SPEC_ENV } from './chat-survive-broker-spec'
-import { dropChatSurviveClaim, holdChatSurviveClaim } from './chat-survive-claims'
-import type { ChatSurviveConnection } from './chat-survive-client'
+import {
+  chatSurviveClaimStopping,
+  dropChatSurviveClaim,
+  hasChatSurviveClaim,
+  holdChatSurviveClaim
+} from './chat-survive-claims'
+import type { ChatSurviveConnection, ChatSurviveConnectionEnd } from './chat-survive-client'
+import { chatSurviveLaunchPrint } from './chat-survive-launch-hash'
+import { POSIX_PROVIDER_SUPERVISOR_SCRIPT } from '../../provider-process/provider-process-supervisor'
 import type { ChatSurviveRecord } from './chat-survive-registry'
 import {
   refreshChatSurviveLaunchReady,
@@ -212,6 +228,194 @@ describe('chat-survive spawn hook', () => {
     expect(chatSurviveRecordName({ ORCA_AGENT_SESSION_ID: 'a_B-9' }, 7)).toBe('a_B-9.7.json')
     expect(chatSurviveRecordName({ ORCA_AGENT_SESSION_ID: '../x' }, 7)).toBe('session.7.json')
     expect(chatSurviveRecordName({}, 7)).toBe('session.7.json')
+  })
+})
+
+describe('chat-survive launch check', () => {
+  // No process has this pid, so nothing here could ever signal a real one.
+  const GONE_PID = 2_147_483_646
+
+  /** A chat's provider launch as the app hands it to the spawn hook. */
+  function launch(args: string[]): PipedProcessSpec {
+    return {
+      program: '/bin/sh',
+      args: ['-e', POSIX_PROVIDER_SUPERVISOR_SCRIPT, '--', 'claude', ...args],
+      cwd: '/work',
+      stdio: 'pipe'
+    }
+  }
+
+  function appEnv(version: string, session: string): Record<string, string> {
+    return {
+      ORCA_AGENT_SESSION_ID: session,
+      ORCA_APP_VERSION: version,
+      ORCA_AGENT_SESSION_SPAWN_TOKEN: `token-of-${version}`,
+      CLAUDE_AGENT_SDK_VERSION: '0.3.319',
+      CLAUDE_CONFIG_DIR: '/accounts/a'
+    }
+  }
+
+  /** A broker the earlier app instance handed off, claimed and held for this chat's next start. */
+  function held(session: string, spec: PipedProcessSpec, env: Record<string, string>) {
+    const recordDir = join(tempDir(), 'chat-survive')
+    const recordPath = join(recordDir, `${session}.${GONE_PID}.json`)
+    const ended = Promise.withResolvers<ChatSurviveConnectionEnd>()
+    const stop = vi.fn(() => ended.resolve('closed'))
+    const connection: ChatSurviveConnection = {
+      welcome: {
+        t: 'welcome',
+        v: 1,
+        pid: GONE_PID,
+        fence: 2,
+        out: { first: 0, end: 0, truncated: false },
+        err: { first: 0, end: 0, truncated: false },
+        exit: null
+      },
+      stdout: new PassThrough(),
+      stderr: new PassThrough(),
+      offsets: () => ({ out: 0, err: 0 }),
+      write: () => {},
+      endInput: () => {},
+      stop,
+      release: () => {},
+      detach: () => {},
+      exited: new Promise(() => {}),
+      ended: ended.promise
+    }
+    const made = chatSurviveLaunchPrint(spec, env)
+    const record: ChatSurviveRecord & { sessionId: string } = {
+      v: 1,
+      sessionId: session,
+      brokerPid: GONE_PID,
+      socketPath: '',
+      token: 'secret-token',
+      ...(made ? { launch: made } : {})
+    }
+    const mark = { out: 0, err: 0, seen: 0, delivered: 0, pending: [] }
+    holdChatSurviveClaim({ connection, record, recordPath, mark, fence: 2 })
+    return { stop, recordPath, recordDir }
+  }
+
+  const MODEL = ['--model', 'opus', '--permission-mode', 'default']
+
+  it('takes the claim for the same chat started by another app version', () => {
+    const { stop } = held('upd', launch([...MODEL, '--session-id=abc']), appEnv('1.4.0', 'upd'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const base = recordingSpawner()
+    try {
+      const child = forkChatSurviveSpawner(
+        base.spawn,
+        'darwin',
+        appEnv('1.5.0', 'upd')
+      )(launch(['--resume=abc', ...MODEL]))
+      // The broker in place of a new provider: nothing spawned, nothing stopped, nothing refused.
+      expect(child.pid).toBe(GONE_PID)
+      expect(base.specs).toEqual([])
+      expect(stop).not.toHaveBeenCalled()
+      expect(warn).not.toHaveBeenCalled()
+      expect(hasChatSurviveClaim('upd')).toBe(false)
+      expect(chatSurviveClaimStopping('upd')).toBe(false)
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it('refuses a provider configured otherwise, says in what, and removes its record', async () => {
+    const mcp = join(tempDir(), 'chat.json')
+    const withMcp = [...MODEL, '--strict-mcp-config', '--mcp-config', mcp]
+    const cases: {
+      name: string
+      saved: string[]
+      now: string[]
+      env?: Record<string, string>
+      before?: () => void
+      differs: string
+      hidden: string[]
+    }[] = [
+      {
+        name: 'model',
+        saved: MODEL,
+        now: ['--model', 'sonnet-other', '--permission-mode', 'default'],
+        differs: 'arg:--model',
+        hidden: ['opus', 'sonnet-other']
+      },
+      {
+        name: 'mode',
+        saved: MODEL,
+        now: ['--model', 'opus', '--permission-mode', 'bypassPermissions'],
+        differs: 'arg:--permission-mode',
+        hidden: ['bypassPermissions', 'opus']
+      },
+      {
+        name: 'mcp',
+        saved: withMcp,
+        now: withMcp,
+        before: () => writeFileSync(mcp, '{"mcpServers":{"b":{"command":"other-server"}}}'),
+        differs: 'arg:--mcp-config',
+        hidden: ['other-server', 'first-server', mcp]
+      },
+      {
+        name: 'account',
+        saved: MODEL,
+        now: MODEL,
+        env: { CLAUDE_CONFIG_DIR: '/accounts/b' },
+        differs: 'env:CLAUDE_CONFIG_DIR',
+        hidden: ['/accounts/a', '/accounts/b']
+      },
+      {
+        name: 'sdk',
+        saved: MODEL,
+        now: MODEL,
+        env: { CLAUDE_AGENT_SDK_VERSION: '0.4.0' },
+        differs: 'env:CLAUDE_AGENT_SDK_VERSION',
+        hidden: ['0.3.319', '0.4.0']
+      }
+    ]
+    for (const { name, saved, now, env, before, differs, hidden } of cases) {
+      writeFileSync(mcp, '{"mcpServers":{"a":{"command":"first-server"}}}')
+      const claim = held(name, launch(saved), appEnv('1.4.0', name))
+      // The record as the earlier instance left it on disk.
+      mkdirSync(claim.recordDir, { recursive: true })
+      writeFileSync(claim.recordPath, '{}')
+      before?.()
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const base = recordingSpawner()
+      const spawn = forkChatSurviveSpawner(base.spawn, 'darwin', {
+        ...appEnv('1.5.0', name),
+        ...env
+      })
+      try {
+        expect(() => spawn(launch(now))).toThrow(/still stopping/)
+        expect(base.specs).toEqual([])
+        expect(claim.stop).toHaveBeenCalledTimes(1)
+        // One line per refusal, with the names of what differs and none of the values.
+        expect(warn).toHaveBeenCalledTimes(1)
+        const line = String(warn.mock.calls[0]?.[0])
+        expect(line).toContain(`chat ${name}`)
+        expect(line).toContain(`launch differs in: ${differs}`)
+        for (const value of [...hidden, 'secret-token', 'token-of-1.4.0', '1.5.0']) {
+          expect(line).not.toContain(value)
+        }
+      } finally {
+        warn.mockRestore()
+      }
+      // The stopped broker's record goes with it, not at the next app start.
+      await vi.waitFor(() => expect(existsSync(claim.recordPath)).toBe(false))
+      expect(chatSurviveClaimStopping(name)).toBe(false)
+    }
+  })
+
+  it('refuses a claim whose record has no fingerprint in this format', () => {
+    const claim = held('old', { program: 'claude', args: [] }, appEnv('1.4.0', 'old'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const spawn = forkChatSurviveSpawner(recordingSpawner().spawn, 'darwin', appEnv('1.4.0', 'old'))
+    try {
+      expect(() => spawn(launch(MODEL))).toThrow(/still stopping/)
+      expect(claim.stop).toHaveBeenCalledTimes(1)
+      expect(String(warn.mock.calls[0]?.[0])).toContain('no launch fingerprint to compare')
+    } finally {
+      warn.mockRestore()
+    }
   })
 })
 
