@@ -29,6 +29,8 @@ import {
   forkUsageLedgerStoreReader
 } from './fork/usage-ledger/usage-ledger-ipc'
 import { installForkSyncStatusBridge } from './fork/sync-status/sync-status-bridge'
+import { installForkIdleRecoveryBridge } from './fork/idle-recovery/idle-recovery-bridge'
+import { startForkIdleRecovery } from './fork/idle-recovery/idle-recovery-service'
 import { shouldActivateDesktopForSecondInstance } from './startup/single-instance-lock'
 import { resolveOsOpenedDocuments } from './startup/os-opened-documents'
 import {
@@ -194,6 +196,9 @@ if (preflightReady) {
   // Fork (SLRM-2103/2104): the usage ledger behind the cache-cold cue and the usage report.
   installForkUsageLedger(() => forkUsageLedgerStoreReader(state.store))
   installForkSyncStatusBridge()
+  // Fork: idle recovery and the Decision inbox, off unless switched on (FORK.md).
+  installForkIdleRecoveryBridge()
+  startForkIdleRecovery(() => state.store?.getSettings())
   void app.whenReady().then(async () => {
     try {
       await initializeMainProcessReady({

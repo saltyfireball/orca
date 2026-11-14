@@ -41,6 +41,12 @@ import {
   ForkClaudeAccountMoveParams,
   ForkClaudeAccountWhichParams
 } from '../fork/claude-account-move'
+import {
+  ForkIdleRecoveryAnswerParams,
+  ForkIdleRecoveryInboxParams,
+  ForkIdleRecoveryPauseParams,
+  ForkIdleRecoveryStatusParams
+} from '../fork/idle-recovery-wire'
 import { ForkLostWorkScanParams } from '../fork/lost-work'
 import { ForkMcpChatParams, ForkMcpChatSetParams, ForkMcpListParams } from '../fork/mcp-profiles'
 import { ForkSettingsGetParams, ForkSettingsUpdateParams } from '../fork/settings-wire'
@@ -1129,6 +1135,10 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.claudeAccount.cancel': ForkClaudeAccountCancelParams,
   'fork.claudeAccount.move': ForkClaudeAccountMoveParams,
   'fork.claudeAccount.which': ForkClaudeAccountWhichParams,
+  'fork.idleRecovery.answer': ForkIdleRecoveryAnswerParams,
+  'fork.idleRecovery.inbox': ForkIdleRecoveryInboxParams,
+  'fork.idleRecovery.pause': ForkIdleRecoveryPauseParams,
+  'fork.idleRecovery.status': ForkIdleRecoveryStatusParams,
   'fork.launchDefaults.show': null,
   'fork.lostWork.scan': ForkLostWorkScanParams,
   'fork.mcpProfiles.chat': ForkMcpChatParams,
