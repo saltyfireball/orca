@@ -7,8 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SpawnOptions as SdkSpawnOptions } from '@anthropic-ai/claude-agent-sdk'
 import { spawnProcess } from '@orca/process-host'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
-import { proveClaudeChildExit } from '../../claude/claude-agent-sdk-exit-proof'
-import { createClaudeCodeProcessSpawn } from '../../claude/claude-agent-sdk-process-spawn'
+import { proveClaudeChildExit } from '../../claude/child-process/claude-agent-sdk-exit-proof'
+import { createClaudeCodeProcessSpawn } from '../../claude/child-process/claude-agent-sdk-process-spawn'
 import { connectChatSurviveBroker } from './chat-survive-client'
 import {
   chatSurviveWillSurvive,

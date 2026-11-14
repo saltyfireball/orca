@@ -1,9 +1,9 @@
 // FORK.md "MCP profiles": `orca mcp-profile list|show|set`.
 import { resolve } from 'node:path'
-import type { CommandHandler, HandlerContext } from '../dispatch'
-import { getOptionalStringFlag } from '../flags'
-import { printResult } from '../format'
-import { RuntimeClientError } from '../runtime-client'
+import type { CommandHandler, HandlerContext } from '../dispatch/dispatch'
+import { getOptionalStringFlag } from '../arguments/flags'
+import { printResult } from '../output/command-result-output'
+import { RuntimeClientError } from '../runtime/types'
 import type { ForkMcpChatInfo, ForkMcpListing } from '../../shared/fork/mcp-profiles'
 import { formatMcpChat, formatMcpListing } from './mcp-profile-format'
 
