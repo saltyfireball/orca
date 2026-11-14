@@ -569,6 +569,33 @@ named Orca Fork until SLRM-1367. `main` is always
     `orca settings` cannot write the classifier command, the notification command or the
     webhook address.
 
+- **Boundary compaction (SLRM-2257).** Off by default (`forkBoundaryCompactMode` `off`,
+  Settings > Blackfish > Chats). An agent compacts on its own when its context fills, nearly
+  always in the middle of a turn. With the mode on, a sweep in the main process asks a native
+  chat to compact between turns instead: its turn has ended, it sits idle, and its context is
+  past a threshold. The agent's own compaction is untouched and stays as the fallback. The user
+  guide is [docs/fork/boundary-compaction.md](docs/fork/boundary-compaction.md).
+  - **Off.** No chat is read, nothing is sent and no window reports anything; the timer only
+    reads the setting and backs off to every 2 minutes.
+  - **When.** The context measured by the chat's last finished turn is at least
+    `forkBoundaryCompactThresholdTokens` (120000) and the chat has rested
+    `forkBoundaryCompactIdleSeconds` (120). With `forkBoundaryCompactPreferCold` (on) it also
+    waits until its prompt cache has expired, or `forkBoundaryCompactMaxWaitMinutes` (20) of
+    rest, whichever comes first. The cache lifetime is the one the usage ledger knows for the
+    chat, else `forkCacheWindowMinutes`.
+  - **Never.** A chat that is working, waits on a prompt, has background work or children,
+    sleeps, is paused for idle recovery (`forkIdleSweepPaused`, read even with idle recovery
+    off), holds a queued message, has text or an image in its message box, or already had a
+    command since its last request. No chat at all while no window has reported its message
+    boxes. One attempt per turn ending, whatever its outcome.
+  - **How.** The host's own conversation command, the one the composer's `/compact` uses, sent
+    without a delivery mode so a chat that got busy refuses it instead of queueing it. The row
+    is labelled "Automatic compaction between turns" in the transcript. Idle recovery skips
+    command entries, so the ending it judged does not change.
+  - **Which chats.** Native chats whose agent declares `compact` (Claude, Codex, Pi, ACP agents
+    that declare compaction), run by the desktop app. Not terminal agents, and not chats run by
+    the headless server.
+
 - **Settings from the CLI (SLRM-2160).** `orca settings` reads and writes the app's whole
   global settings object from a terminal or through one file, so no setting needs the Settings
   screen.
@@ -613,7 +640,7 @@ named Orca Fork until SLRM-1367. `main` is always
   Settings > Advanced is in one pane of its own, Settings > Blackfish, listed in the sidebar's
   Advanced group. No setting changed: same keys, same defaults, same controls.
   - Six sections, each feature in its own card: Chats (chat survive, chat sleep, Sleepers,
-    stalled chats, cache-cold cue, MCP profiles), Agents and workers (child count, state
+    stalled chats, cache-cold cue, boundary compaction, MCP profiles), Agents and workers (child count, state
     colors, finished worker cleanup, agent limit, launch defaults, memory), Idle recovery,
     Usage and accounts (Claude account chip, usage report), Projects (Lost work, Per project)
     and Sync and updates (fork sync status). A row of section links stays at the top of the
@@ -720,6 +747,7 @@ Apply these in this order. Each one is a single commit.
 83. `SLRM-2216 Fix the settings JSONC line on Bun and the agent queue list params for the mobile RPC fence`
 84. `SLRM-2228 Give the fork settings their own Settings pane, with one project list`
 85. `SLRM-2230 Lost work: in-use guard, select all, project groups, suggested actions, bulk summary`
+86. `SLRM-2257 Boundary compaction: ask an idle chat with a large context to compact between turns`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1095,6 +1123,19 @@ Upstream files only get short hooks, which keeps rebases small:
     renders `ForkDecisionInboxButton`; both give nothing while the mode is off.
   - `orca settings` cannot write the classifier command, the notification command or the
     webhook address (`settings-access.ts`, kind `runs-command`); the Settings screen can.
+
+- Boundary compaction (SLRM-2257), from `src/shared/fork/boundary-compaction.ts`,
+  `src/main/fork/boundary-compaction/` and `src/renderer/src/fork/boundary-compaction/`. Off
+  unless `forkBoundaryCompactMode` is `on`:
+  - `src/main/index.ts` calls `startForkBoundaryCompaction(...)` (with readers of the settings
+    and the settings store) after `startForkIdleRecovery(...)`. `src/preload/index.ts` adds
+    `forkBoundaryCompaction` (`src/preload/fork/boundary-compaction-bridge.ts`) and
+    `api-types.ts` types it as optional.
+  - `NativeChatUserMessageRow.tsx` renders `ForkBoundaryCompactionMark` under the message, which
+    gives nothing for any row the feature did not send.
+  - The reporter is mounted in the fork's `ForkRootHosts.tsx` and the card in the fork's
+    Settings pane, so neither adds an upstream hook. The five settings are in
+    `src/shared/fork/fork-global-settings.ts`.
 
 - Launch defaults (SLRM-2102), from `src/shared/fork/launch-defaults/`,
   `src/main/fork/launch-defaults/`, `src/renderer/src/fork/launch-defaults/` and
