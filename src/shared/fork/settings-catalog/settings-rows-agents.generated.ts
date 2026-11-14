@@ -59,6 +59,8 @@ export const FORK_SETTINGS_ROWS_AGENTS = {
     '{"t":{"k":"boolean"},"d":"Dismissed the \\"System default may hold a copied login\\" notice in Settings > Accounts.","o":true}',
   claudeManagedAccounts:
     '{"t":{"k":"array","of":{"k":"object","fields":{"id":{"k":"string"},"email":{"k":"string"},"managedAuthPath":{"k":"string"},"managedAuthRuntime":{"k":"enum","values":["host","wsl"],"optional":true},"wslDistro":{"k":"string","nullable":true,"optional":true},"wslLinuxAuthPath":{"k":"string","nullable":true,"optional":true},"authMethod":{"k":"enum","values":["subscription-oauth","unknown"]},"organizationUuid":{"k":"string","nullable":true,"optional":true},"organizationName":{"k":"string","nullable":true,"optional":true},"createdAt":{"k":"number"},"updatedAt":{"k":"number"},"lastAuthenticatedAt":{"k":"number"}}}},"d":"Persist only per-account auth (not a CLAUDE_CONFIG_DIR swap) so switching accounts doesn\'t fork Claude\'s shared chat/session context."}',
+  claudeOAuthUsageEnabled:
+    '{"t":{"k":"boolean"},"d":"Poll Claude usage with existing CLI credentials. Off uses live terminal readings only."}',
   claudeSubagentNavigationEnabled:
     '{"t":{"k":"boolean"},"d":"Show Claude subagents as rows you can open.","o":true}',
   codexManagedAccounts:
@@ -109,6 +111,8 @@ export const FORK_SETTINGS_ROWS_AGENTS = {
     '{"t":{"k":"string"},"d":"Session cookie for OpenCode Go rate-limit fetching. Stored encrypted."}',
   opencodeWorkspaceId:
     '{"t":{"k":"string"},"d":"Optional OpenCode Go workspace ID override; when set, skips the workspaces lookup and fetches usage directly."}',
+  orchestrationCoordinatorApprovalsEnabled:
+    '{"t":{"k":"boolean"},"d":"Coordinator agents may allow workers\' permission prompts on this machine; absent means off. Not in any agent-writable settings RPC.","o":true}',
   orchestrationWorkerAutoReleaseEnabled:
     '{"t":{"k":"boolean"},"d":"Close a finished worker\'s terminal or chat after a grace period; absent means on. The coordinator\'s runtime decides.","o":true}',
   skipCodexRateLimitResetConfirm:

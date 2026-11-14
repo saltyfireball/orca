@@ -1,9 +1,9 @@
 // Fork launch defaults (FORK.md "Launch defaults"): `orca launch-defaults`, through the host's
 // fork.launchDefaults.show RPC.
-import type { CommandHandler } from '../dispatch'
-import { getOptionalStringFlag } from '../flags'
-import { printResult } from '../format'
-import { RuntimeClientError } from '../runtime-client'
+import type { CommandHandler } from '../dispatch/dispatch'
+import { getOptionalStringFlag } from '../arguments/flags'
+import { printResult } from '../output/command-result-output'
+import { RuntimeClientError } from '../runtime/types'
 import type {
   ForkLaunchDefaultsReport,
   ForkLaunchDefaultsRow

@@ -1,5 +1,6 @@
 // Sleepers (FORK.md): `orca sleepers`.
-import { GLOBAL_FLAGS, type CommandSpec } from '../args'
+import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli-argument-boundary'
+import type { CommandSpec } from '../discovery/command-spec'
 
 const ID_NOTE =
   'An id is a chat session id or a terminal agent pane key, as `orca sleepers list` prints it; a unique prefix is enough.'

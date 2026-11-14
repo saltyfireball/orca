@@ -570,8 +570,9 @@ named Orca Fork until SLRM-1367. `main` is always
     `pluginConsents`, `disabledPlugins`, `pluginExternalHostGrants`);
     `browserPasswordsFillRequiresReauth`, which needs the owner's confirmation; the limits on
     agents that upstream keeps out of its CLI (`nestedWorkerMaxDepth`, `artifactSharingEnabled`,
-    `agentSkillSharingEnabled`), since agents run this CLI; the managed account lists and
-    selections; and the one-time migration markers. The lists are in
+    `agentSkillSharingEnabled`, `orchestrationCoordinatorApprovalsEnabled`), since agents run
+    this CLI; the managed account lists and selections; and the one-time migration markers. The
+    lists are in
     `src/shared/fork/settings-catalog/settings-access.ts`.
   - Secrets are never shown, exported or returned over RPC: `opencodeSessionCookie`,
     `httpProxyUrl` (it can hold a user and password) and `agentDefaultEnv` (API keys). They
@@ -673,14 +674,15 @@ Apply these in this order. Each one is a single commit.
 79. `SLRM-2203 List idle recovery candidates and read their endings`
 80. `SLRM-2205 Idle recovery: the sweep, the wake and the Decision inbox service`
 81. `SLRM-2211 Idle recovery: whole-feature test, paused and stalled rows, user guide, example classifier`
+82. `SLRM-2216 Follow upstream 1.4.259's moved modules in fork code`
 
 `AppRootSurfaces.tsx` carries one hook for the fork's always-mounted hosts: `ForkRootHosts`
 (`src/renderer/src/fork/ForkRootHosts.tsx`) renders `ForkChatSleepReporter`,
 `ForkWorkerCleanupReporter`, `ForkSleepersDialogHost` and `ForkUsageReportHost`. Where a section below says
 `AppRootSurfaces.tsx` mounts one of those, it is mounted there.
 
-`src/cli/handler-group-manifest.ts` carries one hook for the fork's CLI commands: it spreads
-`FORK_HANDLER_GROUPS` (`src/cli/fork/fork-handler-groups.ts`). Where a section below says the
+`src/cli/dispatch/handler-group-manifest.ts` carries one hook for the fork's CLI commands: it
+spreads `FORK_HANDLER_GROUPS` (`src/cli/fork/fork-handler-groups.ts`). Where a section below says the
 manifest lists a fork command group, it is listed there.
 
 Fork-only code lives in `fork/` folders:
@@ -790,7 +792,7 @@ Upstream files only get short hooks, which keeps rebases small:
 - The restart guard (SLRM-1393): `installForkRestartGuard()` after
   `installMainProcessQuitHandlers()` in `src/main/index.ts`; `guardForkRestart` wraps the
   `app:relaunch` and `app:restart` handlers in `src/main/ipc/app.ts`; `guardForkUpdateInstall`
-  wraps `updater:quitAndInstall` in `src/main/window/main-window-updater.ts`;
+  wraps `updater:quitAndInstall` in `src/main/updater/lifecycle/main-window-updater.ts`;
   `...forkRestartGuardMenuItems()` follows `checkForUpdatesItem` in
   `src/main/menu/register-app-menu.ts`; and one `notifyForkRestartGuardUpdaterStatus()` call
   after the status send in `src/main/updater/lifecycle/updater-status.ts` refreshes the menu row
@@ -1094,7 +1096,7 @@ Upstream files only get short hooks, which keeps rebases small:
     `rpc-params-catalog.generated.ts` lists their params; `src/cli/specs/index.ts` wraps
     `COMMAND_SPECS` in `withForkMcpProfileFlag` and spreads `FORK_MCP_PROFILE_COMMAND_SPECS`;
     `handler-group-manifest.ts` adds the `fork-mcp-profile` group;
-    `src/main/startup/cli-command-names.ts` lists `mcp-profile`.
+    `src/main/startup/cli-launch/cli-command-names.ts` lists `mcp-profile`.
   - `agent-launch-request.ts` and `worker-launch-handler.ts` add `readForkMcpProfileFlag(flags)`
     to their params.
   - `src/main/index.ts` calls `installForkMcpProfilesApp(...)` after the agent queue install.
@@ -1145,7 +1147,7 @@ Upstream files only get short hooks, which keeps rebases small:
     `fork.settings.update`; `rpc-params-catalog.generated.ts` is regenerated with it.
   - `src/cli/specs/index.ts` adds `FORK_SETTINGS_COMMAND_SPECS`, the manifest lists the
     `fork-settings` group, and `cli-command-names.ts` lists `settings`.
-  - `src/cli/help.ts` wraps the root help in `withForkSettingsRootHelp`, which adds the
+  - `src/cli/discovery/help.ts` wraps the root help in `withForkSettingsRootHelp`, which adds the
     "Settings:" section, and asks `forkSettingsFlagHelp` first for an option's help line.
   - `package.json` gains the `generate:fork-settings-catalog` script.
 
