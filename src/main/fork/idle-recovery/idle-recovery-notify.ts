@@ -24,12 +24,12 @@ export type IdleRecoveryNotifyOptions = {
 
 type Outcome = 'ok' | 'failed' | 'timeout'
 
-/** The default desktop notifier: Electron is loaded only when one is actually shown. */
-const electronNotifier: IdleRecoveryDesktopNotifier = async (title, body) => {
-  const { Notification } = await import('electron')
-  if (Notification.isSupported()) {
-    new Notification({ title, body }).show()
-  }
+// Why a slot: this file is also bundled into the headless server, which must not import
+// Electron. The desktop app hands its notifier in at start-up, elsewhere there is none.
+let desktopNotifierSlot: IdleRecoveryDesktopNotifier | null = null
+
+export function setIdleRecoveryDesktopNotifier(notifier: IdleRecoveryDesktopNotifier | null): void {
+  desktopNotifierSlot = notifier
 }
 
 function clip(value: string): string {
@@ -164,10 +164,9 @@ export async function notifyIdleRecoveryWaiting(
       return
     }
     const jobs: Promise<void>[] = []
-    if (settings.notifyDesktop) {
-      jobs.push(
-        guarded('desktop', () => sendDesktop(items, options.desktopNotifier ?? electronNotifier))
-      )
+    const desktopNotifier = options.desktopNotifier ?? desktopNotifierSlot
+    if (settings.notifyDesktop && desktopNotifier) {
+      jobs.push(guarded('desktop', () => sendDesktop(items, desktopNotifier)))
     }
     const payload =
       settings.notifyWebhookUrl || settings.notifyCommand ? idleRecoveryNotifyPayload(items) : ''
