@@ -75,3 +75,30 @@ describe('formatLostWork', () => {
     expect(sorted.map((entry) => entry.id)).toEqual(['4', '3', '2', '1'])
   })
 })
+
+describe('in use (SLRM-2230)', () => {
+  it('names what holds a workspace open at the end of its row', () => {
+    const text = formatLostWork({
+      scannedAt: 0,
+      items: [
+        item({
+          id: 'a',
+          risk: 'needs-look',
+          branch: 'done',
+          path: '/w/done',
+          inUse: {
+            agentRunning: true,
+            openChats: 2,
+            sleepingChats: 1,
+            liveTerminals: 0,
+            active: true
+          }
+        })
+      ],
+      notes: []
+    })
+    expect(text.split('\n')[1]).toMatch(
+      /^needs a look .*\/w\/done {2}\[in use: agent running, 2 chats open, 1 chat asleep, open now\]$/
+    )
+  })
+})

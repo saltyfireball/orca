@@ -1,6 +1,6 @@
 // SLRM-2096 (FORK.md "Lost work"): find unmerged, finished or forgotten work across every local
 // project, and keep, push, save or delete it. Opened from the workspace cleanup dialog's header.
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -9,63 +9,26 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
-import { LOST_WORK_RISK_ORDER, type LostWorkRisk } from '../../../../shared/fork/lost-work'
-import { canPushLostWork, canSaveLostWork } from './lost-work-actions'
-import { lostWorkNoteLabel, lostWorkRiskLabel, lostWorkTitle } from './lost-work-labels'
-import { ForkLostWorkRow } from './ForkLostWorkRow'
+import { LOST_WORK_RISK_ORDER, type LostWorkItem } from '../../../../shared/fork/lost-work'
+import {
+  groupLostWorkByProject,
+  lostWorkFilterCounts,
+  lostWorkSelectAllState,
+  selectableLostWork,
+  toggleLostWorkSelectAll,
+  type LostWorkFilter
+} from './lost-work-bulk'
+import { lostWorkFilterHint, lostWorkNoteLabel, lostWorkRiskLabel } from './lost-work-labels'
+import { ForkLostWorkBulkButtons } from './ForkLostWorkBulkButtons'
+import { ForkLostWorkDeleteConfirm, ForkLostWorkSummary } from './ForkLostWorkConfirm'
+import { ForkLostWorkList } from './ForkLostWorkList'
 import { lostWorkProgressName, type LostWorkProgressLine } from './lost-work-progress'
-import { useForkLostWork, type LostWorkPendingDelete } from './use-fork-lost-work'
+import { useForkLostWork } from './use-fork-lost-work'
+import { useLostWorkWithUse } from './use-lost-work-use'
 
-type Filter = 'all' | LostWorkRisk
-
-function DeleteConfirm({
-  pending,
-  busy,
-  onConfirm,
-  onCancel
-}: {
-  pending: LostWorkPendingDelete
-  busy: boolean
-  onConfirm: () => void
-  onCancel: () => void
-}): React.JSX.Element {
-  const t = useTranslate()
-  const losing = pending.items.filter((item) => item.risk === 'would-lose-work')
-  const second = pending.stage === 2
-  return (
-    <div className="space-y-2 border-b border-destructive/40 bg-destructive/5 px-4 py-3 text-sm">
-      <p>
-        {second
-          ? t(
-              'fork.lostWork.confirmLoss',
-              '{{count}} of these hold work that exists nowhere else. Deleting them loses it for good.',
-              { count: losing.length }
-            )
-          : t('fork.lostWork.confirmDelete', 'Delete {{count}} items?', {
-              count: pending.items.length
-            })}
-      </p>
-      {second ? (
-        <ul className="list-disc pl-5 text-xs text-muted-foreground">
-          {losing.slice(0, 8).map((item) => (
-            <li key={item.id}>{`${item.repoName}: ${lostWorkTitle(item, t)}`}</li>
-          ))}
-        </ul>
-      ) : null}
-      <div className="flex gap-2">
-        <Button variant="destructive" size="sm" disabled={busy} onClick={onConfirm}>
-          {second
-            ? t('fork.lostWork.confirmLossButton', 'Delete and lose the work')
-            : t('fork.lostWork.confirmDeleteButton', 'Delete')}
-        </Button>
-        <Button variant="ghost" size="sm" onClick={onCancel}>
-          {t('fork.lostWork.cancel', 'Cancel')}
-        </Button>
-      </div>
-    </div>
-  )
-}
+const NO_ITEMS: readonly LostWorkItem[] = []
 
 /** SLRM-2175: projects done of total, and the one being read. */
 function scanProgressText(progress: LostWorkProgressLine | null, t: Translate): string {
@@ -106,30 +69,49 @@ export function ForkLostWorkDialog({
 function DialogBody(): React.JSX.Element {
   const t = useTranslate()
   const state = useForkLostWork()
-  const { result, scanning, progress, busy, selected, setSelected, pendingDelete } = state
-  const [filter, setFilter] = useState<Filter>('all')
-  const items = useMemo(() => {
-    const all = result?.items ?? []
-    const shown = filter === 'all' ? all : all.filter((item) => item.risk === filter)
-    return [...shown].sort(
-      (a, b) =>
-        LOST_WORK_RISK_ORDER.indexOf(a.risk) - LOST_WORK_RISK_ORDER.indexOf(b.risk) ||
-        a.repoName.localeCompare(b.repoName) ||
-        (b.lastCommitAt ?? 0) - (a.lastCommitAt ?? 0)
-    )
-  }, [result, filter])
+  const { result, scanning, progress, busy, selected, setSelected, pendingDelete, summary } = state
+  const [filter, setFilter] = useState<LostWorkFilter>('all')
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
+  // SLRM-2230: a workspace in use is marked, and reads as needs-look rather than safe.
+  const all = useLostWorkWithUse(result?.items ?? NO_ITEMS)
+  const counts = useMemo(() => lostWorkFilterCounts(all), [all])
+  const items = useMemo(
+    () => (filter === 'all' ? all : all.filter((item) => item.risk === filter)),
+    [all, filter]
+  )
+  const groups = useMemo(() => groupLostWorkByProject(items), [items])
   const chosen = items.filter((item) => selected.has(item.id))
-  const select = (id: string, on: boolean) =>
-    setSelected((current) => {
-      const next = new Set(current)
-      if (on) {
-        next.add(id)
-      } else {
-        next.delete(id)
-      }
-      return next
-    })
-  const filters: Filter[] = ['all', ...LOST_WORK_RISK_ORDER]
+  const select = useCallback(
+    (item: LostWorkItem, on: boolean) =>
+      setSelected((current) => {
+        const next = new Set(current)
+        if (on) {
+          next.add(item.id)
+        } else {
+          next.delete(item.id)
+        }
+        return next
+      }),
+    [setSelected]
+  )
+  const toggleAll = useCallback(
+    (rows: readonly LostWorkItem[]) =>
+      setSelected((current) => toggleLostWorkSelectAll(rows, current)),
+    [setSelected]
+  )
+  const toggleCollapsed = useCallback(
+    (repoId: string) =>
+      setCollapsed((current) => {
+        const next = new Set(current)
+        if (!next.delete(repoId)) {
+          next.add(repoId)
+        }
+        return next
+      }),
+    []
+  )
+  const safe = filter === 'safe' ? selectableLostWork(items) : NO_ITEMS
+  const filters: LostWorkFilter[] = ['all', ...LOST_WORK_RISK_ORDER]
   return (
     <>
       <DialogHeader className="space-y-2 border-b border-border px-4 py-3">
@@ -166,63 +148,65 @@ function DialogBody(): React.JSX.Element {
                 {value === 'all'
                   ? t('fork.lostWork.filterAll', 'All')
                   : lostWorkRiskLabel(value, t)}
+                {result ? <span className="text-muted-foreground">{counts[value]}</span> : null}
               </Button>
             ))}
           </div>
         </div>
-        {chosen.length > 0 ? (
+        {result ? (
+          <p className="text-xs text-muted-foreground">{lostWorkFilterHint(filter, t)}</p>
+        ) : null}
+        {items.length > 0 ? (
           <div className="flex flex-wrap items-center gap-1">
-            <span className="mr-1 text-xs text-muted-foreground">
-              {t('fork.lostWork.selected', '{{count}} selected', { count: chosen.length })}
-            </span>
-            <Button
-              size="xs"
-              variant="outline"
-              disabled={busy || !chosen.some(canPushLostWork)}
-              onClick={() => void state.push(chosen.filter(canPushLostWork))}
-            >
-              {t('fork.lostWork.push', 'Push')}
-            </Button>
-            <Button
-              size="xs"
-              variant="outline"
-              disabled={busy}
-              onClick={() =>
-                void state.save(
-                  chosen.filter((item) => item.kind !== 'stash' && canSaveLostWork(item)),
-                  'save-bundle'
-                )
-              }
-            >
-              {t('fork.lostWork.saveBundle', 'Save bundle')}
-            </Button>
-            <Button
-              size="xs"
-              variant="outline"
-              disabled={busy}
-              onClick={() => void state.save(chosen.filter(canSaveLostWork), 'save-patch')}
-            >
-              {t('fork.lostWork.savePatch', 'Save patch')}
-            </Button>
-            <Button
-              size="xs"
-              variant="outline"
-              className="text-destructive"
-              disabled={busy}
-              onClick={() => state.setPendingDelete({ items: chosen, stage: 1 })}
-            >
-              {t('fork.lostWork.delete', 'Delete')}
-            </Button>
+            <label className="mr-1 flex items-center gap-2 text-xs text-muted-foreground">
+              <Checkbox
+                checked={lostWorkSelectAllState(items, selected)}
+                disabled={busy}
+                onCheckedChange={() => toggleAll(items)}
+                aria-label={t('fork.lostWork.selectAll', 'Select all shown')}
+              />
+              {chosen.length > 0
+                ? t('fork.lostWork.selectedOf', '{{count}} of {{total}} selected', {
+                    count: chosen.length,
+                    total: items.length
+                  })
+                : t('fork.lostWork.selectAll', 'Select all shown')}
+            </label>
+            {chosen.length > 0 ? (
+              <ForkLostWorkBulkButtons
+                chosen={chosen}
+                busy={busy}
+                onPush={(rows) => void state.push(rows)}
+                onSave={(rows, action) => void state.save(rows, action)}
+                onDelete={state.requestDelete}
+              />
+            ) : null}
+            {safe.length > 0 ? (
+              <Button
+                size="xs"
+                variant="outline"
+                className="ml-auto text-destructive"
+                disabled={busy}
+                onClick={() => state.requestDelete(safe)}
+              >
+                {t('fork.lostWork.deleteAllSafe', 'Delete all {{count}} safe', {
+                  count: safe.length
+                })}
+              </Button>
+            ) : null}
           </div>
         ) : null}
       </DialogHeader>
       {pendingDelete ? (
-        <DeleteConfirm
+        <ForkLostWorkDeleteConfirm
           pending={pendingDelete}
           busy={busy}
           onConfirm={() => void state.confirmDelete()}
           onCancel={() => state.setPendingDelete(null)}
         />
+      ) : null}
+      {summary ? (
+        <ForkLostWorkSummary summary={summary} onDismiss={() => state.setSummary(null)} />
       ) : null}
       <div className="scrollbar-sleek min-h-0 flex-1 overflow-y-auto">
         {result && !scanning && items.length === 0 ? (
@@ -230,16 +214,16 @@ function DialogBody(): React.JSX.Element {
             {t('fork.lostWork.empty', 'No lost work found.')}
           </p>
         ) : null}
-        {items.map((item) => (
-          <ForkLostWorkRow
-            key={item.id}
-            item={item}
-            selected={selected.has(item.id)}
-            busy={busy}
-            onSelect={(on) => select(item.id, on)}
-            onAction={(action) => state.rowAction(item, action)}
-          />
-        ))}
+        <ForkLostWorkList
+          groups={groups}
+          selected={selected}
+          collapsed={collapsed}
+          busy={busy}
+          onToggleCollapsed={toggleCollapsed}
+          onToggleGroup={toggleAll}
+          onSelect={select}
+          onAction={state.rowAction}
+        />
         {result?.notes.length ? (
           <div className="space-y-1 border-t border-border px-4 py-3 text-xs text-muted-foreground">
             {result.notes.map((note, index) => (
