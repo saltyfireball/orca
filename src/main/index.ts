@@ -217,7 +217,10 @@ if (preflightReady) {
   installForkSyncStatusBridge()
   // Fork: idle recovery and the Decision inbox, off unless switched on (FORK.md).
   installForkIdleRecoveryBridge()
-  startForkIdleRecovery(() => state.store?.getSettings())
+  startForkIdleRecovery(() => state.store?.getSettings(), {
+    store: () => state.store,
+    runtime: () => state.runtime
+  })
   void app.whenReady().then(async () => {
     try {
       await wslHostsGateReady
