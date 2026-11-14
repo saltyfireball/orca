@@ -279,7 +279,13 @@ export function createIdleRecoveryService(overrides: Partial<IdleRecoveryService
     async readStatus(): Promise<ForkIdleRecoveryStatusResult> {
       const settings = settingsNow()
       const on = settings.mode !== 'off'
-      const items = on ? listIdleRecoveryInboxItems(await loadedState()) : []
+      const pausedIds = new Set(settings.paused)
+      // A paused row is frozen as it was, so it is in neither count (the inbox shows it apart).
+      const items = on
+        ? listIdleRecoveryInboxItems(await loadedState()).filter(
+            (item) => !pausedIds.has(item.chatId)
+          )
+        : []
       return {
         mode: settings.mode,
         running: on && stopTimer !== null,
