@@ -21,6 +21,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { ForkNumberInput } from '../cache-cold/ForkNumberInput'
+import { ForkIdleRecoveryPausedList } from './ForkIdleRecoveryPausedList'
 
 type Props = {
   settings: GlobalSettings
@@ -249,6 +250,7 @@ export function ForkIdleRecoverySetting({ settings, updateSettings }: Props): Re
         )}
         disabled={off}
       />
+      <ForkIdleRecoveryPausedList settings={settings} updateSettings={updateSettings} />
     </section>
   )
 }
