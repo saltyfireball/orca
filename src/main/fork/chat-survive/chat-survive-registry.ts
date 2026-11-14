@@ -5,6 +5,7 @@
 import { chmod, mkdir, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
+import type { ChatSurviveLaunchPrint } from './chat-survive-launch-hash'
 import {
   createChatSurviveStreamTracker,
   type ChatSurviveStreamMark,
@@ -17,8 +18,8 @@ export type ChatSurviveRecord = {
   brokerPid: number
   socketPath: string
   token: string
-  /** `chatSurviveLaunchHash` of the provider's launch; adoption needs the same one. */
-  launch?: string
+  /** `chatSurviveLaunchPrint` of the provider's launch; adoption needs the same one. */
+  launch?: ChatSurviveLaunchPrint
   /** Written by the quit hook once the broker carries the provider on alone. */
   detached?: ChatSurviveStreamMark & { fence: number }
 }
