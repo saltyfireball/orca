@@ -31,7 +31,9 @@ const NOTE: Record<LostWorkNote['code'], string> = {
   'folder-project': 'skipped: not a git project',
   'no-default-branch': 'no default branch found; set one in Settings > Advanced > Lost work',
   'git-error': 'git failed',
-  'pull-requests-unavailable': 'pull requests not read (GitHub CLI missing or signed out)'
+  'pull-requests-unavailable':
+    'pull requests not read (GitHub CLI missing, signed out or out of time)',
+  'shared-repository': 'same repository, listed under'
 }
 
 function count(value: number | null): string {
