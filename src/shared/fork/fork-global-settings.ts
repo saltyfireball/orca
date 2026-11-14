@@ -95,6 +95,16 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkInboxNotifyWebhookUrl?: string
     /** Fork decision inbox: a command run when a chat starts waiting on you; unset is none. Set it in the Settings screen. */
     forkInboxNotifyCommand?: string
+    /** Fork boundary compaction: 'on' asks an idle native chat to compact between turns once its context is large; unset is 'off'. */
+    forkBoundaryCompactMode?: 'off' | 'on'
+    /** Fork boundary compaction: context size, in tokens, from which a chat is compacted; unset is 120000. */
+    forkBoundaryCompactThresholdTokens?: number
+    /** Fork boundary compaction: seconds a chat rests after its turn before it may be compacted; unset is 120. */
+    forkBoundaryCompactIdleSeconds?: number
+    /** Fork boundary compaction: wait until the chat's prompt cache has expired; unset is on. */
+    forkBoundaryCompactPreferCold?: boolean
+    /** Fork boundary compaction: minutes of rest after which a chat is compacted even on a warm cache; unset is 20. */
+    forkBoundaryCompactMaxWaitMinutes?: number
   }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */
