@@ -143,8 +143,30 @@ named Orca Fork until SLRM-1367. `main` is always
     their shape. Settings: pull request time limit (20 seconds), projects at once and checks
     at once (0, automatic: a quarter of the cores between 2 and 4, and half the cores between
     2 and 6; the app's git queue caps what runs at once anyway).
+  - In use (SLRM-2230). A workspace that is in use is never listed as safe to remove: its row
+    says why ("In use: agent running, 2 chats open", "Open now") and reads needs a look. The
+    dialog lays this over the scan from what the window already holds (the tabs, agent status
+    and sleeping sessions the sidebar reads), checks again every few seconds and once more
+    right before a delete. The `fork.lostWork.scan` RPC does the same from the runtime's
+    `worktree.ps` rows and the chat facts Sleepers lists, so `orca lost-work --json` rows carry
+    an optional `inUse` field and the table marks them `[in use: ...]`. The scan itself and
+    every existing field are unchanged. Deleting a row in use takes its own confirm that names
+    what is open, alone or in bulk; select all never ticks such a row, and a row that comes
+    into use after the confirm is refused. Settings (`forkLostWork.inUse`, all on): a running
+    or waiting agent, an open chat, a sleeping chat or agent, a live terminal, and the
+    workspace on screen each count.
+  - Many rows (SLRM-2230). The filter buttons show counts and a line says what each group is
+    for. Rows are grouped by project under a header that folds and has a checkbox for that
+    project's shown rows; a select-all checkbox covers the shown rows and says how many are
+    ticked. With the Safe filter on, "Delete all N safe" goes through the same confirm, which
+    states the count per kind (workspaces, branches, folders already gone, stashes). Each row
+    shows one suggested action first (`lost-work-row-actions.ts`): a gone folder, Delete
+    (forget); a stash, Save patch; in use or uncommitted files, Open; commits not pushed, Push;
+    pushed with no pull request, Create pull request; a pull request open, View pull request;
+    merged, or pull request merged or closed, Delete. A bulk action ends in a summary in the
+    dialog: how many were done, and each refused row with its reason.
   - Code is in `src/main/fork/lost-work/`, `src/renderer/src/fork/lost-work/`,
-    `src/shared/fork/lost-work.ts`, `src/preload/fork/lost-work-bridge.ts` and
+    `src/shared/fork/lost-work.ts`, `src/shared/fork/lost-work-use.ts`, `src/preload/fork/lost-work-bridge.ts` and
     `src/cli/fork/lost-work-*`.
 
 - **Sidebar agent rows count their children (SLRM-2095).** A compact agent row shows a small
@@ -697,6 +719,7 @@ Apply these in this order. Each one is a single commit.
 82. `SLRM-2216 Follow upstream 1.4.259's moved modules in fork code`
 83. `SLRM-2216 Fix the settings JSONC line on Bun and the agent queue list params for the mobile RPC fence`
 84. `SLRM-2228 Give the fork settings their own Settings pane, with one project list`
+85. `SLRM-2230 Lost work: in-use guard, select all, project groups, suggested actions, bulk summary`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
