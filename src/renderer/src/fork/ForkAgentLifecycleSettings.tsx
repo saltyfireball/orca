@@ -9,6 +9,7 @@ import { ForkChatSleepSetting } from './chat-sleep/ForkChatSleepSetting'
 import { ForkSleepersSetting } from './sleepers/ForkSleepersSetting'
 import { ForkChatStallSetting } from './chat-stall/ForkChatStallSetting'
 import { ForkWorkerCleanupSetting } from './worker-cleanup/ForkWorkerCleanupSetting'
+import { ForkIdleRecoverySetting } from './idle-recovery/ForkIdleRecoverySetting'
 import { ForkAgentQueueSetting } from './agent-queue/ForkAgentQueueSetting'
 import { ForkLaunchDefaultsSetting } from './launch-defaults/ForkLaunchDefaultsSetting'
 import { ForkMemorySettings } from './memory-truth/ForkMemorySettings'
@@ -35,6 +36,7 @@ export function ForkAgentLifecycleSettings(
       <ForkSleepersSetting {...props} />
       <ForkChatStallSetting {...props} />
       <ForkWorkerCleanupSetting {...props} />
+      <ForkIdleRecoverySetting {...props} />
       <ForkAgentQueueSetting {...props} />
       <ForkLaunchDefaultsSetting {...props} />
       <ForkMemorySettings {...props} />
