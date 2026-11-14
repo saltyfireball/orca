@@ -1,13 +1,15 @@
 {
   "schema": 1,
-  "state": "in-sync",
-  "reason": null,
-  "upstreamVersion": "1.4.258",
-  "upstreamSha": "c91a7a6ee3dc76090cafb33943961ae2235246d6",
+  "state": "conflict",
+  "reason": "Rebasing the fork commits onto v1.4.259 stopped on conflicts.",
+  "upstreamVersion": "1.4.259",
+  "upstreamSha": "980c0024741812bd7ae934c0c22144d9926a784e",
   "forkBaseVersion": "1.4.258",
   "forkBaseSha": "c91a7a6ee3dc76090cafb33943961ae2235246d6",
-  "conflicts": [],
-  "since": null,
-  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/43534842169",
-  "checkedAt": "2026-11-14T01:04:32.802Z"
+  "conflicts": [
+    "src/main/startup/configure-process.ts"
+  ],
+  "since": "2026-11-14T15:25:11.382Z",
+  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/43609897180",
+  "checkedAt": "2026-11-14T15:25:11.382Z"
 }
