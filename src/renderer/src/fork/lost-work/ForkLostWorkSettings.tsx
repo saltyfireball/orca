@@ -1,5 +1,5 @@
 // SLRM-2096 (FORK.md "Lost work"): Settings > Advanced > Lost work. Which checks the scan runs, a
-// default branch per project, where saved bundles and patches go, and two scan limits. The scan
+// default branch per project, where saved bundles and patches go, and the scan's limits. The scan
 // itself only runs from the Lost work dialog.
 import React, { useState } from 'react'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
@@ -84,6 +84,59 @@ function checkLabel(
   }
 }
 
+type LostWorkNumberSetting =
+  | 'squashLookback'
+  | 'pullRequestLimit'
+  | 'pullRequestTimeoutSeconds'
+  | 'projectConcurrency'
+  | 'itemConcurrency'
+
+/** The scan's numbers, each a plain field; an empty or invalid entry goes back to its default. */
+function numberRows(t: Translate): { key: LostWorkNumberSetting; label: string; help: string }[] {
+  return [
+    {
+      key: 'squashLookback',
+      label: t('fork.lostWork.lookbackLabel', 'Squash merge search depth'),
+      help: t(
+        'fork.lostWork.lookbackHelp',
+        'How many recent default-branch commits are compared to find a squash merge. Default 500.'
+      )
+    },
+    {
+      key: 'pullRequestLimit',
+      label: t('fork.lostWork.prLimitLabel', 'Pull requests read per project'),
+      help: t(
+        'fork.lostWork.prLimitHelp',
+        'How many recent pull requests are read for each project. Default 200.'
+      )
+    },
+    {
+      key: 'pullRequestTimeoutSeconds',
+      label: t('fork.lostWork.prTimeoutLabel', 'Pull request time limit'),
+      help: t(
+        'fork.lostWork.prTimeoutHelp',
+        'Seconds the pull request read may take per repository before the scan goes on without it. Default 20.'
+      )
+    },
+    {
+      key: 'projectConcurrency',
+      label: t('fork.lostWork.projectConcurrencyLabel', 'Repositories scanned at once'),
+      help: t(
+        'fork.lostWork.projectConcurrencyHelp',
+        'How many repositories the scan reads at the same time. 0 picks 2 to 4 from the number of cores.'
+      )
+    },
+    {
+      key: 'itemConcurrency',
+      label: t('fork.lostWork.itemConcurrencyLabel', 'Branches read at once'),
+      help: t(
+        'fork.lostWork.itemConcurrencyHelp',
+        'How many branches and worktrees of one repository are read at the same time. 0 picks 2 to 6 from the number of cores.'
+      )
+    }
+  ]
+}
+
 const CHECK_ORDER: LostWorkCheck[] = [
   'unmergedWorktrees',
   'finishedWorktrees',
@@ -137,7 +190,7 @@ export function ForkLostWorkSettings({ settings, updateSettings }: Props): React
   const resolved = resolveLostWorkSettings(stored)
   const repos = useAppStore((s) => s.repos).filter((repo) => !isFolderRepo(repo))
   const save = (next: LostWorkSettings) => updateSettings({ forkLostWork: { ...stored, ...next } })
-  const saveNumber = (key: 'squashLookback' | 'pullRequestLimit', text: string) => {
+  const saveNumber = (key: LostWorkNumberSetting, text: string) => {
     const value = Number(text.trim())
     save({ [key]: text.trim() === '' || !Number.isInteger(value) ? undefined : value })
   }
@@ -205,36 +258,21 @@ export function ForkLostWorkSettings({ settings, updateSettings }: Props): React
           </div>
         }
       />
-      <SettingsRow
-        label={t('fork.lostWork.lookbackLabel', 'Squash merge search depth')}
-        description={t(
-          'fork.lostWork.lookbackHelp',
-          'How many recent default-branch commits are compared to find a squash merge. Default 500.'
-        )}
-        control={
-          <CommitInput
-            className="w-24"
-            value={String(resolved.squashLookback)}
-            ariaLabel={t('fork.lostWork.lookbackLabel', 'Squash merge search depth')}
-            onCommit={(value) => saveNumber('squashLookback', value)}
-          />
-        }
-      />
-      <SettingsRow
-        label={t('fork.lostWork.prLimitLabel', 'Pull requests read per project')}
-        description={t(
-          'fork.lostWork.prLimitHelp',
-          'How many recent pull requests are read for each project. Default 200.'
-        )}
-        control={
-          <CommitInput
-            className="w-24"
-            value={String(resolved.pullRequestLimit)}
-            ariaLabel={t('fork.lostWork.prLimitLabel', 'Pull requests read per project')}
-            onCommit={(value) => saveNumber('pullRequestLimit', value)}
-          />
-        }
-      />
+      {numberRows(t).map(({ key, label, help }) => (
+        <SettingsRow
+          key={key}
+          label={label}
+          description={help}
+          control={
+            <CommitInput
+              className="w-24"
+              value={String(resolved[key])}
+              ariaLabel={label}
+              onCommit={(value) => saveNumber(key, value)}
+            />
+          }
+        />
+      ))}
       {repos.length > 0 ? (
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">

@@ -7,7 +7,8 @@ import { abortWhenRendererGone } from '../../ipc/renderer-lifetime-abort'
 import {
   LOST_WORK_CHANNELS,
   type LostWorkActionArgs,
-  type LostWorkScanArgs
+  type LostWorkScanArgs,
+  type LostWorkScanProgressEvent
 } from '../../../shared/fork/lost-work'
 import {
   runForkLostWorkAction,
@@ -42,7 +43,14 @@ export function installForkLostWork(store: Store): void {
       return await runForkLostWorkScan(
         store,
         controller.signal,
-        repoIds ? (repo) => repoIds.has(repo.id) : undefined
+        repoIds ? (repo) => repoIds.has(repo.id) : undefined,
+        // SLRM-2175: the dialog shows projects done of total and each repository's rows as it ends.
+        (progress) => {
+          if (isScanId(args?.scanId) && !controller.signal.aborted && !event.sender.isDestroyed()) {
+            const payload: LostWorkScanProgressEvent = { scanId: args.scanId, ...progress }
+            event.sender.send(LOST_WORK_CHANNELS.progress, payload)
+          }
+        }
       )
     } finally {
       lifetime.dispose()

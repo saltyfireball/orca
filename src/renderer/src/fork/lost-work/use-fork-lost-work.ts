@@ -16,6 +16,7 @@ import {
   openLostWorkWorkspace
 } from './lost-work-actions'
 import type { LostWorkRowAction } from './ForkLostWorkRow'
+import { mergeLostWorkProgress, type LostWorkProgressLine } from './lost-work-progress'
 
 /** A delete waits here: stage 1 for every delete, stage 2 when any item would lose work. */
 export type LostWorkPendingDelete = { items: LostWorkItem[]; stage: 1 | 2 }
@@ -91,6 +92,7 @@ async function scanOnce(
 export function useForkLostWork() {
   const [result, setResult] = useState<LostWorkScanResult | null>(null)
   const [scanning, setScanning] = useState(false)
+  const [progress, setProgress] = useState<LostWorkProgressLine | null>(null)
   const [busy, setBusy] = useState(false)
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const [pendingDelete, setPendingDelete] = useState<LostWorkPendingDelete | null>(null)
@@ -104,7 +106,20 @@ export function useForkLostWork() {
     const id = nextScanId()
     scanId.current = id
     setScanning(true)
+    setProgress(null)
+    // SLRM-2175: rows arrive as each repository finishes, not when the whole scan ends.
+    const unsubscribe = lostWork.onScanProgress((event) => {
+      if (event.scanId !== id || scanId.current !== id) {
+        return
+      }
+      setProgress({ done: event.done, total: event.total, current: event.current })
+      const { finished } = event
+      if (finished) {
+        setResult((current) => mergeLostWorkProgress(current, finished, Date.now()))
+      }
+    })
     const next = await scanOnce(lostWork, id, () => scanId.current === id)
+    unsubscribe()
     if (scanId.current === id) {
       if (next) {
         setResult(next)
@@ -220,6 +235,7 @@ export function useForkLostWork() {
   return {
     result,
     scanning,
+    progress,
     busy,
     selected,
     setSelected,
