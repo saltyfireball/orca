@@ -99,6 +99,12 @@ export function lostWorkNoteLabel(note: LostWorkNote, t: Translate = translate):
         'fork.lostWork.note.noPullRequests',
         'Pull requests not read: the GitHub CLI is missing or signed out.'
       )
+    case 'shared-repository':
+      return t(
+        'fork.lostWork.note.sharedRepository',
+        'Same repository as {{name}}: its branches and stashes are listed there.',
+        { name: note.detail ?? '' }
+      )
   }
 }
 

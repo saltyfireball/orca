@@ -11,11 +11,16 @@ export type LostWorkBase = {
   ref: string
   /** The local branch name, so worktrees on the default branch itself are skipped. */
   branch: string
+  /** The commit `ref` pointed at when the scan resolved it. */
+  oid?: string
 }
+
+/** A full commit id, SHA-1 or SHA-256. */
+export const LOST_WORK_OID = /^[0-9a-f]{40,64}$/
 
 const FALLBACK_DEFAULT_BRANCHES = ['main', 'master', 'trunk', 'develop']
 
-async function tryGit(
+export async function tryGit(
   git: LostWorkGit,
   args: string[],
   options: LostWorkGitOptions
@@ -30,17 +35,23 @@ async function tryGit(
   }
 }
 
-async function refExists(
+/** The commit a ref points at, or null when there is no such ref. */
+async function refCommit(
   git: LostWorkGit,
   cwd: string,
   ref: string,
   signal?: AbortSignal
-): Promise<boolean> {
+): Promise<string | null> {
   const out = await tryGit(git, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], {
     cwd,
     signal
   })
-  return out !== null && out.trim().length > 0
+  const oid = out?.trim() ?? ''
+  return oid.length > 0 ? oid : null
+}
+
+function baseOf(ref: string, branch: string, oid: string): LostWorkBase {
+  return { ref, branch, ...(LOST_WORK_OID.test(oid) ? { oid } : {}) }
 }
 
 async function listRemotes(git: LostWorkGit, cwd: string, signal?: AbortSignal) {
@@ -64,14 +75,13 @@ async function pickBaseRef(
   signal?: AbortSignal
 ): Promise<LostWorkBase | null> {
   for (const remote of remotes) {
-    if (await refExists(git, cwd, `refs/remotes/${remote}/${branch}`, signal)) {
-      return { ref: `${remote}/${branch}`, branch }
+    const oid = await refCommit(git, cwd, `refs/remotes/${remote}/${branch}`, signal)
+    if (oid) {
+      return baseOf(`${remote}/${branch}`, branch, oid)
     }
   }
-  if (await refExists(git, cwd, `refs/heads/${branch}`, signal)) {
-    return { ref: branch, branch }
-  }
-  return null
+  const oid = await refCommit(git, cwd, `refs/heads/${branch}`, signal)
+  return oid ? baseOf(branch, branch, oid) : null
 }
 
 /** The branch work is meant to land on: the override, the remote's HEAD, or a common name. */
@@ -264,29 +274,6 @@ export async function readLastCommitAt(
 }
 
 export type LostWorkLocalBranch = { name: string; head: string; committedAt: number | null }
-
-export async function listLocalBranches(
-  git: LostWorkGit,
-  cwd: string,
-  signal?: AbortSignal
-): Promise<LostWorkLocalBranch[]> {
-  const out = await git(
-    [
-      'for-each-ref',
-      '--format=%(refname:short)%00%(objectname)%00%(committerdate:unix)',
-      'refs/heads'
-    ],
-    { cwd, signal }
-  )
-  return out
-    .split('\n')
-    .map((line) => line.split('\0'))
-    .filter((parts) => parts.length === 3 && parts[0] && isSafeRefName(parts[0]))
-    .map(([name, head, date]) => {
-      const seconds = Number.parseInt(date, 10)
-      return { name, head, committedAt: Number.isFinite(seconds) ? seconds * 1000 : null }
-    })
-}
 
 export type LostWorkStash = {
   index: number
