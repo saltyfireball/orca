@@ -87,7 +87,9 @@ export type ForkAgentQueueApi = {
 
 const Id = z.string().trim().min(1).max(512)
 
-export const ForkAgentQueueListParams = z.object({}).passthrough()
+// A plain empty object, like the fork's other no-argument methods: the mobile RPC fence refuses a
+// schema whose parsed shape is wider than what a sender may send.
+export const ForkAgentQueueListParams = z.object({})
 
 /** Where one launch stands; `wait` lets a launch that just returned reach its gate first. */
 export const ForkAgentQueueStatusParams = z
