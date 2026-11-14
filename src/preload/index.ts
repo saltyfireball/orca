@@ -96,6 +96,7 @@ import { speechApi } from './api/speech/speech-bridge'
 import { forkUpdateInstallWaitApi } from './fork/update-install-wait-bridge'
 import { forkLostWorkApi } from './fork/lost-work-bridge'
 import { forkChatSleepApi } from './fork/chat-sleep-bridge'
+import { forkBoundaryCompactionApi } from './fork/boundary-compaction-bridge'
 import { forkMemoryApi } from './fork/memory-truth-bridge'
 import { forkAgentQueueApi } from './fork/agent-queue-bridge'
 import { forkChatStallApi } from './fork/chat-stall-bridge'
@@ -188,6 +189,7 @@ const api = {
   forkUpdateInstallWait: forkUpdateInstallWaitApi,
   forkLostWork: forkLostWorkApi,
   forkChatSleep: forkChatSleepApi,
+  forkBoundaryCompaction: forkBoundaryCompactionApi,
   forkMemory: forkMemoryApi,
   forkAgentQueue: forkAgentQueueApi,
   forkChatStall: forkChatStallApi,
