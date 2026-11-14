@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import type { StructuredAgentSessionAttachContext } from '../../native-chat/agent-session-wire/acquisition/structured-agent-session-attach-context'
 import { startStructuredAgentSessionAgentForOperation } from '../../native-chat/agent-session-wire/startup/structured-agent-session-agent-start'
 import { ORCA_AGENT_SESSION_ID_ENV } from '../../../shared/agent-session/lifecycle/agent-session-caller-env'
+import { chatSurviveBackoffPoll } from './chat-survive-backoff-poll'
 import { connectChatSurviveBroker, type ChatSurviveConnection } from './chat-survive-client'
 import {
   dropChatSurviveClaim,
@@ -17,16 +18,48 @@ import {
   holdChatSurviveClaim,
   type ChatSurviveClaim
 } from './chat-survive-claims'
+import { readChatSurviveLaunchPrint } from './chat-survive-launch-hash'
 import { isRecord } from './chat-survive-protocol'
-import type { ChatSurviveRecord } from './chat-survive-registry'
+import { removeChatSurviveRecord, type ChatSurviveRecord } from './chat-survive-registry'
 import { chatSurviveConfig, chatSurviveRecordName } from './chat-survive-spawn'
 import type { ChatSurviveStreamMark } from './chat-survive-stream-mark'
+import { chatSurviveBrokerAlive } from './chat-survive-sweep'
 
 /** How long recovery waits for a surviving broker to answer before stopping it as today. */
 const CLAIM_TIMEOUT_MS = 2_000
 
-/** A record without the hash of its launch is never adopted. */
-const LAUNCH_HASH = /^[0-9a-f]{64}$/
+/** How long a record waits for the owner recovery is stopping; after that the next start sweeps it. */
+const FORGET_WITHIN_MS = 60_000
+
+const forgetting = new Set<string>()
+
+/**
+ * Recovery stops an owner it does not adopt, and the app instance that would have removed the
+ * broker's record at its exit has quit. So the record (it holds a token) is removed here once the
+ * broker is gone, instead of at the next app start.
+ */
+function forgetRecordOnceGone(recordPath: string, brokerPid: number, now = Date.now): void {
+  if (forgetting.has(recordPath)) {
+    return
+  }
+  forgetting.add(recordPath)
+  const deadline = now() + FORGET_WITHIN_MS
+  chatSurviveBackoffPoll(
+    () => {
+      const gone = !chatSurviveBrokerAlive(brokerPid)
+      if (gone) {
+        void removeChatSurviveRecord(recordPath)
+      }
+      const done = gone || now() >= deadline
+      if (done) {
+        forgetting.delete(recordPath)
+      }
+      return done
+    },
+    100,
+    2_000
+  )
+}
 
 type DetachedRecord = ChatSurviveRecord & {
   sessionId: string
@@ -75,19 +108,21 @@ async function readDetachedRecord(
   }
   const { v, sessionId: id, brokerPid, socketPath, token, launch, detached } = raw
   const mark = readMark(detached)
+  // A record without its launch fingerprint, or with one in an earlier format (the single hash
+  // of earlier releases), is never adopted.
+  const print = readChatSurviveLaunchPrint(launch)
   if (
     v !== 1 ||
     id !== sessionId ||
     brokerPid !== pid ||
     typeof socketPath !== 'string' ||
     typeof token !== 'string' ||
-    typeof launch !== 'string' ||
-    !LAUNCH_HASH.test(launch) ||
+    !print ||
     !mark
   ) {
     return null
   }
-  return { v: 1, sessionId, brokerPid: pid, socketPath, token, launch, detached: mark }
+  return { v: 1, sessionId, brokerPid: pid, socketPath, token, launch: print, detached: mark }
 }
 
 async function claim(record: DetachedRecord): Promise<ChatSurviveConnection | null> {
@@ -127,12 +162,23 @@ export async function forkChatSurviveAdopt(input: {
   ownerPid: number
   platform: NodeJS.Platform
 }): Promise<boolean> {
-  const config = input.platform === 'darwin' ? chatSurviveConfig() : null
+  const config = chatSurviveConfig()
   if (!config) {
     return false
   }
   const env = { [ORCA_AGENT_SESSION_ID_ENV]: input.sessionId }
   const recordPath = join(config.recordDir, chatSurviveRecordName(env, input.ownerPid))
+  const held = input.platform === 'darwin' ? await holdDetached(input, recordPath) : false
+  if (!held) {
+    forgetRecordOnceGone(recordPath, input.ownerPid)
+  }
+  return held
+}
+
+async function holdDetached(
+  input: { sessionId: string; ownerPid: number },
+  recordPath: string
+): Promise<boolean> {
   const record = await readDetachedRecord(recordPath, input.sessionId, input.ownerPid)
   const connection = record ? await claim(record) : null
   if (!record || !connection) {

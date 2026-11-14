@@ -239,15 +239,28 @@ owner-gone signal, and fences decide who may write).
    quit waits for every queued write and removal before the process ends. orcad never installs the setting reader, so it is always off there. Each
    broker gets a record `{v, sessionId, brokerPid, socketPath, token, launch}` at
    `userData/chat-survive/<sessionId>.<brokerPid>.json` (folder 0700, file 0600), removed when the
-   broker exits; a stale one after a crash names a dead pid and is harmless. At install the
+   broker exits; a stale one after a crash names a dead pid and is harmless. A broker the app
+   did not spawn has no exit to hang that removal on, so the next instance removes the record
+   itself: when it stops a claim (a refused launch check, a claim nothing took) once the broker's
+   connection has closed, and when recovery stops an owner it did not adopt, once that pid is gone
+   (asked for up to 60 s). Before that, such a record stayed until the next app start. At install the
    setting reader sweeps the folder (`chat-survive-sweep.ts`): it is set to 0700, half-written
    `.json.next` files go, and so does every record whose broker pid is dead, with its socket
    (only a socket in an `orca-chat-survive` folder). The broker entry path is looked up only
-   while the setting is on. `launch` (`chat-survive-launch-hash.ts`) is the sha256 of the
-   provider command and args after the supervisor's `--` (`--session-id` and `--resume`, spaced
-   or with `=` as the SDK writes them, count as one flag), the cwd, and the env that configures the provider (`ANTHROPIC_*`, `CLAUDE*`,
-   `ORCA_*`, `MCP_*`, `DISABLE_*`, `ENABLE_*`, minus the per-spawn token and the hook runtime keys
-   the structured child never gets). PATH, XPC names and other per-launch noise are left out.
+   while the setting is on. `launch` (`chat-survive-launch-hash.ts`) is the launch fingerprint
+   `{v: 2, parts}`: a set of named parts, each the sha256 of its name and value, so two launches
+   can be compared part by part and a difference can be named without its value. The parts are
+   `command` and each arg flag (`arg:--model`, with every value given to it, in order) of the
+   provider command after the supervisor's `--`, `arg order` (the flags in the order given),
+   `session` (`--session-id` and `--resume`, spaced or with `=` as the SDK writes them, count as
+   one flag and are left out of the order), `cwd`, and one part per env key that configures the
+   provider (`env:CLAUDE_CONFIG_DIR`: `ANTHROPIC_*`, `CLAUDE*`, `ORCA_*`, `MCP_*`, `DISABLE_*`,
+   `ENABLE_*`, minus the per-spawn token, the hook runtime keys the structured child never gets
+   and `ORCA_APP_VERSION`). PATH, XPC names and other per-launch noise are left out. A flag that
+   names a file the provider reads at start (`--mcp-config`, `--settings`,
+   `--system-prompt-file`, `--append-system-prompt-file`) is compared by the path and the
+   file's content, read once in the spawn hook: a chat's MCP config keeps its path and is
+   rewritten on every start. Inline JSON is compared as written.
    - The exit-proof ladder needs no change: the managed child (and the lease owner pid) is the
      broker, which relays stdin end and SIGTERM to the supervisor and exits with its code or
      signal. In a forced teardown `killProviderWriter` finds no group-leading direct child (the
@@ -335,13 +348,49 @@ owner-gone signal, and fences decide who may write).
      next quit the same way (that hand-off uses a fence above the claim's).
    - Launch check: a running CLI keeps the model, permission mode, MCP config, settings and env it
      was started with, and a new SDK query that expects others would drive the wrong provider.
-     So the spawn hook takes a claim only when the new start's `launch` equals the record's; a
-     record without one is never claimed. On a mismatch the claim is stopped and that start throws
-     (the provider is still stopping); the chat's next start spawns as today. Any value that
-     changes between app runs only costs adoption, never correctness: the real-CLI test checks a
-     first launch and its resumes match, but which `ORCA_*` keys and MCP config entries vary in the
-     real app is not measured yet. A Fast chat that resumes a transcript adds `--settings`, so it
-     is never adopted.
+     So the spawn hook takes a claim only when every part of the new start's `launch` equals the
+     record's (a part only one side has counts as a difference). On a mismatch the claim is
+     stopped, its record removed, and that start throws (the provider is still stopping). That
+     start is the one recovery makes for the adopted chat and no message waits on it, so the chat
+     shows nothing: it is left as any restored chat without chat survive, with no provider until
+     its next send, which resumes the transcript as today. A send in the few seconds the old
+     provider takes to stop is refused with the same error and is not retried. Any value that
+     changes between app runs only costs adoption, never correctness.
+     - Each refusal logs one line, `[fork-chat-survive] chat <id>: surviving provider not
+       adopted, launch differs in: arg:--model, env:CLAUDE_CONFIG_DIR`: part names only, never a
+       value, so the log says what to look at.
+     - What only describes the app run is no part. The app puts its version in its own
+       environment (`ORCA_APP_VERSION`, for its terminals and updater), every child inherits it,
+       no provider reads it, and it changes on every update: counted as a part it refused every
+       chat after every update. It is the one key taken out. The other `ORCA_*` keys a chat's
+       provider gets are the same on a restart and on an update to the same install path (the
+       CLI command and its folder, the data folder, the chat's scratch folder, the empty pairing
+       keys, the WSL gate state), or change only when the launch really does (the account keys),
+       so they stay in the check.
+     - `CLAUDE_AGENT_SDK_VERSION` stays in the check. The SDK builds the args and speaks the
+       control protocol the adoption relies on (the second `initialize`, the redelivery of
+       pending prompts), and that was checked per SDK version, not across two. So an update
+       that also bumps the bundled SDK does not carry chats over: they stop and resume as
+       before chat survive.
+     - Still refused, by choice: another model, effort, permission mode, account, cwd, added or
+       plugin folder, MCP config (flag, path or content), settings, system prompt, user launch
+       args or provider env key. Also a chat rewound to a fork point, and a Fast chat adopted
+       by the first start after the one that created it: its first launch sets Fast mode over
+       the control channel and a resume adds `--settings`, and nothing here proves the two leave
+       the provider in the same state. Flags the app adds only after a CLI capability probe
+       answered (`--effort`, `--thinking-display`) differ when the probe had not answered on
+       one of the two launches.
+     - Not covered: what Claude reads by itself and not from the launch (its own settings and
+       MCP files when no MCP profile narrows them). The provider read those at its start, as it
+       would have without a restart.
+     - A record written before the fingerprint had this format holds a single hash in `launch`.
+       It is never claimed, so the first start after updating from such a release stops those
+       providers and the chats resume as before chat survive. From then on records carry the
+       fingerprint. A release that knows only the single hash reads a newer record the same
+       way, so a downgrade is safe too.
+     - Not measured on an installed app: one real update with the setting on, end to end. The
+       tests below build the same chat's launch under two app versions and adopt it, with a
+       stand-in for the CLI.
    - Fallbacks: a claim nothing takes within 60 s, or whose start settles without taking it, is
      stopped (today's outcome: the chat resumes from saved history). While a claim is held, and
      until its stop has finished, any other provider spawn for the chat is refused (the spawn
@@ -366,9 +415,13 @@ owner-gone signal, and fences decide who may write).
      at quit, adopted through `createClaudeCodeProcessSpawn` (same pid, the unanswered request
      replayed, nothing handled replayed, input reaching it), handed off and adopted a second time,
      then ended by stdin end with the broker gone and its record removed; claims refused for an
-     undetached record, another pid, Linux, another session, a forged token, no launch hash and
-     the setting off; a start launched otherwise stopping the claimed provider, then spawning as
-     today; the launch hash itself (`chat-survive-launch-hash.test.ts`).
+     undetached record, another pid, Linux, another session, a forged token, no launch
+     fingerprint, the single hash of earlier releases and the setting off; the same launch
+     under another app version adopted; a start launched otherwise (model, permission mode, MCP
+     config content, account, SDK version) stopping the claimed provider with one log line of
+     part names, its record removed, then spawning as today; the record of an owner that was not
+     adopted removed once it is gone; the fingerprint itself
+     (`chat-survive-launch-hash.test.ts`).
 6. **Codex** (3-4 days). Same hooks in the app-server connection. Its second `initialize` is
    refused, so the client keeps the first `initialize` answer in the session file and the adopter
    skips the handshake, then re-subscribes to the loaded thread. ACP providers after that.
