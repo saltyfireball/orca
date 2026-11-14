@@ -3,16 +3,12 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  GLOBAL_FLAGS,
-  normalizeCommandPositionals,
-  parseArgs,
-  specPaths,
-  validateCommandAndFlags
-} from '../args'
-import type { HandlerContext } from '../dispatch'
-import { formatCommandHelp } from '../help'
-import { RuntimeClientError } from '../runtime-client'
+import { normalizeCommandPositionals, parseArgs, validateCommandAndFlags } from '../arguments/args'
+import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli-argument-boundary'
+import { specPaths } from '../discovery/command-spec'
+import type { HandlerContext } from '../dispatch/dispatch'
+import { formatCommandHelp } from '../discovery/help'
+import { RuntimeClientError } from '../runtime/types'
 import { COMMAND_SPECS } from '../specs'
 import { getDefaultSettings } from '../../shared/constants'
 import { redactForkSettings } from '../../shared/fork/settings-catalog/settings-plan'

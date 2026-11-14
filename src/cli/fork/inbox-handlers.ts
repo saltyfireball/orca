@@ -1,10 +1,10 @@
 // Idle recovery (FORK.md), item E1: `orca inbox`, through the host's fork.idleRecovery.* RPC.
 // Contract: resolve an id prefix against the list, refuse a missing id or text with a usage
 // error, and print through `inbox-format.ts`. No logic about verdicts or wakes lives here.
-import type { CommandHandler, HandlerContext } from '../dispatch'
-import { getOptionalStringFlag } from '../flags'
-import { printResult } from '../format'
-import { RuntimeClientError } from '../runtime-client'
+import type { CommandHandler, HandlerContext } from '../dispatch/dispatch'
+import { getOptionalStringFlag } from '../arguments/flags'
+import { printResult } from '../output/command-result-output'
+import { RuntimeClientError } from '../runtime/types'
 import {
   FORK_IDLE_RECOVERY_METHODS as METHODS,
   type ForkIdleRecoveryAnswerResult,

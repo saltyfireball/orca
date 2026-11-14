@@ -1,9 +1,9 @@
 // Sleepers (FORK.md): `orca sleepers`, through the host's fork.sleepers.* RPC. Wake
 // uses the stock agentSession.reveal, which opens the chat on the desktop.
-import type { CommandHandler, HandlerContext } from '../dispatch'
-import { getOptionalStringFlag } from '../flags'
-import { printResult } from '../format'
-import { RuntimeClientError } from '../runtime-client'
+import type { CommandHandler, HandlerContext } from '../dispatch/dispatch'
+import { getOptionalStringFlag } from '../arguments/flags'
+import { printResult } from '../output/command-result-output'
+import { RuntimeClientError } from '../runtime/types'
 import {
   resolveSleeper,
   sortSleepers,
