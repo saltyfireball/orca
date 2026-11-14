@@ -58,23 +58,15 @@ type IdleRecoveryRuntime = Pick<
 
 let runtimeSlot: IdleRecoveryRuntime | null = null
 
-/** Hands the sweep this process's runtime. Without it the start-up state is asked instead. */
+/** Hands the sweep this process's runtime. Without it the sweep sees no worktrees. */
 export function setIdleRecoveryRuntime(runtime: IdleRecoveryRuntime | null): void {
   runtimeSlot = runtime
 }
 
+// Why no fallback read of the start-up state: that module imports Electron, and this file is
+// also bundled into the headless server. The service sets the slot before every sweep.
 async function currentRuntime(): Promise<IdleRecoveryRuntime | null> {
-  if (runtimeSlot) {
-    return runtimeSlot
-  }
-  try {
-    // Lazy: the start-up state imports electron, which this folder's sweep must not load at
-    // import time (and never loads at all while the mode is off).
-    const { mainProcessState } = await import('../../startup/main-process-state')
-    return mainProcessState.runtime
-  } catch {
-    return null
-  }
+  return runtimeSlot
 }
 
 // A task with no state (an older host) is unknown, and is not counted as running.
