@@ -1,6 +1,7 @@
 // Fork identity over the upstream builder config: own bundle id, name and userData so the fork
 // installs beside stock Orca, and its update metadata points at the fork's releases (FORK.md).
 // Keep FORK_RELEASE_OWNER in sync with src/shared/fork/fork-release-repo.ts.
+const { resolve } = require('node:path')
 const upstream = require('../../electron-builder.config.cjs')
 
 const FORK_RELEASE_OWNER = 'saltyfireball'
@@ -21,6 +22,9 @@ module.exports = {
   asarUnpack: [...upstream.asarUnpack, 'out/main/chat-survive-broker-entry.js'],
   mac: {
     ...upstream.mac,
+    // Upstream's release signer: one codesign call per group of files instead of one per file,
+    // which took most of the fork's build time. Upstream sets it only for its own release builds.
+    sign: resolve(__dirname, '../desktop-distribution/macos/sign-mac-app.mjs'),
     target: upstream.mac.target.map((entry) =>
       typeof entry === 'string'
         ? { target: entry, arch: FORK_MAC_ARCH }
