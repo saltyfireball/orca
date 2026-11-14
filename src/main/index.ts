@@ -26,6 +26,7 @@ import { installMainProcessQuitHandlers } from './startup/quit/main-process-quit
 import { shouldActivateDesktopForSecondInstance } from './startup/profile-startup/single-instance-lock'
 import { resolveOsOpenedDocuments } from './startup/open-routing/os-opened-documents'
 import { installForkRestartGuard } from './fork/restart-guard/restart-guard'
+import { startForkBoundaryCompaction } from './fork/boundary-compaction/boundary-compaction-bridge'
 import { installForkChatSleepBridge } from './fork/chat-sleep/chat-sleep-bridge'
 import { installForkMemoryWatch } from './fork/memory-truth/memory-watch'
 import { installForkAgentQueueApp } from './fork/agent-queue/agent-queue-ipc'
@@ -227,6 +228,8 @@ if (preflightReady) {
     store: () => state.store,
     runtime: () => state.runtime
   })
+  // Fork: boundary compaction, off unless switched on (FORK.md).
+  startForkBoundaryCompaction(() => state.store?.getSettings(), { store: () => state.store })
   void app.whenReady().then(async () => {
     try {
       await wslHostsGateReady
