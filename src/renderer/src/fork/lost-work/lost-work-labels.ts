@@ -9,6 +9,7 @@ import type {
   LostWorkReason,
   LostWorkRisk
 } from '../../../../shared/fork/lost-work'
+import type { LostWorkUse } from '../../../../shared/fork/lost-work-use'
 
 export function lostWorkRiskLabel(risk: LostWorkRisk, t: Translate = translate): string {
   switch (risk) {
@@ -113,4 +114,64 @@ export function lostWorkTitle(item: LostWorkItem, t: Translate = translate): str
     return item.stash?.message || t('fork.lostWork.stashTitle', 'Stash')
   }
   return item.branch || t('fork.lostWork.detachedTitle', 'Detached HEAD')
+}
+
+/** SLRM-2230: what holds a workspace open, such as "In use: agent running, 2 chats open". */
+export function lostWorkUseLabel(use: LostWorkUse, t: Translate = translate): string {
+  const parts: string[] = []
+  if (use.agentRunning) {
+    parts.push(t('fork.lostWork.use.agent', 'agent running'))
+  }
+  if (use.openChats === 1) {
+    parts.push(t('fork.lostWork.use.chat', '1 chat open'))
+  } else if (use.openChats > 1) {
+    parts.push(t('fork.lostWork.use.chats', '{{count}} chats open', { count: use.openChats }))
+  }
+  if (use.sleepingChats === 1) {
+    parts.push(t('fork.lostWork.use.sleeping', '1 chat asleep'))
+  } else if (use.sleepingChats > 1) {
+    parts.push(
+      t('fork.lostWork.use.sleepingMany', '{{count}} chats asleep', { count: use.sleepingChats })
+    )
+  }
+  if (use.liveTerminals === 1) {
+    parts.push(t('fork.lostWork.use.terminal', '1 live terminal'))
+  } else if (use.liveTerminals > 1) {
+    parts.push(
+      t('fork.lostWork.use.terminals', '{{count}} live terminals', { count: use.liveTerminals })
+    )
+  }
+  if (parts.length === 0) {
+    return t('fork.lostWork.use.openNow', 'Open now')
+  }
+  if (use.active) {
+    parts.push(t('fork.lostWork.use.onScreen', 'open now'))
+  }
+  return t('fork.lostWork.use.inUse', 'In use: {{what}}', { what: parts.join(', ') })
+}
+
+/** SLRM-2230: one line saying what a filter's rows are and what to do with them. */
+export function lostWorkFilterHint(filter: 'all' | LostWorkRisk, t: Translate = translate): string {
+  switch (filter) {
+    case 'all':
+      return t(
+        'fork.lostWork.hint.all',
+        'Each row leads with its suggested next step. Tick rows, a project or everything shown to act on many at once; rows in use are ticked only by hand.'
+      )
+    case 'safe':
+      return t(
+        'fork.lostWork.hint.safe',
+        'Merged, or the folder is already gone: nothing here exists only on this machine. These can be deleted.'
+      )
+    case 'needs-look':
+      return t(
+        'fork.lostWork.hint.needsLook',
+        'Commits that are not merged but are on a remote, an open pull request, or a workspace in use. Open the pull request or the workspace and decide.'
+      )
+    case 'would-lose-work':
+      return t(
+        'fork.lostWork.hint.wouldLose',
+        'Commits on no remote, uncommitted files, or a stash. Push or save these before you delete anything.'
+      )
+  }
 }
