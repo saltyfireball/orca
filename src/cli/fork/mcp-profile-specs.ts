@@ -14,7 +14,7 @@ export const FORK_MCP_PROFILE_COMMAND_SPECS: CommandSpec[] = [
     notes: [
       'Reads Claude Code config the way Claude does: user servers, local servers for the folder, and approved .mcp.json servers from the folder up. Nothing is changed.',
       'Without --folder only user servers are listed. Server env, headers and arguments are never shown.',
-      'Profiles are set in Settings > Advanced > MCP profiles. "all" (every server, as stock) and "none" are built in.',
+      'Profiles are set in Settings > Blackfish > MCP profiles. "all" (every server, as stock) and "none" are built in.',
       'Profiles apply to Claude chats only. Terminal agents, Codex and other agents load their servers as usual.'
     ],
     examples: ['orca mcp-profile list', 'orca mcp-profile list --folder /projects/myapp --json']
