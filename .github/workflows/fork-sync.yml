@@ -270,13 +270,18 @@ jobs:
   # Upstream's desktop_template assembles the template with upstream's package.json version, so a
   # host would report 1.4.253 under a 1.4.253NNN app and look out of date. This assembles it again
   # from the same qualified lane slots, as desktop_template does, with the fork version stamped.
+  # It starts beside the lanes and sets itself up while they run, then waits for them in a step:
+  # `needs: orcad-template` would start it only after upstream's own assembly had finished too.
   orcad-template-fork:
-    needs: [sync, orcad-template]
-    if: github.repository != 'stablyai/orca' && needs.orcad-template.result == 'success'
+    needs: sync
+    if: >-
+      github.repository != 'stablyai/orca' &&
+      (needs.sync.outputs.changed == 'true' || needs.sync.outputs.released != 'true' || inputs.force_build)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 75
     permissions:
       contents: read
+      actions: read
     env:
       ORCA_BACKGROUND_LAUNCH: '1'
     steps:
@@ -291,6 +296,15 @@ jobs:
         env:
           FORK_VERSION: ${{ needs.sync.outputs.version }}
         run: npm pkg set "version=$FORK_VERSION"
+      # The first `pnpm run` after the stamp checks the install again and builds the native modules.
+      # Paid here, during the wait, not after it.
+      - name: Warm the install
+        run: pnpm run build:packages
+      # Passes once every lane has succeeded and uploaded its slot. Fails as soon as one fails.
+      - name: Wait for every template qualification lane
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node config/scripts/fork/fork-run-gate.mjs lanes
       - name: Collect every lane's slot
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -345,16 +359,18 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  # Starts beside the template lanes: everything up to packaging needs no template. It waits in
+  # steps for the template it packages and, before publishing, for the whole qualification.
   build-mac:
-    needs: [sync, orcad-template-fork]
+    needs: sync
     if: >-
       github.repository != 'stablyai/orca' &&
-      needs.orcad-template-fork.result == 'success' &&
       (needs.sync.outputs.changed == 'true' || needs.sync.outputs.released != 'true' || inputs.force_build)
     runs-on: macos-15
     timeout-minutes: 90
     permissions:
       contents: write
+      actions: read
     env:
       ORCA_BACKGROUND_LAUNCH: '1'
       # Mirrors release-mac-build.yml job env: Vite's web build passes Node's default old-space ceiling.
@@ -433,6 +449,18 @@ jobs:
             exit 1
           fi
 
+      # Typecheck, the desktop bundles and the native helpers: none of them reads the template.
+      - name: Build the app's parts
+        env:
+          FORK_VERSION: ${{ needs.sync.outputs.version }}
+        run: node config/scripts/fork/build-mac-fork.mjs --prerequisites
+
+      # Fails as soon as that job, or a lane it waits for, fails.
+      - name: Wait for the orcad deployment template
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node config/scripts/fork/fork-run-gate.mjs fork-template
+
       # electron-builder ships out/orcad-template as Contents/Resources/orcad-template.
       - name: Download the orcad deployment template
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -440,12 +468,12 @@ jobs:
           name: orcad-template-fork
           path: out/orcad-template
 
-      - name: Build app
+      - name: Package and sign the app
         env:
           FORK_VERSION: ${{ needs.sync.outputs.version }}
           # beforePack fails the build when the template manifest is missing.
           ORCA_REQUIRE_ORCAD_TEMPLATE: '1'
-        run: node config/scripts/fork/build-mac-fork.mjs
+        run: node config/scripts/fork/build-mac-fork.mjs --package
 
       - name: Verify the shipped orcad template
         env:
@@ -494,6 +522,13 @@ jobs:
             echo "::error::Expected $FORK_VERSION, latest-mac.yml has $feed and the app has $app"
             exit 1
           fi
+
+      # The release goes out only after every job of the upstream template workflow has passed,
+      # its own assembly included: what `needs: orcad-template` used to hold this job for.
+      - name: Require the template qualification
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node config/scripts/fork/fork-run-gate.mjs qualified
 
       - name: Publish release
         env:
