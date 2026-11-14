@@ -22,6 +22,7 @@ import { getNativeChatSplitQuickActions } from './native-chat-split-quick-action
 import { getForkClaudeMoveQuickActions } from '@/fork/claude-account-move/fork-claude-move-quick-actions'
 import { getForkLostWorkQuickActions } from '@/fork/lost-work/fork-lost-work-quick-actions'
 import { getForkSleepersQuickActions } from '@/fork/sleepers/fork-sleepers-quick-actions'
+import { getForkDecisionInboxQuickActions } from '@/fork/decision-inbox/fork-decision-inbox-quick-actions'
 import { getForkUsageReportQuickActions } from '@/fork/usage-report/fork-usage-report-quick-actions'
 
 export type CmdJQuickActionRunResult =
@@ -185,6 +186,7 @@ export const getCmdJQuickActions = createLocalizedCatalog((): CmdJQuickAction[] 
   ...getForkClaudeMoveQuickActions(),
   // Fork: open the Sleepers dialog (FORK.md).
   ...getForkSleepersQuickActions(),
+  ...getForkDecisionInboxQuickActions(),
   ...getForkLostWorkQuickActions(),
   // SLRM-2104: open the usage report (FORK.md).
   ...getForkUsageReportQuickActions(),
