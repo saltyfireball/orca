@@ -1,7 +1,8 @@
 // Idle recovery (FORK.md), item E1: `orca inbox`, the Decision inbox from the CLI.
 // Contract: the three commands below, each through one `fork.idleRecovery.*` RPC of the host.
 // The command names are fixed here because the start-up command list names `inbox`.
-import { GLOBAL_FLAGS, type CommandSpec } from '../args'
+import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli-argument-boundary'
+import type { CommandSpec } from '../discovery/command-spec'
 
 const ID_NOTE =
   'An id is a chat session id or a terminal agent pane key, as `orca inbox list` prints it; a unique prefix is enough.'

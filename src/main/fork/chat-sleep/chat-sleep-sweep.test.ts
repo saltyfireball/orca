@@ -116,6 +116,7 @@ describe('the stock idle sweep with the keepAwake hook', () => {
       store: {} as StructuredAgentSessionIdleSweepDeps['store'],
       stopAgent: vi.fn(async () => {}),
       stopStartingAgent: vi.fn(async () => {}),
+      startTimed: () => false,
       closeConversation,
       logger: { warn: vi.fn() } as unknown as StructuredAgentSessionIdleSweepDeps['logger'],
       idleMs: () => 60_000,

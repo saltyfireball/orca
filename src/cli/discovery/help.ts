@@ -11,7 +11,7 @@ import { formatCommandScopedFlagHelp } from './command-scoped-flag-help'
 import { FLAG_HELP_TEXT } from './flag-help-text'
 import { ROOT_HELP_TEXT_PRIMARY } from './root-help-text-primary'
 import { ROOT_HELP_TEXT_SECONDARY } from './root-help-text-secondary'
-import { forkSettingsFlagHelp, withForkSettingsRootHelp } from './fork/settings-specs'
+import { forkSettingsFlagHelp, withForkSettingsRootHelp } from '../fork/settings-specs'
 
 // Fork (FORK.md "Settings from the CLI"): adds the Settings section.
 const ROOT_HELP_TEXT = withForkSettingsRootHelp(

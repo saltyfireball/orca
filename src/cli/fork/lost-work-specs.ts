@@ -1,5 +1,6 @@
 // SLRM-2096 (FORK.md "Lost work"): `orca lost-work`.
-import { GLOBAL_FLAGS, type CommandSpec } from '../args'
+import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli-argument-boundary'
+import type { CommandSpec } from '../discovery/command-spec'
 
 export const FORK_LOST_WORK_COMMAND_SPECS: CommandSpec[] = [
   {
