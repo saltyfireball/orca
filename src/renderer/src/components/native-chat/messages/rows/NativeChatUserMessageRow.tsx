@@ -17,6 +17,7 @@ import { NativeChatMessageTimestamp } from './NativeChatMessageTimestamp'
 import { NativeChatAgentMessageCard } from './NativeChatAgentMessageCard'
 import { NativeChatDetailsDisclosure } from '../diagnostics/NativeChatProviderDetails'
 import { NativeChatImageAttachments } from '../../media/images/NativeChatImageAttachments'
+import { ForkBoundaryCompactionMark } from '../../../../fork/boundary-compaction/ForkBoundaryCompaction'
 import type { deriveNativeChatRowContent } from '../../../../../../shared/native-chat/transcript/native-chat-row-content'
 
 const USER_META_REVEAL =
@@ -149,6 +150,7 @@ export function NativeChatUserMessageRow({
           <span>{t('components.native-chat.goal.sentAsGoal', 'Sent as goal')}</span>
         </div>
       ) : null}
+      <ForkBoundaryCompactionMark messageId={message.id} />
       {!from ? (
         <UserMessageMeta
           markdown={markdown}

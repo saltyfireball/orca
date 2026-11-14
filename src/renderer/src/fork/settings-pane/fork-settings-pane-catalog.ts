@@ -63,7 +63,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
       t('fork.settingsPane.chats.title', 'Chats'),
       t(
         'fork.settingsPane.chats.description',
-        'How chats survive a restart, sleep, stall and choose their MCP servers.'
+        'How chats survive a restart, sleep, stall, compact and choose their MCP servers.'
       ),
       [
         {
@@ -105,6 +105,14 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
             'Say when a chat has sat idle long enough for its prompt cache to expire.'
           ),
           keywords: words('cache', 'prompt cache', 'compact', 'cost', 'forkCacheColdCue')
+        },
+        {
+          title: t('fork.boundaryCompaction.title', 'Boundary compaction (experimental)'),
+          description: t(
+            'fork.settingsPane.search.boundaryCompaction',
+            'Ask an idle chat with a large context to compact between turns.'
+          ),
+          keywords: words('compact', 'context', 'idle', 'threshold', 'forkBoundaryCompactMode')
         },
         {
           title: t('fork.mcpProfiles.setting.title', 'MCP profiles'),

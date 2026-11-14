@@ -88,6 +88,7 @@ import type {
 import type { ForkUpdateInstallWaitApi } from '../shared/fork/update-install-wait'
 import type { ForkLostWorkApi } from '../shared/fork/lost-work'
 import type { ForkChatSleepApi } from '../shared/fork/chat-sleep'
+import type { ForkBoundaryCompactionApi } from '../shared/fork/boundary-compaction'
 import type { ForkMemoryApi } from '../shared/fork/memory-truth'
 import type { ForkAgentQueueApi } from '../shared/fork/agent-queue'
 import type { ForkChatStallApi } from '../shared/fork/chat-stall'
@@ -164,6 +165,8 @@ export type PreloadApi = {
   forkLostWork?: ForkLostWorkApi
   /** Fork chat sleep; desktop only. */
   forkChatSleep?: ForkChatSleepApi
+  /** Fork boundary compaction; desktop only. */
+  forkBoundaryCompaction?: ForkBoundaryCompactionApi
   /** Fork memory warning (SLRM-2099); desktop only. */
   forkMemory?: ForkMemoryApi
   forkAgentQueue?: ForkAgentQueueApi
