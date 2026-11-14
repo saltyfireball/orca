@@ -1,4 +1,5 @@
 import { ForkChatSleepReporter } from './chat-sleep/ForkChatSleep'
+import { ForkDecisionInboxHost } from './decision-inbox/ForkDecisionInboxHost'
 import { ForkLostWorkHost } from './lost-work/ForkLostWorkHost'
 import { ForkSleepersDialogHost } from './sleepers/ForkSleepersDialog'
 import { ForkUsageReportHost } from './usage-report/ForkUsageReportDialog'
@@ -16,6 +17,7 @@ export function ForkRootHosts(): React.JSX.Element {
       <ForkSleepersDialogHost />
       <ForkUsageReportHost />
       <ForkLostWorkHost />
+      <ForkDecisionInboxHost />
     </>
   )
 }
