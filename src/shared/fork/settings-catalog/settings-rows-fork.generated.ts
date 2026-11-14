@@ -15,6 +15,28 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Finished children count toward that total; unset is on.","o":true}',
   forkChildTallyCountTasks:
     '{"t":{"k":"boolean"},"d":"Background shell tasks and monitors count as children; unset is on.","o":true}',
+  forkIdleSweepClassifierCommand:
+    '{"t":{"k":"string"},"d":"Idle recovery: the command that judges an ending (JSON on stdin, a JSON verdict on stdout); unset uses the built-in check. Set it in the Settings screen.","o":true}',
+  forkIdleSweepClassifierTimeoutSeconds:
+    '{"t":{"k":"number"},"d":"Idle recovery: seconds the classifier command may run; unset is 30.","o":true}',
+  forkIdleSweepIdleSeconds:
+    '{"t":{"k":"number"},"d":"Idle recovery: seconds a chat sits idle after its turn before its ending is judged; unset is 45.","o":true}',
+  forkIdleSweepMaxWakes:
+    '{"t":{"k":"number"},"d":"Idle recovery: most wake messages sent to a chat for one request; unset is 2.","o":true}',
+  forkIdleSweepMode:
+    '{"t":{"k":"enum","values":["inbox","off","wake"]},"d":"Idle recovery: \'off\', \'inbox\' (list chats waiting on you) or \'wake\' (also wake stalled chats); unset is \'off\'.","o":true}',
+  forkIdleSweepPaused:
+    '{"t":{"k":"array","of":{"k":"string"}},"d":"Idle recovery: chat ids it leaves alone; unset is none.","o":true}',
+  forkIdleSweepRecheckMaxMinutes:
+    '{"t":{"k":"number"},"d":"Idle recovery: longest wait, in minutes, a verdict may ask for before the next look; unset is 60.","o":true}',
+  forkIdleSweepWorkers:
+    '{"t":{"k":"enum","values":["include","skip"]},"d":"Idle recovery: \'skip\' leaves orchestration workers alone, \'include\' judges them too; unset is \'skip\'.","o":true}',
+  forkInboxNotifyCommand:
+    '{"t":{"k":"string"},"d":"Decision inbox: a command run when a chat starts waiting on you; unset is none. Set it in the Settings screen.","o":true}',
+  forkInboxNotifyDesktop:
+    '{"t":{"k":"boolean"},"d":"Decision inbox: show a desktop notification when a chat starts waiting on you. Off unless true.","o":true}',
+  forkInboxNotifyWebhookUrl:
+    '{"t":{"k":"string"},"d":"Decision inbox: an http(s) address that gets a POST when a chat starts waiting on you; unset is none. Set it in the Settings screen.","o":true}',
   forkLaunchDefaults:
     '{"t":{"k":"object","fields":{"automation":{"k":"record","of":{"k":"object","fields":{"model":{"k":"string","optional":true},"effort":{"k":"string","optional":true}}},"optional":true},"cli":{"k":"record","of":{"k":"object","fields":{"model":{"k":"string","optional":true},"effort":{"k":"string","optional":true}}},"optional":true},"worker":{"k":"record","of":{"k":"object","fields":{"model":{"k":"string","optional":true},"effort":{"k":"string","optional":true}}},"optional":true}}},"d":"Launch defaults: model and effort per launch kind and agent; empty is stock.","o":true}',
   forkLostWork:

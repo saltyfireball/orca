@@ -591,6 +591,7 @@ Apply these in this order. Each one is a single commit.
 71. `SLRM-2138 Fork main passes every push and pull request check`
 72. `SLRM-2160 Settings from the CLI: orca settings lists, edits, exports and applies every setting`
 73. `SLRM-2175 Lost work scan: batched git reads, shared repositories read once, progress`
+74. `SLRM-2196 Idle recovery skeleton: settings, contracts and hooks, off by default`
 
 `AppRootSurfaces.tsx` carries one hook for the fork's always-mounted hosts: `ForkRootHosts`
 (`src/renderer/src/fork/ForkRootHosts.tsx`) renders `ForkChatSleepReporter`,
@@ -945,6 +946,19 @@ Upstream files only get short hooks, which keeps rebases small:
     `ForkWorkerCleanupSetting`. The held mark renders inside the existing `ForkTabTitle` and
     `ForkClaudeAccountAgentRowChip` hooks. The settings are in
     `src/shared/fork/fork-global-settings.ts`.
+
+- Idle recovery and the Decision inbox, from `src/shared/fork/idle-recovery*.ts`,
+  `src/main/fork/idle-recovery/`, `src/renderer/src/fork/decision-inbox/` and
+  `src/renderer/src/fork/idle-recovery/`. Off unless `forkIdleSweepMode` is set:
+  - `src/main/index.ts` calls `installForkIdleRecoveryBridge()` and `startForkIdleRecovery(...)`
+    after `installForkSyncStatusBridge()`. `src/preload/index.ts` adds `forkIdleRecovery`
+    (`src/preload/fork/idle-recovery-bridge.ts`) and `api-types.ts` types it as optional.
+  - `rpc-method-registry.ts` spreads `FORK_IDLE_RECOVERY_RPC_METHODS`, `src/cli/specs/index.ts`
+    spreads `FORK_INBOX_COMMAND_SPECS` and `cli-command-names.ts` lists `inbox`.
+  - `quick-actions.ts` spreads `getForkDecisionInboxQuickActions()` and `SidebarToolbar.tsx`
+    renders `ForkDecisionInboxButton`; both give nothing while the mode is off.
+  - `orca settings` cannot write the classifier command, the notification command or the
+    webhook address (`settings-access.ts`, kind `runs-command`); the Settings screen can.
 
 - Launch defaults (SLRM-2102), from `src/shared/fork/launch-defaults/`,
   `src/main/fork/launch-defaults/`, `src/renderer/src/fork/launch-defaults/` and

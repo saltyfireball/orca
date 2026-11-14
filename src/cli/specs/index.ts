@@ -41,6 +41,7 @@ import { FORK_LOST_WORK_COMMAND_SPECS } from '../fork/lost-work-specs'
 import { FORK_AGENT_QUEUE_COMMAND_SPECS } from '../fork/agent-queue-specs'
 import { FORK_LAUNCH_DEFAULTS_COMMAND_SPECS } from '../fork/launch-defaults-specs'
 import { FORK_SLEEPERS_COMMAND_SPECS } from '../fork/sleepers-specs'
+import { FORK_INBOX_COMMAND_SPECS } from '../fork/inbox-specs'
 import { FORK_MCP_PROFILE_COMMAND_SPECS, withForkMcpProfileFlag } from '../fork/mcp-profile-specs'
 import { FORK_USAGE_REPORT_COMMAND_SPECS } from '../fork/usage-report-specs'
 import { FORK_SETTINGS_COMMAND_SPECS } from '../fork/settings-specs'
@@ -90,5 +91,6 @@ export const COMMAND_SPECS: CommandSpec[] = withForkMcpProfileFlag([
   ...FORK_SLEEPERS_COMMAND_SPECS,
   ...FORK_MCP_PROFILE_COMMAND_SPECS,
   ...FORK_USAGE_REPORT_COMMAND_SPECS,
+  ...FORK_INBOX_COMMAND_SPECS,
   ...FORK_SETTINGS_COMMAND_SPECS
 ])
