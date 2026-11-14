@@ -127,6 +127,22 @@ named Orca Fork until SLRM-1367. `main` is always
     folder for saves (empty: ask each time), a default branch per project (empty: the remote's
     `HEAD`, then `main`, `master`, `trunk` or `develop`), squash lookback (500 base commits) and the pull request limit
     (200 per project).
+  - Scan speed (SLRM-2175). Each repository is read in batches: one `for-each-ref` with
+    `%(ahead-behind)` says which branches are already on the default branch (those cost nothing
+    more), and one `rev-list` holds every commit no remote has. Git older than 2.41 has no
+    `ahead-behind`; the scan then uses `for-each-ref --merged`, and without that asks per
+    branch as before. `git cherry` and the squash check still decide every branch that is
+    ahead, so the results are the same. Projects that share one git common dir (a worktree
+    opened as its own project) are read once: a worktree row goes to the project opened at
+    that folder, else to a project that tracks it, else to the main checkout's project;
+    branches and stashes go to the main checkout's project (the first of the group when the
+    main checkout is not a project), and the other projects get a "same repository" note.
+    Pull requests are read beside the git work, with a time limit; past it the scan carries
+    on with the pull-requests note. The dialog shows projects done of total and adds each
+    project's rows as it finishes (`fork:lostWork:progress`); the CLI and RPC output keep
+    their shape. Settings: pull request time limit (20 seconds), projects at once and checks
+    at once (0, automatic: a quarter of the cores between 2 and 4, and half the cores between
+    2 and 6; the app's git queue caps what runs at once anyway).
   - Code is in `src/main/fork/lost-work/`, `src/renderer/src/fork/lost-work/`,
     `src/shared/fork/lost-work.ts`, `src/preload/fork/lost-work-bridge.ts` and
     `src/cli/fork/lost-work-*`.
@@ -574,6 +590,7 @@ Apply these in this order. Each one is a single commit.
 70. `SLRM-2105 Sync status: fork-sync publishes its outcome, the update check shows when the fork is behind`
 71. `SLRM-2138 Fork main passes every push and pull request check`
 72. `SLRM-2160 Settings from the CLI: orca settings lists, edits, exports and applies every setting`
+73. `SLRM-2175 Lost work scan: batched git reads, shared repositories read once, progress`
 
 `AppRootSurfaces.tsx` carries one hook for the fork's always-mounted hosts: `ForkRootHosts`
 (`src/renderer/src/fork/ForkRootHosts.tsx`) renders `ForkChatSleepReporter`,
@@ -846,6 +863,9 @@ Upstream files only get short hooks, which keeps rebases small:
   - The list also opens from the command palette (`getForkLostWorkQuickActions`, one spread in
     `cmd-j/quick-actions.ts`) and from the Sleepers dialog, through `ForkLostWorkHost` in
     `ForkRootHosts.tsx`.
+  - The faster scan (SLRM-2175) adds no upstream hook: its progress event is one more
+    `fork:lostWork:*` channel, sent from `lost-work-host.ts` and read through
+    `onScanProgress` on the same preload bridge.
 - Sleepers (SLRM-2094): `StructuredAgentSessionIdleSweepDeps` takes an optional `attach`, called
   with the sweep from its constructor, and the sweep gains `sweepNow(sessionId)`, which runs the
   stock `sweepSession` with a `force` flag: no idle window, no keep-awake, and it also refuses a
