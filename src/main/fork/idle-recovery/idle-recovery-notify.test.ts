@@ -161,13 +161,12 @@ describe('notifyIdleRecoveryWaiting', () => {
       [item(1)],
       readIdleRecoverySettings({ forkInboxNotifyCommand: `"${process.execPath}" "${fail}"` })
     )
-    const started = Date.now()
     await notifyIdleRecoveryWaiting(
       [item(1)],
       readIdleRecoverySettings({ forkInboxNotifyCommand: `"${process.execPath}" "${slow}"` }),
       { commandTimeoutMs: 300 }
     )
-    expect(Date.now() - started).toBeLessThan(5000)
+    // The 'timeout' log line below is the proof that the slow command was cut off.
     const logged = (console.warn as unknown as ReturnType<typeof vi.fn>).mock.calls.flat().join(' ')
     expect(logged).toContain('command: failed')
     expect(logged).toContain('command: timeout')

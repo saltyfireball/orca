@@ -20,20 +20,28 @@ export const FORK_INBOX_COMMAND_SPECS: CommandSpec[] = [
   },
   {
     path: ['inbox', 'answer'],
-    summary: 'Send your answer to a chat that waits on you',
+    summary: 'Send your answer to a chat that waits on you or stalled',
     usage: 'orca inbox answer <id> <text> [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'id', 'text'],
     positionalArgs: ['id', 'text'],
-    notes: ['The text goes to the chat unchanged, as a message from you.', ID_NOTE],
+    notes: [
+      'The text goes to the chat unchanged, as a message from you.',
+      'For a stalled chat the answer tells the agent how to go on.',
+      ID_NOTE
+    ],
     examples: ['orca inbox answer 3f2a "Yes, use the second option"']
   },
   {
     path: ['inbox', 'pause'],
-    summary: 'Leave one chat alone: idle recovery neither lists nor wakes it',
+    summary: 'Pause idle recovery for one chat: it is not read or woken until resumed',
     usage: 'orca inbox pause <id> [--resume] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'id', 'resume'],
     positionalArgs: ['id'],
-    notes: ['--resume lets idle recovery look at the chat again.', ID_NOTE],
+    notes: [
+      'A chat already in the inbox keeps its row as it was, marked (paused) and left out of the counts. You can still answer it.',
+      '--resume lets idle recovery look at the chat again.',
+      ID_NOTE
+    ],
     examples: ['orca inbox pause 3f2a', 'orca inbox pause 3f2a --resume']
   }
 ]

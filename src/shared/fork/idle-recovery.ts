@@ -195,13 +195,20 @@ export function idleRecoveryEndingFingerprint(chatId: string, endingText: string
   return `${head}${tail}`
 }
 
-/** What is remembered per chat between sweeps and across restarts. */
+/**
+ * What is remembered per chat between sweeps and across restarts: the verdict on its ending, and
+ * what the inbox and a later wake need without reading the chat again.
+ */
 export type IdleRecoveryChatState = {
   /** `idleRecoveryEndingFingerprint` of the ending this row describes. */
   fingerprint: string
   verdict: IdleRecoveryVerdictKind
   /** The classifier's question for a waiting_user ending, else empty. */
   question: string
+  /** The classifier's reason, shown in the inbox. */
+  reason: string
+  /** The classifier's next step for a stalled ending, kept for a wake that is sent later. */
+  nextStep: string
   /** Epoch ms when this ending was first classified. */
   since: number
   /** Wake messages sent since the last prompt that was not a wake. */
@@ -209,6 +216,17 @@ export type IdleRecoveryChatState = {
   /** Epoch ms of the next wake or look, or null when none is due. */
   wakeAt: number | null
   paused: boolean
+  /** Epoch ms the chat went idle when its ending was last read: unchanged means same ending. */
+  idleSince: number
+  /** Epoch ms the chat was last among the candidates. */
+  seenAt: number
+  /** False once the chat is no longer idle (or was just woken): kept for its wake count only. */
+  listed: boolean
+  kind: IdleRecoveryChatKind
+  agent: string
+  title: string
+  workspace: string
+  worktreeId: string | null
 }
 
 export const IDLE_RECOVERY_STATE_VERSION = 1

@@ -16,6 +16,8 @@ function fakePorts() {
     chatAtSend: undefined as IdleRecoveryChatFacts | null | undefined,
     bound: true,
     refusals: [] as (string | null)[],
+    /** The `untouchedSince` each terminal check was asked with. */
+    untouchedSince: [] as (number | undefined)[],
     outcome: 'sent' as IdleRecoverySendOutcome,
     sent: [] as { to: string; text: string; via: 'chat' | 'terminal' }[],
     ports: {} as IdleRecoveryPorts
@@ -38,7 +40,10 @@ function fakePorts() {
     terminal: {
       bind: () =>
         fake.bound ? { handle: 'h1', binding: { ptyId: 'p1', processIncarnation: 'i1' } } : null,
-      refusal: async () => fake.refusals.shift() ?? null,
+      refusal: async (_paneKey, _handle, untouchedSince) => {
+        fake.untouchedSince.push(untouchedSince)
+        return fake.refusals.shift() ?? null
+      },
       send: async (_bound, _agent, text, stillClear) => {
         if (!(await stillClear())) {
           return 'refused'
@@ -51,8 +56,8 @@ function fakePorts() {
   return fake
 }
 
-const chat = { chatId: 'c1', kind: 'chat', agent: 'claude' } as const
-const terminal = { chatId: 'pane-1', kind: 'terminal', agent: 'claude' } as const
+const chat = { chatId: 'c1', kind: 'chat', agent: 'claude', idleSince: 5000 } as const
+const terminal = { chatId: 'pane-1', kind: 'terminal', agent: 'claude', idleSince: 5000 } as const
 
 describe('sendIdleRecoveryWake', () => {
   it('sends a short message that says it is from idle recovery and carries the next step', async () => {
@@ -105,7 +110,7 @@ describe('sendIdleRecoveryWake', () => {
   })
 
   it('never types into a terminal with a draft, a dialog or a turn, or with no live terminal', async () => {
-    for (const refusal of ['draft', 'prompt', 'in-turn', 'screen-unreadable']) {
+    for (const refusal of ['draft', 'prompt', 'in-turn', 'screen-unreadable', 'typed-since-idle']) {
       const fake = fakePorts()
       fake.refusals = [refusal]
       expect(await sendIdleRecoveryWake(terminal, 'go on', fake.ports)).toBe(false)
@@ -121,6 +126,15 @@ describe('sendIdleRecoveryWake', () => {
     fake.refusals = [null, 'draft']
     expect(await sendIdleRecoveryWake(terminal, 'go on', fake.ports)).toBe(false)
     expect(fake.sent).toEqual([])
+  })
+
+  it('asks whether the user typed since the turn ended, for a wake and not for an answer', async () => {
+    const wake = fakePorts()
+    await sendIdleRecoveryWake(terminal, 'go on', wake.ports)
+    expect(wake.untouchedSince).toEqual([5000, 5000])
+    const answer = fakePorts()
+    await sendIdleRecoveryAnswer('pane-1', 'x', terminal, answer.ports)
+    expect(answer.untouchedSince).toEqual([undefined, undefined])
   })
 })
 
@@ -161,6 +175,7 @@ describe('idleRecoveryTerminalPort', () => {
       isWorkerAgentInTurn: () => false,
       readTerminalMailHold: () => null,
       readTerminal: async () => ({ source: 'screen', draft: '' }),
+      terminalRunFacts: { readLastDrivingInputAt: () => null },
       ...overrides
     }
     return () => base as unknown as IdleRecoveryTerminalRuntime
@@ -202,6 +217,16 @@ describe('idleRecoveryTerminalPort', () => {
         }
       })
     ).toBe('unreadable')
+  })
+
+  it('refuses a wake once the user typed into the terminal after its turn ended', async () => {
+    const typedAt = (at: number | null) =>
+      idleRecoveryTerminalPort(runtime({ terminalRunFacts: { readLastDrivingInputAt: () => at } }))
+    expect(await typedAt(6000).refusal('pane-1', 'h1', 5000)).toBe('typed-since-idle')
+    // Typed before the turn ended (the prompt itself), never typed, or an answer: not refused.
+    expect(await typedAt(4000).refusal('pane-1', 'h1', 5000)).toBeNull()
+    expect(await typedAt(null).refusal('pane-1', 'h1', 5000)).toBeNull()
+    expect(await typedAt(6000).refusal('pane-1', 'h1')).toBeNull()
   })
 
   it('does not write for an agent it cannot prove', async () => {
