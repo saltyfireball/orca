@@ -87,7 +87,7 @@ function Body(): React.JSX.Element {
       </p>
     )
   }
-  const { waiting, stalled } = decisionInboxSections(result.items)
+  const { waiting, stalled, paused } = decisionInboxSections(result.items)
   const now = decisionInboxNow(result, receivedAt, Math.max(localNow, receivedAt))
   return (
     <div
@@ -95,7 +95,7 @@ function Body(): React.JSX.Element {
       aria-live="polite"
     >
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      {waiting.length === 0 && stalled.length === 0 ? (
+      {waiting.length === 0 && stalled.length === 0 && paused.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">
           {t('fork.decisionInbox.empty', 'Nothing is waiting on you.')}
         </p>
@@ -106,6 +106,7 @@ function Body(): React.JSX.Element {
         now={now}
       />
       <Section title={t('fork.decisionInbox.stalledTitle', 'Stalled')} items={stalled} now={now} />
+      <Section title={t('fork.decisionInbox.pausedTitle', 'Paused')} items={paused} now={now} />
     </div>
   )
 }
