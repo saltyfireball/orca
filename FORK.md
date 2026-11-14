@@ -474,6 +474,74 @@ named Orca Fork until SLRM-1367. `main` is always
       `fork.customAppTheme.preview.*` keys.
     - Lost work pull request links open through `openAppHttpLink`, so they follow the app's
       link setting.
+- **Idle recovery and the Decision inbox (SLRM-2196).** Off by default (`forkIdleSweepMode`
+  `off`, Settings > Advanced). An agent's turn can end with a question to you, or with work it
+  offered or promised and never started. With the mode on, a sweep in the main process reads how
+  each idle chat ended, classifies the ending once, and lists the chats that wait on you; in mode
+  `wake` it also sends a stalled chat a message to carry on.
+  - **Modes.** `off`: no sweep, no chat read, no process started; the timer only reads the
+    setting and backs off to every 2 minutes. `inbox`: classify and list, never send. `wake`:
+    as `inbox`, and wake stalled chats.
+  - **Which chats.** Native chats and terminal agents on this host whose turn ended and that
+    have been idle for `forkIdleSweepIdleSeconds` (45), from the same rows as Sleepers. Left
+    out: a turn in progress, a turn you stopped, sub-agents, sleeping or hibernated chats,
+    paused chats (`forkIdleSweepPaused`), and orchestration workers unless
+    `forkIdleSweepWorkers` is `include`.
+  - **The classifier.** `forkIdleSweepClassifierCommand` is a command of yours. It reads one
+    JSON object on stdin (`version`, `chat` with `id`, `kind`, `agent`, `cwd`, `title`,
+    `request_source`, `role`, `last_user_request`, `last_assistant_message` (the last 8000
+    characters), `idle_seconds`, `background_pending`, `scheduled_wake`, `wakes_this_turn`,
+    `max_wakes`) and prints one JSON object: `verdict` (`finished`, `waiting_user` or
+    `stalled`), `reason`, `question`, `next_step`, `wake_after_seconds`. It is stopped after
+    `forkIdleSweepClassifierTimeoutSeconds` (30). A failed start, a non-zero exit, a timeout or
+    unreadable output reads as `finished`, so a broken classifier never wakes a chat. With no
+    command a built-in check runs: it reads punctuation and layout only, answers `waiting_user`
+    when the last message closes on a question, and never answers `stalled`, so nothing is
+    woken without a command of yours. At most 3 endings are classified at once.
+  - **Once per ending.** An ending is named by a fingerprint of the chat, its last request and
+    the end of its last message. It is read again only when the chat went idle anew, and
+    classified again only when it changed, or when the classifier asked for a later look
+    (`wake_after_seconds`, at most `forkIdleSweepRecheckMaxMinutes`, 60) and that time came.
+  - **What a verdict does.** `finished`: recorded. `waiting_user`: listed in the Decision inbox
+    with the question. `stalled`: listed, and in mode `wake` sent a wake message now or after
+    `wake_after_seconds`.
+  - **The wake.** Its first line is `[idle-recovery: automatic wake]`, then the classifier's
+    `next_step`. It goes through the app's normal send. A chat gets at most
+    `forkIdleSweepMaxWakes` (2) wakes in a row; a turn you start gives them back. Only a turn
+    you asked for (or an earlier wake of one) is woken, never one orchestration or an automation
+    asked for. A wake is held, and asked again each sweep, while the chat has background work
+    or a scheduled wake-up of its own, or is a coordinator with open dispatches. At the cap, or
+    when a wake is not allowed, the chat stays in the inbox as stalled.
+  - **Never typed over.** A native chat is woken only while its agent is loaded and not in a
+    turn, checked again inside the send; the message is queued, never steered into a turn, and
+    a draft in the composer is untouched. A terminal agent is woken only when its terminal is
+    live, the agent (not a shell) reads it, no turn runs, no dialog or prompt is up and the
+    composer on screen is empty, checked again right before the first write. The stock terminal
+    send pastes and presses Enter without looking for a draft, which would submit your
+    half-typed text with the wake, so idle recovery reads the screen itself. A terminal it
+    cannot read is not woken. A wake that was not sent is tried again after the idle window and
+    the chat stays listed as stalled. A send that failed after it may have arrived counts as
+    sent, so a wake is never sent twice.
+  - **Hooks.** A wake reaches the agent as an ordinary user prompt. An agent's own Stop or
+    prompt hook can tell it from your turn only by that first line.
+  - **State.** `fork-idle-recovery.json` in the app's data folder, written atomically when a
+    sweep or an answer changed it: per chat the fingerprint, verdict, question, next step,
+    wakes, next wake or look, and what the inbox shows. The wake count survives a restart. A
+    chat not idle for 7 days is forgotten.
+  - **Decision inbox.** A sidebar toolbar button with a count, a dialog and palette entries
+    (all absent while the mode is off). Each row shows the question or the reason, how long
+    ago, and the wakes so far, with Go to chat, an answer box and Pause. An answer is sent to
+    the chat as your message and clears the row. Pause leaves a chat alone (Settings lists
+    paused chats to resume).
+  - **Notifications.** When a chat starts waiting on you, each target that is set is told
+    once: a desktop notification (`forkInboxNotifyDesktop`), a POST of the items as JSON
+    (`forkInboxNotifyWebhookUrl`), and a command given the same JSON on stdin
+    (`forkInboxNotifyCommand`). All off by default. A failing target stops nothing else.
+  - **CLI.** `orca inbox list [--json]`, `orca inbox answer <id> <text>`,
+    `orca inbox pause <id> [--resume]`. Ids may be given by prefix. Works on any paired host.
+    `orca settings` cannot write the classifier command, the notification command or the
+    webhook address.
+
 - **Settings from the CLI (SLRM-2160).** `orca settings` reads and writes the app's whole
   global settings object from a terminal or through one file, so no setting needs the Settings
   screen.
@@ -592,6 +660,12 @@ Apply these in this order. Each one is a single commit.
 72. `SLRM-2160 Settings from the CLI: orca settings lists, edits, exports and applies every setting`
 73. `SLRM-2175 Lost work scan: batched git reads, shared repositories read once, progress`
 74. `SLRM-2196 Idle recovery skeleton: settings, contracts and hooks, off by default`
+75. `SLRM-2206 Finish orca inbox: table, prefix ids, answer and pause`
+76. `SLRM-2208 Notify by desktop, webhook or command when chats start waiting on the user`
+77. `SLRM-2204 Idle recovery: run the classifier command, add the built-in check`
+78. `SLRM-2207 Decision inbox: toolbar button, dialog, palette entries and the paused list`
+79. `SLRM-2203 List idle recovery candidates and read their endings`
+80. `SLRM-2205 Idle recovery: the sweep, the wake and the Decision inbox service`
 
 `AppRootSurfaces.tsx` carries one hook for the fork's always-mounted hosts: `ForkRootHosts`
 (`src/renderer/src/fork/ForkRootHosts.tsx`) renders `ForkChatSleepReporter`,
@@ -951,7 +1025,8 @@ Upstream files only get short hooks, which keeps rebases small:
   `src/main/fork/idle-recovery/`, `src/renderer/src/fork/decision-inbox/` and
   `src/renderer/src/fork/idle-recovery/`. Off unless `forkIdleSweepMode` is set:
   - `src/main/index.ts` calls `installForkIdleRecoveryBridge()` and `startForkIdleRecovery(...)`
-    after `installForkSyncStatusBridge()`. `src/preload/index.ts` adds `forkIdleRecovery`
+    (with readers of the settings, the settings store and the runtime) after
+    `installForkSyncStatusBridge()`. `src/preload/index.ts` adds `forkIdleRecovery`
     (`src/preload/fork/idle-recovery-bridge.ts`) and `api-types.ts` types it as optional.
   - `rpc-method-registry.ts` spreads `FORK_IDLE_RECOVERY_RPC_METHODS`, `src/cli/specs/index.ts`
     spreads `FORK_INBOX_COMMAND_SPECS` and `cli-command-names.ts` lists `inbox`.
