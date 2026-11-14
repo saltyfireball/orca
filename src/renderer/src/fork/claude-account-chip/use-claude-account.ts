@@ -26,7 +26,7 @@ import { resolveAllEvidence } from './claude-chip-resolve'
 const NO_SAVED: ClaudeManagedAccount[] = []
 let lastLocalRoster: readonly ClaudeManagedAccount[] | null = null
 
-/** Whether chips show at all (Settings > Advanced); unset is on. */
+/** Whether chips show at all (Settings > Blackfish); unset is on. */
 export function isForkAccountChipEnabled(state: Pick<AppState, 'settings'>): boolean {
   return state.settings?.forkShowAccountChip !== false
 }
