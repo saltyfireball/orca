@@ -89,7 +89,7 @@ describe('idle recovery state file', () => {
     expect(Object.keys(parsed.chats)).toEqual(['good'])
   })
 
-  it('fills the extra fields of a row built against the shared type alone', () => {
+  it('fills the fields a row handed over in memory lacks', () => {
     const state = asIdleRecoveryStoredState({
       version: 1,
       chats: {
@@ -101,7 +101,7 @@ describe('idle recovery state file', () => {
           wakes: 0,
           wakeAt: null,
           paused: false
-        }
+        } as never
       }
     })
     expect(state.chats.a).toMatchObject({ seenAt: 7, listed: false, kind: 'chat', nextStep: '' })

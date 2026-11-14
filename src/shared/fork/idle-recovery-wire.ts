@@ -75,7 +75,8 @@ export type ForkIdleRecoveryInboxResult = {
  * - sent: the answer went to the chat.
  * - not-found: this host has no such chat.
  * - not-waiting: the chat is not waiting on the user now.
- * - unavailable: idle recovery is off or not running here.
+ * - unavailable: idle recovery is off here, or the chat cannot take a message right now (a
+ *   terminal that holds typed text or a dialog, or whose screen is not settled).
  */
 export type ForkIdleRecoveryAnswerOutcome = 'sent' | 'not-found' | 'not-waiting' | 'unavailable'
 
