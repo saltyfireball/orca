@@ -1,6 +1,7 @@
 // Settings from the CLI (FORK.md): the settings file `orca settings export` writes and
 // `orca settings apply` reads. It is JSON with comments (JSONC): `//` and `/* */` comments
 // and a comma after the last entry are allowed.
+import { parse as parseJsonc, type ParseError } from 'jsonc-parser'
 import { FORK_SETTINGS_AREAS, forkSettingEntries, type ForkSettingEntry } from './settings-catalog'
 import { forkSettingValuesEqual } from './settings-shape'
 
@@ -73,6 +74,20 @@ function lineOf(text: string, position: number): number {
   return text.slice(0, position).split('\n').length
 }
 
+/**
+ * Where the text stops being JSON. V8 puts the position in its message and JavaScriptCore (Bun)
+ * does not, so without one the first error a tolerant parse reports gives it.
+ */
+function syntaxErrorPosition(json: string, message: string): number | null {
+  const named = /position (\d+)/.exec(message)
+  if (named) {
+    return Number(named[1])
+  }
+  const errors: ParseError[] = []
+  parseJsonc(json, errors, { allowTrailingComma: false, disallowComments: true })
+  return errors[0]?.offset ?? null
+}
+
 /** Parses a settings file into its top-level keys. Throws an Error that names the line. */
 export function parseForkSettingsFile(text: string): Record<string, unknown> {
   const json = stripTrailingCommas(stripComments(text))
@@ -81,8 +96,8 @@ export function parseForkSettingsFile(text: string): Record<string, unknown> {
     parsed = JSON.parse(json)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    const position = /position (\d+)/.exec(message)
-    const where = position ? ` (line ${lineOf(json, Number(position[1]))})` : ''
+    const position = syntaxErrorPosition(json, message)
+    const where = position === null ? '' : ` (line ${lineOf(json, position)})`
     throw new Error(`The settings file is not valid JSON${where}: ${message}`)
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
