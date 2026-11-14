@@ -7,7 +7,7 @@ import { isRecord } from './chat-survive-protocol'
 
 const SOCKET_DIR_NAME = 'orca-chat-survive'
 
-function alive(pid: number): boolean {
+export function chatSurviveBrokerAlive(pid: number): boolean {
   try {
     process.kill(pid, 0)
     return true
@@ -59,7 +59,7 @@ export function sweepChatSurviveRecords(recordDir: string): void {
         rmSync(path, { force: true })
       } else if (name.endsWith('.json')) {
         const record = readRecord(path)
-        if (record.brokerPid === null || !alive(record.brokerPid)) {
+        if (record.brokerPid === null || !chatSurviveBrokerAlive(record.brokerPid)) {
           rmSync(path, { force: true })
           removeSocket(record.socketPath)
         }
