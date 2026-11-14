@@ -1,8 +1,8 @@
 // SLRM-2096 (FORK.md "Lost work"): `orca lost-work`, through the desktop's fork.lostWork.scan RPC.
-import type { CommandHandler } from '../dispatch'
-import { getOptionalStringFlag } from '../flags'
-import { printResult } from '../format'
-import { RuntimeClientError } from '../runtime-client'
+import type { CommandHandler } from '../dispatch/dispatch'
+import { getOptionalStringFlag } from '../arguments/flags'
+import { printResult } from '../output/command-result-output'
+import { RuntimeClientError } from '../runtime/types'
 import {
   LOST_WORK_RISK_ORDER,
   type LostWorkItem,

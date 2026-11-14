@@ -1,5 +1,6 @@
 // SLRM-1503 (FORK.md): `orca account which` and `orca account move`.
-import { GLOBAL_FLAGS, type CommandSpec } from '../args'
+import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli-argument-boundary'
+import type { CommandSpec } from '../discovery/command-spec'
 
 export const FORK_ACCOUNT_MOVE_COMMAND_SPECS: CommandSpec[] = [
   {

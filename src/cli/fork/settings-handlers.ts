@@ -1,10 +1,10 @@
 // Settings from the CLI (FORK.md): `orca settings`, through the app's fork.settings.* RPC.
 import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import type { CommandHandler, HandlerContext } from '../dispatch'
-import { getOptionalStringFlag, getRepeatedStringFlag } from '../flags'
-import { printResult } from '../format'
-import { RuntimeClientError } from '../runtime-client'
+import type { CommandHandler, HandlerContext } from '../dispatch/dispatch'
+import { getOptionalStringFlag, getRepeatedStringFlag } from '../arguments/flags'
+import { printResult } from '../output/command-result-output'
+import { RuntimeClientError } from '../runtime/types'
 import {
   forkSettingEntry,
   suggestForkSettingKey
