@@ -80,6 +80,7 @@ import { FORK_AGENT_QUEUE_METHODS } from './fork/fork-agent-queue'
 import { FORK_LAUNCH_DEFAULTS_METHODS } from './fork/fork-launch-defaults'
 import { FORK_SETTINGS_METHODS } from './fork/fork-settings'
 import { FORK_SLEEPERS_METHODS } from './fork/fork-sleepers'
+import { FORK_IDLE_RECOVERY_RPC_METHODS } from './fork/fork-idle-recovery'
 import { FORK_MCP_PROFILE_METHODS } from './fork/fork-mcp-profiles'
 import { FORK_USAGE_REPORT_METHODS } from './fork/fork-usage-report'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
@@ -273,6 +274,8 @@ const SERVICE_RPC_METHODS = [
   ...FORK_MCP_PROFILE_METHODS,
   // SLRM-2104: the usage report behind `orca usage-report` (FORK.md).
   ...FORK_USAGE_REPORT_METHODS,
+  // Fork: idle recovery, the Decision inbox behind `orca inbox` (FORK.md).
+  ...FORK_IDLE_RECOVERY_RPC_METHODS,
   ...FORK_SETTINGS_METHODS
 ] as const
 
