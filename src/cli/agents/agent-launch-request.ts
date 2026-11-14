@@ -32,8 +32,8 @@ import { RuntimeClientError } from '../runtime/types'
 import type { RuntimeClient } from '../runtime/client'
 import type { RuntimeRpcSuccess } from '../../shared/runtime-rpc-envelope'
 import { withCliAgentLaunchRecovery } from './agent-launch-recovery'
-import { forkAgentLaunchLines } from './fork/launch-defaults-output'
-import { readForkMcpProfileFlag } from './fork/mcp-profile-flag'
+import { forkAgentLaunchLines } from '../fork/launch-defaults-output'
+import { readForkMcpProfileFlag } from '../fork/mcp-profile-flag'
 
 type Flags = Map<string, string | boolean>
 
