@@ -88,7 +88,7 @@ export function lostWorkNoteLabel(note: LostWorkNote, t: Translate = translate):
     case 'no-default-branch':
       return t(
         'fork.lostWork.note.noBase',
-        'No default branch found. Set one in Settings > Advanced > Lost work.'
+        'No default branch found. Set one in Settings > Blackfish > Projects.'
       )
     case 'git-error':
       return t('fork.lostWork.note.gitError', 'Git failed: {{detail}}', {

@@ -47,6 +47,7 @@ import type { Translate } from '@/i18n/use-translate'
 import type { SettingsNavSection } from '@/components/settings/navigation/settings-navigation-types'
 import type { Repo } from '../../../../../shared/repository/repo-types'
 import type { SettingsNavigationBuildOptions } from './settings-navigation-build-options'
+import { buildForkSettingsNavSections } from '@/fork/settings-pane/fork-settings-pane-catalog'
 
 // Share Settings/Cmd+J visibility without Settings pane UI imports; an architecture test enforces this boundary.
 // Share Settings/Cmd+J visibility without Settings pane UI imports; an architecture test enforces this boundary.
@@ -132,6 +133,7 @@ export function buildSettingsNavigationMetadata(
     ...buildBotsPageSettingsSections(options),
     ...buildWorkflowSettingsSections(options, terminalPaneSearchEntries, t),
     ...buildInterfaceSettingsSections(options, t),
+    ...buildForkSettingsNavSections(options, t),
     ...buildRemoteSettingsSections(options, runtimeEnvironmentsSearchEntry, t),
     // Directly above Projects, as bots sit above the projects in the sidebar.
     ...buildBotSettingsSections(options),

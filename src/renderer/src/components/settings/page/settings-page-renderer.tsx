@@ -62,6 +62,7 @@ import {
 import { renderProjectSettingsSections } from './settings-project-section-renderer'
 import { renderBotsSettingsSections } from '../bots/settings-bots-section-renderer'
 import { botIdFromSettingsSectionId, isBotsSettingsSection } from '../bots/bot-settings-section-ids'
+import { renderForkSettingsSection } from '@/fork/settings-pane/fork-settings-section-renderer'
 import {
   SettingsHostScopePicker,
   shouldShowSettingsHostScopePicker
@@ -203,6 +204,7 @@ export function renderSettingsPage(
                   {renderDeveloperPermissionsSettingsSection(context, t)}
                   {renderPrivacySettingsSection(context, t)}
                   {renderAdvancedSettingsSection(context, t)}
+                  {renderForkSettingsSection(context, t)}
                   {renderDevSettingsSection(context, t)}
                   {renderExperimentalSettingsSection(context, t)}
                   {renderPluginsSettingsSection(context)}

@@ -29,7 +29,7 @@ const KIND: Record<LostWorkKind, string> = {
 const NOTE: Record<LostWorkNote['code'], string> = {
   'remote-project': 'skipped: runs on another host',
   'folder-project': 'skipped: not a git project',
-  'no-default-branch': 'no default branch found; set one in Settings > Advanced > Lost work',
+  'no-default-branch': 'no default branch found; set one in Settings > Blackfish > Projects',
   'git-error': 'git failed',
   'pull-requests-unavailable':
     'pull requests not read (GitHub CLI missing, signed out or out of time)',

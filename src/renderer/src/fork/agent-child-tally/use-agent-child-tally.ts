@@ -22,7 +22,7 @@ type TallyState = Pick<
 > &
   Parameters<typeof selectVisibleAgentOrchestration>[0]
 
-/** Settings > Advanced; unset counts as on for all three. */
+/** Settings > Blackfish; unset counts as on for all three. */
 export function childTallyEnabled(state: Pick<AppState, 'settings'>): boolean {
   return state.settings?.forkShowChildTally !== false
 }
