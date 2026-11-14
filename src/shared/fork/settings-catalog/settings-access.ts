@@ -11,8 +11,11 @@ export type ForkSettingReadOnlyKind =
   | 'agent-limit'
   | 'account'
   | 'marker'
+  | 'runs-command'
 
 const REASON: Record<ForkSettingReadOnlyKind, string> = {
+  'runs-command':
+    'the app runs this command or calls this address with your rights, and agents run this CLI; set it in the Settings screen',
   guarded:
     'the app drops this key from a general settings write; it changes only through its own screen or command',
   'owner-confirm': 'changing it needs the confirmation the Settings screen asks for',
@@ -51,6 +54,13 @@ const ACCOUNTS: SettingsKey[] = [
   'activeCodexManagedAccountIdsByRuntime'
 ]
 
+/** Idle recovery's classifier and notification targets: a write here is code execution. */
+const RUNS_COMMAND: SettingsKey[] = [
+  'forkIdleSweepClassifierCommand',
+  'forkInboxNotifyCommand',
+  'forkInboxNotifyWebhookUrl'
+]
+
 /** One-time migration and "already defaulted" markers. */
 const MARKERS: SettingsKey[] = [
   'agentWorkspaceTrustExistingReposMigrated',
@@ -86,7 +96,8 @@ const READ_ONLY = new Map<string, ForkSettingReadOnlyKind>([
   ...OWNER_CONFIRM.map((key) => [key, 'owner-confirm'] as const),
   ...AGENT_LIMITS.map((key) => [key, 'agent-limit'] as const),
   ...ACCOUNTS.map((key) => [key, 'account'] as const),
-  ...MARKERS.map((key) => [key, 'marker'] as const)
+  ...MARKERS.map((key) => [key, 'marker'] as const),
+  ...RUNS_COMMAND.map((key) => [key, 'runs-command'] as const)
 ])
 
 /**

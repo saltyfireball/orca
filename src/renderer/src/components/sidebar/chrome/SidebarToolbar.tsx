@@ -7,6 +7,7 @@ import { ScrollToCurrentWorkspaceToolbarButton } from '../worktree-list/navigati
 import { SidebarSettingsHelpMenu } from './SidebarSettingsHelpMenu'
 import { selectAppRailVisible } from '@/components/app-rail/app-rail-layout'
 import { ForkSleepersButton } from '@/fork/sleepers/ForkSleepersButton'
+import { ForkDecisionInboxButton } from '@/fork/decision-inbox/ForkDecisionInboxButton'
 import { useTranslate } from '@/i18n/use-translate'
 import { useAppStore } from '@/store'
 import { hasFeatureInteraction } from '../../../../../shared/feature-education/interactions/feature-interactions'
@@ -79,6 +80,7 @@ const SidebarToolbar = React.memo(function SidebarToolbar({
           <ScrollToCurrentWorkspaceToolbarButton />
           {/* Fork: Sleepers (FORK.md). */}
           <ForkSleepersButton />
+          <ForkDecisionInboxButton />
           <Tooltip open={workspaceBoardMovedHintOpen ? true : undefined}>
             <TooltipTrigger asChild>
               <Button
