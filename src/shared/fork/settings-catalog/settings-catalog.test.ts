@@ -14,6 +14,7 @@ import {
   forkSettingEntry,
   suggestForkSettingKey
 } from './settings-catalog'
+import { redactForkSettings } from './settings-plan'
 import { checkForkSettingValue } from './settings-shape'
 
 const repoRoot = path.resolve(import.meta.dirname, '..', '..', '..', '..')
@@ -130,5 +131,19 @@ describe('fork settings access', () => {
     expect(FORK_SETTINGS_SECRET_KEYS).toEqual(
       expect.arrayContaining(['opencodeSessionCookie', 'httpProxyUrl', 'agentDefaultEnv'])
     )
+  })
+
+  it('hides the inbox webhook address, which is also read-only', () => {
+    expect(FORK_SETTINGS_SECRET_KEYS).toContain('forkInboxNotifyWebhookUrl')
+    const entry = forkSettingEntry('forkInboxNotifyWebhookUrl')
+    expect(entry?.secret).toBe(true)
+    expect(entry?.readOnly).not.toBeNull()
+    const address = 'https://hooks.example/services/token-that-must-not-leak'
+    const out = redactForkSettings({ forkInboxNotifyWebhookUrl: address }, {})
+    expect(JSON.stringify(out)).not.toContain(address)
+    expect(out.secretsSet).toEqual(['forkInboxNotifyWebhookUrl'])
+    // The commands beside it are shown: a user reads them back to check what will run.
+    expect(forkSettingEntry('forkIdleSweepClassifierCommand')?.secret).toBe(false)
+    expect(forkSettingEntry('forkInboxNotifyCommand')?.secret).toBe(false)
   })
 })
