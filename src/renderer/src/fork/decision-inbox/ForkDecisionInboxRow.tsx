@@ -1,6 +1,7 @@
-// Decision inbox (FORK.md "Idle recovery"): one chat in the dialog, with its question, an answer
-// box for a chat waiting on the user, and jump and pause. The draft lives in the row, keyed by
-// chat, so a live update of the list never drops what is being typed.
+// Decision inbox (FORK.md "Idle recovery"): one chat in the dialog, with its question or the
+// reason it stalled, an answer box, and jump and pause. An answer to a stalled chat is the user
+// telling the agent how to go on. The draft lives in the row, keyed by chat, so a live update of
+// the list never drops what is being typed.
 import React, { useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -24,9 +25,16 @@ function detailLine(item: ForkIdleRecoveryInboxItem, now: number, t: Translate):
       ? t('fork.decisionInbox.kind.chat', 'Chat')
       : t('fork.decisionInbox.kind.terminal', 'Terminal'),
     item.agent,
-    item.workspace,
-    item.paused ? t('fork.decisionInbox.paused', 'recovery paused') : ''
+    item.workspace
   ]
+  if (item.paused) {
+    // The Paused section mixes both kinds, and a paused row no longer changes: say what it was.
+    parts.push(
+      item.verdict === 'waiting_user'
+        ? t('fork.decisionInbox.pausedWaiting', 'paused while waiting on you')
+        : t('fork.decisionInbox.pausedStalled', 'paused while stalled')
+    )
+  }
   if (item.verdict === 'stalled') {
     if (item.wakes > 0) {
       parts.push(t('fork.decisionInbox.wakes', 'woken {{count}} times', { count: item.wakes }))
@@ -108,28 +116,33 @@ export function ForkDecisionInboxRow({
           {body}
         </p>
       ) : null}
-      {waiting ? (
-        <Textarea
-          className="min-h-14"
-          rows={2}
-          aria-label={answerLabel}
-          aria-describedby={body ? questionId : undefined}
-          placeholder={t(
-            'fork.decisionInbox.answerPlaceholder',
-            'Your answer. Enter sends, Shift+Enter adds a line.'
-          )}
-          maxLength={FORK_IDLE_RECOVERY_MAX_ANSWER_CHARS}
-          disabled={sending}
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-              event.preventDefault()
-              send()
-            }
-          }}
-        />
-      ) : null}
+      <Textarea
+        className="min-h-14"
+        rows={2}
+        aria-label={answerLabel}
+        aria-describedby={body ? questionId : undefined}
+        placeholder={
+          waiting
+            ? t(
+                'fork.decisionInbox.answerPlaceholder',
+                'Your answer. Enter sends, Shift+Enter adds a line.'
+              )
+            : t(
+                'fork.decisionInbox.stalledPlaceholder',
+                'Tell the agent how to go on. Enter sends, Shift+Enter adds a line.'
+              )
+        }
+        maxLength={FORK_IDLE_RECOVERY_MAX_ANSWER_CHARS}
+        disabled={sending}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+            event.preventDefault()
+            send()
+          }
+        }}
+      />
       <div className="flex flex-wrap justify-end gap-1">
         <Button size="sm" variant="ghost" disabled={pausing} onClick={togglePause}>
           {item.paused
@@ -139,11 +152,9 @@ export function ForkDecisionInboxRow({
         <Button size="sm" variant="ghost" onClick={() => actions.jump(item)}>
           {t('fork.decisionInbox.jump', 'Go to chat')}
         </Button>
-        {waiting ? (
-          <Button size="sm" disabled={!text || sending} onClick={send}>
-            {t('fork.decisionInbox.send', 'Send')}
-          </Button>
-        ) : null}
+        <Button size="sm" disabled={!text || sending} onClick={send}>
+          {t('fork.decisionInbox.send', 'Send')}
+        </Button>
       </div>
     </li>
   )

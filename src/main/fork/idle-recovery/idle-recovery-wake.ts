@@ -4,7 +4,9 @@
 // answer is the user's own text, sent unchanged to a chat that is waiting on the user. Both use
 // the app's normal send for that kind of chat.
 // A wake is never sent to a chat that is asleep, in a turn, or (a terminal) holds typed text or
-// a dialog: idleness is read before the send and again right before the message goes. A send
+// a dialog: idleness is read before the send and again right before the message goes. A terminal
+// the user typed into since its turn ended is not woken either: the screen reader knows only
+// some agents' composers, and keys nobody can see on screen may still sit in the others. A send
 // that failed after it may have reached the chat counts as taken, so it is never sent twice.
 import {
   buildIdleRecoveryWakeMessage,
@@ -28,7 +30,7 @@ function taken(outcome: IdleRecoverySendOutcome): boolean {
 }
 
 export async function sendIdleRecoveryWake(
-  candidate: Pick<IdleRecoveryCandidate, 'chatId' | 'kind' | 'agent'>,
+  candidate: Pick<IdleRecoveryCandidate, 'chatId' | 'kind' | 'agent' | 'idleSince'>,
   nextStep: string,
   ports: IdleRecoveryPorts = idleRecoveryPorts()
 ): Promise<boolean> {
@@ -47,17 +49,15 @@ export async function sendIdleRecoveryWake(
     )
   }
   const bound = ports.terminal.bind(chatId)
-  if (!bound || (await ports.terminal.refusal(chatId, bound.handle)) !== null) {
+  if (!bound) {
     return false
   }
-  return taken(
-    await ports.terminal.send(
-      bound,
-      candidate.agent,
-      text,
-      async () => (await ports.terminal.refusal(chatId, bound.handle)) === null
-    )
-  )
+  const clear = async (): Promise<boolean> =>
+    (await ports.terminal.refusal(chatId, bound.handle, candidate.idleSince)) === null
+  if (!(await clear())) {
+    return false
+  }
+  return taken(await ports.terminal.send(bound, candidate.agent, text, clear))
 }
 
 /** What the inbox knows of the chat; without it the kind is read from the host. */

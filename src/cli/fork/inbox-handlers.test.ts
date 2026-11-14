@@ -120,11 +120,27 @@ describe('formatInboxList', () => {
       ])
     )
     const lines = text.split('\n')
-    expect(lines[0]).toMatch(/^2 chats/)
+    expect(lines[0]).toBe('1 chat, 1 paused (ID, kind, age, title):')
     expect(lines[1]).toBe('3f2a1b9c  waiting  12m  Plan the release  [alpha]')
     expect(lines[2]).toBe('    Use the second option?')
     expect(lines[3]).toBe('tab-1:leaf-2  stalled  12m  Build  [alpha]  (paused)')
     expect(lines[4]).toBe('    said it would run tests')
+  })
+
+  it('lists paused chats last and leaves them out of the count', () => {
+    const lines = formatInboxList(
+      inbox([
+        item({ chatId: 'paused-1', paused: true }),
+        item({ chatId: 'live-1111', title: 'Live' }),
+        item({ chatId: 'live-2222', title: 'Also live' })
+      ])
+    ).split('\n')
+    expect(lines[0]).toBe('2 chats, 1 paused (ID, kind, age, title):')
+    expect(lines[1]).toMatch(/^live-111 /)
+    expect(lines[5]).toMatch(/^paused-1 .*\(paused\)$/)
+    expect(formatInboxList(inbox([item({ chatId: 'p', paused: true })])).split('\n')[0]).toBe(
+      '0 chats, 1 paused (ID, kind, age, title):'
+    )
   })
 })
 
@@ -133,7 +149,9 @@ describe('formatInboxAnswer and formatInboxPause', () => {
     expect(formatInboxAnswer({ chatId: 'a', result: 'sent' })).toBe('a: answer sent')
     expect(formatInboxAnswer({ chatId: 'a', result: 'not-waiting' })).toMatch(/not waiting/)
     expect(formatInboxAnswer({ chatId: 'a', result: 'not-found' })).toMatch(/no such chat/)
-    expect(formatInboxAnswer({ chatId: 'a', result: 'unavailable' })).toMatch(/off or not running/)
+    expect(formatInboxAnswer({ chatId: 'a', result: 'unavailable' })).toMatch(
+      /cannot take a message right now/
+    )
     const base = { chatId: 'a', pausedCount: 1 }
     expect(formatInboxPause({ ...base, paused: true, saved: true })).toBe('a: paused')
     expect(formatInboxPause({ ...base, paused: false, saved: true })).toBe('a: resumed')

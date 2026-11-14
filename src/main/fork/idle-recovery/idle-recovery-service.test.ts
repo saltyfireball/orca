@@ -119,6 +119,20 @@ describe('idle recovery service', () => {
     expect(await ctx.service.readStatus()).toMatchObject({ mode: 'inbox', running: true })
   })
 
+  it('keeps a paused chat in the inbox as it was, marked, and out of the counts', async () => {
+    const ctx = harness()
+    ctx.world.candidates = [testCandidate()]
+    ctx.world.verdict = waiting
+    await ctx.service.sweep()
+    await ctx.service.setPaused({ chatId: 'chat-1', paused: true })
+    expect((await ctx.service.listInbox()).items).toMatchObject([
+      { chatId: 'chat-1', question: 'Which one?', paused: true }
+    ])
+    expect(await ctx.service.readStatus()).toMatchObject({ waiting: 0, paused: ['chat-1'] })
+    await ctx.service.setPaused({ chatId: 'chat-1', paused: false })
+    expect(await ctx.service.readStatus()).toMatchObject({ waiting: 1, paused: [] })
+  })
+
   it('sweeps, saves, notifies new waits once and tells its listeners', async () => {
     const ctx = harness()
     ctx.world.candidates = [testCandidate()]
