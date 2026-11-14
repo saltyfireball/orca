@@ -58,7 +58,7 @@ export function areForkAgentLaunchesPaused(): boolean {
 
 export const FORK_MEMORY_LAUNCH_PAUSED_MESSAGE =
   'New agents are paused: system memory is past the warning threshold. Close some sessions, ' +
-  'or turn off "Pause new agents" in Settings > Advanced > Memory.'
+  'or turn off "Pause new agents" in Settings > Blackfish > Memory.'
 
 /** Throw before a launch when paused; the message says why and how to undo it. */
 export function assertForkAgentLaunchAllowed(): void {

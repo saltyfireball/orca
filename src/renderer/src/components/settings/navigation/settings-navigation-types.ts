@@ -35,6 +35,7 @@ const SETTINGS_NAV_TARGETS = [
   'developer-permissions',
   'privacy',
   'advanced',
+  'fork',
   'dev',
   'voice',
   'shortcuts',

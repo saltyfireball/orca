@@ -12,7 +12,7 @@ export const FORK_LOST_WORK_COMMAND_SPECS: CommandSpec[] = [
       'Read-only: nothing is fetched, pushed or removed. It compares each item with the remote copy of the default branch as last fetched.',
       'Each item has a risk: safe to remove, needs a look, or would lose work (commits that are on no remote, uncommitted changes, or a stash).',
       'Squash merges are found by patch id, and by pull request state when the GitHub CLI is installed and signed in.',
-      'The checks it runs and each project default branch are set in Settings > Advanced > Lost work.'
+      'The checks it runs and each project default branch are set in Settings > Blackfish > Lost work.'
     ],
     examples: ['orca lost-work', 'orca lost-work --repo my-project', 'orca lost-work --json']
   }
