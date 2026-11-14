@@ -3,18 +3,22 @@ import React from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/class-names'
-import { useIntlLocale, useTranslate } from '@/i18n/use-translate'
+import { useIntlLocale, useTranslate, type Translate } from '@/i18n/use-translate'
 import { uiDateTimeFormat } from '@/i18n/ui-intl-formatters'
 import type { LostWorkItem, LostWorkRisk } from '../../../../shared/fork/lost-work'
-import { canOpenLostWork, canPushLostWork, canSaveLostWork } from './lost-work-actions'
+import {
+  canSaveLostWork,
+  lostWorkRowActions,
+  suggestLostWorkAction,
+  type LostWorkRowAction
+} from './lost-work-row-actions'
 import {
   lostWorkKindLabel,
   lostWorkReasons,
   lostWorkRiskLabel,
-  lostWorkTitle
+  lostWorkTitle,
+  lostWorkUseLabel
 } from './lost-work-labels'
-
-export type LostWorkRowAction = 'open' | 'push' | 'pull-request' | 'bundle' | 'patch' | 'delete'
 
 const RISK_CLASS: Record<LostWorkRisk, string> = {
   'would-lose-work': 'border-destructive/50 text-destructive',
@@ -29,7 +33,26 @@ function day(ms: number | null, intlLocale: string): string {
   return ms === null ? '' : uiDateTimeFormat(DAY_FORMAT, intlLocale).format(ms)
 }
 
-export function ForkLostWorkRow({
+function actionLabel(action: LostWorkRowAction, item: LostWorkItem, t: Translate): string {
+  switch (action) {
+    case 'open':
+      return t('fork.lostWork.open', 'Open')
+    case 'push':
+      return t('fork.lostWork.push', 'Push')
+    case 'pull-request':
+      return item.pullRequest
+        ? t('fork.lostWork.viewPullRequest', 'View pull request')
+        : t('fork.lostWork.createPullRequest', 'Create pull request')
+    case 'bundle':
+      return t('fork.lostWork.saveBundle', 'Save bundle')
+    case 'patch':
+      return t('fork.lostWork.savePatch', 'Save patch')
+    case 'delete':
+      return t('fork.lostWork.delete', 'Delete')
+  }
+}
+
+function ForkLostWorkRowView({
   item,
   selected,
   busy,
@@ -39,25 +62,26 @@ export function ForkLostWorkRow({
   item: LostWorkItem
   selected: boolean
   busy: boolean
-  onSelect: (selected: boolean) => void
-  onAction: (action: LostWorkRowAction) => void
+  onSelect: (item: LostWorkItem, selected: boolean) => void
+  onAction: (item: LostWorkItem, action: LostWorkRowAction) => void
 }): React.JSX.Element {
   const t = useTranslate()
   const intlLocale = useIntlLocale()
   const reasons = lostWorkReasons(item)
   const pr = item.pullRequest
-  const action = (name: LostWorkRowAction, label: string, enabled = true) => (
-    <Button variant="ghost" size="xs" disabled={busy || !enabled} onClick={() => onAction(name)}>
-      {label}
-    </Button>
-  )
+  // SLRM-2230: the suggested next step leads the row; the rest keep their usual order.
+  const suggested = suggestLostWorkAction(item)
+  const actions = lostWorkRowActions(item)
+  const ordered = actions.includes(suggested)
+    ? [suggested, ...actions.filter((action) => action !== suggested)]
+    : actions
   return (
     <div className="flex items-start gap-3 border-b border-border px-4 py-2 last:border-b-0">
       <Checkbox
         className="mt-1"
         checked={selected}
         disabled={busy}
-        onCheckedChange={(checked) => onSelect(checked === true)}
+        onCheckedChange={(checked) => onSelect(item, checked === true)}
         aria-label={lostWorkTitle(item, t)}
       />
       <div className="min-w-0 flex-1 space-y-1">
@@ -71,10 +95,14 @@ export function ForkLostWorkRow({
             {lostWorkRiskLabel(item.risk, t)}
           </span>
           <span className="min-w-0 truncate text-sm font-medium">{lostWorkTitle(item, t)}</span>
-          <span className="text-xs text-muted-foreground">{item.repoName}</span>
         </div>
         <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
           <span>{lostWorkKindLabel(item.kind)}</span>
+          {item.inUse ? (
+            <span className="font-medium text-amber-600 dark:text-amber-400">
+              {lostWorkUseLabel(item.inUse, t)}
+            </span>
+          ) : null}
           {reasons.map((reason) => (
             <span key={reason}>{reason}</span>
           ))}
@@ -91,23 +119,23 @@ export function ForkLostWorkRow({
           <div className="truncate font-mono text-[11px] text-muted-foreground">{item.path}</div>
         ) : null}
         <div className="flex flex-wrap gap-1">
-          {canOpenLostWork(item) ? action('open', t('fork.lostWork.open', 'Open')) : null}
-          {canPushLostWork(item) ? action('push', t('fork.lostWork.push', 'Push')) : null}
-          {canPushLostWork(item)
-            ? action(
-                'pull-request',
-                pr
-                  ? t('fork.lostWork.viewPullRequest', 'View pull request')
-                  : t('fork.lostWork.createPullRequest', 'Create pull request')
-              )
-            : null}
-          {item.kind !== 'stash'
-            ? action('bundle', t('fork.lostWork.saveBundle', 'Save bundle'), canSaveLostWork(item))
-            : null}
-          {action('patch', t('fork.lostWork.savePatch', 'Save patch'), canSaveLostWork(item))}
-          {action('delete', t('fork.lostWork.delete', 'Delete'))}
+          {ordered.map((action) => (
+            <Button
+              key={action}
+              variant={action === suggested ? 'secondary' : 'ghost'}
+              size="xs"
+              disabled={
+                busy || ((action === 'bundle' || action === 'patch') && !canSaveLostWork(item))
+              }
+              onClick={() => onAction(item, action)}
+            >
+              {actionLabel(action, item, t)}
+            </Button>
+          ))}
         </div>
       </div>
     </div>
   )
 }
+
+export const ForkLostWorkRow = React.memo(ForkLostWorkRowView)

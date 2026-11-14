@@ -2,6 +2,11 @@
 // every local project's worktrees, branches and stashes. The scan only reads; each action is
 // asked for one item at a time.
 import { z } from 'zod'
+import {
+  resolveLostWorkUseSignals,
+  type LostWorkUse,
+  type LostWorkUseSignals
+} from './lost-work-use'
 
 /** Each check can be switched off in Settings > Blackfish. */
 export const LOST_WORK_CHECKS = [
@@ -33,6 +38,8 @@ export type LostWorkSettings = {
   projectConcurrency?: number
   /** Branches and worktrees read at once inside one repository; 0 picks from the cores. */
   itemConcurrency?: number
+  /** SLRM-2230: what marks a workspace as in use; unset signals count. */
+  inUse?: Partial<LostWorkUseSignals>
 }
 
 export const LOST_WORK_DEFAULT_SQUASH_LOOKBACK = 500
@@ -55,6 +62,7 @@ export type ResolvedLostWorkSettings = {
   pullRequestTimeoutSeconds: number
   projectConcurrency: number
   itemConcurrency: number
+  inUse: LostWorkUseSignals
 }
 
 function boundedInteger(value: unknown, fallback: number, max: number): number {
@@ -104,7 +112,8 @@ export function resolveLostWorkSettings(
       settings?.itemConcurrency,
       LOST_WORK_AUTO_CONCURRENCY,
       ITEM_CONCURRENCY_MAX
-    )
+    ),
+    inUse: resolveLostWorkUseSignals(settings?.inUse)
   }
 }
 
@@ -199,6 +208,8 @@ export type LostWorkItem = {
   lastCommitAt: number | null
   pullRequest?: LostWorkPullRequest
   stash?: { index: number; message: string }
+  /** SLRM-2230: set when the workspace is open or running; such a row is never `safe`. */
+  inUse?: LostWorkUse
 }
 
 export type LostWorkNoteCode =
