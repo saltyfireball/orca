@@ -8,10 +8,17 @@ import { RuntimeClientError } from '../runtime-client'
 import {
   FORK_IDLE_RECOVERY_METHODS as METHODS,
   type ForkIdleRecoveryAnswerResult,
+  type ForkIdleRecoveryInboxItem,
   type ForkIdleRecoveryInboxResult,
   type ForkIdleRecoveryPauseResult
 } from '../../shared/fork/idle-recovery-wire'
-import { formatInboxAnswer, formatInboxList, formatInboxPause } from './inbox-format'
+import {
+  formatInboxAnswer,
+  formatInboxList,
+  formatInboxPause,
+  inboxShortId,
+  INBOX_OFF_MESSAGE
+} from './inbox-format'
 
 function incompatible(error: unknown): never {
   if (error instanceof RuntimeClientError && error.code === 'method_not_found') {
@@ -31,6 +38,43 @@ function requireFlag(ctx: HandlerContext, name: string, hint: string): string {
   return value
 }
 
+/** The one item an id or unique prefix names, else a usage error that lists the matches. */
+export function pickInboxItem(
+  items: readonly ForkIdleRecoveryInboxItem[],
+  id: string
+): ForkIdleRecoveryInboxItem {
+  const exact = items.find((item) => item.chatId === id)
+  if (exact) {
+    return exact
+  }
+  const matches = items.filter((item) => item.chatId.startsWith(id))
+  if (matches.length === 1) {
+    return matches[0]
+  }
+  if (matches.length === 0) {
+    throw new RuntimeClientError(
+      'invalid_argument',
+      `No chat in the inbox with id "${id}". orca inbox list shows ids.`
+    )
+  }
+  const listed = matches.map((item) => `  ${inboxShortId(item)}  ${item.title}`).join('\n')
+  throw new RuntimeClientError(
+    'invalid_argument',
+    `"${id}" matches ${matches.length} chats, type more of the id:\n${listed}`
+  )
+}
+
+/** Reads the inbox and resolves the id; an off mode is an error that says how to turn it on. */
+async function resolveChatId(ctx: HandlerContext, id: string): Promise<string> {
+  const { result } = await ctx.client
+    .call<ForkIdleRecoveryInboxResult>(METHODS.inbox, {})
+    .catch(incompatible)
+  if (result.mode === 'off') {
+    throw new RuntimeClientError('invalid_argument', INBOX_OFF_MESSAGE)
+  }
+  return pickInboxItem(result.items, id).chatId
+}
+
 export const FORK_INBOX_HANDLERS: Record<string, CommandHandler> = {
   'inbox list': async (ctx) => {
     const reply = await ctx.client
@@ -39,16 +83,18 @@ export const FORK_INBOX_HANDLERS: Record<string, CommandHandler> = {
     printResult(reply, ctx.json, formatInboxList)
   },
   'inbox answer': async (ctx) => {
-    const chatId = requireFlag(ctx, 'id', 'Name a chat: orca inbox list shows ids.')
+    const id = requireFlag(ctx, 'id', 'Name a chat: orca inbox list shows ids.')
     const text = requireFlag(ctx, 'text', 'Give the answer: orca inbox answer <id> <text>.')
+    const chatId = await resolveChatId(ctx, id)
     const reply = await ctx.client
       .call<ForkIdleRecoveryAnswerResult>(METHODS.answer, { chatId, text })
       .catch(incompatible)
     printResult(reply, ctx.json, formatInboxAnswer)
   },
   'inbox pause': async (ctx) => {
-    const chatId = requireFlag(ctx, 'id', 'Name a chat: orca inbox list shows ids.')
+    const id = requireFlag(ctx, 'id', 'Name a chat: orca inbox list shows ids.')
     const paused = ctx.flags.get('resume') !== true
+    const chatId = await resolveChatId(ctx, id)
     const reply = await ctx.client
       .call<ForkIdleRecoveryPauseResult>(METHODS.pause, { chatId, paused })
       .catch(incompatible)
