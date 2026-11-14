@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { AgentSessionStatusSummary } from '../../../shared/agent-session/agent-session-wire'
 import type { AgentSessionRecord } from '../../../shared/agent-session/lifecycle/agent-session-record'
-import { agentSessionRecordFixture } from '../../native-chat/agent-session-record-test-fixture'
+import { agentSessionRecordFixture } from '../../native-chat/testing/agent-session-record-test-fixture'
 import { ClaudeAccountMoveService, type ClaudeAccountMoveDeps } from './claude-account-move-service'
 import type { ClaudeSessionPin } from './claude-session-account-pins'
 

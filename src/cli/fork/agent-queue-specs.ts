@@ -1,5 +1,6 @@
 // SLRM-2098 (FORK.md "Agent launch queue"): `orca agent queue list|start|cancel`.
-import { GLOBAL_FLAGS, type CommandSpec } from '../args'
+import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli-argument-boundary'
+import type { CommandSpec } from '../discovery/command-spec'
 
 export const FORK_AGENT_QUEUE_COMMAND_SPECS: CommandSpec[] = [
   {

@@ -1,8 +1,8 @@
 // SLRM-2098 (FORK.md "Agent launch queue"): `orca agent queue list|start|cancel`.
-import type { CommandHandler, HandlerContext } from '../dispatch'
-import { getOptionalStringFlag } from '../flags'
-import { printResult } from '../format'
-import { RuntimeClientError } from '../runtime-client'
+import type { CommandHandler, HandlerContext } from '../dispatch/dispatch'
+import { getOptionalStringFlag } from '../arguments/flags'
+import { printResult } from '../output/command-result-output'
+import { RuntimeClientError } from '../runtime/types'
 import type { ForkAgentQueueEntry, ForkAgentQueueSnapshot } from '../../shared/fork/agent-queue'
 
 function explainRefusal(error: unknown): unknown {
