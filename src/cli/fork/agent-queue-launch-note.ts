@@ -1,6 +1,6 @@
 // SLRM-2098 (FORK.md "Agent launch queue"): the line `agent launch`, `worktree create --agent`
 // and `orchestration worker-start` print when the launch waits in the host's agent queue.
-import type { RuntimeClient } from '../runtime-client'
+import type { RuntimeClient } from '../runtime/client'
 import {
   forkAgentQueuedLine,
   type ForkAgentQueueEntry,
