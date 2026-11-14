@@ -1,4 +1,4 @@
-import { app, clipboard, dialog, type BrowserWindow } from 'electron'
+import { app, clipboard, dialog, Notification, type BrowserWindow } from 'electron'
 import { isRoutedOrcaDeepLink } from './startup/open-routing/orca-deep-link-url'
 import { createMacAppActivationHandler } from './window/activation/macos-app-activation'
 import {
@@ -38,6 +38,7 @@ import {
 } from './fork/usage-ledger/usage-ledger-ipc'
 import { installForkSyncStatusBridge } from './fork/sync-status/sync-status-bridge'
 import { installForkIdleRecoveryBridge } from './fork/idle-recovery/idle-recovery-bridge'
+import { setIdleRecoveryDesktopNotifier } from './fork/idle-recovery/idle-recovery-notify'
 import { startForkIdleRecovery } from './fork/idle-recovery/idle-recovery-service'
 import {
   formatProfileStateStartupFailure,
@@ -222,6 +223,11 @@ if (preflightReady) {
   installForkSyncStatusBridge()
   // Fork: idle recovery and the Decision inbox, off unless switched on (FORK.md).
   installForkIdleRecoveryBridge()
+  setIdleRecoveryDesktopNotifier((title, body) => {
+    if (Notification.isSupported()) {
+      new Notification({ title, body }).show()
+    }
+  })
   startForkIdleRecovery(() => state.store?.getSettings(), {
     store: () => state.store,
     runtime: () => state.runtime
