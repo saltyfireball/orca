@@ -14,6 +14,7 @@ import {
   type LostWorkActionArgs,
   type LostWorkActionResult,
   type LostWorkNote,
+  type LostWorkScanProgress,
   type LostWorkScanResult
 } from '../../../shared/fork/lost-work'
 import { scanLostWork, type LostWorkRepo, type LostWorkScanDeps } from './lost-work-scan'
@@ -91,11 +92,15 @@ function deps(store: Store): LostWorkScanDeps & LostWorkActionDeps {
   }
 }
 
-/** Scans this process's local git projects, or those `repoFilter` keeps. */
+/**
+ * Scans this process's local git projects, or those `repoFilter` keeps. `onProgress` hears each
+ * repository start and finish (SLRM-2175); the result is the same with or without it.
+ */
 export async function runForkLostWorkScan(
   store: Store,
   signal?: AbortSignal,
-  repoFilter?: (repo: Repo) => boolean
+  repoFilter?: (repo: Repo) => boolean,
+  onProgress?: (progress: LostWorkScanProgress) => void
 ): Promise<LostWorkScanResult> {
   const settings = resolveLostWorkSettings(store.getSettings().forkLostWork)
   const repos = store.getRepos().filter((repo) => !repoFilter || repoFilter(repo))
@@ -107,7 +112,7 @@ export async function runForkLostWorkScan(
       code: isFolderRepo(repo) ? 'folder-project' : 'remote-project'
     }))
   const local = repos.filter(isLocalGitRepo).map(toLostWorkRepo)
-  return scanLostWork(local, settings, deps(store), signal, skipped)
+  return scanLostWork(local, settings, deps(store), signal, skipped, { onProgress })
 }
 
 export function runForkLostWorkAction(

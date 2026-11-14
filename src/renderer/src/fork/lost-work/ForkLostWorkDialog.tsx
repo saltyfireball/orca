@@ -9,11 +9,12 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { useTranslate } from '@/i18n/use-translate'
+import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { LOST_WORK_RISK_ORDER, type LostWorkRisk } from '../../../../shared/fork/lost-work'
 import { canPushLostWork, canSaveLostWork } from './lost-work-actions'
 import { lostWorkNoteLabel, lostWorkRiskLabel, lostWorkTitle } from './lost-work-labels'
 import { ForkLostWorkRow } from './ForkLostWorkRow'
+import { lostWorkProgressName, type LostWorkProgressLine } from './lost-work-progress'
 import { useForkLostWork, type LostWorkPendingDelete } from './use-fork-lost-work'
 
 type Filter = 'all' | LostWorkRisk
@@ -66,6 +67,26 @@ function DeleteConfirm({
   )
 }
 
+/** SLRM-2175: projects done of total, and the one being read. */
+function scanProgressText(progress: LostWorkProgressLine | null, t: Translate): string {
+  if (!progress || progress.total === 0) {
+    return t('fork.lostWork.scanning', 'Scanning...')
+  }
+  const { done, total } = progress
+  const name = lostWorkProgressName(progress.current)
+  return name
+    ? t(
+        'fork.lostWork.progressReading',
+        '{{done}} of {{total}} projects scanned. Reading {{name}}',
+        {
+          done,
+          total,
+          name
+        }
+      )
+    : t('fork.lostWork.progress', '{{done}} of {{total}} projects scanned', { done, total })
+}
+
 export function ForkLostWorkDialog({
   open,
   onOpenChange
@@ -85,7 +106,7 @@ export function ForkLostWorkDialog({
 function DialogBody(): React.JSX.Element {
   const t = useTranslate()
   const state = useForkLostWork()
-  const { result, scanning, busy, selected, setSelected, pendingDelete } = state
+  const { result, scanning, progress, busy, selected, setSelected, pendingDelete } = state
   const [filter, setFilter] = useState<Filter>('all')
   const items = useMemo(() => {
     const all = result?.items ?? []
@@ -130,8 +151,8 @@ function DialogBody(): React.JSX.Element {
             </Button>
           )}
           {scanning ? (
-            <span className="text-xs text-muted-foreground">
-              {t('fork.lostWork.scanning', 'Scanning...')}
+            <span className="min-w-0 truncate text-xs text-muted-foreground">
+              {scanProgressText(progress, t)}
             </span>
           ) : null}
           <div className="ml-auto flex gap-1">
@@ -204,7 +225,7 @@ function DialogBody(): React.JSX.Element {
         />
       ) : null}
       <div className="scrollbar-sleek min-h-0 flex-1 overflow-y-auto">
-        {result && items.length === 0 ? (
+        {result && !scanning && items.length === 0 ? (
           <p className="px-4 py-6 text-sm text-muted-foreground">
             {t('fork.lostWork.empty', 'No lost work found.')}
           </p>
