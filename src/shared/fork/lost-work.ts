@@ -27,12 +27,24 @@ export type LostWorkSettings = {
   squashLookback?: number
   /** How many recent pull requests per repo are read from the hosting CLI. */
   pullRequestLimit?: number
+  /** Seconds the pull request read may take per repository before the scan goes on without it. */
+  pullRequestTimeoutSeconds?: number
+  /** Repositories scanned at once; 0 picks a number from the machine's cores. */
+  projectConcurrency?: number
+  /** Branches and worktrees read at once inside one repository; 0 picks from the cores. */
+  itemConcurrency?: number
 }
 
 export const LOST_WORK_DEFAULT_SQUASH_LOOKBACK = 500
 export const LOST_WORK_DEFAULT_PULL_REQUEST_LIMIT = 200
+export const LOST_WORK_DEFAULT_PULL_REQUEST_TIMEOUT_SECONDS = 20
+/** 0 in either concurrency setting: derive it from the cores (`resolveLostWorkConcurrency`). */
+export const LOST_WORK_AUTO_CONCURRENCY = 0
 const LOOKBACK_MAX = 10_000
 const PULL_REQUEST_LIMIT_MAX = 1_000
+const PULL_REQUEST_TIMEOUT_MAX_SECONDS = 600
+const PROJECT_CONCURRENCY_MAX = 16
+const ITEM_CONCURRENCY_MAX = 32
 
 export type ResolvedLostWorkSettings = {
   checks: LostWorkChecks
@@ -40,6 +52,9 @@ export type ResolvedLostWorkSettings = {
   archiveFolder: string
   squashLookback: number
   pullRequestLimit: number
+  pullRequestTimeoutSeconds: number
+  projectConcurrency: number
+  itemConcurrency: number
 }
 
 function boundedInteger(value: unknown, fallback: number, max: number): number {
@@ -75,7 +90,41 @@ export function resolveLostWorkSettings(
       settings?.pullRequestLimit,
       LOST_WORK_DEFAULT_PULL_REQUEST_LIMIT,
       PULL_REQUEST_LIMIT_MAX
+    ),
+    // A limit of 0 would drop every pull request read, which the check's own switch is for.
+    pullRequestTimeoutSeconds:
+      boundedInteger(settings?.pullRequestTimeoutSeconds, 0, PULL_REQUEST_TIMEOUT_MAX_SECONDS) ||
+      LOST_WORK_DEFAULT_PULL_REQUEST_TIMEOUT_SECONDS,
+    projectConcurrency: boundedInteger(
+      settings?.projectConcurrency,
+      LOST_WORK_AUTO_CONCURRENCY,
+      PROJECT_CONCURRENCY_MAX
+    ),
+    itemConcurrency: boundedInteger(
+      settings?.itemConcurrency,
+      LOST_WORK_AUTO_CONCURRENCY,
+      ITEM_CONCURRENCY_MAX
     )
+  }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, Math.floor(value)))
+}
+
+/**
+ * How many repositories, and how many branches or worktrees inside each, the scan reads at once.
+ * Automatic leaves most cores free: git processes are short but each loads the repository, and
+ * Orca's own git admission lets only a few run at a time anyway.
+ */
+export function resolveLostWorkConcurrency(
+  settings: Pick<ResolvedLostWorkSettings, 'projectConcurrency' | 'itemConcurrency'>,
+  parallelism: number
+): { projects: number; items: number } {
+  const cores = Number.isFinite(parallelism) && parallelism >= 1 ? parallelism : 1
+  return {
+    projects: settings.projectConcurrency || clamp(cores / 4, 2, 4),
+    items: settings.itemConcurrency || clamp(cores / 2, 2, 6)
   }
 }
 
@@ -158,6 +207,8 @@ export type LostWorkNoteCode =
   | 'no-default-branch'
   | 'git-error'
   | 'pull-requests-unavailable'
+  /** Scanned together with another project of the same repository; `detail` names it. */
+  | 'shared-repository'
 
 export type LostWorkNote = {
   repoId: string
@@ -173,6 +224,19 @@ export type LostWorkScanResult = {
 }
 
 export type LostWorkScanArgs = { scanId: string; repoIds?: string[] }
+
+/** Sent while a scan runs: how far it is, and what the projects that just finished hold. */
+export type LostWorkScanProgress = {
+  /** Projects finished, of `total`. */
+  done: number
+  total: number
+  /** Names of the projects being read now. */
+  current: string[]
+  /** Set when a repository finishes: its projects and everything found in them. */
+  finished?: { repoIds: string[]; items: LostWorkItem[]; notes: LostWorkNote[] }
+}
+
+export type LostWorkScanProgressEvent = LostWorkScanProgress & { scanId: string }
 
 export type LostWorkAction =
   | 'push'
@@ -200,12 +264,15 @@ export type LostWorkActionResult =
 export const LOST_WORK_CHANNELS = {
   scan: 'fork:lostWork:scan',
   cancel: 'fork:lostWork:cancel',
-  act: 'fork:lostWork:act'
+  act: 'fork:lostWork:act',
+  progress: 'fork:lostWork:progress'
 } as const
 
 export type ForkLostWorkApi = {
   scan: (args: LostWorkScanArgs) => Promise<LostWorkScanResult>
   cancel: (scanId: string) => Promise<boolean>
+  /** Calls back as a running scan moves on; returns the unsubscribe. */
+  onScanProgress: (callback: (event: LostWorkScanProgressEvent) => void) => () => void
   act: (args: LostWorkActionArgs) => Promise<LostWorkActionResult>
 }
 
