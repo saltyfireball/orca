@@ -31,19 +31,6 @@ export function lostWorkDeletePlan(item: LostWorkItem, trackedByOrca: boolean): 
   }
 }
 
-/** Push needs a branch; a stash or detached HEAD has none. */
-export function canPushLostWork(item: LostWorkItem): boolean {
-  return Boolean(item.branch) && item.kind !== 'missing-folder' && item.kind !== 'stash'
-}
-
-export function canSaveLostWork(item: LostWorkItem): boolean {
-  return item.kind !== 'missing-folder' || Boolean(item.branch)
-}
-
-export function canOpenLostWork(item: LostWorkItem): boolean {
-  return item.kind === 'worktree' && Boolean(item.worktreeId)
-}
-
 function api() {
   const lostWork = window.api.forkLostWork
   if (!lostWork) {
