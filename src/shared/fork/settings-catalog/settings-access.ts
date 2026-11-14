@@ -42,7 +42,8 @@ const OWNER_CONFIRM: SettingsKey[] = ['browserPasswordsFillRequiresReauth']
 const AGENT_LIMITS: SettingsKey[] = [
   'nestedWorkerMaxDepth',
   'artifactSharingEnabled',
-  'agentSkillSharingEnabled'
+  'agentSkillSharingEnabled',
+  'orchestrationCoordinatorApprovalsEnabled'
 ]
 
 const ACCOUNTS: SettingsKey[] = [

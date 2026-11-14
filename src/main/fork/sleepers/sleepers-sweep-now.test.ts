@@ -52,6 +52,7 @@ function rig(opts: Opts = {}) {
     } as unknown as StructuredAgentSessionIdleSweepDeps['store'],
     stopAgent: vi.fn(async () => {}),
     stopStartingAgent: vi.fn(async () => {}),
+    startTimed: () => false,
     closeConversation: vi.fn(async () => true),
     logger: { warn: vi.fn() } as unknown as StructuredAgentSessionIdleSweepDeps['logger'],
     idleMs: () => 60 * 60_000,

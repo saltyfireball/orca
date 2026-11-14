@@ -1,11 +1,11 @@
 // SLRM-1503 (FORK.md): `orca account which` and `orca account move`, through the host's
 // fork.claudeAccount.* RPC. --environment / --pairing-code pick the host; each host moves only its
 // own chats onto its own accounts.
-import type { CommandHandler, HandlerContext } from '../dispatch'
-import { getOptionalStringFlag, getPresentStringFlag } from '../flags'
-import { printResult } from '../format'
-import { RuntimeClientError } from '../runtime-client'
-import { getOptionalWorktreeSelector } from '../selectors'
+import type { CommandHandler, HandlerContext } from '../dispatch/dispatch'
+import { getOptionalStringFlag, getPresentStringFlag } from '../arguments/flags'
+import { printResult } from '../output/command-result-output'
+import { RuntimeClientError } from '../runtime/types'
+import { getOptionalWorktreeSelector } from '../workspace-selection/workspace-selector'
 import { readInjectedAgentSessionId } from '../../shared/agent-session/lifecycle/agent-session-caller-env'
 import {
   FORK_CLAUDE_SYSTEM_DEFAULT,

@@ -106,6 +106,7 @@ describe('fork settings access', () => {
       'forkCacheColdThresholdTokens',
       'antigravityChatAuth',
       'geminiCliOAuthEnabled',
+      'claudeOAuthUsageEnabled',
       'httpProxyBypassRules',
       'nativeChatInheritShellEnvironment',
       'nativeChatShellEnvironmentVariables',
