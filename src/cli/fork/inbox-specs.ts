@@ -14,7 +14,7 @@ export const FORK_INBOX_COMMAND_SPECS: CommandSpec[] = [
     usage: 'orca inbox list [--json]',
     allowedFlags: [...GLOBAL_FLAGS],
     notes: [
-      'Empty unless idle recovery is on (Settings > Advanced > Agent lifecycle, or `orca settings set forkIdleSweepMode inbox`).',
+      'Empty unless idle recovery is on (Settings > Blackfish > Idle recovery, or `orca settings set forkIdleSweepMode inbox`).',
       'Each host lists its own chats; --environment picks another host.'
     ],
     examples: ['orca inbox list', 'orca inbox list --json']

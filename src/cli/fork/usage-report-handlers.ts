@@ -73,7 +73,7 @@ export function formatUsageReport(report: ForkUsageReport): string {
     line(report.total, width)
   )
   lines.push(
-    'Costs are estimates from the price table (Settings > Advanced > Usage report).',
+    'Costs are estimates from the price table (Settings > Blackfish > Usage report).',
     '"subscription": tokens of chats on a subscription, which is not billed per token.',
     '"+?": some tokens are of a model with no price in the table.'
   )

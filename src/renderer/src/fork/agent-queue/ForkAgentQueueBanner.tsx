@@ -21,7 +21,7 @@ function queuedText(
       title: t('fork.agentQueue.banner.memoryTitle', 'Queued: memory is low'),
       detail: t(
         'fork.agentQueue.banner.memoryDetail',
-        'System memory is past the warning threshold and "Pause new agents" is on (Settings > Advanced > Memory). This chat starts when memory recovers, or now with Start now; messages you send now wait and go out then.'
+        'System memory is past the warning threshold and "Pause new agents" is on (Settings > Blackfish > Memory). This chat starts when memory recovers, or now with Start now; messages you send now wait and go out then.'
       )
     }
   }
