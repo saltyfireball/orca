@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { RuntimeClient, RuntimeClientError } from '../runtime-client'
+import { RuntimeClient } from '../runtime/client'
+import { RuntimeClientError } from '../runtime/types'
 import { FORK_ACCOUNT_MOVE_HANDLERS, formatWhich } from './account-move-handlers'
 import type { RuntimeRpcSuccess } from '../../shared/runtime-rpc-envelope'
 

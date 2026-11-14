@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { CommandSpec } from '../args'
+import type { CommandSpec } from '../discovery/command-spec'
 import { readForkMcpProfileFlag } from './mcp-profile-flag'
 import { formatMcpChat, formatMcpListing } from './mcp-profile-format'
 import { withForkMcpProfileFlag } from './mcp-profile-specs'

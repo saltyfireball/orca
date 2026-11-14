@@ -5,7 +5,7 @@ import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
 import { activateAndRevealWorktree } from '@/lib/workspace/activation/worktree-activation'
 import { findWorktreeById } from '@/store/github/refresh/worktree-refresh'
-import { toWorktreeRemovalTarget } from '../../../../shared/worktree/removal'
+import { toWorktreeRemovalTarget } from '../../../../shared/worktree/removal/removal'
 import type {
   LostWorkAction,
   LostWorkActionResult,
