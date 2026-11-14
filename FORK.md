@@ -675,6 +675,7 @@ Apply these in this order. Each one is a single commit.
 80. `SLRM-2205 Idle recovery: the sweep, the wake and the Decision inbox service`
 81. `SLRM-2211 Idle recovery: whole-feature test, paused and stalled rows, user guide, example classifier`
 82. `SLRM-2216 Follow upstream 1.4.259's moved modules in fork code`
+83. `SLRM-2216 Fix the settings JSONC line on Bun and the agent queue list params for the mobile RPC fence`
 
 `AppRootSurfaces.tsx` carries one hook for the fork's always-mounted hosts: `ForkRootHosts`
 (`src/renderer/src/fork/ForkRootHosts.tsx`) renders `ForkChatSleepReporter`,
