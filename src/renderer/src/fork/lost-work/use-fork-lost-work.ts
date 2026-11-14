@@ -15,11 +15,22 @@ import {
   deleteLostWork,
   openLostWorkWorkspace
 } from './lost-work-actions'
-import type { LostWorkRowAction } from './ForkLostWorkRow'
+import type { LostWorkRowAction } from './lost-work-row-actions'
+import {
+  nextLostWorkDeleteStage,
+  type LostWorkBulkAction,
+  type LostWorkBulkSummary,
+  type LostWorkDeleteStage
+} from './lost-work-bulk'
+import { lostWorkTitle, lostWorkUseLabel } from './lost-work-labels'
+import { withLostWorkUseNow } from './use-lost-work-use'
 import { mergeLostWorkProgress, type LostWorkProgressLine } from './lost-work-progress'
 
-/** A delete waits here: stage 1 for every delete, stage 2 when any item would lose work. */
-export type LostWorkPendingDelete = { items: LostWorkItem[]; stage: 1 | 2 }
+/**
+ * A delete waits here: `confirm` for every delete, `in-use` when a workspace has chats, agents or
+ * terminals (SLRM-2230), `loss` when any item would lose work.
+ */
+export type LostWorkPendingDelete = { items: LostWorkItem[]; stage: LostWorkDeleteStage }
 
 let scanCounter = 0
 
@@ -32,8 +43,8 @@ function nextScanId(): string {
 async function runItems(
   items: readonly LostWorkItem[],
   run: (item: LostWorkItem) => Promise<LostWorkActionResult>
-): Promise<{ failures: string[]; files: string[] }> {
-  const failures: string[] = []
+): Promise<{ failures: { name: string; reason: string }[]; files: string[] }> {
+  const failures: { name: string; reason: string }[] = []
   const files: string[] = []
   for (const item of items) {
     const outcome = await run(item).catch((error: unknown): LostWorkActionResult => ({
@@ -43,19 +54,22 @@ async function runItems(
     if (outcome.ok) {
       files.push(...(outcome.files ?? []))
     } else {
-      failures.push(`${item.branch ?? item.path ?? item.repoName}: ${outcome.error}`)
+      failures.push({ name: `${item.repoName}: ${lostWorkTitle(item)}`, reason: outcome.error })
     }
   }
   return { failures, files }
 }
 
-function toastOutcome(failures: readonly string[], files: readonly string[]): void {
+function toastOutcome(
+  failures: readonly { name: string; reason: string }[],
+  files: readonly string[]
+): void {
   if (failures.length > 0) {
     toast.error(
       translate('fork.lostWork.someFailed', '{{count}} of the items failed', {
         count: failures.length
       }),
-      { description: failures.slice(0, 5).join('\n') }
+      { description: failures.map(({ name, reason }) => `${name}: ${reason}`).join('\n') }
     )
   } else if (files.length > 0) {
     toast.success(
@@ -96,6 +110,7 @@ export function useForkLostWork() {
   const [busy, setBusy] = useState(false)
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const [pendingDelete, setPendingDelete] = useState<LostWorkPendingDelete | null>(null)
+  const [summary, setSummary] = useState<LostWorkBulkSummary | null>(null)
   const scanId = useRef<string | null>(null)
 
   const scan = useCallback(async () => {
@@ -148,12 +163,19 @@ export function useForkLostWork() {
     async (
       items: readonly LostWorkItem[],
       run: (item: LostWorkItem) => Promise<LostWorkActionResult>,
-      rescan: boolean
+      rescan: boolean,
+      action: LostWorkBulkAction
     ) => {
       setBusy(true)
+      setSummary(null)
       const { failures, files } = await runItems(items, run)
       setBusy(false)
-      toastOutcome(failures, files)
+      if (items.length > 1) {
+        // SLRM-2230: many rows report in the dialog, with the reason for each one refused.
+        setSummary({ action, done: items.length - failures.length, files, refused: failures })
+      } else {
+        toastOutcome(failures, files)
+      }
       if (rescan) {
         await scan()
       }
@@ -165,14 +187,15 @@ export function useForkLostWork() {
     async (items: readonly LostWorkItem[], action: 'save-bundle' | 'save-patch') => {
       const folder = await chooseArchiveFolder()
       if (folder) {
-        await runEach(items, (item) => actOnLostWork(item, action, { folder }), false)
+        await runEach(items, (item) => actOnLostWork(item, action, { folder }), false, 'save')
       }
     },
     [runEach]
   )
 
   const push = useCallback(
-    (items: readonly LostWorkItem[]) => runEach(items, (item) => actOnLostWork(item, 'push'), true),
+    (items: readonly LostWorkItem[]) =>
+      runEach(items, (item) => actOnLostWork(item, 'push'), true, 'push'),
     [runEach]
   )
 
@@ -191,20 +214,46 @@ export function useForkLostWork() {
     }
   }, [])
 
-  /** First confirm passed: a would-lose-work item needs the second one. */
+  /** SLRM-2230: a delete starts from what is in use this moment, not at the last scan. */
+  const requestDelete = useCallback((items: readonly LostWorkItem[]) => {
+    if (items.length > 0) {
+      setPendingDelete({ items: withLostWorkUseNow(items), stage: 'confirm' })
+    }
+  }, [])
+
+  /** Moves to the next confirmation the items need, and deletes after the last one. */
   const confirmDelete = useCallback(async () => {
     if (!pendingDelete) {
       return
     }
-    const losesWork = pendingDelete.items.some((item) => item.risk === 'would-lose-work')
-    if (pendingDelete.stage === 1 && losesWork) {
-      setPendingDelete({ items: pendingDelete.items, stage: 2 })
+    const { items, stage } = pendingDelete
+    const next = nextLostWorkDeleteStage(items, stage)
+    if (next) {
+      setPendingDelete({ items, stage: next })
       return
     }
-    const confirmedLoss = pendingDelete.stage === 2
-    const items = pendingDelete.items
+    const confirmedLoss = stage === 'loss'
     setPendingDelete(null)
-    await runEach(items, (item) => deleteLostWork(item, confirmedLoss), true)
+    await runEach(
+      items,
+      async (item) => {
+        // A chat or agent that started after the confirmation was not agreed to.
+        const [now] = withLostWorkUseNow([item])
+        if (now.inUse && !item.inUse) {
+          return {
+            ok: false,
+            error: translate(
+              'fork.lostWork.nowInUse',
+              'Not deleted: it came into use after you confirmed. {{use}}',
+              { use: lostWorkUseLabel(now.inUse) }
+            )
+          }
+        }
+        return deleteLostWork(item, confirmedLoss)
+      },
+      true,
+      'delete'
+    )
   }, [pendingDelete, runEach])
 
   const rowAction = useCallback(
@@ -226,10 +275,10 @@ export function useForkLostWork() {
           void save([item], 'save-patch')
           return
         case 'delete':
-          setPendingDelete({ items: [item], stage: 1 })
+          requestDelete([item])
       }
     },
-    [openPullRequest, push, save]
+    [openPullRequest, push, requestDelete, save]
   )
 
   return {
@@ -241,6 +290,9 @@ export function useForkLostWork() {
     setSelected,
     pendingDelete,
     setPendingDelete,
+    requestDelete,
+    summary,
+    setSummary,
     scan,
     cancel,
     save,
