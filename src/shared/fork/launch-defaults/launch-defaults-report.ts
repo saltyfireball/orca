@@ -11,7 +11,7 @@ export type ForkLaunchDefaultsRow = {
   /** Absent: the agent runs the model from its own config. */
   model?: string
   effort?: string
-  /** fork-default: Settings > Advanced > Launch defaults. stock: Settings > Agents, or the agent. */
+  /** fork-default: Settings > Blackfish > Launch defaults. stock: Settings > Agents, or the agent. */
   source: 'fork-default' | 'stock'
   note?: string
 }

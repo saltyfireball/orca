@@ -3,7 +3,7 @@
 // asked for one item at a time.
 import { z } from 'zod'
 
-/** Each check can be switched off in Settings > Advanced. */
+/** Each check can be switched off in Settings > Blackfish. */
 export const LOST_WORK_CHECKS = [
   'unmergedWorktrees',
   'finishedWorktrees',
