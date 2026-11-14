@@ -1,3 +1,4 @@
+import { ForkBoundaryCompactionReporter } from './boundary-compaction/ForkBoundaryCompaction'
 import { ForkChatSleepReporter } from './chat-sleep/ForkChatSleep'
 import { ForkDecisionInboxHost } from './decision-inbox/ForkDecisionInboxHost'
 import { ForkLostWorkHost } from './lost-work/ForkLostWorkHost'
@@ -13,6 +14,7 @@ export function ForkRootHosts(): React.JSX.Element {
   return (
     <>
       <ForkChatSleepReporter />
+      <ForkBoundaryCompactionReporter />
       <ForkWorkerCleanupReporter />
       <ForkSleepersDialogHost />
       <ForkUsageReportHost />
