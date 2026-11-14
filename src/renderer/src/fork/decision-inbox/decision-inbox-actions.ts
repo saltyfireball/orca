@@ -62,7 +62,7 @@ function answerOutcomeMessage(outcome: Exclude<ForkIdleRecoveryAnswerOutcome, 's
   }
   return translate(
     'fork.decisionInbox.toast.unavailable',
-    'Idle recovery is off or not running, so the answer was not sent.'
+    'The answer was not sent: idle recovery is off, or the chat cannot take a message right now.'
   )
 }
 

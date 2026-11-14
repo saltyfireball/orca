@@ -16,7 +16,8 @@ const ANSWER: Record<ForkIdleRecoveryAnswerOutcome, string> = {
   sent: 'answer sent',
   'not-found': 'no such chat on this host',
   'not-waiting': 'not waiting on you now, so nothing was sent',
-  unavailable: 'idle recovery is off or not running on this host'
+  unavailable:
+    'idle recovery is off on this host, or the chat cannot take a message right now (a terminal that holds typed text or a dialog, or is not settled)'
 }
 
 /** Chat session ids print short, terminal pane keys in full. */
@@ -50,10 +51,15 @@ export function formatInboxList(result: ForkIdleRecoveryInboxResult): string {
   if (result.items.length === 0) {
     return 'No chats are waiting on you.'
   }
-  const count = result.items.length
+  // A paused chat keeps its row as it was when it was paused; it is listed last and not counted.
+  const live = result.items.filter((item) => !item.paused)
+  const paused = result.items.filter((item) => item.paused)
+  const count = live.length
+  const counted = `${count} ${count === 1 ? 'chat' : 'chats'}`
+  const head = paused.length > 0 ? `${counted}, ${paused.length} paused` : counted
   return [
-    `${count} ${count === 1 ? 'chat' : 'chats'} (ID, kind, age, title):`,
-    ...result.items.flatMap((item) => itemLines(item, result.now))
+    `${head} (ID, kind, age, title):`,
+    ...[...live, ...paused].flatMap((item) => itemLines(item, result.now))
   ].join('\n')
 }
 
