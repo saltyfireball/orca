@@ -9,7 +9,7 @@ export const FORK_AGENT_QUEUE_COMMAND_SPECS: CommandSpec[] = [
     usage: 'orca agent queue list [--json]',
     allowedFlags: [...GLOBAL_FLAGS],
     notes: [
-      'With the agent limit on (Settings > Advanced), launches past the limit wait here and start in order when a running agent stops: user-started launches first, then orchestration workers.',
+      'With the agent limit on (Settings > Blackfish), launches past the limit wait here and start in order when a running agent stops: user-started launches first, then orchestration workers.',
       'With --environment or --pairing-code it reads that host; each host has its own queue.'
     ],
     examples: ['orca agent queue list', 'orca agent queue list --json']
