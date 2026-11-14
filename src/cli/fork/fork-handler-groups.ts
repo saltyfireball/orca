@@ -1,4 +1,4 @@
-import type { HandlerGroup } from '../handler-group-manifest'
+import type { HandlerGroup } from '../dispatch/handler-group-manifest'
 
 /**
  * The fork's CLI command groups, spread into `HANDLER_GROUPS` by one hook so the upstream

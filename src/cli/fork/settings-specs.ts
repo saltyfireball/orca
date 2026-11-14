@@ -1,5 +1,6 @@
 // Settings from the CLI (FORK.md): `orca settings`.
-import { GLOBAL_FLAGS, type CommandSpec } from '../args'
+import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli-argument-boundary'
+import type { CommandSpec } from '../discovery/command-spec'
 
 const WRITE_NOTE =
   'The change goes through the running app, which checks and normalizes it as the Settings screen does, and open windows update at once.'

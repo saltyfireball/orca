@@ -7,7 +7,7 @@ import type {
   ForkWorkerCleanupItem,
   ForkWorkerCleanupUndoResult
 } from '../../../shared/fork/worker-cleanup'
-import { openClosedWorkerTerminal } from '../../runtime/rpc/methods/orchestration/worker/closed-worker-terminal'
+import { openClosedWorkerTerminal } from '../../runtime/rpc/methods/orchestration/worker/follow-up/closed-worker-terminal'
 import type { WorkerTerminalReleaseRuntime } from '../../runtime/orchestration/terminal-authority/release/worker-terminal-release-runtime'
 import { takeNotice } from './worker-cleanup-notices'
 import { forkWorkerCleanupRuntime } from './worker-cleanup-service'

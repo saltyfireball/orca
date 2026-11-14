@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getDevInstanceIdentity } from '../startup/dev-instance-identity'
+import { getDevInstanceIdentity } from '../startup/profile-startup/dev-instance-identity'
 import { FORK_DATA_DIR_NAME, FORK_PRE_READY_APP_NAME, forkPostReadyAppName } from './app-name'
 
 describe('forkPostReadyAppName', () => {

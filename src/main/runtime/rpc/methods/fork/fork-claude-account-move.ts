@@ -2,7 +2,7 @@
 // answers for its own chats, so a desktop or the CLI reaches a remote host's chats through that
 // host's runtime (`--environment` / `--pairing-code`).
 import { defineMethod, type RpcContext } from '../../core'
-import type { OrcadFeature } from '../../orcad-feature-readiness'
+import type { OrcadFeature } from '../../startup/orcad-readiness'
 import {
   ForkClaudeAccountCancelParams,
   ForkClaudeAccountMoveParams,
