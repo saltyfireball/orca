@@ -1,4 +1,4 @@
-// Sleepers (SLRM-2136): Settings > Advanced, whether the sidebar toolbar shows the Sleepers
+// Sleepers (SLRM-2136): Settings > Blackfish, whether the sidebar toolbar shows the Sleepers
 // button. Shown by default; the command palette opens the dialog either way.
 import React from 'react'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'

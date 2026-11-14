@@ -1,4 +1,4 @@
-// Fork launch defaults (FORK.md "Launch defaults"): Settings > Advanced > Launch defaults. A model
+// Fork launch defaults (FORK.md "Launch defaults"): Settings > Blackfish > Launch defaults. A model
 // and effort per kind of launch for one agent at a time. Empty everywhere ships, which is stock.
 import React, { useId, useState } from 'react'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
