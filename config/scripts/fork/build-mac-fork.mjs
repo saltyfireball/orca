@@ -72,17 +72,40 @@ function packagingEnv(packageVersion) {
   return env
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
-  const packageJson = readPackageJson()
-  const env = packagingEnv(packageJson.version)
-  const stepEnv = forkPrerequisiteEnv()
-  for (const script of buildMacPrerequisiteScripts(packageJson.scripts['build:mac'])) {
-    execFileSync(PNPM, forkPrerequisiteStepArgs(script), { env: stepEnv, stdio: 'inherit' })
+/**
+ * Which halves to run. The release workflow runs them apart: the prerequisites need no orcad
+ * template, so they build while the template is still being qualified. No flag runs both.
+ */
+export function buildMacPhases(args) {
+  const known = ['--prerequisites', '--package']
+  const unknown = args.find((arg) => !known.includes(arg))
+  if (unknown) {
+    throw new Error(`Unknown argument "${unknown}"; expected ${known.join(' or ')}`)
   }
-  // Why never: under CI electron-builder publishes on its own, but the workflow uploads the assets.
-  execFileSync(
-    PNPM,
-    ['exec', 'electron-builder', '--config', FORK_BUILDER_CONFIG, '--mac', '--publish', 'never'],
-    { env, stdio: 'inherit' }
-  )
+  const all = args.length === 0
+  return {
+    prerequisites: all || args.includes('--prerequisites'),
+    package: all || args.includes('--package')
+  }
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
+  const phases = buildMacPhases(process.argv.slice(2))
+  const packageJson = readPackageJson()
+  // Both halves check the version, so a mismatch stops the build before the long steps.
+  const env = packagingEnv(packageJson.version)
+  if (phases.prerequisites) {
+    const stepEnv = forkPrerequisiteEnv()
+    for (const script of buildMacPrerequisiteScripts(packageJson.scripts['build:mac'])) {
+      execFileSync(PNPM, forkPrerequisiteStepArgs(script), { env: stepEnv, stdio: 'inherit' })
+    }
+  }
+  if (phases.package) {
+    // Why never: under CI electron-builder publishes on its own, but the workflow uploads the assets.
+    execFileSync(
+      PNPM,
+      ['exec', 'electron-builder', '--config', FORK_BUILDER_CONFIG, '--mac', '--publish', 'never'],
+      { env, stdio: 'inherit' }
+    )
+  }
 }

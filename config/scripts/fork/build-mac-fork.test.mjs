@@ -1,9 +1,11 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   FORK_APP_BUNDLE_ID,
   FORK_COMPUTER_USE_BUNDLE_ID,
+  buildMacPhases,
   buildMacPrerequisiteScripts,
   forkPrerequisiteEnv,
   forkPrerequisiteStepArgs
@@ -39,6 +41,24 @@ describe('fork build:mac steps', () => {
     const steps = buildMacPrerequisiteScripts(JSON.parse(read('package.json')).scripts['build:mac'])
     expect(steps).toContain('build:computer-macos')
     expect(steps).toContain('build:notification-status-macos')
+  })
+
+  it('runs both halves unless the release workflow asks for one', () => {
+    expect(buildMacPhases([])).toEqual({ prerequisites: true, package: true })
+    expect(buildMacPhases(['--prerequisites'])).toEqual({ prerequisites: true, package: false })
+    expect(buildMacPhases(['--package'])).toEqual({ prerequisites: false, package: true })
+    expect(() => buildMacPhases(['--pack'])).toThrow(/Unknown argument/)
+  })
+
+  it("signs with upstream's batched signer", () => {
+    const config = createRequire(import.meta.url)('./electron-builder.fork.config.cjs')
+    expect(config.mac.sign).toBe(
+      resolve(repoRoot, 'config/scripts/desktop-distribution/macos/sign-mac-app.mjs')
+    )
+    expect(existsSync(config.mac.sign)).toBe(true)
+    expect(read('config/scripts/desktop-distribution/macos/sign-mac-app.mjs')).toContain(
+      'batchCodesignCalls: true'
+    )
   })
 
   it('agrees on the fork bundle ids everywhere they are written', () => {
