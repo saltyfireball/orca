@@ -2,7 +2,7 @@
 // next start takes them for its provider child. A claim nothing takes in time is stopped, which is
 // today's recovery outcome: the provider ends and the chat resumes from its saved history.
 import type { ChatSurviveConnection } from './chat-survive-client'
-import type { ChatSurviveRecord } from './chat-survive-registry'
+import { removeChatSurviveRecord, type ChatSurviveRecord } from './chat-survive-registry'
 import type { ChatSurviveStreamMark } from './chat-survive-stream-mark'
 
 /** How long a claimed broker waits for the chat's start before it is stopped as today. */
@@ -59,14 +59,24 @@ export function dropChatSurviveClaim(sessionId: string): void {
   }
 }
 
-/** Stops a taken claim's provider; until it is gone no other provider may start for the chat. */
+/**
+ * Stops a taken claim's provider; until it is gone no other provider may start for the chat. Its
+ * record goes with it: the app instance that would have removed it at the broker's exit has quit,
+ * and the record holds a token.
+ */
 export function stopChatSurviveClaim(claim: ChatSurviveClaim): void {
   const { connection } = claim
   const sessionId = claim.record.sessionId
   stopping.add(sessionId)
   connection.stop()
   void connection.exited.then(() => connection.release())
-  void connection.ended.then(() => stopping.delete(sessionId))
+  void connection.ended.then((end) => {
+    stopping.delete(sessionId)
+    // Superseded: another owner holds the broker now, and the record is its to keep.
+    if (end === 'closed') {
+      void removeChatSurviveRecord(claim.recordPath)
+    }
+  })
 }
 
 /** True while a dropped claim's provider may still write; no second provider may start then. */

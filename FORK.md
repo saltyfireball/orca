@@ -45,8 +45,14 @@ named Orca Fork until SLRM-1367. `main` is always
   stopped, and the restart guard does not count it as busy. On macOS the next app start's session
   recovery adopts that broker instead of stopping it and starts the chat over the broker's
   socket, replaying from where the quitting app left off, so the turn carries on; anything it
-  cannot prove stops the broker as before. The design and the remaining phases (Codex next) are
-  in `docs/fork/chat-survive.md`.
+  cannot prove stops the broker as before. A broker is adopted only into a start that would
+  launch the same provider: the launch is saved as a fingerprint of named parts (each arg flag,
+  the cwd, each provider env key, the content of a config file a flag names), the app's own
+  version is no part of it, so chats carry over an app update, and a refusal logs which parts
+  differ by name (SLRM-2263). An update that also bumps the Claude Agent SDK does not carry chats
+  over, and neither does the first start after updating from a release with the earlier
+  single-hash record. The design and the remaining phases (Codex next) are in
+  `docs/fork/chat-survive.md`.
 - **Claude account chip (SLRM-1503).** Native chat tabs, terminal tabs running Claude, agent rows
   and sidebar worktree rows show a small dot and short label (`B`, or `B @ kif` on another host)
   naming the Claude account the session runs on; a worktree whose sessions use several shows
@@ -474,6 +480,9 @@ named Orca Fork until SLRM-1367. `main` is always
       read from; every write is async.
     - `chat-survive-launch-ready.ts` (1): the spawn's one stat of the broker entry, kept from
       before so an entry removed since the last check spawns the plain provider.
+    - `chat-survive-launch-hash.ts` (1): the spawn's read of a config file a launch flag names
+      (a chat's MCP config), so the launch fingerprint covers what the provider reads from it.
+      The spawn hook is synchronous, and the file is small and was written just before.
     - `usage-ledger-file.ts` (3): the ledger's one read and its folder creation, both once at
       install. The batched saves keep the shared synchronous atomic writer, because the quit
       flush must land before the process exits.
@@ -748,6 +757,7 @@ Apply these in this order. Each one is a single commit.
 84. `SLRM-2228 Give the fork settings their own Settings pane, with one project list`
 85. `SLRM-2230 Lost work: in-use guard, select all, project groups, suggested actions, bulk summary`
 86. `SLRM-2257 Boundary compaction: ask an idle chat with a large context to compact between turns`
+87. `SLRM-2263 Chat survive: carry chats over an app update, say why a claim is refused`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
