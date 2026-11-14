@@ -54,8 +54,11 @@ export type IdleRecoveryTerminalBinding = { handle: string; binding: AgentPrompt
 export type IdleRecoveryTerminalPort = {
   /** Null when the pane has no live terminal (closed, or asleep). */
   bind: (paneKey: string) => IdleRecoveryTerminalBinding | null
-  /** Why nothing may be typed into the terminal now, or null when it rests at an empty prompt. */
-  refusal: (paneKey: string, handle: string) => Promise<string | null>
+  /**
+   * Why nothing may be typed into the terminal now, or null when it rests at an empty prompt.
+   * With `untouchedSince` (epoch ms), keys the user typed there after that time refuse it too.
+   */
+  refusal: (paneKey: string, handle: string, untouchedSince?: number) => Promise<string | null>
   /** `stillClear` runs right before the first write: false refuses it. */
   send: (
     bound: IdleRecoveryTerminalBinding,
@@ -135,6 +138,7 @@ export type IdleRecoveryTerminalRuntime = Pick<
   | 'readTerminalMailHold'
   | 'readTerminal'
   | 'isWorkerAgentInTurn'
+  | 'terminalRunFacts'
 > &
   LaunchedAgentWriteGuardRuntime
 
@@ -164,7 +168,7 @@ export function idleRecoveryTerminalPort(
         return null
       }
     },
-    refusal: async (paneKey, handle) => {
+    refusal: async (paneKey, handle, untouchedSince) => {
       const runtime = getRuntime()
       if (!runtime) {
         return 'no-runtime'
@@ -172,6 +176,14 @@ export function idleRecoveryTerminalPort(
       try {
         if (runtime.isWorkerAgentInTurn({ pane_key: paneKey, terminal_handle: handle })) {
           return 'in-turn'
+        }
+        if (untouchedSince !== undefined) {
+          // Typed keys may sit in a composer the screen reader does not know: leave it to the user.
+          const { ptyId } = runtime.getTerminalPromptRequestBinding(handle)
+          const typedAt = runtime.terminalRunFacts.readLastDrivingInputAt(ptyId)
+          if (typedAt !== null && typedAt > untouchedSince) {
+            return 'typed-since-idle'
+          }
         }
         // The gate orchestration mail uses: a dialog, a draft, a restoring or unsettled screen.
         const hold = runtime.readTerminalMailHold(handle)
