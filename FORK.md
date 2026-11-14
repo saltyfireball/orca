@@ -1294,7 +1294,11 @@ and the tag all match it, and the release is a normal release
 `node config/scripts/fork/build-mac-fork.mjs` runs the steps that come before packaging in
 upstream's `build:mac`, then electron-builder with the fork overlay. Without `FORK_VERSION` it
 makes a local build, `<version>-local.<time>.<sha>`. With `FORK_VERSION` set it needs
-`package.json` to hold that version, and builds exactly that version.
+`package.json` to hold that version, and builds exactly that version. `--prerequisites` runs
+only the steps before packaging and `--package` only electron-builder: the release workflow
+runs them apart. The overlay signs with upstream's batched signer
+(`config/scripts/desktop-distribution/macos/sign-mac-app.mjs`): one `codesign` call per group of
+files, where electron-builder's default makes one call per file.
 
 ## How sync works
 
@@ -1339,14 +1343,23 @@ runs in a fork, never in the upstream repository (`stablyai/orca`). Every third-
    `out/package.json`, which the host's orcad reports as its app version. Upstream's own
    template carries the upstream version (1.4.253 under a 1.4.253NNN app), so Settings,
    Remote Orca Servers would call every host out of date. The job fails unless the template
-   has the fork version, and uploads it as `orcad-template-fork`.
+   has the fork version, and uploads it as `orcad-template-fork`. It starts with
+   orcad-template, in the same three cases, installs while the lanes run, then waits in a step
+   (`fork-run-gate.mjs lanes`) until upstream's `desktop_template` job reports that every lane
+   passed. It fails as soon as a lane fails.
 4. **build-mac** (macos-15) runs in three cases: `main` changed, `main` has no fork release
    yet, or `force_build` is set. The second case retries a failed build without waiting for a
-   new upstream tag. It waits for orcad-template-fork and runs only when that succeeded.
+   new upstream tag. It starts beside the template jobs, since nothing before packaging reads
+   the template, and waits for them in steps (`config/scripts/fork/fork-run-gate.mjs`, which
+   polls this run's jobs and fails as soon as one it waits for fails).
    - Sets the fork version from sync in the build copy of `package.json`.
    - Imports the fork signing identity (see Signing) and installs arm64 natives only.
-   - Downloads `orcad-template-fork` to `out/orcad-template`, then runs
-     `node config/scripts/fork/build-mac-fork.mjs` with `ORCA_REQUIRE_ORCAD_TEMPLATE=1`, so the
+   - Runs `node config/scripts/fork/build-mac-fork.mjs --prerequisites`: typecheck, the desktop
+     bundles and the native helpers.
+   - Waits for the orcad-template-fork job to succeed (`fork-run-gate.mjs fork-template`),
+     downloads `orcad-template-fork` to `out/orcad-template`, then runs
+     `node config/scripts/fork/build-mac-fork.mjs --package` with
+     `ORCA_REQUIRE_ORCAD_TEMPLATE=1`, so the
      build fails if the template is missing. electron-builder ships it as
      `Contents/Resources/orcad-template`, and afterPack signs its Mach-O files with the fork
      identity. A step then checks the app has the template, its darwin-arm64,
@@ -1355,6 +1368,8 @@ runs in a fork, never in the upstream repository (`stablyai/orca`). Every third-
    - Checks the app's designated requirement is the fork certificate, so Squirrel.Mac accepts it
      as an update.
    - Checks that `latest-mac.yml` and the app both carry the fork version.
+   - Waits until every job of orcad-template has passed, upstream's own template assembly
+     included (`fork-run-gate.mjs qualified`). Nothing is published before that.
    - Publishes the arm64 dmg, the arm64 zip and `latest-mac.yml` as release `v<fork version>`.
 5. **status** (ubuntu-latest) runs after every other job on every run, whatever failed or was
    cancelled, and publishes the sync status (see Sync status).
