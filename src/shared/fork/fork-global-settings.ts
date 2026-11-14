@@ -73,6 +73,28 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkSyncNotice?: boolean
     /** Fork sync status: days without a new status before it is called stale; unset is 3, 0 is off. */
     forkSyncNoticeStaleDays?: number
+    /** Fork idle recovery: 'off', 'inbox' (list chats waiting on you) or 'wake' (also wake stalled chats); unset is 'off'. */
+    forkIdleSweepMode?: 'off' | 'inbox' | 'wake'
+    /** Fork idle recovery: seconds a chat sits idle after its turn before its ending is judged; unset is 45. */
+    forkIdleSweepIdleSeconds?: number
+    /** Fork idle recovery: the command that judges an ending (JSON on stdin, a JSON verdict on stdout); unset uses the built-in check. Set it in the Settings screen. */
+    forkIdleSweepClassifierCommand?: string
+    /** Fork idle recovery: seconds the classifier command may run; unset is 30. */
+    forkIdleSweepClassifierTimeoutSeconds?: number
+    /** Fork idle recovery: most wake messages sent to a chat for one request; unset is 2. */
+    forkIdleSweepMaxWakes?: number
+    /** Fork idle recovery: longest wait, in minutes, a verdict may ask for before the next look; unset is 60. */
+    forkIdleSweepRecheckMaxMinutes?: number
+    /** Fork idle recovery: 'skip' leaves orchestration workers alone, 'include' judges them too; unset is 'skip'. */
+    forkIdleSweepWorkers?: 'skip' | 'include'
+    /** Fork idle recovery: chat ids it leaves alone; unset is none. */
+    forkIdleSweepPaused?: string[]
+    /** Fork decision inbox: show a desktop notification when a chat starts waiting on you. Off unless true. */
+    forkInboxNotifyDesktop?: boolean
+    /** Fork decision inbox: an http(s) address that gets a POST when a chat starts waiting on you; unset is none. Set it in the Settings screen. */
+    forkInboxNotifyWebhookUrl?: string
+    /** Fork decision inbox: a command run when a chat starts waiting on you; unset is none. Set it in the Settings screen. */
+    forkInboxNotifyCommand?: string
   }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */
