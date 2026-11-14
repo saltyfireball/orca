@@ -47,6 +47,12 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     keys: ['usage-report'],
     load: async () => (await import('./usage-report-handlers.js')).FORK_USAGE_REPORT_HANDLERS
   },
+  // Fork: the Decision inbox of chats waiting on the user (FORK.md "Idle recovery").
+  {
+    name: 'fork-inbox',
+    keys: ['inbox list', 'inbox answer', 'inbox pause'],
+    load: async () => (await import('./inbox-handlers.js')).FORK_INBOX_HANDLERS
+  },
   // Fork: read and edit every app setting (FORK.md "Settings from the CLI").
   {
     name: 'fork-settings',
