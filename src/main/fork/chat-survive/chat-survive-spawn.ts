@@ -13,7 +13,11 @@ import {
   stopChatSurviveClaim,
   takeChatSurviveClaim
 } from './chat-survive-claims'
-import { chatSurviveLaunchHash } from './chat-survive-launch-hash'
+import {
+  chatSurviveLaunchDiff,
+  chatSurviveLaunchPrint,
+  type ChatSurviveLaunchPrint
+} from './chat-survive-launch-hash'
 import { isProviderSupervisorSpawn, planChatSurviveBrokerSpawn } from './chat-survive-launch'
 import { chatSurviveReadySocketDir } from './chat-survive-launch-ready'
 import {
@@ -73,8 +77,32 @@ export function chatSurviveRecordName(
   return `${prefix}.${brokerPid}.json`
 }
 
-function launchField(launch: string | null): { launch?: string } {
+function launchField(launch: ChatSurviveLaunchPrint | null): { launch?: ChatSurviveLaunchPrint } {
   return launch === null ? {} : { launch }
+}
+
+/** More names than any real difference has; a log line stays one line. */
+const MAX_LOGGED_PARTS = 40
+
+/**
+ * Why a surviving provider is not adopted: null when this start would launch the same provider,
+ * else the names of the launch parts that differ (arg flags and env keys, never their values).
+ */
+function launchRefusal(
+  saved: ChatSurviveLaunchPrint | undefined,
+  spec: PipedProcessSpec,
+  env: Record<string, string | undefined>
+): string | null {
+  const now = chatSurviveLaunchPrint(spec, env)
+  if (!saved || !now) {
+    return 'no launch fingerprint to compare'
+  }
+  const differs = chatSurviveLaunchDiff(saved, now)
+  if (differs.length === 0) {
+    return null
+  }
+  const more = differs.length - MAX_LOGGED_PARTS
+  return `launch differs in: ${differs.slice(0, MAX_LOGGED_PARTS).join(', ')}${more > 0 ? ` and ${more} more` : ''}`
 }
 
 /**
@@ -126,9 +154,16 @@ function adoptedChild(
     return null
   }
   // A provider started otherwise (model, permissions, MCP, cwd) is not the one this start expects.
-  if (!claim.record.launch || claim.record.launch !== chatSurviveLaunchHash(spec, env)) {
+  const refusal = launchRefusal(claim.record.launch, spec, env)
+  if (refusal !== null) {
+    // Once per refusal: the claim is gone after this, so the next start spawns as today.
+    console.warn(
+      `[fork-chat-survive] chat ${sessionId}: surviving provider not adopted, ${refusal}`
+    )
     stopChatSurviveClaim(claim)
-    throw new Error('the chat-survive provider for this chat is still stopping')
+    throw new Error(
+      'the chat-survive provider for this chat was started otherwise and is still stopping'
+    )
   }
   const tracker = createChatSurviveStreamTracker(claim.mark)
   const child = chatSurviveAdoptedChild({
@@ -188,7 +223,7 @@ export function forkChatSurviveSpawner(
       brokerPid,
       socketPath: plan.socketPath,
       token: plan.token,
-      ...launchField(chatSurviveLaunchHash(spec, env))
+      ...launchField(chatSurviveLaunchPrint(spec, env))
     }
     const recordPath = join(config.recordDir, chatSurviveRecordName(env, brokerPid))
     // Registered now, so its output is counted from the first byte; the record follows.
