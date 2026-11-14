@@ -30,6 +30,7 @@ import { NativeChatConnectorNoAccessNote } from '../../NativeChatConnectorNoAcce
 import { NativeChatDetailsDisclosure } from '../diagnostics/NativeChatProviderDetails'
 import { NativeChatImageAttachments } from '../../media/images/NativeChatImageAttachments'
 import type { deriveNativeChatRowContent } from '../../../../../../shared/native-chat/transcript/row-content/native-chat-row-content'
+import { ForkBoundaryCompactionMark } from '../../../../fork/boundary-compaction/ForkBoundaryCompaction'
 
 const USER_META_REVEAL =
   'transition-opacity can-hover:pointer-events-none can-hover:opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 [.group:has(:focus-visible)_&]:pointer-events-auto [.group:has(:focus-visible)_&]:opacity-100'
@@ -197,6 +198,7 @@ export function NativeChatUserMessageRow({
               )}
         </p>
       ) : null}
+      <ForkBoundaryCompactionMark messageId={message.id} />
       {!from ? (
         <UserMessageMeta
           markdown={markdown}
