@@ -15,16 +15,6 @@ import { SettingsGroup } from '../section-layout/SettingsGroup'
 import { matchesSettingsSearch } from '../search/settings-search'
 import { useAppStore } from '../../../store/index'
 import { OrcaUninstallSection } from './uninstall/OrcaUninstallSection'
-import { ForkChatSurviveSetting } from '@/fork/ForkChatSurviveSetting'
-import { ForkAccountChipSetting } from '@/fork/claude-account-chip/ForkAccountChipSetting'
-import { ForkChildTallySetting } from '@/fork/agent-child-tally/ForkChildTallySetting'
-import { ForkLostWorkSettings } from '@/fork/lost-work/ForkLostWorkSettings'
-import { ForkAgentStateColorSetting } from '@/fork/agent-state-color/ForkAgentStateColorSetting'
-import { ForkMcpProfileSetting } from '@/fork/mcp-profiles/ForkMcpProfileSetting'
-import { ForkAgentLifecycleSettings } from '@/fork/ForkAgentLifecycleSettings'
-import { ForkCacheColdSetting } from '@/fork/cache-cold/ForkCacheColdSetting'
-import { ForkUsageReportSettings } from '@/fork/usage-report/ForkUsageReportSettings'
-import { ForkSyncNoticeSetting } from '@/fork/sync-status/ForkSyncNoticeSetting'
 
 type AdvancedPaneProps = {
   settings: GlobalSettings
@@ -173,16 +163,6 @@ export function AdvancedPane({ settings, updateSettings }: AdvancedPaneProps): R
       >
         <OrcaUninstallSection />
       </SettingsGroup>
-      <ForkChatSurviveSetting settings={settings} updateSettings={updateSettings} />
-      <ForkAccountChipSetting settings={settings} updateSettings={updateSettings} />
-      <ForkChildTallySetting settings={settings} updateSettings={updateSettings} />
-      <ForkLostWorkSettings settings={settings} updateSettings={updateSettings} />
-      <ForkAgentStateColorSetting settings={settings} updateSettings={updateSettings} />
-      <ForkMcpProfileSetting settings={settings} updateSettings={updateSettings} />
-      <ForkAgentLifecycleSettings settings={settings} updateSettings={updateSettings} />
-      <ForkCacheColdSetting settings={settings} updateSettings={updateSettings} />
-      <ForkUsageReportSettings settings={settings} updateSettings={updateSettings} />
-      <ForkSyncNoticeSetting settings={settings} updateSettings={updateSettings} />
     </div>
   )
 }

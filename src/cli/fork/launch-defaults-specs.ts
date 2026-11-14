@@ -10,7 +10,7 @@ export const FORK_LAUNCH_DEFAULTS_COMMAND_SPECS: CommandSpec[] = [
     allowedFlags: [...GLOBAL_FLAGS, 'agent'],
     notes: [
       'Kinds: interactive (desktop and mobile pickers), cli (orca agent launch, orca worktree create --agent), worker (orca orchestration worker-start) and automation (scheduled and run-now automations).',
-      'An explicit --model or --effort, a picker choice, or a model in the agent arguments always wins. Next comes the default for the kind, set in Settings > Advanced > Launch defaults, then the app-wide default in Settings > Agents, then the config of the agent itself.',
+      'An explicit --model or --effort, a picker choice, or a model in the agent arguments always wins. Next comes the default for the kind, set in Settings > Blackfish > Launch defaults, then the app-wide default in Settings > Agents, then the config of the agent itself.',
       'The text output lists agents with a model set somewhere; --json lists every agent that takes a model at launch.'
     ],
     examples: [

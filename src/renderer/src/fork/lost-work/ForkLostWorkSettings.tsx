@@ -1,6 +1,7 @@
-// SLRM-2096 (FORK.md "Lost work"): Settings > Advanced > Lost work. Which checks the scan runs, a
-// default branch per project, where saved bundles and patches go, and the scan's limits. The scan
-// itself only runs from the Lost work dialog.
+// SLRM-2096 (FORK.md "Lost work"): the fork's Settings pane, Lost work. Which checks the scan
+// runs, where saved bundles and patches go, and the scan's limits. The default branch per project
+// is ForkLostWorkBranchRow, in the pane's one project list. The scan itself only runs from the
+// Lost work dialog.
 import React, { useState } from 'react'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import {
@@ -12,10 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
-import { useAppStore } from '@/store'
-import { isFolderRepo } from '../../../../shared/repo-kind'
 import {
-  isSafeRefName,
   resolveLostWorkSettings,
   type LostWorkCheck,
   type LostWorkSettings
@@ -148,7 +146,7 @@ const CHECK_ORDER: LostWorkCheck[] = [
 ]
 
 /** A text field that saves when it loses focus or Enter is pressed. */
-function CommitInput({
+export function ForkLostWorkCommitInput({
   value,
   placeholder,
   ariaLabel,
@@ -188,21 +186,10 @@ export function ForkLostWorkSettings({ settings, updateSettings }: Props): React
   const t = useTranslate()
   const stored: LostWorkSettings = settings.forkLostWork ?? {}
   const resolved = resolveLostWorkSettings(stored)
-  const repos = useAppStore((s) => s.repos).filter((repo) => !isFolderRepo(repo))
   const save = (next: LostWorkSettings) => updateSettings({ forkLostWork: { ...stored, ...next } })
   const saveNumber = (key: LostWorkNumberSetting, text: string) => {
     const value = Number(text.trim())
     save({ [key]: text.trim() === '' || !Number.isInteger(value) ? undefined : value })
-  }
-  const saveBranch = (repoId: string, text: string) => {
-    const branches = { ...stored.defaultBranches }
-    const branch = text.trim()
-    if (branch && isSafeRefName(branch)) {
-      branches[repoId] = branch
-    } else {
-      delete branches[repoId]
-    }
-    save({ defaultBranches: branches })
   }
   return (
     <section className="space-y-3">
@@ -235,7 +222,7 @@ export function ForkLostWorkSettings({ settings, updateSettings }: Props): React
         )}
         control={
           <div className="flex items-center gap-2">
-            <CommitInput
+            <ForkLostWorkCommitInput
               className="w-64"
               value={resolved.archiveFolder}
               ariaLabel={t('fork.lostWork.archiveLabel', 'Archive folder')}
@@ -264,7 +251,7 @@ export function ForkLostWorkSettings({ settings, updateSettings }: Props): React
           label={label}
           description={help}
           control={
-            <CommitInput
+            <ForkLostWorkCommitInput
               className="w-24"
               value={String(resolved[key])}
               ariaLabel={label}
@@ -273,33 +260,6 @@ export function ForkLostWorkSettings({ settings, updateSettings }: Props): React
           }
         />
       ))}
-      {repos.length > 0 ? (
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">
-            {t(
-              'fork.lostWork.branchesHelp',
-              "Default branch per project. Empty uses the remote's default, then main, master, trunk or develop."
-            )}
-          </p>
-          {repos.map((repo) => (
-            <SettingsRow
-              key={repo.id}
-              label={repo.displayName || repo.path}
-              control={
-                <CommitInput
-                  className="w-48"
-                  value={resolved.defaultBranches[repo.id] ?? ''}
-                  placeholder={t('fork.lostWork.branchPlaceholder', 'Automatic')}
-                  ariaLabel={t('fork.lostWork.branchLabel', 'Default branch for {{name}}', {
-                    name: repo.displayName || repo.path
-                  })}
-                  onCommit={(value) => saveBranch(repo.id, value)}
-                />
-              }
-            />
-          ))}
-        </div>
-      ) : null}
     </section>
   )
 }
