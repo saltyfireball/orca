@@ -39,7 +39,7 @@ named Orca Fork until SLRM-1367. `main` is always
   offsets, and lets the next app instance reattach by token and lease fence after a hand-off at
   quit, with an orphan timeout when nobody comes back (a crash still stops the provider). The broker is built as its own plain-Node entry
   (`out/main/chat-survive-broker-entry.js`) that runs upstream's provider supervisor under it.
-  With the `forkChatSurvive` setting on (Settings > Advanced, off by default), new Claude chats
+  With the `forkChatSurvive` setting on (Settings > Blackfish, off by default), new Claude chats
   run their provider supervisor under a broker; Codex and every other provider spawn as before.
   At quit (or an update install) such a chat's provider is handed to its broker instead of being
   stopped, and the restart guard does not count it as busy. On macOS the next app start's session
@@ -59,7 +59,7 @@ named Orca Fork until SLRM-1367. `main` is always
   shows its new account at once and a move queued behind a turn shows as `A -> B`. Clicking a
   chip opens the move menu on the chip's own host: a native chat tab or agent row moves that
   chat, a worktree row its chats; terminal-pane chips, WSL distro chats, direct SSH and hosts
-  without the fork RPC have no menu. Settings > Advanced turns it off (`forkShowAccountChip`, on
+  without the fork RPC have no menu. Settings > Blackfish turns it off (`forkShowAccountChip`, on
   by default). Code is in `src/renderer/src/fork/claude-account-chip/`.
 - **Move Claude chats to another account (SLRM-1503).** One native Claude chat, or every
   Claude chat in a worktree, can move to another Claude account of the host that runs it; the
@@ -90,7 +90,7 @@ named Orca Fork until SLRM-1367. `main` is always
   card collapses its agents into the small icon strip, each icon whose tab has a color gets a
   thin ring in it, from the same resolver. A chat that has never had a prompt has no status
   entry, so it has no row to tint. Code is in `src/renderer/src/fork/agent-row-tab-tint/`.
-- **Agent state colors (SLRM-2106).** Off by default (Settings > Advanced > Agent state colors).
+- **Agent state colors (SLRM-2106).** Off by default (Settings > Blackfish > Agent state colors).
   When on, a tab in the tab strip and its sidebar agent row take a color from the agent's state:
   needs you, stalled, working, queued, unread, done or asleep, first match in that order. The
   state is the one the tab's or row's own state glyph already shows (plus the unread mark and
@@ -123,7 +123,7 @@ named Orca Fork until SLRM-1367. `main` is always
   - CLI: `orca lost-work [--repo <id|name>] [--json]` prints the same scan as a table, over the
     `fork.lostWork.scan` RPC (desktop host only; remote and folder projects are skipped with a
     note).
-  - Settings > Advanced > Lost work (`forkLostWork`): which checks run (all on), the archive
+  - Settings > Blackfish > Projects (`forkLostWork`): which checks run (all on), the archive
     folder for saves (empty: ask each time), a default branch per project (empty: the remote's
     `HEAD`, then `main`, `master`, `trunk` or `develop`), squash lookback (500 base commits) and the pull request limit
     (200 per project).
@@ -155,7 +155,7 @@ named Orca Fork until SLRM-1367. `main` is always
   workers dispatched, transitively; and each session's own child work, meaning sub-agents and
   background shell tasks or monitors, nested ones included. When a card collapses its agents
   into the icon strip, the strip shows one total for the card, each child counted once.
-  Settings > Advanced has three switches, all on by default: show the badge
+  Settings > Blackfish has three switches, all on by default: show the badge
   (`forkShowChildTally`), count finished children in the total (`forkChildTallyCountFinished`;
   off shows only the running count) and count background tasks (`forkChildTallyCountTasks`).
   Limits: a pane carries only its latest dispatch, so earlier dispatches to the same pane are
@@ -176,7 +176,7 @@ named Orca Fork until SLRM-1367. `main` is always
   `src/shared/fork/custom-app-theme/` and `src/renderer/src/fork/custom-app-theme/`.
 
 - **Chat sleep: idle native chats give up their provider process (SLRM-2093).** Off by default
-  (`forkChatSleep`, Settings > Advanced). Stock Orca already has an idle sweep for native chats
+  (`forkChatSleep`, Settings > Blackfish). Stock Orca already has an idle sweep for native chats
   (`StructuredAgentSessionIdleSweep`, every 5 minutes, window from Stop idle chats,
   `nativeChatIdleStopMinutes`): it stops an idle chat's provider and closes the conversation at
   rest, and the next send (typed, an orchestration letter or the CLI) opens it again and starts
@@ -217,7 +217,7 @@ named Orca Fork until SLRM-1367. `main` is always
   `src/main/fork/memory-truth/`, `src/renderer/src/fork/memory-truth/`,
   `src/shared/fork/memory-truth.ts` and `src/cli/fork/memory-truth-format.ts`.
 - **Agent launch queue (SLRM-2098).** A limit on how many agents run at once, with a queue for
-  the rest. Off by default; Settings > Advanced turns it on.
+  the rest. Off by default; Settings > Blackfish turns it on.
   - **The gate.** Every native chat provider start passes one main-process gate
     (`src/main/fork/agent-queue/`): a new chat's first message, `orca agent launch`,
     `orca worktree create` with an agent, `orca orchestration worker-start`, the UI's new-agent
@@ -243,7 +243,7 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/main/fork/agent-queue/launch-hold.ts`, installed with `setLaunchHoldReader`. While it
     holds, new launches queue even with free slots. Nothing measures memory yet; the default
     never holds.
-  - **Settings** (Settings > Advanced): `forkAgentQueueEnabled` (off), `forkAgentQueueMaxLive`
+  - **Settings** (Settings > Blackfish): `forkAgentQueueEnabled` (off), `forkAgentQueueMaxLive`
     (8), `forkAgentQueueSeparateLimits` (off: workers share the one limit; on: they get
     `forkAgentQueueMaxWorkers`, 8, and `MaxLive` covers user-started agents only) and
     `forkAgentQueueResumeBypass` (on: waking an existing chat never waits).
@@ -281,7 +281,7 @@ named Orca Fork until SLRM-1367. `main` is always
   `forkProviderWriterParents` (`src/main/fork/chat-survive/chat-survive-writer.ts`) also counts
   a direct child that shares the root's group as a writer parent.
 - **Worker cleanup: finished orchestration workers give up their agent (SLRM-2100).** Off by
-  default (`forkWorkerCleanup`, Settings > Advanced). Stock Orca already closes finished workers:
+  default (`forkWorkerCleanup`, Settings > Blackfish). Stock Orca already closes finished workers:
   when a dispatch settles it arms `auto_release_at` 2 minutes out unless
   `orchestrationWorkerAutoReleaseEnabled` is false (default on), suspends the countdown while
   the agent is in a turn, skips workers marked Keep open (`release_state = 'retained'`), archives
@@ -319,7 +319,7 @@ named Orca Fork until SLRM-1367. `main` is always
 
 - **Launch defaults (SLRM-2102).** Stock runs a launch on the model in Settings > Agents or the
   agent's own config unless the launch passes `--model`, so a forgotten flag runs whatever that
-  is. Settings > Advanced > Launch defaults sets, per agent, an optional model and effort for
+  is. Settings > Blackfish > Launch defaults sets, per agent, an optional model and effort for
   three kinds of launch: CLI launches (`orca agent launch`, `orca worktree create --agent`),
   orchestration workers (`orca orchestration worker-start`) and automation runs (scheduled and
   run-now). The choices come from the app's own model catalog. Order: an explicit `--model` or
@@ -388,7 +388,7 @@ named Orca Fork until SLRM-1367. `main` is always
     `orca mcp-profile list [--folder <path>]`, `orca mcp-profile show <session>` and
     `orca mcp-profile set <session> <profile|default>`, all with `--json`, over runtime RPC
     (`fork.mcpProfiles.list`, `.chat`, `.set`).
-  - **Settings** (Settings > Advanced > MCP profiles): `forkMcpProfiles` ([]),
+  - **Settings** (Settings > Blackfish > MCP profiles): `forkMcpProfiles` ([]),
     `forkMcpDefaultInteractive`, `forkMcpDefaultWorker` and `forkMcpDefaultBackground` ("all"),
     and `forkMcpProjectProfiles` ([]).
   - **Not covered.** Claude terminal (TUI) launches, Codex and other agents, chats inside WSL,
@@ -411,14 +411,13 @@ named Orca Fork until SLRM-1367. `main` is always
     and `orca sleepers list [--json]` (which adds the queue place and reason, or how long the
     chat has been quiet). A queued launch whose chat has no row yet is listed on its own.
   - A setting hides the sidebar's Sleepers button: `forkSleepersButton` (unset is shown).
-  - Settings > Advanced gathers chat sleep, Sleepers, stalled chats, worker cleanup, launch
-    queue, launch defaults and memory under one "Agent lifecycle" heading, in that order. Each
-    keeps its own section and behavior.
+  - These settings (chat sleep, Sleepers, stalled chats, worker cleanup, launch queue, launch
+    defaults and memory) sit in the fork's own Settings pane now (see "The fork's own Settings
+    pane" below). Each keeps its own card and behavior.
     Code is in `src/main/fork/memory-truth/memory-launch-hold.ts`,
     `src/shared/fork/sleepers-lifecycle.ts`, `src/main/fork/sleepers/sleepers-lifecycle.ts`,
-    `src/renderer/src/fork/sleepers/ForkSleepersLifecycleActions.tsx`,
-    `src/renderer/src/fork/sleepers/ForkSleepersSetting.tsx` and
-    `src/renderer/src/fork/ForkAgentLifecycleSettings.tsx`.
+    `src/renderer/src/fork/sleepers/ForkSleepersLifecycleActions.tsx` and
+    `src/renderer/src/fork/sleepers/ForkSleepersSetting.tsx`.
 - **Fork main passes the push and pull request checks (SLRM-2138).** Every check that runs
   on a push to `main` or on a pull request passes on the fork (the list is under Contributing).
   What that changed:
@@ -475,7 +474,7 @@ named Orca Fork until SLRM-1367. `main` is always
     - Lost work pull request links open through `openAppHttpLink`, so they follow the app's
       link setting.
 - **Idle recovery and the Decision inbox (SLRM-2196).** Off by default (`forkIdleSweepMode`
-  `off`, Settings > Advanced). An agent's turn can end with a question to you, or with work it
+  `off`, Settings > Blackfish). An agent's turn can end with a question to you, or with work it
   offered or promised and never started. With the mode on, a sweep in the main process reads how
   each idle chat ended, classifies the ending once, and lists the chats that wait on you; in mode
   `wake` it also sends a stalled chat a message to carry on. The user guide, with the
@@ -588,6 +587,27 @@ named Orca Fork until SLRM-1367. `main` is always
     key of the default settings has no entry. After adding or removing a setting, run the
     generator.
   - It adds no setting and nothing on screen.
+- **The fork's own Settings pane (SLRM-2228).** Every fork setting that sat at the end of
+  Settings > Advanced is in one pane of its own, Settings > Blackfish, listed in the sidebar's
+  Advanced group. No setting changed: same keys, same defaults, same controls.
+  - Six sections, each feature in its own card: Chats (chat survive, chat sleep, Sleepers,
+    stalled chats, cache-cold cue, MCP profiles), Agents and workers (child count, state
+    colors, finished worker cleanup, agent limit, launch defaults, memory), Idle recovery,
+    Usage and accounts (Claude account chip, usage report), Projects (Lost work, Per project)
+    and Sync and updates (fork sync status). A row of section links stays at the top of the
+    pane while it scrolls, and each link jumps to its section.
+  - Projects are listed once. MCP profiles and Lost work each listed every project, so each
+    project showed twice. "Per project" is now the one list: a project is a closed row that
+    says what is set for it, and opens to its MCP profile and its Lost work default branch.
+    The list has a fixed height and, from 8 projects, a filter.
+  - Settings search finds every section and card of the pane and jumps to it (the settings had
+    no search entries in Advanced), and the jump palette opens the pane.
+  - The custom app theme stays in Settings > Appearance and the sync notice itself in
+    Settings > General, About: both belong to the stock controls they sit beside.
+  - Code is in `src/renderer/src/fork/settings-pane/`. `fork-settings-pane-catalog.ts` names
+    the sections and their search entries, and `ForkSettingsPane.tsx` places the cards: a new
+    fork setting is added to both (`ForkSettingsPane.test.tsx` fails when a search entry has
+    no card heading to land on).
 
 ## Patch list
 
@@ -676,6 +696,14 @@ Apply these in this order. Each one is a single commit.
 81. `SLRM-2211 Idle recovery: whole-feature test, paused and stalled rows, user guide, example classifier`
 82. `SLRM-2216 Follow upstream 1.4.259's moved modules in fork code`
 83. `SLRM-2216 Fix the settings JSONC line on Bun and the agent queue list params for the mobile RPC fence`
+84. `SLRM-2228 Give the fork settings their own Settings pane, with one project list`
+
+The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
+`settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
+spreads `buildForkSettingsNavSections` and `settings-page-renderer.tsx` calls
+`renderForkSettingsSection` (all three from `src/renderer/src/fork/settings-pane/`).
+`AdvancedPane.tsx` no longer renders any fork setting. Where a section below says
+`AdvancedPane.tsx` renders a fork setting, `ForkSettingsPane.tsx` renders it.
 
 `AppRootSurfaces.tsx` carries one hook for the fork's always-mounted hosts: `ForkRootHosts`
 (`src/renderer/src/fork/ForkRootHosts.tsx`) renders `ForkChatSleepReporter`,
@@ -723,7 +751,7 @@ Fork-only code lives in `fork/` folders:
     runs. "Compact first" sends `/compact`, then any waiting draft through the composer's own
     send (its handle's `submit`), which queues it behind the compaction. Sending is never
     blocked.
-  - **Settings** (Settings > Advanced): `forkCacheColdCue` (on), `forkCacheWindowMinutes` (5),
+  - **Settings** (Settings > Blackfish): `forkCacheColdCue` (on), `forkCacheWindowMinutes` (5),
     `forkCacheColdThresholdTokens` (50000).
 
 - **Usage and cost report (SLRM-2104).** Reads the usage ledger (SLRM-2103) and adds up tokens
@@ -738,11 +766,11 @@ Fork-only code lives in `fork/` folders:
     or its family wins and is applied flat, without long-context rates. A model with no price
     shows "+?". Every cost is marked as an estimate. A chat on a subscription (`apiKeySource`
     `none`) counts its tokens only, shown as "subscription": it is not billed per token.
-  - **Where.** "Usage report" in the command palette and in Settings > Advanced > Usage report
+  - **Where.** "Usage report" in the command palette and in Settings > Blackfish > Usage report
     (with the card pattern, the history kept and the price table), and
     `orca usage-report [--by chat|coordinator|workspace|day|card] [--days N] [--json]` over
     runtime RPC (`fork.usageLedger.report`). "Clear history" in the report forgets the ledger.
-  - **Settings** (Settings > Advanced): `forkUsageCardPattern` (empty), `forkUsagePrices`
+  - **Settings** (Settings > Blackfish): `forkUsageCardPattern` (empty), `forkUsagePrices`
     (empty: built-in prices), `forkUsageRetentionDays` (90, shared with SLRM-2103).
   - **Not covered.** Only native Claude chats counted on this computer. `apiKeySource` `none`
     can also be a cloud provider account rather than a subscription.
@@ -1069,10 +1097,9 @@ Upstream files only get short hooks, which keeps rebases small:
   - `AdvancedPane.tsx` renders `ForkLaunchDefaultsSetting`; `forkLaunchDefaults` is in
     `src/shared/fork/fork-global-settings.ts`.
 - Agent lifecycle (SLRM-2136):
-  - `AdvancedPane.tsx` renders one `ForkAgentLifecycleSettings` in place of the six lifecycle
-    settings it rendered (chat sleep, memory, launch queue, chat stall, worker cleanup, launch
-    defaults); where a section above says `AdvancedPane.tsx` renders one of those, it renders
-    through that group now.
+  - The six lifecycle settings (chat sleep, memory, launch queue, chat stall, worker cleanup,
+    launch defaults) render in the fork's own Settings pane (SLRM-2228); the
+    `ForkAgentLifecycleSettings` group that held them is gone.
   - The memory hold reaches the queue through the existing `setLaunchHoldReader` seam
     (`installForkMemoryLaunchHold`, called by `installForkMemoryWatch`); no upstream file
     changes for it beyond the moved renderer refusal above.

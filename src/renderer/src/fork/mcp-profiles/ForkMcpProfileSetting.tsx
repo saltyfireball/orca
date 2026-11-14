@@ -1,6 +1,6 @@
-// FORK.md "MCP profiles": Settings > Advanced > MCP profiles. Named profiles, the
-// profile each kind of launch starts with, and per-project overrides. Everything is "all" until
-// set, so chats load every server as stock does.
+// FORK.md "MCP profiles": the fork's Settings pane, MCP profiles. Named profiles and the profile
+// each kind of launch starts with. Everything is "all" until set, so chats load every server as
+// stock does. The per-project override is ForkMcpProjectProfileRow, in the pane's one project list.
 import { useEffect, useState } from 'react'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import {
@@ -10,15 +10,13 @@ import {
   type ForkMcpLaunchKind,
   type ForkMcpListing,
   type ForkMcpProfile,
-  type ForkMcpProjectProfile
+  type ForkMcpProfileConfig
 } from '../../../../shared/fork/mcp-profiles'
 import {
   SettingsRow,
   SettingsSubsectionHeader
 } from '../../components/settings/form-controls/SettingsFormControls'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
-import { useAppStore } from '@/store'
-import { isFolderRepo } from '../../../../shared/repo-kind'
 import { ForkMcpProfileEditor } from './ForkMcpProfileEditor'
 
 type Props = {
@@ -43,7 +41,12 @@ function kindLabel(t: Translate, kind: ForkMcpLaunchKind): string {
   }
 }
 
-function ProfileSelect(props: {
+/** The names a launch default or a project can pick: the two built-in ones, then the user's. */
+export function forkMcpProfileNames(config: ForkMcpProfileConfig): string[] {
+  return [FORK_MCP_PROFILE_ALL, FORK_MCP_PROFILE_NONE, ...config.profiles.map((p) => p.name)]
+}
+
+export function ForkMcpProfileSelect(props: {
   value: string
   names: string[]
   label: string
@@ -83,17 +86,12 @@ function renamed(before: ForkMcpProfile[], after: ForkMcpProfile[]): Map<string,
 export function ForkMcpProfileSetting({ settings, updateSettings }: Props): React.JSX.Element {
   const t = useTranslate()
   const config = forkMcpProfileConfigOf(settings)
-  const repos = useAppStore((s) => s.repos).filter((repo) => !isFolderRepo(repo))
   const [listing, setListing] = useState<ForkMcpListing | null>(null)
   useEffect(() => {
     void window.api.forkMcpProfiles?.list().then(setListing, () => setListing(null))
   }, [])
-  const names = [FORK_MCP_PROFILE_ALL, FORK_MCP_PROFILE_NONE, ...config.profiles.map((p) => p.name)]
+  const names = forkMcpProfileNames(config)
   const known = Array.from(new Set((listing?.servers ?? []).map((server) => server.name)))
-  const projectOf = (path: string): string =>
-    config.projects.find((entry) => entry.path === path)?.profile ?? ''
-  const setProjects = (next: ForkMcpProjectProfile[]): void =>
-    updateSettings({ forkMcpProjectProfiles: next })
   const updateProfiles = (next: ForkMcpProfile[]): void => {
     const map = renamed(config.profiles, next)
     const rename = (name: string): string => map.get(name) ?? name
@@ -137,40 +135,11 @@ export function ForkMcpProfileSetting({ settings, updateSettings }: Props): Reac
           key={kind}
           label={kindLabel(t, kind)}
           control={
-            <ProfileSelect
+            <ForkMcpProfileSelect
               value={config.defaults[kind]}
               names={names}
               label={kindLabel(t, kind)}
               onChange={(value) => updateSettings({ [KIND_KEYS[kind]]: value })}
-            />
-          }
-        />
-      ))}
-      {repos.length ? (
-        <SettingsSubsectionHeader
-          title={t('fork.mcpProfiles.setting.projects', 'Per project')}
-          description={t(
-            'fork.mcpProfiles.setting.projectsHelp',
-            "A project's profile is used for every launch in it and its worktrees, ahead of the defaults above. A profile chosen on a chat still wins."
-          )}
-        />
-      ) : null}
-      {repos.map((repo) => (
-        <SettingsRow
-          key={repo.id}
-          label={repo.displayName}
-          control={
-            <ProfileSelect
-              value={projectOf(repo.path)}
-              names={names}
-              label={repo.displayName}
-              inherit={t('fork.mcpProfiles.setting.inherit', 'Launch default')}
-              onChange={(value) =>
-                setProjects([
-                  ...config.projects.filter((entry) => entry.path !== repo.path),
-                  ...(value ? [{ path: repo.path, profile: value }] : [])
-                ])
-              }
             />
           }
         />
