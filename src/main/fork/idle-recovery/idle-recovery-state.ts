@@ -10,7 +10,6 @@ import { dirname, join } from 'node:path'
 import { getAppEnvironment } from '../../../shared/app-environment'
 import {
   IDLE_RECOVERY_STATE_VERSION,
-  type IdleRecoveryChatKind,
   type IdleRecoveryChatState,
   type IdleRecoveryPersistedState,
   type IdleRecoveryVerdictKind
@@ -19,32 +18,10 @@ import type { ForkIdleRecoveryInboxItem } from '../../../shared/fork/idle-recove
 
 export const IDLE_RECOVERY_STATE_FILE_NAME = 'fork-idle-recovery.json'
 
-/**
- * A saved row: the shared row plus what the inbox and a later wake need without reading the chat
- * again. It is a superset of `IdleRecoveryChatState`, so the shared type still describes it.
- */
-export type IdleRecoveryStoredChat = IdleRecoveryChatState & {
-  /** The classifier's reason, shown in the inbox. */
-  reason: string
-  /** The classifier's next step for a stalled ending, kept for a wake that is sent later. */
-  nextStep: string
-  /** `idleSince` of the candidate when its ending was last read: unchanged means same ending. */
-  idleSince: number
-  /** Epoch ms the chat was last among the candidates. */
-  seenAt: number
-  /** False once the chat is no longer idle (or was just woken): kept for its wake count only. */
-  listed: boolean
-  kind: IdleRecoveryChatKind
-  agent: string
-  title: string
-  workspace: string
-  worktreeId: string | null
-}
+/** A saved row. The same as the shared type; the name is kept for this folder's readers. */
+export type IdleRecoveryStoredChat = IdleRecoveryChatState
 
-export type IdleRecoveryStoredState = {
-  version: typeof IDLE_RECOVERY_STATE_VERSION
-  chats: Record<string, IdleRecoveryStoredChat>
-}
+export type IdleRecoveryStoredState = IdleRecoveryPersistedState
 
 export function emptyIdleRecoveryState(): IdleRecoveryStoredState {
   return { version: IDLE_RECOVERY_STATE_VERSION, chats: {} }
@@ -127,13 +104,13 @@ export function parseIdleRecoveryState(raw: string): IdleRecoveryStoredState {
 }
 
 /**
- * The same state object with every row a full saved row. Rows a caller built against the shared
- * type alone get the extra fields' empty values, and rows that are not rows are dropped.
+ * The same state object with every row checked the way a saved row is when it is loaded: a field
+ * of the wrong type gets its empty value, and rows that are not rows are dropped.
  */
 export function asIdleRecoveryStoredState(
   state: IdleRecoveryPersistedState
 ): IdleRecoveryStoredState {
-  const chats: Record<string, IdleRecoveryChatState> = state.chats
+  const { chats } = state
   for (const chatId of Object.keys(chats)) {
     const row = parseRow(chats[chatId])
     if (row) {
@@ -142,7 +119,7 @@ export function asIdleRecoveryStoredState(
       delete chats[chatId]
     }
   }
-  return state as IdleRecoveryStoredState
+  return state
 }
 
 export async function loadIdleRecoveryState(

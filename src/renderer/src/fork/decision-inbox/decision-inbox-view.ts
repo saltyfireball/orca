@@ -9,6 +9,11 @@ export type DecisionInboxSections = {
   waiting: ForkIdleRecoveryInboxItem[]
   /** Chats that stopped on work they could do now, oldest first. */
   stalled: ForkIdleRecoveryInboxItem[]
+  /**
+   * Chats the user paused while they were listed, oldest first. Idle recovery no longer reads
+   * or wakes them, so each row is frozen as it was; they are shown apart and never counted.
+   */
+  paused: ForkIdleRecoveryInboxItem[]
 }
 
 function oldestFirst(items: readonly ForkIdleRecoveryInboxItem[]): ForkIdleRecoveryInboxItem[] {
@@ -19,13 +24,15 @@ export function decisionInboxSections(
   items: readonly ForkIdleRecoveryInboxItem[] | null | undefined
 ): DecisionInboxSections {
   const list = items ?? []
+  const live = list.filter((item) => !item.paused)
   return {
-    waiting: oldestFirst(list.filter((item) => item.verdict === 'waiting_user')),
-    stalled: oldestFirst(list.filter((item) => item.verdict === 'stalled'))
+    waiting: oldestFirst(live.filter((item) => item.verdict === 'waiting_user')),
+    stalled: oldestFirst(live.filter((item) => item.verdict === 'stalled')),
+    paused: oldestFirst(list.filter((item) => item.paused))
   }
 }
 
-/** The chat that has waited on the user longest, or null when none waits. */
+/** The chat that has waited on the user longest, or null when none waits. Paused chats are left out. */
 export function oldestWaitingChat(
   items: readonly ForkIdleRecoveryInboxItem[] | null | undefined
 ): ForkIdleRecoveryInboxItem | null {

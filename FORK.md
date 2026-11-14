@@ -478,7 +478,8 @@ named Orca Fork until SLRM-1367. `main` is always
   `off`, Settings > Advanced). An agent's turn can end with a question to you, or with work it
   offered or promised and never started. With the mode on, a sweep in the main process reads how
   each idle chat ended, classifies the ending once, and lists the chats that wait on you; in mode
-  `wake` it also sends a stalled chat a message to carry on.
+  `wake` it also sends a stalled chat a message to carry on. The user guide, with the
+  classifier contract and limits, is [docs/fork/idle-recovery.md](docs/fork/idle-recovery.md).
   - **Modes.** `off`: no sweep, no chat read, no process started; the timer only reads the
     setting and backs off to every 2 minutes. `inbox`: classify and list, never send. `wake`:
     as `inbox`, and wake stalled chats.
@@ -498,6 +499,8 @@ named Orca Fork until SLRM-1367. `main` is always
     command a built-in check runs: it reads punctuation and layout only, answers `waiting_user`
     when the last message closes on a question, and never answers `stalled`, so nothing is
     woken without a command of yours. At most 3 endings are classified at once.
+    `docs/fork/idle-recovery/example-classifier.mjs` is a rule-based example with no
+    dependencies.
   - **Once per ending.** An ending is named by a fingerprint of the chat, its last request and
     the end of its last message. It is read again only when the chat went idle anew, and
     classified again only when it changed, or when the classifier asked for a later look
@@ -519,7 +522,8 @@ named Orca Fork until SLRM-1367. `main` is always
     composer on screen is empty, checked again right before the first write. The stock terminal
     send pastes and presses Enter without looking for a draft, which would submit your
     half-typed text with the wake, so idle recovery reads the screen itself. A terminal it
-    cannot read is not woken. A wake that was not sent is tried again after the idle window and
+    cannot read is not woken, and neither is one you typed into after its turn ended (the
+    screen reader knows only some agents' composers). A wake that was not sent is tried again after the idle window and
     the chat stays listed as stalled. A send that failed after it may have arrived counts as
     sent, so a wake is never sent twice.
   - **Hooks.** A wake reaches the agent as an ordinary user prompt. An agent's own Stop or
@@ -531,8 +535,10 @@ named Orca Fork until SLRM-1367. `main` is always
   - **Decision inbox.** A sidebar toolbar button with a count, a dialog and palette entries
     (all absent while the mode is off). Each row shows the question or the reason, how long
     ago, and the wakes so far, with Go to chat, an answer box and Pause. An answer is sent to
-    the chat as your message and clears the row. Pause leaves a chat alone (Settings lists
-    paused chats to resume).
+    the chat as your message and clears the row; on a stalled row it tells the agent how to go
+    on. Pause leaves a chat alone (Settings lists paused chats to resume). A row that was
+    listed when it was paused stays, frozen, under Paused, and is not counted on the button or
+    in `orca inbox list`'s total.
   - **Notifications.** When a chat starts waiting on you, each target that is set is told
     once: a desktop notification (`forkInboxNotifyDesktop`), a POST of the items as JSON
     (`forkInboxNotifyWebhookUrl`), and a command given the same JSON on stdin
@@ -666,6 +672,7 @@ Apply these in this order. Each one is a single commit.
 78. `SLRM-2207 Decision inbox: toolbar button, dialog, palette entries and the paused list`
 79. `SLRM-2203 List idle recovery candidates and read their endings`
 80. `SLRM-2205 Idle recovery: the sweep, the wake and the Decision inbox service`
+81. `SLRM-2211 Idle recovery: whole-feature test, paused and stalled rows, user guide, example classifier`
 
 `AppRootSurfaces.tsx` carries one hook for the fork's always-mounted hosts: `ForkRootHosts`
 (`src/renderer/src/fork/ForkRootHosts.tsx`) renders `ForkChatSleepReporter`,

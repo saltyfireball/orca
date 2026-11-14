@@ -19,7 +19,18 @@ describe('decisionInboxSections', () => {
   })
 
   it('reads nothing as empty', () => {
-    expect(decisionInboxSections(null)).toEqual({ waiting: [], stalled: [] })
+    expect(decisionInboxSections(null)).toEqual({ waiting: [], stalled: [], paused: [] })
+  })
+
+  it('keeps paused chats apart from both counts, oldest first', () => {
+    const sections = decisionInboxSections([
+      inboxItem({ chatId: 'live' }),
+      inboxItem({ chatId: 'paused-new', paused: true, since: NOW - 1 }),
+      inboxItem({ chatId: 'paused-old', verdict: 'stalled', paused: true, since: NOW - 5 })
+    ])
+    expect(sections.waiting.map((item) => item.chatId)).toEqual(['live'])
+    expect(sections.stalled).toEqual([])
+    expect(sections.paused.map((item) => item.chatId)).toEqual(['paused-old', 'paused-new'])
   })
 })
 
@@ -31,6 +42,10 @@ describe('oldestWaitingChat', () => {
     ]
     expect(oldestWaitingChat(items)?.chatId).toBe('waiting')
     expect(oldestWaitingChat([items[0]])).toBeNull()
+  })
+
+  it('skips paused chats', () => {
+    expect(oldestWaitingChat([inboxItem({ paused: true, since: NOW - 9 })])).toBeNull()
   })
 })
 
