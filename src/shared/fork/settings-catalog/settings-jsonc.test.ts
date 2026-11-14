@@ -1,5 +1,5 @@
 // Settings from the CLI (FORK.md): the settings file, written and read.
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { getDefaultSettings } from '../../constants'
 import { parseForkSettingsFile, renderForkSettingsFile } from './settings-jsonc'
 import { redactForkSettings } from './settings-plan'
@@ -41,6 +41,20 @@ describe('parseForkSettingsFile', () => {
     expect(() => parseForkSettingsFile('{\n  // note\n  "a": 1\n  "b": 2\n}')).toThrow(
       /not valid JSON \(line 4\)/
     )
+  })
+
+  it('names the line when the engine gives no position', () => {
+    const parse = vi.spyOn(JSON, 'parse').mockImplementation(() => {
+      throw new SyntaxError("JSON Parse error: Expected '}'")
+    })
+    try {
+      expect(() => parseForkSettingsFile('{\n  // note\n  "a": 1\n  "b": 2\n}')).toThrow(
+        /not valid JSON \(line 4\)/
+      )
+      expect(() => parseForkSettingsFile('{\n  "a": 1,\n\n  "b": }')).toThrow(/\(line 4\)/)
+    } finally {
+      parse.mockRestore()
+    }
   })
 
   it('refuses a file that is not one object', () => {
