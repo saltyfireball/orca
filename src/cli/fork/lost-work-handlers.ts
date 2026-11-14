@@ -11,6 +11,7 @@ import {
   type LostWorkRisk,
   type LostWorkScanResult
 } from '../../shared/fork/lost-work'
+import type { LostWorkUse } from '../../shared/fork/lost-work-use'
 
 const RISK: Record<LostWorkRisk, string> = {
   'would-lose-work': 'would lose work',
@@ -44,12 +45,28 @@ function day(ms: number | null): string {
   return ms === null ? '-' : new Date(ms).toISOString().slice(0, 10)
 }
 
+/** SLRM-2230: what holds the workspace open, such as "agent running, 2 chats open". */
+export function lostWorkUseText(use: LostWorkUse): string {
+  const plural = (count: number, one: string, many: string) =>
+    count === 1 ? `1 ${one}` : `${count} ${many}`
+  return [
+    use.agentRunning ? 'agent running' : '',
+    use.openChats ? plural(use.openChats, 'chat open', 'chats open') : '',
+    use.sleepingChats ? plural(use.sleepingChats, 'chat asleep', 'chats asleep') : '',
+    use.liveTerminals ? plural(use.liveTerminals, 'live terminal', 'live terminals') : '',
+    use.active ? 'open now' : ''
+  ]
+    .filter(Boolean)
+    .join(', ')
+}
+
 function where(item: LostWorkItem): string {
   if (item.kind === 'stash') {
     return `stash@{${item.stash?.index ?? '?'}} ${item.stash?.message ?? ''}`.trim()
   }
   const branch = item.branch ?? (item.kind === 'branch' ? '' : '(detached)')
-  return item.path ? `${branch}  ${item.path}` : branch
+  const place = item.path ? `${branch}  ${item.path}` : branch
+  return item.inUse ? `${place}  [in use: ${lostWorkUseText(item.inUse)}]` : place
 }
 
 function commits(item: LostWorkItem): string {

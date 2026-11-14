@@ -18,6 +18,10 @@ import {
   type LostWorkCheck,
   type LostWorkSettings
 } from '../../../../shared/fork/lost-work'
+import {
+  LOST_WORK_USE_SIGNALS,
+  type LostWorkUseSignal
+} from '../../../../shared/fork/lost-work-use'
 
 type Props = {
   settings: GlobalSettings
@@ -135,6 +139,22 @@ function numberRows(t: Translate): { key: LostWorkNumberSetting; label: string; 
   ]
 }
 
+/** SLRM-2230: what marks a workspace as in use, so it is never offered as safe to remove. */
+function inUseSignalLabel(signal: LostWorkUseSignal, t: Translate): string {
+  switch (signal) {
+    case 'runningAgents':
+      return t('fork.lostWork.inUse.agents', 'An agent is working or waiting on you')
+    case 'openChats':
+      return t('fork.lostWork.inUse.chats', 'A chat is open')
+    case 'sleepingChats':
+      return t('fork.lostWork.inUse.sleeping', 'A chat or agent is asleep')
+    case 'liveTerminals':
+      return t('fork.lostWork.inUse.terminals', 'A terminal is running')
+    case 'activeWorkspace':
+      return t('fork.lostWork.inUse.active', 'It is the workspace on screen')
+  }
+}
+
 const CHECK_ORDER: LostWorkCheck[] = [
   'unmergedWorktrees',
   'finishedWorktrees',
@@ -214,6 +234,20 @@ export function ForkLostWorkSettings({ settings, updateSettings }: Props): React
           />
         )
       })}
+      <p className="text-xs text-muted-foreground">
+        {t(
+          'fork.lostWork.inUse.help',
+          'A workspace counts as in use, and is never listed as safe to remove, when:'
+        )}
+      </p>
+      {LOST_WORK_USE_SIGNALS.map((signal) => (
+        <SettingsSwitchRow
+          key={signal}
+          label={inUseSignalLabel(signal, t)}
+          checked={resolved.inUse[signal]}
+          onChange={() => save({ inUse: { ...stored.inUse, [signal]: !resolved.inUse[signal] } })}
+        />
+      ))}
       <SettingsRow
         label={t('fork.lostWork.archiveLabel', 'Archive folder')}
         description={t(
