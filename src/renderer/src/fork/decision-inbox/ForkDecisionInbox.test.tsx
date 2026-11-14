@@ -177,8 +177,58 @@ describe('the dialog', () => {
     expect(dialog.textContent).toContain('Terminal - claude - importer - woken 1 times')
     expect(dialog.textContent).toContain('Offered to run the tests and stopped.')
     expect(dialog.textContent).toContain('3h')
-    // Only a chat waiting on the user takes an answer.
-    expect(screen.getAllByRole('textbox')).toHaveLength(1)
+    // A stalled chat takes an answer too: the user telling the agent how to go on.
+    expect(screen.getAllByRole('textbox')).toHaveLength(2)
+    expect(screen.getByLabelText('Answer to Release notes').getAttribute('placeholder')).toContain(
+      'Tell the agent how to go on'
+    )
+  })
+
+  it('sends an answer to a stalled chat', async () => {
+    const bridge = installFakeBridge([
+      inboxItem({
+        chatId: 'tab-2:leaf',
+        kind: 'terminal',
+        title: 'Release notes',
+        verdict: 'stalled'
+      })
+    ])
+    await openDialog()
+    const box = (await screen.findByLabelText('Answer to Release notes')) as HTMLTextAreaElement
+    fireEvent.change(box, { target: { value: 'Run the tests' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await waitFor(() => expect(box.value).toBe(''))
+    expect(bridge.answer).toHaveBeenCalledWith({ chatId: 'tab-2:leaf', text: 'Run the tests' })
+  })
+
+  it('lists paused chats apart, frozen, and counts none of them', async () => {
+    installFakeBridge([
+      inboxItem({ chatId: 'a', title: 'Live one' }),
+      inboxItem({ chatId: 'b', title: 'Paused asker', paused: true }),
+      inboxItem({
+        chatId: 'c',
+        title: 'Paused staller',
+        verdict: 'stalled',
+        paused: true,
+        wakeAt: NOW + MINUTE
+      })
+    ])
+    const dialog = await openDialog()
+    await waitFor(() => expect(dialog.textContent).toContain('Paused (2)'))
+    expect(dialog.textContent).toContain('Waiting on you (1)')
+    expect(dialog.textContent).not.toContain('Stalled (')
+    expect(dialog.textContent).toContain('paused while waiting on you')
+    expect(dialog.textContent).toContain('paused while stalled')
+    expect(dialog.textContent).not.toContain('next wake in')
+    expect(document.querySelector('[data-decision-inbox-count="waiting"]')?.textContent).toBe('1')
+    expect(document.querySelector('[data-decision-inbox-count="stalled"]')).toBeNull()
+    expect(
+      document
+        .querySelector('[data-decision-inbox-count="waiting"]')
+        ?.closest('button')
+        ?.getAttribute('aria-label')
+    ).toBe('Decision inbox: 1 waiting on you')
+    expect(screen.getAllByRole('button', { name: 'Resume recovery' })).toHaveLength(2)
   })
 
   it('says so when nothing waits', async () => {
