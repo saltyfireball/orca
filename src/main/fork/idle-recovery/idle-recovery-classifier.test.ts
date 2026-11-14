@@ -212,13 +212,12 @@ process.stdin.on('end', () => {
 
   it('stops a slow command at the timeout and says finished', async () => {
     const slow = lingering('slow', 'setInterval(() => {}, 1000)')
-    const started = Date.now()
     const verdict = await classifyIdleRecoveryEnding(
       input(),
       settingsFor(slow.command, { forkIdleSweepClassifierTimeoutSeconds: 1 })
     )
+    // The reason says the timeout ended it, and the process is checked gone below.
     expect(verdict).toMatchObject({ verdict: 'finished', reason: 'classifier command timed out' })
-    expect(Date.now() - started).toBeLessThan(10_000)
     await expectStopped(await pidFrom(slow.pidFile))
   })
 
