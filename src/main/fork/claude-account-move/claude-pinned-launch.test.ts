@@ -7,7 +7,7 @@ import {
 } from '../../../shared/claude-profile-routing'
 import type { ClaudeManagedAccount } from '../../../shared/managed-account-types'
 import { POSIX_PROVIDER_SUPERVISOR_SCRIPT } from '../../provider-process/provider-process-supervisor'
-import { chatSurviveLaunchHash } from '../chat-survive/chat-survive-launch-hash'
+import { chatSurviveLaunchPrint } from '../chat-survive/chat-survive-launch-hash'
 import { forkPinnedClaudeAccountHome, forkPinnedClaudeLaunchAccount } from './claude-pinned-launch'
 import type { PinnedClaudeRouter } from './claude-pinned-route'
 import type { ClaudeSessionPin } from './claude-session-account-pins'
@@ -67,7 +67,7 @@ describe('pinned Claude launch', () => {
   })
 
   it('launches a moved chat on its account, under a launch hash chat-survive will not adopt', async () => {
-    const before = chatSurviveLaunchHash(SPEC, launchedOnA())
+    const before = chatSurviveLaunchPrint(SPEC, launchedOnA())
     const env = launchedOnA()
     const recipe = await forkPinnedClaudeLaunchAccount(
       fakeRouter(),
@@ -82,17 +82,17 @@ describe('pinned Claude launch', () => {
     })
     expect(env.CLAUDE_CONFIG_DIR).toBe('/fake/orca/claude-accounts/acct-b')
     expect(env[CLAUDE_INJECTED_CONFIG_DIR_ENV]).toBe('/fake/orca/claude-accounts/acct-b')
-    expect(chatSurviveLaunchHash(SPEC, env)).not.toBe(before)
+    expect(chatSurviveLaunchPrint(SPEC, env)).not.toEqual(before)
   })
 
   it('moves a chat to System default by dropping only Orca injected folder', async () => {
-    const before = chatSurviveLaunchHash(SPEC, launchedOnA())
+    const before = chatSurviveLaunchPrint(SPEC, launchedOnA())
     const env = launchedOnA()
     const recipe = await forkPinnedClaudeLaunchAccount(fakeRouter(), env, 's1', pins({ s1: null }))
     expect(recipe).toEqual({ route: 'system', home: '/fake/home/.claude', configDir: null })
     expect(env.CLAUDE_CONFIG_DIR).toBeUndefined()
     expect(env[CLAUDE_INJECTED_CONFIG_DIR_ENV]).toBeUndefined()
-    expect(chatSurviveLaunchHash(SPEC, env)).not.toBe(before)
+    expect(chatSurviveLaunchPrint(SPEC, env)).not.toEqual(before)
 
     const own = {
       ...launchedOnA(),
