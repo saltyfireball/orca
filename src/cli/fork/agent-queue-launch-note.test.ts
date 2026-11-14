@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { RuntimeClient } from '../runtime-client'
+import type { RuntimeClient } from '../runtime/client'
 import { noteForkQueuedAgentLaunch, readForkQueuedLaunch } from './agent-queue-launch-note'
 import { formatQueue } from './agent-queue-handlers'
 
