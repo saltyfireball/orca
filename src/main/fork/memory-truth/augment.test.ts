@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { buildProcessIndex, type ProcRow } from '../../memory/process-index'
 import type { MemorySnapshotStore } from '../../memory/memory-snapshot-buckets'
-import type { MemorySnapshot } from '../../../shared/process-stats-types'
+import type { MemorySnapshot } from '../../../shared/diagnostics/process-stats-types'
 import { forkAugmentMemorySnapshot, resetForkMemoryAugmentForTests } from './augment'
 import { chatRootsFromRecords, chatWorkspaceKey, type ForkChatRecordView } from './chat-roots'
 import type { ForkProcRow } from './process-table'

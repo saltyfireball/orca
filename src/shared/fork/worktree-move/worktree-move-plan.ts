@@ -1,7 +1,7 @@
 // SLRM-2265: decide what a workspace move does, from what the source host reported and the move
 // settings. Pure, so the CLI and the desktop refuse, ask and plan the same way.
 import { parseExecutionHostId } from '../../execution-host'
-import type { ProjectHostSetup } from '../../project-types'
+import type { ProjectHostSetup } from '../../project/project-types'
 import type { ResolvedWorktreeMoveSettings } from './worktree-move-settings'
 import { isSafeWorktreeMoveRef } from './worktree-move-ref'
 import {

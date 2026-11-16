@@ -41,7 +41,7 @@ export function lostWorkUseByWorktree(
         continue
       }
       const paneKey = structuredAgentSessionPaneKey(tab.id, tab.entityId)
-      if (isSleepingChatStatus(facts.agentStatusByPaneKey?.[paneKey])) {
+      if (isSleepingChatStatus(facts.agentStatusByPaneKey?.get(paneKey))) {
         sleepingChats += 1
       } else {
         openChats += 1

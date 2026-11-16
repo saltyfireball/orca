@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SleeperRow } from '../../../../shared/fork/sleepers'
 import type { SleepingAgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-resume'
-import type { MemorySnapshot } from '../../../../shared/process-stats-types'
+import type { MemorySnapshot } from '../../../../shared/diagnostics/process-stats-types'
 import {
   formatSleeperBytes,
   mergeSleeperRows,

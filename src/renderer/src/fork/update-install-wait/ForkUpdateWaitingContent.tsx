@@ -1,5 +1,5 @@
 import { Minus } from 'lucide-react'
-import type { UpdateStatus } from '../../../../shared/update-status-types'
+import type { UpdateStatus } from '../../../../shared/updater/update-status-types'
 import type { ForkUpdateInstallWait } from '../../../../shared/fork/update-install-wait'
 import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'

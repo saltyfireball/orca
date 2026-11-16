@@ -1,6 +1,6 @@
 // Fork: stop the running turn of one native chat through its host's own cancel, the same path the
 // chat's Stop button takes. Used by the Claude account move and by chat stall's Interrupt.
-import { structuredAgentSessionPayloadFingerprint } from '../../shared/agent-session/lifecycle/structured-agent-session-mutation'
+import { structuredAgentSessionPayloadFingerprint } from '../../shared/agent-session/lifecycle/operations/structured-agent-session-mutation'
 import type { StructuredAgentSessionHost } from '../native-chat/agent-session-wire/host/structured-agent-session-host'
 import { mintAgentSessionOperationId } from '../runtime/orchestration/mailbox/structured-pointer/structured-pointer-operation-id'
 

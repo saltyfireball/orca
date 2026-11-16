@@ -28,7 +28,7 @@ function rig(opts: Opts = {}) {
   const session = {
     child: opts.child,
     journal: {
-      inputOrder: { recoverableSubmissions: () => submissions },
+      reads: { input: async () => ({ kind: 'recoverable-submissions', submissions }) },
       cursor: () => ({ epoch: 0, sequence: 0 })
     }
   } as unknown as StructuredAgentSessionHostSession

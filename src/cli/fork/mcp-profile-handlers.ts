@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import type { CommandHandler, HandlerContext } from '../dispatch/dispatch'
 import { getOptionalStringFlag } from '../arguments/flags'
 import { printResult } from '../output/command-result-output'
-import { RuntimeClientError } from '../runtime/types'
+import { RuntimeClientError } from '../runtime/connection/types'
 import type { ForkMcpChatInfo, ForkMcpListing } from '../../shared/fork/mcp-profiles'
 import { formatMcpChat, formatMcpListing } from './mcp-profile-format'
 

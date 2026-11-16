@@ -10,7 +10,7 @@ import type {
   AgentJournalRenderItem,
   AgentJournalSubmission
 } from '../../../shared/agent-session/journal/agent-session-journal-types'
-import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session/lifecycle/agent-session-mutation-envelope'
+import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session/lifecycle/operations/agent-session-mutation-envelope'
 import { isQueuedAgentJournalSubmission } from '../../../shared/agent-session/requests/agent-session-queued-submission'
 import { isStructuredAgentSessionCommandEntry } from '../../../shared/agent-session/structured-agent-session-command-entry'
 import { latestStructuredAgentContextFacts } from '../../../shared/agent-session/structured-agent-session-context-usage'
@@ -18,6 +18,7 @@ import type { BoundaryCompactionJournalFacts } from '../../../shared/fork/bounda
 import type { StructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-host'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { liveIdleRecoveryHost } from '../idle-recovery/idle-recovery-host'
+import { readChatJournalTail } from '../chat-journal-tail'
 import { idleRecoveryChatPort } from '../idle-recovery/idle-recovery-ports'
 
 const CALLER_KEY = 'trusted-local:fork-boundary-compaction'
@@ -101,7 +102,7 @@ export function boundaryCompactionJournalFacts(
 export type BoundaryCompactionChatHost = Pick<
   StructuredAgentSessionHost,
   | 'conversationCommand'
-  | 'journalCurrentRead'
+  | 'history'
   | 'readStatusSummary'
   | 'loadedSessionIds'
   | 'send'
@@ -153,7 +154,7 @@ export function liveBoundaryCompactionHost(
       if (!host) {
         return null
       }
-      const read = await host.journalCurrentRead(sessionId)
+      const read = await readChatJournalTail(host, sessionId)
       return boundaryCompactionJournalFacts(read.items, read.submissions)
     },
     compact: async (sessionId, fence, operationId) => {

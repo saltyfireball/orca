@@ -9,7 +9,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { StructuredAgentSessionAttachContext } from '../../native-chat/agent-session-wire/acquisition/structured-agent-session-attach-context'
 import { startStructuredAgentSessionAgentForOperation } from '../../native-chat/agent-session-wire/startup/structured-agent-session-agent-start'
-import { ORCA_AGENT_SESSION_ID_ENV } from '../../../shared/agent-session/lifecycle/agent-session-caller-env'
+import { ORCA_AGENT_SESSION_ID_ENV } from '../../../shared/agent-session/lifecycle/launch/agent-session-caller-env'
 import { chatSurviveBackoffPoll } from './chat-survive-backoff-poll'
 import { connectChatSurviveBroker, type ChatSurviveConnection } from './chat-survive-client'
 import {

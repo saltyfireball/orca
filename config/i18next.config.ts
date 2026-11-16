@@ -1,5 +1,5 @@
 import { defineConfig } from 'i18next-cli'
-import { FORK_LOCALIZED_SOURCE_DIRS } from './scripts/fork/fork-localization.mjs'
+import { FORK_LOCALIZED_IGNORE_GLOBS } from './scripts/fork/fork-localization.mjs'
 
 const output =
   process.env.ORCA_I18N_EXTRACTION_OUTPUT ?? 'tmp/localization-extraction/{{language}}.json'
@@ -14,7 +14,7 @@ export default defineConfig({
       '**/__tests__/**',
       '**/__snapshots__/**',
       '**/assets/**',
-      ...FORK_LOCALIZED_SOURCE_DIRS.map((dir) => `${dir}/**`)
+      ...FORK_LOCALIZED_IGNORE_GLOBS
     ],
     output,
     defaultNS: false,
