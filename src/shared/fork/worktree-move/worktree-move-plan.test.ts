@@ -182,3 +182,48 @@ describe('pickWorktreeMoveTargetRepo', () => {
     ).toBeNull()
   })
 })
+
+describe('planWorktreeMove hardening', () => {
+  it('refuses an unsafe branch or remote before anything else', () => {
+    for (const facts of [
+      { branch: '--upload-pack=x', remote: 'origin' },
+      { branch: 'feature', remote: '-oProxyCommand=x' },
+      { branch: 'feat ure', remote: 'origin' },
+      { branch: 'a..b', remote: 'origin' }
+    ]) {
+      const base = input()
+      expect(planWorktreeMove({ ...base, facts: { ...base.facts, ...facts } })).toMatchObject({
+        kind: 'refuse',
+        code: 'unsafe-ref'
+      })
+    }
+  })
+
+  it('keeps at most 50 chats and leaves the rest behind', () => {
+    const chats = Array.from({ length: 52 }, (_, n) => chat({ sessionId: `claude-${n}` }))
+    const base = input()
+    const plan = planWorktreeMove({ ...base, facts: { ...base.facts, chats } })
+    expect(plan.kind === 'move' && plan.chats).toHaveLength(50)
+    expect(plan.kind === 'move' && plan.skippedChats).toHaveLength(2)
+  })
+
+  it('leaves a chat behind when the total would pass the byte budget', () => {
+    const mb = 1024 * 1024
+    const chats = [
+      chat({ sessionId: 'a', transcriptBytes: 40 * mb }),
+      chat({ sessionId: 'b', transcriptBytes: 40 * mb }),
+      chat({ sessionId: 'c', transcriptBytes: 10 * mb })
+    ]
+    const base = input({ settings: { ...WORKTREE_MOVE_DEFAULTS, maxTotalMb: 60 } })
+    const plan = planWorktreeMove({ ...base, facts: { ...base.facts, chats } })
+    expect(plan.kind === 'move' && plan.chats.map((c) => c.sessionId)).toEqual(['a', 'c'])
+    expect(plan.kind === 'move' && plan.skippedChats[0].reason).toContain('60 MB')
+  })
+
+  it('resolves the total budget setting with a 256 MB default', () => {
+    expect(resolveWorktreeMoveSettings({}).maxTotalMb).toBe(256)
+    expect(resolveWorktreeMoveSettings({ maxTotalMb: 10 }).maxTotalMb).toBe(10)
+    expect(resolveWorktreeMoveSettings({ maxTotalMb: 0 }).maxTotalMb).toBe(256)
+    expect(resolveWorktreeMoveSettings({ maxTotalMb: 99999 }).maxTotalMb).toBe(256)
+  })
+})

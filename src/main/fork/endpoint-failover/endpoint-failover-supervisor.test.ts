@@ -44,7 +44,8 @@ function harness(options: { env?: KnownRuntimeEnvironment; settings?: ForkGlobal
   const env = options.env ?? environment()
   const answering = new Set<string>()
   let state: FailoverConnectionState = 'ready'
-  let settings: ForkGlobalSettings = options.settings ?? {}
+  // The earlier tests learn a LAN address outside the saved /24; the subnet limit has its own tests.
+  let settings: ForkGlobalSettings = options.settings ?? { forkEndpointLearnSameSubnetOnly: false }
   const probes: string[] = []
   const reconnects: string[] = []
   const stored = new Map<string, LearnedRoutes>()
@@ -264,5 +265,29 @@ describe('EndpointFailoverSupervisor', () => {
     await h.advance(60_000)
     expect(h.probes).toEqual([LAN])
     h.supervisor.stop()
+  })
+
+  it('probes only learned addresses in a saved endpoint /24 or on the tailnet by default', async () => {
+    const h = harness({ settings: {} })
+    h.setLearnReply({
+      addresses: [
+        { address: '192.168.1.20' },
+        { address: '203.0.113.77' },
+        { address: '10.9.9.9' },
+        { address: '100.90.1.2' }
+      ]
+    })
+    h.supervisor.start()
+    await h.advance(FAILOVER_WATCH_MS)
+    // Saved is 203.0.113.10: only the Tailscale address ranks above it; 192.168.x and 10.x are dropped.
+    expect(h.probes).toEqual([TAILNET])
+  })
+
+  it('probes any learned address when the subnet limit is off', async () => {
+    const h = harness({ settings: { forkEndpointLearnSameSubnetOnly: false } })
+    h.setLearnReply({ addresses: [{ address: '10.9.9.9' }] })
+    h.supervisor.start()
+    await h.advance(FAILOVER_WATCH_MS)
+    expect(h.probes).toEqual(['ws://10.9.9.9:6768/'])
   })
 })
