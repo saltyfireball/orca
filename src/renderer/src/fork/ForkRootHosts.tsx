@@ -5,6 +5,7 @@ import { ForkLostWorkHost } from './lost-work/ForkLostWorkHost'
 import { ForkSleepersDialogHost } from './sleepers/ForkSleepersDialog'
 import { ForkUsageReportHost } from './usage-report/ForkUsageReportDialog'
 import { ForkWorkerCleanupReporter } from './worker-cleanup/ForkWorkerCleanup'
+import { ForkWorktreeMoveDialogHost } from './worktree-move/ForkWorktreeMoveDialog'
 
 /**
  * The fork's always-mounted hosts, behind one hook in `AppRootSurfaces.tsx` so that upstream
@@ -20,6 +21,7 @@ export function ForkRootHosts(): React.JSX.Element {
       <ForkUsageReportHost />
       <ForkLostWorkHost />
       <ForkDecisionInboxHost />
+      <ForkWorktreeMoveDialogHost />
     </>
   )
 }
