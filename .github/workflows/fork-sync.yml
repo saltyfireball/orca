@@ -563,6 +563,55 @@ jobs:
             --title "Blackfish $FORK_VERSION" \
             --notes "Self-signed macOS build of upstream $UPSTREAM_TAG plus the fork patches in FORK.md."
 
+  # The server-only Linux tarballs a host without the desktop app runs `orca serve` from, packed
+  # from the fork-versioned template by upstream's own workflow (build, pack, smoke on the runner
+  # and on bare images), so Linux servers get the fork patches (SLRM-2264). Starts once the fork
+  # template is uploaded; nothing waits on it, so it never holds the macOS release.
+  orca-server-linux:
+    needs: [sync, orcad-template-fork]
+    if: github.repository != 'stablyai/orca'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/orca-server-artifact.yml
+    with:
+      ref: ${{ needs.sync.outputs.sha }}
+      template_artifact: orcad-template-fork
+
+  # As upstream's publish-orca-server-artifact does: attaches both tarballs and the checksum
+  # manifest to the release build-mac published, under upstream's asset names.
+  publish-orca-server-linux:
+    needs: [sync, build-mac, orca-server-linux]
+    if: >-
+      !cancelled() && github.repository != 'stablyai/orca' &&
+      needs.build-mac.result == 'success' && needs.orca-server-linux.result == 'success' &&
+      needs.orca-server-linux.outputs.packed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: orca-server-linux-*
+          path: orca-server
+          merge-multiple: true
+      - name: Write the checksum manifest and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORK_VERSION: ${{ needs.sync.outputs.version }}
+        working-directory: orca-server
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat orca-server-linux-x64.tar.gz.sha256 orca-server-linux-arm64.tar.gz.sha256 > orca-server-sha256sums.txt
+          sha256sum -c orca-server-sha256sums.txt
+          gh release upload "v${FORK_VERSION}" \
+            orca-server-linux-x64.tar.gz \
+            orca-server-linux-arm64.tar.gz \
+            orca-server-sha256sums.txt \
+            --clobber -R "$GITHUB_REPOSITORY"
+
   # Every run, whatever failed, publishes status.json on the status branch (read by the app's
   # update check) and states the outcome, with resync commands, in the run summary. GITHUB_TOKEN
   # suffices: that branch's tree holds no workflow files, and token pushes start no workflows.
