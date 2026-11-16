@@ -11,16 +11,29 @@ export const FORK_PLACEMENT_PROBE_TIMEOUT_MS = 2_500
 
 const Repo = z.string().min(1).max(4096)
 
-/** One machine's own load; with `repo`, also whether that repo selector resolves there. */
-export const ForkPlacementLoadParams = z.object({ repo: Repo.optional() })
+const Project = z.string().min(1).max(4096)
 
-export type ForkPlacementLoadResult = { load: ForkMachineLoad; repoFound?: boolean }
+/** One machine's own load; with `repo`, also whether that repo selector resolves there, and with
+ *  `project`, whether that project has a ready setup on the machine itself. */
+export const ForkPlacementLoadParams = z.object({
+  repo: Repo.optional(),
+  project: Project.optional()
+})
+
+export type ForkPlacementLoadResult = {
+  load: ForkMachineLoad
+  repoFound?: boolean
+  projectReady?: boolean
+}
 
 export const ForkPlacementPickParams = z.object({
   /** Machines to consider ('local', 'runtime:<id>'); unset is this machine and every paired server. */
   hosts: z.array(z.string().min(1).max(512)).max(FORK_PLACEMENT_MAX_HOSTS).optional(),
   /** Only machines where this repo selector resolves. */
   repo: Repo.optional(),
+  /** Only machines where this project has a ready setup. Every paired server is asked about its
+   *  own setups; machines in `hosts` are already known to be set up (the caller's own list). */
+  project: Project.optional(),
   /** Asked because no machine was named: answers `{ off: true }` unless the setting is on. */
   unnamed: z.boolean().optional()
 })
