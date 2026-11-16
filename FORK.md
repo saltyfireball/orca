@@ -686,6 +686,27 @@ named Orca Fork until SLRM-1367. `main` is always
     fork setting is added to both (`ForkSettingsPane.test.tsx` fails when a search entry has
     no card heading to land on).
 
+- **Auto placement (SLRM-2266).** `orchestration worker-start --on auto` and
+  `worktree create --host auto` start the work on the machine (this one or a paired server)
+  with the most spare CPU and memory. `orca placement [--repo <selector>]` shows the ranking.
+  - Each machine has a placement setting in Settings > Blackfish > Agents and workers, Auto
+    placement: prefer, normal (the default), less often or manual only (`forkPlacement`, keyed
+    `local` or `runtime:<id>`). A manual only machine is never picked, only named. The score is
+    the mean of spare cores and free memory, each against the best machine, times 1.5, 1 or 0.5.
+  - Each machine answers a cheap load probe, `fork.placement.load` (cpu count, 1 minute load
+    average, free memory; on macOS free memory counts inactive and purgeable pages from
+    `vm_stat`). A paired server that does not answer within 2.5 seconds, or runs stock Orca, is
+    skipped, and with `--repo` so is one where the repo does not resolve. SSH targets have no
+    probe and are skipped. Windows reports no load average, so only memory and cores count there.
+  - `--on auto` needs `--worktree new-child` or `new-top-level` and `--repo`; `--host auto`
+    needs `--project` and picks among the machines the project is set up on.
+  - Off by default: `forkPlacementAutoWhenUnnamed` also places a start that names no machine (a
+    worker in a new worktree with `--repo` and no remote selected, or a worktree create for a
+    project set up on two or more machines). A failed pick then falls back to stock behavior.
+  - The pick happens in the CLI before stock routing: it rewrites `--on` or `--host` and prints
+    the pick and the skipped machines on stderr. Stock worker-start and host resolution are not
+    edited.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -778,6 +799,7 @@ Apply these in this order. Each one is a single commit.
 86. `SLRM-2257 Boundary compaction: ask an idle chat with a large context to compact between turns`
 87. `SLRM-2263 Chat survive: carry chats over an app update, say why a claim is refused`
 88. `SLRM-2268 Unattended resume: continue interrupted workers and automation runs after a restart`
+89. `SLRM-2266 Auto placement: pick the machine with the most spare CPU and memory for --on auto and --host auto`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1283,6 +1305,20 @@ Upstream files only get short hooks, which keeps rebases small:
   - `src/cli/discovery/help.ts` wraps the root help in `withForkSettingsRootHelp`, which adds the
     "Settings:" section, and asks `forkSettingsFlagHelp` first for an option's help line.
   - `package.json` gains the `generate:fork-settings-catalog` script.
+
+- Auto placement (SLRM-2266), from `src/shared/fork/auto-placement*.ts`,
+  `src/main/fork/auto-placement/`, `src/cli/fork/auto-placement-*.ts` and
+  `src/renderer/src/fork/auto-placement/`:
+  - `rpc-method-registry.ts` spreads `FORK_AUTO_PLACEMENT_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-auto-placement.ts`): `fork.placement.load` and
+    `fork.placement.pick`; `rpc-params-catalog.generated.ts` is regenerated with it.
+  - `src/cli/index.ts` calls `forkResolveAutoPlacement(parsed, ...)` once the runtime client
+    class is loaded, before any routing.
+  - `src/cli/specs/index.ts` adds `FORK_AUTO_PLACEMENT_COMMAND_SPECS` and wraps the list in
+    `withForkAutoPlacementNotes`; `fork-handler-groups.ts` adds the `fork-auto-placement` group
+    and `cli-command-names.ts` lists `placement`.
+  - The two settings are in `src/shared/fork/fork-global-settings.ts` and
+    `settings-rows-fork.generated.ts` is regenerated; the card is in the fork's Settings pane.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
