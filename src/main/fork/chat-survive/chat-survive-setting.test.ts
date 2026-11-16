@@ -8,7 +8,7 @@ const paths = vi.hoisted(() => ({ entry: '', userData: '' }))
 vi.mock('../../worker-threads/forked-child-entry-path', () => ({
   getForkedChildEntryPath: () => paths.entry
 }))
-vi.mock('../../../shared/app-environment', () => ({
+vi.mock('../../../shared/app-lifecycle/app-environment', () => ({
   getAppEnvironment: () => ({ getPath: () => paths.userData })
 }))
 

@@ -4,7 +4,7 @@ import {
   forkReleaseRepoForChannel,
   isForkUpdateFeedUrl
 } from './fork-release-repo'
-import { getReleaseRepoForChannel, isChannelSupportedOnPlatform } from '../release-channel'
+import { getReleaseRepoForChannel, isChannelSupportedOnPlatform } from '../updater/release-channel'
 
 describe('fork release channels', () => {
   it('maps the stable channel to the fork and leaves the rest on their upstream repo', () => {

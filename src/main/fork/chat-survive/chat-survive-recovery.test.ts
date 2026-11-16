@@ -8,7 +8,7 @@ import { closeTestJournalHostDatabases } from '../../native-chat/agent-session-j
 import { resolveStructuredSessionRecovery } from '../../native-chat/agent-session-wire/recovery/structured-agent-session-recovery-resolution'
 import type { AgentSessionRecordStore } from '../../runtime/agent-session/records/agent-session-record-store'
 import { openTestAgentSessionRecordStore } from '../../runtime/agent-session/records/agent-session-record-store-test-harness'
-import { codexProviderHandle } from '../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
+import { codexProviderHandle } from '../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle-encoding'
 import { forkChatSurviveAdopt } from './chat-survive-adopt'
 
 vi.mock('./chat-survive-adopt', () => ({ forkChatSurviveAdopt: vi.fn() }))
@@ -70,10 +70,22 @@ async function recoveringOwner(): Promise<AgentSessionRecordStore> {
     },
     now: NOW
   })
-  await store.transitionHandoff(SESSION, (record) => ({
-    ...record,
-    lease: { ...record.lease, handoffStage: 'recovering' }
-  }))
+  // Latch recovery the way upstream does: an attach that failed with its exit unproven.
+  await store.settleFailedPostAcquisitionAttachment({
+    sessionId: SESSION,
+    fence,
+    spawnToken: 'spawn-survive',
+    callerKey: 'test',
+    operationId: `${NOW}-${'1'.padStart(32, '0')}`,
+    outcome: {
+      status: 'failed',
+      code: 'agent_session_operation_invalid',
+      details: { reason: 'attachFailed' },
+      message: 'attach failed'
+    },
+    exitProof: 'unproven',
+    now: NOW
+  })
   return store
 }
 

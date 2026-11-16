@@ -2,7 +2,7 @@
 // homes call it as the load probe); fork.placement.pick probes this machine and its paired servers
 // and ranks them, for `--on auto`, `--host auto` and `orca placement`.
 import { defineMethod, type RpcContext } from '../../core'
-import { getAppEnvironment } from '../../../../../shared/app-environment'
+import { getAppEnvironment } from '../../../../../shared/app-lifecycle/app-environment'
 import { listEnvironments } from '../../../../../shared/remote-runtime/host-store/runtime-environment-store'
 import {
   ForkPlacementLoadParams,

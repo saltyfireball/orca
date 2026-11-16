@@ -1,7 +1,7 @@
 // SLRM-1503: a small dot and label naming the Claude account a session runs on.
 import React from 'react'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
-import { InlineUsageBars } from '@/components/status-bar/InlineProviderUsage'
+import { InlineUsageBars } from '@/components/status-bar/usage/InlineProviderUsage'
 import { translate } from '@/i18n/i18n'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { cn } from '@/lib/class-names'

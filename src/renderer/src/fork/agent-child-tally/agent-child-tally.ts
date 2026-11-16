@@ -42,7 +42,7 @@ export type ChildTallyOptions = {
 export type ChildTallySources = {
   /** The visible orchestration contexts, keyed by row pane key (`selectVisibleAgentOrchestration`). */
   contexts: Readonly<Record<string, AgentStatusOrchestrationContext>>
-  /** Live status entries first, then retained ones. */
+  /** The status entry of a pane key (finished agents stay in the live map). */
   entryFor: (paneKey: string) => AgentStatusEntry | undefined
   /** Every known entry, used only to resolve a parent named by terminal handle. */
   entries: () => Iterable<AgentStatusEntry>

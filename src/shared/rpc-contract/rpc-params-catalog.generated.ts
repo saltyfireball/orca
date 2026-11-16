@@ -38,6 +38,45 @@ import {
   DesktopBrowserBridgeResultChunkParams,
   DesktopBrowserBridgeResultParams
 } from '../browser/client-hosting/desktop-browser-bridge-protocol'
+import { DelegatedMobileDeviceSyncParamsSchema } from '../delegated-mobile-device-contract'
+import {
+  ForkAgentQueueListParams,
+  ForkAgentQueueStatusParams,
+  ForkAgentQueueTicketParams
+} from '../fork/agent-queue'
+import { ForkPlacementLoadParams, ForkPlacementPickParams } from '../fork/auto-placement-wire'
+import {
+  ForkClaudeAccountCancelParams,
+  ForkClaudeAccountMoveParams,
+  ForkClaudeAccountWhichParams
+} from '../fork/claude-account-move'
+import { ForkDeviceListParams, ForkDeviceTargetParams } from '../fork/device-approval'
+import { ForkEndpointAddressesParams } from '../fork/endpoint-failover'
+import {
+  ForkIdleRecoveryAnswerParams,
+  ForkIdleRecoveryInboxParams,
+  ForkIdleRecoveryPauseParams,
+  ForkIdleRecoveryStatusParams
+} from '../fork/idle-recovery-wire'
+import { ForkLostWorkScanParams } from '../fork/lost-work'
+import { ForkMcpChatParams, ForkMcpChatSetParams, ForkMcpListParams } from '../fork/mcp-profiles'
+import { ForkSettingsGetParams, ForkSettingsUpdateParams } from '../fork/settings-wire'
+import {
+  ForkSleepersListParams,
+  ForkSleepersPinParams,
+  ForkSleepersSleepParams
+} from '../fork/sleepers-wire'
+import { ForkUsageReportParams } from '../fork/usage-report'
+import {
+  ForkWebhookAddParams,
+  ForkWebhookListParams,
+  ForkWebhookTargetParams
+} from '../fork/webhooks'
+import {
+  ForkWorktreeMoveExportParams,
+  ForkWorktreeMoveImportParams,
+  ForkWorktreeMoveInspectParams
+} from '../fork/worktree-move/worktree-move-wire'
 import { MobileWebBundleChunkParamsSchema } from '../mobile-web-bundle/bundle-rpc-contract'
 import { MobileWebBundleLocaleCatalogParamsSchema } from '../mobile-web-bundle/locale-catalog-contract'
 import { OrcadMigrationBlobChunkRequestSchema } from '../orcad-migration/orcad-migration-blob-transfer'

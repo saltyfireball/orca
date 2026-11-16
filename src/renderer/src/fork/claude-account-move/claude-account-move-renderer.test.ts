@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FORK_CLAUDE_TERMINAL_ACCOUNT_ENV } from '../../../../shared/fork/claude-account-move'
-import type { ClaudeManagedAccountSummary } from '../../../../shared/managed-account-types'
-import type { RateLimitState } from '../../../../shared/rate-limit-types'
-import { createEmptyRateLimitState } from '../../../../shared/rate-limit-state-factory'
+import type { ClaudeManagedAccountSummary } from '../../../../shared/agent-accounts/managed-account-types'
+import type { RateLimitState } from '../../../../shared/agent-usage/rate-limits/rate-limit-types'
+import { createEmptyRateLimitState } from '../../../../shared/agent-usage/rate-limits/rate-limit-state-factory'
 import { makePaneKey } from '../../../../shared/workspace-layout/stable-pane-id'
 import {
   queueClaudePaneAccountMoves,
@@ -94,10 +94,10 @@ describe('Claude terminal pane moves', () => {
             ptyIdsByLeafId: { [LEAF_A]: 'pty-a', [LEAF_B]: 'pty-b' }
           }
         },
-        agentStatusByPaneKey: {
-          [claudePane]: { agentType: 'claude' },
-          [makePaneKey('tab-1', LEAF_B)]: { agentType: 'codex' }
-        },
+        agentStatusByPaneKey: new Map([
+          [claudePane, { agentType: 'claude' }],
+          [makePaneKey('tab-1', LEAF_B), { agentType: 'codex' }]
+        ]),
         queuePaneAccountRestarts
       },
       'w1',

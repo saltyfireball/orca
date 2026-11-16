@@ -57,7 +57,7 @@ type TabChipProps = Parameters<typeof ForkClaudeAccountTabChip>[0]
 export function ForkTabTitle({
   title,
   ...chip
-}: TabChipProps & { title: string }): React.JSX.Element {
+}: TabChipProps & { title: React.ReactNode }): React.JSX.Element {
   return (
     <>
       <span className={`${TAB_LABEL_WIDTH_CLASSES} mr-1`}>{title}</span>

@@ -1,6 +1,6 @@
 // SLRM-2099: `orca diagnostics memory` prints the same whole-tree numbers as the resource popover
 // (--json already carries them as `forkTruth`).
-import type { MemorySnapshot } from '../../shared/process-stats-types'
+import type { MemorySnapshot } from '../../shared/diagnostics/process-stats-types'
 import {
   formatForkBytes as bytes,
   type ForkMemoryBreakdown,

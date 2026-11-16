@@ -4,7 +4,7 @@
 // automation run) carries on by itself instead, a limited number of times in a row, and never
 // when the cut turn was waiting on a person (an approval or a question). Interactive chats keep
 // the stock offer. Idea from T3 Code's "Recovering interrupted threads" (MIT).
-import type { AgentSessionRestartActivity } from '../agent-session/lifecycle/agent-session-restart-activity'
+import type { AgentSessionRestartActivity } from '../agent-session/lifecycle/stopping/agent-session-restart-activity'
 import type { ForkGlobalSettings } from './fork-global-settings'
 
 export const UNATTENDED_RESUME_DEFAULT_MAX_TRIES = 3

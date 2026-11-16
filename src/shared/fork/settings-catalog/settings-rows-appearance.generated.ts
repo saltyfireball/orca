@@ -37,7 +37,7 @@ export const FORK_SETTINGS_ROWS_APPEARANCE = {
   minimizeToTrayOnClose:
     '{"t":{"k":"boolean"},"d":"Windows-only: close (X) hides to tray instead of quitting; the tray icon is always present regardless.","o":true}',
   notifications:
-    '{"t":{"k":"object","fields":{"enabled":{"k":"boolean"},"agentTaskComplete":{"k":"boolean"},"agentNeedsInput":{"k":"boolean"},"terminalBell":{"k":"boolean"},"suppressWhenFocused":{"k":"boolean"},"customSoundId":{"k":"enum","values":["beep","blip","blop","bong","clack","custom","ding","sonar","system","thump","two-tone"]},"customSoundPath":{"k":"string","nullable":true},"customSoundVolume":{"k":"number"},"mutedNotificationSourceIds":{"k":"array","of":{"k":"string"}},"notifyHiddenWorkspaces":{"k":"boolean"}}},"d":"Which events raise a notification and how."}',
+    '{"t":{"k":"object","fields":{"enabled":{"k":"boolean"},"agentTaskComplete":{"k":"boolean"},"agentNeedsInput":{"k":"boolean"},"terminalBell":{"k":"boolean"},"suppressWhenFocused":{"k":"boolean"},"customSoundId":{"k":"enum","values":["beep","blip","blop","bong","clack","custom","ding","none","sonar","system","thump","two-tone"]},"customSoundPath":{"k":"string","nullable":true},"customSoundVolume":{"k":"number"},"mutedNotificationSourceIds":{"k":"array","of":{"k":"string"}},"notifyHiddenWorkspaces":{"k":"boolean"}}},"d":"Which events raise a notification and how."}',
   pluginAppTheme:
     '{"t":{"k":"string","nullable":true},"d":"Legacy single choice; moved into the slot of its theme\'s base once that theme loads.","o":true}',
   pluginAppThemeDark:

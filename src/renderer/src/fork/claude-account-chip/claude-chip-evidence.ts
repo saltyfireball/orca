@@ -2,7 +2,7 @@
 // Terminal panes report their transcript path through agent hooks, the same evidence the
 // account switch uses (claude-session-account-move.ts); native chats are asked through the fork RPC.
 import type { AppState } from '@/store/types'
-import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
+import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 import type { ExecutionHostId } from '../../../../shared/execution-host'
 import { normalizeAgentProviderSession } from '../../../../shared/agent-session/lifecycle/agent-session-resume'
 import { structuredAgentSessionPaneKey } from '../../../../shared/agent-session/view/structured-agent-session-projection'
@@ -78,7 +78,7 @@ export function paneEvidence(
   tabId: string,
   paneKey: string
 ): ClaudeChipEvidence | null {
-  const entry = state.agentStatusByPaneKey[paneKey]
+  const entry = state.agentStatusByPaneKey.get(paneKey)
   if (entry?.agentType !== 'claude' || entry.structuredHostOwned) {
     return null
   }
@@ -126,7 +126,7 @@ export function chatEvidence(
     return null
   }
   const host = sessionHost(state, worktreeId, tab.executionHostId)
-  const status = state.agentStatusByPaneKey[structuredAgentSessionPaneKey(tab.id, sessionId)]
+  const status = state.agentStatusByPaneKey.get(structuredAgentSessionPaneKey(tab.id, sessionId))
   return host
     ? { ...host, chatSessionId: sessionId, ...(status ? { chatStatus: status.state } : {}) }
     : null
@@ -156,7 +156,7 @@ export function agentRowEvidence(
   tabId: string,
   paneKey: string
 ): ClaudeChipEvidence | null {
-  const entry = state.agentStatusByPaneKey[paneKey]
+  const entry = state.agentStatusByPaneKey.get(paneKey)
   if (entry?.agentType !== 'claude') {
     return null
   }

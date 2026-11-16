@@ -86,6 +86,8 @@ export const DESCRIPTIONS = {
   editorInsertFinalNewline: 'End saved files with a newline.',
   editorMinimapEnabled: 'Show the minimap in the editor.',
   experimentalMobile: 'Turn on the mobile companion features.',
+  floatingTerminalNewTabMenuLayout:
+    'Order and hidden items of the + menu in the floating terminal; unset keeps the default.',
   followSymlinkedDirectories: 'Follow symlinked folders in the file tree.',
   forkMemoryPauseLaunches: 'Pause queued agent launches while memory pressure is high.',
   forkMemoryPollSeconds: 'Seconds between memory readings.',
@@ -99,6 +101,7 @@ export const DESCRIPTIONS = {
   mobileEmulatorRecentDevices: 'Emulator devices opened recently, newest first.',
   nativeChatAppearance: 'Fonts, sizes and colors of native chat.',
   nestWorkspaces: 'Put each workspace in a folder named after its repo.',
+  newTabMenuLayout: 'Order and hidden items of the + menu in the tab bar; unset keeps the default.',
   newWorkspaceSetupOnly: 'Open new workspaces with the setup step only, with no agent started.',
   notifications: 'Which events raise a notification and how.',
   refreshLocalBaseRefOnWorktreeCreate: 'Update the local base branch before a worktree is made.',

@@ -225,7 +225,7 @@ export class StructuredAgentSessionIdleSweep {
     // Fork sleepers: a forced sweep never cuts a provider mid-start or a send waiting on one.
     if (
       force &&
-      (session.child?.phase === 'starting' || this.queuedOrDelivering(sessionId, session))
+      (session.child?.phase === 'starting' || (await this.queuedOrDelivering(sessionId, session)))
     ) {
       return null
     }
