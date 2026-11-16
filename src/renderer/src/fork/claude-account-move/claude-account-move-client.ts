@@ -10,7 +10,7 @@ import type {
   ForkClaudeMoveResult,
   ForkClaudeWhichResponse
 } from '../../../../shared/fork/claude-account-move'
-import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
+import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 
 export type ForkClaudeMoveScope = { sessionId: string } | { worktreeId: string }
 

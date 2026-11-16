@@ -9,8 +9,12 @@ export const FORK_SETTINGS_ROWS_GENERAL = {
     '{"t":{"k":"boolean"},"d":"Deprecated: Artifacts are always available. Use showArtifactsButton for sidebar visibility.","o":true}',
   keybindings:
     '{"t":{"k":"record","of":{"k":"array","of":{"k":"string"}}},"d":"Legacy shortcut overrides; new writes go to ~/.orca/keybindings.json.","o":true}',
+  newTabMenuLayout:
+    '{"t":{"k":"object","fields":{"order":{"k":"array","of":{"k":"string"}},"hidden":{"k":"array","of":{"k":"string"}}}},"d":"Order and hidden items of the + menu in the tab bar; unset keeps the default.","o":true}',
   nonMacSearchKeybindingSeed:
     '{"t":{"k":"enum","values":["done","legacy","pending"]},"d":"The later Windows/Linux rollout must not reuse the Mac cohort.","o":true}',
+  prAutoRefresh:
+    '{"t":{"k":"enum","values":["default","minimal","off","reduced"]},"d":"Timed PR/review/checks refresh cadence on this host; absent means \'default\'.","o":true}',
   searchKeybindingSeed:
     '{"t":{"k":"enum","values":["done","legacy","pending"]},"d":"The original Mac search/clear rollout cohort.","o":true}',
   tabSwitchKeybindingSeed:

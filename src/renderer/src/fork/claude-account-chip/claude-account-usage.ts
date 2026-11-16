@@ -4,8 +4,11 @@ import { useCallback, useSyncExternalStore } from 'react'
 import { useAppStore } from '@/store'
 import { recomputeOn } from '@/lib/recompute-on'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
-import type { ProviderRateLimits, RateLimitState } from '../../../../shared/rate-limit-types'
-import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
+import type {
+  ProviderRateLimits,
+  RateLimitState
+} from '../../../../shared/agent-usage/rate-limits/rate-limit-types'
+import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 import { SYSTEM_DEFAULT_ACCOUNT_ID, type ForkClaudeAccount } from './claude-account-identity'
 import {
   getClaudeChipCacheVersion,

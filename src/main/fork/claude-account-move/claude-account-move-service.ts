@@ -3,7 +3,7 @@
 // provider at rest and the next send resumes the same conversation on the pinned account. Busy
 // chats are never cut off: their move waits for the turn, unless the caller asks to stop it now.
 import type { AgentSessionStatusSummary } from '../../../shared/agent-session/agent-session-wire'
-import { agentSessionAccountHomePath } from '../../../shared/agent-session/lifecycle/agent-session-account-home'
+import { agentSessionAccountHomePath } from '../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
 import type { AgentSessionRecord } from '../../../shared/agent-session/lifecycle/agent-session-record'
 import type {
   ForkClaudeBusyActivity,

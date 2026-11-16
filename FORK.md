@@ -623,6 +623,7 @@ named Orca Fork until SLRM-1367. `main` is always
     resumed.
   - **Heuristic.** A person who goes on typing in an automation's chat after its run failed is
     taken for the automation until a new run settles.
+
 - **Endpoint failover (SLRM-2267).** On by default (`forkEndpointFailover`, Settings >
   Blackfish > Remote servers > Server routes). A saved remote server can be reached on more
   than one address. Stock dials only the saved (or first) endpoint; the fork tries the routes
@@ -985,6 +986,7 @@ Apply these in this order. Each one is a single commit.
 92. `SLRM-2264 Pairing on a pinned bind: pair a server bound to a Tailscale or LAN address, and release the Linux server tarballs`
 93. `SLRM-2270 APFS clone: fast new worktrees on macOS with copy-on-write clones of node_modules and, opt-in, the checkout`
 94. `SLRM-2271 Device approval and webhook automations: approve new paired devices, start automations from signed webhooks`
+95. `SLRM-2278 Follow upstream 1.4.261's moved modules and APIs in fork code`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1009,7 +1011,9 @@ Fork-only code lives in `fork/` folders:
 - `docs/fork/`
 - `src/main/updater/fork/`
 - `src/preload/fork/`
-- `src/renderer/src/components/native-chat/fork/`
+- `src/renderer/src/components/native-chat/fork/` (since upstream 1.4.261 this folder also holds
+  upstream's own `ForkMarkedName.tsx` and `fork-marked-name-text.ts`, the "Fork" mark of a forked
+  conversation; those two are upstream code)
 - `src/renderer/src/fork/`
 - `src/cli/fork/`
 - `mobile/src/components/fork/`
@@ -1071,7 +1075,9 @@ Upstream files only get short hooks, which keeps rebases small:
 - One provider wrap in `MobileSessionRouteScreen.tsx`.
 - One element and a `relative` class in `worktree-card-compact-agent-row.tsx` for the row
   tint, and an import, one element and a `relative` class on the strip icon in
-  `worktree-card-compact-agents.tsx` for the icon ring (SLRM-1966).
+  `worktree-card-compact-agents.tsx` for the icon ring (SLRM-1966). Since upstream 1.4.261 a
+  strip icon carries only its pane key, so the ring finds the tab by pane key across worktrees
+  (`resolveAgentIconTabColor`).
 - An import and one element in each of those two files for the child count:
   `ForkAgentRowChildTally` before the row's `+N` span and `ForkAgentStripChildTally` after the
   strip's hidden-agent count (SLRM-2095).
@@ -1087,7 +1093,9 @@ Upstream files only get short hooks, which keeps rebases small:
   covering upstream's channels.
 - Fork strings live only as inline `t()` defaults. Upstream's `en.json` files carry no fork
   keys: `verify-localization-catalog.mjs` and `config/i18next.config.ts` skip the fork folders
-  listed in `config/scripts/fork/fork-localization.mjs`.
+  listed in `config/scripts/fork/fork-localization.mjs`, except the upstream files it lists in
+  `UPSTREAM_SOURCES_IN_FORK_DIRS` (in `native-chat/fork`, which i18next sees through
+  `FORK_LOCALIZED_IGNORE_GLOBS`).
 - Fork bundle ids (SLRM-1337). `build-mac-fork.mjs` builds the computer-use helper as
   `com.saltyfireball.orca.computer-use` and passes `--bundle-id com.saltyfireball.orca` to the
   notification-status helper. One hook in `TrustedOrcaApplication.swift` makes that helper
@@ -1236,10 +1244,12 @@ Upstream files only get short hooks, which keeps rebases small:
   - `SortableTabContextMenu.tsx` renders `ForkMoveAccountTabMenuItems` for a native Claude chat,
     `quick-actions.ts` spreads `getForkClaudeMoveQuickActions()`, and `AppRootSurfaces.tsx`
     mounts `ForkMoveAccountDialogHost`.
-- Custom app themes (SLRM-2097): `useDocumentAppearance`
-  (`src/renderer/src/app-shell/use-document-appearance.ts`) calls `useForkCustomAppTheme`, which
-  takes precedence over the plugin and Match Terminal paint and does not wait for the plugin
-  list, and calls `useForkCustomAppThemeExtras` last for the radius and UI font.
+- Custom app themes (SLRM-2097): `useAppThemePaint`
+  (`src/renderer/src/app-shell/appearance/use-app-theme-paint.ts`, so pop-out windows paint it
+  too) calls `useForkCustomAppTheme`, which takes precedence over the plugin and Match Terminal
+  paint and does not wait for the plugin list; its `appTheme` type admits the custom paint.
+  `useDocumentAppearance` (`src/renderer/src/app-shell/use-document-appearance.ts`) calls
+  `useForkCustomAppThemeExtras` last for the radius and UI font.
   `usePluginAppThemeSync` (`plugin-themes.ts`) prefers `activeCustomAppThemePaintId`, so the
   startup cache of a custom theme is not cleared before the plugin list loads.
   `AppearanceInterfaceSection.tsx` renders `ForkCustomAppThemeSetting` after the theme slots.
@@ -1370,6 +1380,9 @@ Upstream files only get short hooks, which keeps rebases small:
     `api-types.ts` types it as optional.
   - `NativeChatUserMessageRow.tsx` renders `ForkBoundaryCompactionMark` under the message, which
     gives nothing for any row the feature did not send.
+  - Since upstream 1.4.261 stores chats in SQLite, it and idle recovery read a chat's newest
+    page through the host's `history` (`src/main/fork/chat-journal-tail.ts`, at most 200 rows),
+    not the whole current journal.
   - The reporter is mounted in the fork's `ForkRootHosts.tsx` and the card in the fork's
     Settings pane, so neither adds an upstream hook. The five settings are in
     `src/shared/fork/fork-global-settings.ts`.
@@ -1378,8 +1391,8 @@ Upstream files only get short hooks, which keeps rebases small:
   `src/main/fork/unattended-resume/` and `src/renderer/src/fork/unattended-resume/`. On unless
   `forkUnattendedResume` is false:
   - `noteAgentLaunchStartupSettled()` (`orca-runtime.ts`, the desktop and `orca serve`) and
-    `orcad-entry.ts` (after `runtime.startPullRequestWatches()`) call
-    `startForkUnattendedResume(...)`; the pass runs once per process.
+    orcad's `src/main/backend/core-runtime-activation.ts` (after the RPC server starts, before
+    `startOrcadSchedulers`) call `startForkUnattendedResume(...)`; the pass runs once per process.
   - The Chats section's search entries moved to `fork-settings-pane-catalog-chats.ts` for the
     catalog's line budget.
   - The card is in the fork's Settings pane. The two settings are in

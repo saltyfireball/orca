@@ -6,6 +6,7 @@ import {
   childTallyRootKey,
   selectAgentChildTally
 } from './use-agent-child-tally'
+import { acceptedAgentStatuses } from '@/store/slices/agent-status/accepted-agent-statuses'
 
 function entry(paneKey: string, extra: Partial<AgentStatusEntry> = {}): AgentStatusEntry {
   return {
@@ -24,8 +25,10 @@ type SelectorState = Parameters<typeof selectAgentChildTally>[0]
 function state(settings: Record<string, boolean> = {}, updatedAt = 1): SelectorState {
   const fields = {
     settings,
-    agentStatusByPaneKey: { coord: entry('coord', { updatedAt }), w1: entry('w1') },
-    retainedAgentsByPaneKey: {},
+    agentStatusByPaneKey: acceptedAgentStatuses([
+      ['coord', entry('coord', { updatedAt })],
+      ['w1', entry('w1')]
+    ]),
     runtimeAgentOrchestrationByPaneKey: RUNTIME,
     tabsByWorktree: {}
   }
