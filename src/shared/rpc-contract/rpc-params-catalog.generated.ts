@@ -60,6 +60,11 @@ import {
   ForkSleepersSleepParams
 } from '../fork/sleepers-wire'
 import { ForkUsageReportParams } from '../fork/usage-report'
+import {
+  ForkWorktreeMoveExportParams,
+  ForkWorktreeMoveImportParams,
+  ForkWorktreeMoveInspectParams
+} from '../fork/worktree-move/worktree-move-wire'
 import { MobileWebBundleChunkParamsSchema } from '../mobile-web-bundle/bundle-rpc-contract'
 import { MobileWebBundleLocaleCatalogParamsSchema } from '../mobile-web-bundle/locale-catalog-contract'
 import { OrcadMigrationBlobChunkRequestSchema } from '../orcad-migration/orcad-migration-blob-transfer'
@@ -1187,6 +1192,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.sleepers.pin': ForkSleepersPinParams,
   'fork.sleepers.sleep': ForkSleepersSleepParams,
   'fork.usageLedger.report': ForkUsageReportParams,
+  'fork.worktreeMove.export': ForkWorktreeMoveExportParams,
+  'fork.worktreeMove.import': ForkWorktreeMoveImportParams,
+  'fork.worktreeMove.inspect': ForkWorktreeMoveInspectParams,
   'git.abortMerge': WorktreeSelectorOfGitParams,
   'git.abortRebase': WorktreeSelectorOfGitParams,
   'git.atRiskLocalFiles': WorktreeSelectorOfGitParams,
