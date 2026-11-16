@@ -22,7 +22,7 @@ function describe(failure: unknown): string {
 function locate(item: ForkIdleRecoveryInboxItem): { worktreeId: string; paneKey: string } | null {
   const state = useAppStore.getState()
   if (item.kind === 'terminal') {
-    const worktreeId = item.worktreeId ?? state.agentStatusByPaneKey?.[item.chatId]?.worktreeId
+    const worktreeId = item.worktreeId ?? state.agentStatusByPaneKey?.get(item.chatId)?.worktreeId
     return worktreeId ? { worktreeId, paneKey: item.chatId } : null
   }
   const tabsByWorktree = state.unifiedTabsByWorktree ?? {}

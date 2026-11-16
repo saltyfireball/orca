@@ -4,8 +4,8 @@
 // when none is named" setting on, the same happens when the flag is left out and more than one
 // machine could take the work. One hook in src/cli/index.ts calls this before routing.
 import type { RuntimeClient } from '../runtime/client'
-import { RuntimeClientError } from '../runtime/types'
-import type { ProjectHostSetup } from '../../shared/project-types'
+import { RuntimeClientError } from '../runtime/connection/types'
+import type { ProjectHostSetup } from '../../shared/project/project-types'
 import { findProjectSetups, setupHostId } from '../projects/project-selector'
 import {
   describeForkPlacementCandidate,

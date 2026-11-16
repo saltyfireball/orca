@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useTranslate } from '@/i18n/use-translate'
-import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
+import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 import type { ForkClaudeMoveScope } from './claude-account-move-client'
 import { runForkClaudeMove } from './fork-claude-move-actions'
 import { usageText, useForkClaudeMoveAccounts } from './use-fork-claude-move-accounts'

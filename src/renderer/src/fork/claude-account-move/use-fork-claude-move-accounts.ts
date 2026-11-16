@@ -9,13 +9,13 @@ import {
   getProviderAccountsOwnerKey,
   type ProviderAccountsSnapshot
 } from '@/runtime/provider-accounts/observations/runtime-provider-accounts-client'
-import type { ClaudeRateLimitAccountsState } from '../../../../shared/managed-account-types'
+import type { ClaudeRateLimitAccountsState } from '../../../../shared/agent-accounts/managed-account-types'
 import type {
   ProviderRateLimits,
   RateLimitState,
   RateLimitWindow
-} from '../../../../shared/rate-limit-types'
-import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
+} from '../../../../shared/agent-usage/rate-limits/rate-limit-types'
+import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 import { readClaudeChatAccounts, type ForkClaudeMoveScope } from './claude-account-move-client'
 
 export type ForkClaudeMoveAccountChoice = {
