@@ -12,6 +12,7 @@ import {
   type OrcadWslDeploymentLink
 } from './wsl-host-deployment-link'
 import type { WslHostServerStop } from '../wsl-hosts/wsl-host-types'
+import { forkActiveEndpointRoute } from '../../fork/endpoint-failover-active'
 
 export const RuntimeAccessEndpointSchema = z.object({
   id: z.string().min(1),
@@ -290,7 +291,8 @@ export function preferredEndpoint(environment: PreferredEndpointSource) {
 export function getPreferredPairedRuntimeConnection(
   environment: PreferredEndpointSource
 ): PairedRuntimeConnection {
-  const endpoint = preferredEndpoint(environment)
+  // Fork (SLRM-2267): the route endpoint failover picked, else the saved endpoint.
+  const endpoint = forkActiveEndpointRoute(preferredEndpoint(environment))
   return pairedRuntimeConnectionFromOffer({
     endpoint: endpoint.endpoint,
     deviceToken: endpoint.deviceToken,
