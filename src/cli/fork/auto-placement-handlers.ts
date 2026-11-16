@@ -26,10 +26,10 @@ export function formatForkPlacement(result: ForkPlacementPickResult): string {
 export const FORK_AUTO_PLACEMENT_HANDLERS: Record<string, CommandHandler> = {
   placement: async (ctx) => {
     const repo = getOptionalStringFlag(ctx.flags, 'repo')
+    const project = getOptionalStringFlag(ctx.flags, 'project')
+    const params = { ...(repo ? { repo } : {}), ...(project ? { project } : {}) }
     const result = await ctx.client
-      .call<ForkPlacementPickResult>('fork.placement.pick', repo ? { repo } : {}, {
-        timeoutMs: 20_000
-      })
+      .call<ForkPlacementPickResult>('fork.placement.pick', params, { timeoutMs: 20_000 })
       .catch((error: unknown) => {
         if (error instanceof RuntimeClientError && error.code === 'method_not_found') {
           throw new RuntimeClientError(
