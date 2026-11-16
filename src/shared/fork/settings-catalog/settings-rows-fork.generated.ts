@@ -11,6 +11,10 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Waking an existing chat never waits, even past the limit; unset is on.","o":true}',
   forkAgentQueueSeparateLimits:
     '{"t":{"k":"boolean"},"d":"Orchestration workers get their own limit; unset is one shared limit.","o":true}',
+  forkApfsCloneCheckout:
+    '{"t":{"k":"boolean"},"d":"On macOS, fill a new worktree by cloning a cached checkout of the project with APFS copy-on-write instead of writing every file; off unless true.","o":true}',
+  forkApfsCloneFolders:
+    '{"t":{"k":"array","of":{"k":"string"}},"d":"On macOS, git-ignored folders (paths relative to the project) cloned from the project\'s own checkout into each new worktree with APFS copy-on-write; unset is node_modules, empty is none.","o":true}',
   forkBoundaryCompactIdleSeconds:
     '{"t":{"k":"number"},"d":"Boundary compaction: seconds a chat rests after its turn before it may be compacted; unset is 120.","o":true}',
   forkBoundaryCompactMaxWaitMinutes:
