@@ -7,6 +7,7 @@ import type { ForkMcpProfileSettings } from './mcp-profiles'
 import type { ForkUsageLedgerSettings } from './usage-ledger'
 import type { ForkAutoPlacementSettings } from './auto-placement'
 import type { ForkWorktreeMoveSettings } from './worktree-move/worktree-move-settings'
+import type { ForkWebhookSettings } from './webhooks'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -20,6 +21,10 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkLostWork?: LostWorkSettings
     /** Fork (SLRM-2265): moving a workspace and its chats to another host; unset keys take the defaults. */
     forkWorktreeMove?: ForkWorktreeMoveSettings
+    /** Fork (SLRM-2271): a newly paired device needs approval from an approved device or this host's owner. Off unless true. */
+    forkDeviceApproval?: boolean
+    /** Fork (SLRM-2271): signed webhooks that start automation runs; off unless enabled is true. */
+    forkWebhooks?: ForkWebhookSettings
     /** Fork (SLRM-1394): Claude chats keep running through an app restart. Off unless true. */
     forkChatSurvive?: boolean
     /** Fork (SLRM-2268): workers and automation runs a restart cut carry on by themselves; unset is on. */
