@@ -66,6 +66,11 @@ import {
   ForkSleepersPinParams,
   ForkSleepersSleepParams
 } from '../fork/sleepers-wire'
+import {
+  ForkSnoozeListParams,
+  ForkSnoozeSetParams,
+  ForkSnoozeWakeParams
+} from '../fork/snooze-wire'
 import { ForkUsageReportParams } from '../fork/usage-report'
 import {
   ForkWebhookAddParams,
@@ -1577,6 +1582,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.sleepers.list': ForkSleepersListParams,
   'fork.sleepers.pin': ForkSleepersPinParams,
   'fork.sleepers.sleep': ForkSleepersSleepParams,
+  'fork.snooze.list': ForkSnoozeListParams,
+  'fork.snooze.set': ForkSnoozeSetParams,
+  'fork.snooze.wake': ForkSnoozeWakeParams,
   'fork.usageLedger.report': ForkUsageReportParams,
   'fork.webhooks.add': ForkWebhookAddParams,
   'fork.webhooks.list': ForkWebhookListParams,
