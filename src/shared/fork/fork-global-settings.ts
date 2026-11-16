@@ -6,6 +6,7 @@ import type { ForkAgentColorState } from './agent-state-color'
 import type { ForkMcpProfileSettings } from './mcp-profiles'
 import type { ForkUsageLedgerSettings } from './usage-ledger'
 import type { ForkAutoPlacementSettings } from './auto-placement'
+import type { ForkWorktreeMoveSettings } from './worktree-move/worktree-move-settings'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -17,6 +18,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkAutoPlacementSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */
     forkLostWork?: LostWorkSettings
+    /** Fork (SLRM-2265): moving a workspace and its chats to another host; unset keys take the defaults. */
+    forkWorktreeMove?: ForkWorktreeMoveSettings
     /** Fork (SLRM-1394): Claude chats keep running through an app restart. Off unless true. */
     forkChatSurvive?: boolean
     /** Fork (SLRM-2268): workers and automation runs a restart cut carry on by themselves; unset is on. */

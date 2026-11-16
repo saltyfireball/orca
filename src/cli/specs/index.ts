@@ -46,6 +46,7 @@ import { FORK_INBOX_COMMAND_SPECS } from '../fork/inbox-specs'
 import { FORK_MCP_PROFILE_COMMAND_SPECS, withForkMcpProfileFlag } from '../fork/mcp-profile-specs'
 import { FORK_USAGE_REPORT_COMMAND_SPECS } from '../fork/usage-report-specs'
 import { FORK_SETTINGS_COMMAND_SPECS } from '../fork/settings-specs'
+import { FORK_WORKTREE_MOVE_COMMAND_SPECS } from '../fork/worktree-move-specs'
 import {
   FORK_AUTO_PLACEMENT_COMMAND_SPECS,
   withForkAutoPlacementNotes
@@ -101,6 +102,7 @@ export const COMMAND_SPECS: CommandSpec[] = withForkAutoPlacementNotes(
     ...FORK_USAGE_REPORT_COMMAND_SPECS,
     ...FORK_INBOX_COMMAND_SPECS,
     ...FORK_SETTINGS_COMMAND_SPECS,
-    ...FORK_AUTO_PLACEMENT_COMMAND_SPECS
+    ...FORK_AUTO_PLACEMENT_COMMAND_SPECS,
+    ...FORK_WORKTREE_MOVE_COMMAND_SPECS
   ])
 )

@@ -71,5 +71,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-auto-placement',
     keys: ['placement'],
     load: async () => (await import('./auto-placement-handlers.js')).FORK_AUTO_PLACEMENT_HANDLERS
+  },
+  // SLRM-2265: move a workspace and its chats to another host (FORK.md "Worktree move").
+  {
+    name: 'fork-worktree-move',
+    keys: ['worktree move'],
+    load: async () => (await import('./worktree-move-handlers.js')).FORK_WORKTREE_MOVE_HANDLERS
   }
 ]
