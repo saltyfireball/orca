@@ -40,7 +40,7 @@ function refuse(message: string, ranked?: ForkPlacementPick['ranked']): never {
 /** Asks the local Orca for a pick; null when it is off (unnamed) or this Orca has no picker. */
 async function pick(
   client: RuntimeClient,
-  params: { hosts?: string[]; repo?: string; unnamed?: boolean },
+  params: { hosts?: string[]; repo?: string; project?: string; unnamed?: boolean },
   explicit: boolean
 ): Promise<ForkPlacementPick | null> {
   let result: ForkPlacementPickResult
@@ -71,23 +71,33 @@ async function pick(
       return null
     }
     refuse(
-      'No machine can take this work: every one is manual only, unreachable, or lacks the repo.',
+      'No machine can take this work: every one is manual only, unreachable, or lacks the repo or a ready project setup.',
       result.ranked
     )
   }
   return result
 }
 
-function note(chosen: ForkPlacementPick, flag: string): void {
-  if (!chosen.picked) {
-    return
+/** The pick, then every other machine once. Picked and ranked arrive as separate JSON objects,
+ *  so the pick is matched by host key, not identity. */
+export function formatForkPlacementNote(chosen: ForkPlacementPick, flag: string): string[] {
+  const picked = chosen.picked
+  if (!picked) {
+    return []
   }
-  const others = chosen.ranked.filter((candidate) => candidate !== chosen.picked)
-  const lines = [
-    `Auto placement (${flag}): ${describeForkPlacementCandidate(chosen.picked)}`,
-    ...others.map((candidate) => `  not picked: ${describeForkPlacementCandidate(candidate)}`)
+  return [
+    `Auto placement (${flag}): picked ${describeForkPlacementCandidate(picked)}`,
+    ...chosen.ranked
+      .filter((candidate) => candidate.hostKey !== picked.hostKey)
+      .map((candidate) => `  not picked: ${describeForkPlacementCandidate(candidate)}`)
   ]
-  process.stderr.write(`${lines.join('\n')}\n`)
+}
+
+function note(chosen: ForkPlacementPick, flag: string): void {
+  const lines = formatForkPlacementNote(chosen, flag)
+  if (lines.length > 0) {
+    process.stderr.write(`${lines.join('\n')}\n`)
+  }
 }
 
 function remoteSelected(flags: Flags): boolean {
@@ -164,26 +174,31 @@ async function resolveWorktreeCreate(flags: Flags, client: () => RuntimeClient):
       '--host auto picks among this machine and its paired servers; drop --environment or the pairing code.'
     )
   }
+  if (project === undefined) {
+    return
+  }
   const local = client()
   if (unnamed && (await pick(local, { hosts: [], unnamed: true }, false)) === null) {
     return
   }
   const listed = await local.call<{ setups: ProjectHostSetup[] }>('projectHostSetup.list')
-  const ready = (await findProjectSetups(local, listed.result.setups, project as string)).filter(
+  const ready = (await findProjectSetups(local, listed.result.setups, project)).filter(
     (setup) => setup.setupState === 'ready'
   )
+  // Setups are kept per Orca: this list holds this machine's own (and any it keeps for other
+  // hosts), so the pick also asks each paired server whether the project is set up there.
   const hosts = [...new Set(ready.map(setupHostId))]
-  if (hosts.length === 0) {
-    if (unnamed) {
-      return
-    }
-    refuse(`No ready setup found for --project ${project} on any host.`)
-  }
-  if (unnamed && hosts.length < 2) {
+  const chosen = await pick(
+    local,
+    { hosts, project, ...(unnamed ? { unnamed: true } : {}) },
+    explicit
+  )
+  if (!chosen?.picked) {
     return
   }
-  const chosen = await pick(local, { hosts, ...(unnamed ? { unnamed: true } : {}) }, explicit)
-  if (!chosen?.picked) {
+  const eligible = chosen.ranked.filter((candidate) => candidate.status === 'eligible').length
+  // Unnamed: leave a sole machine stock routing would reach anyway alone.
+  if (unnamed && eligible < 2 && hosts.includes(chosen.picked.hostKey)) {
     return
   }
   flags.set('host', chosen.picked.hostKey)
