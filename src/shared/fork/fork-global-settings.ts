@@ -16,6 +16,10 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkLostWork?: LostWorkSettings
     /** Fork (SLRM-1394): Claude chats keep running through an app restart. Off unless true. */
     forkChatSurvive?: boolean
+    /** Fork (SLRM-2268): workers and automation runs a restart cut carry on by themselves; unset is on. */
+    forkUnattendedResume?: boolean
+    /** Fork (SLRM-2268): automatic continuations of one chat in a row; unset is 3. */
+    forkUnattendedResumeMaxTries?: number
     /** Fork (SLRM-1503): show which Claude account each session runs on; unset is on. */
     forkShowAccountChip?: boolean
     /** Fork (SLRM-2095): the running/total child count on sidebar agent rows; unset is on. */
