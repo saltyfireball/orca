@@ -3,9 +3,11 @@
 import { parseExecutionHostId } from '../../execution-host'
 import type { ProjectHostSetup } from '../../project-types'
 import type { ResolvedWorktreeMoveSettings } from './worktree-move-settings'
+import { isSafeWorktreeMoveRef } from './worktree-move-ref'
 import {
   isWorktreeMovedComment,
   WORKTREE_MOVE_MAX_TRANSCRIPT_BYTES,
+  WORKTREE_MOVE_MAX_TRANSCRIPTS,
   WORKTREE_MOVE_TRANSCRIPT_AGENTS,
   type WorktreeMoveChat,
   type WorktreeMoveInspectResult
@@ -27,6 +29,7 @@ export type WorktreeMoveRefusalCode =
   | 'wsl'
   | 'detached'
   | 'no-remote'
+  | 'unsafe-ref'
   | 'uncommitted'
   | 'busy'
 
@@ -107,6 +110,12 @@ export function planWorktreeMove(input: WorktreeMovePlanInput): WorktreeMovePlan
   if (!facts.remote) {
     return refuse('no-remote', 'The branch has no remote to push to, so the target cannot get it.')
   }
+  if (!isSafeWorktreeMoveRef(facts.branch) || !isSafeWorktreeMoveRef(facts.remote)) {
+    return refuse(
+      'unsafe-ref',
+      'The source reported a branch or remote name that is not a safe git name, so nothing was moved.'
+    )
+  }
   if (facts.dirty && settings.uncommitted === 'refuse') {
     return refuse(
       'uncommitted',
@@ -123,11 +132,20 @@ export function planWorktreeMove(input: WorktreeMovePlanInput): WorktreeMovePlan
   }
   const chats: WorktreeMoveChat[] = []
   const skippedChats: { chat: WorktreeMoveChat; reason: string }[] = []
+  const budget = settings.maxTotalMb * 1024 * 1024
+  let carriedBytes = 0
   for (const chat of carried) {
-    const reason = chatSkipReason(chat)
+    let reason = chatSkipReason(chat)
+    if (!reason && chats.length >= WORKTREE_MOVE_MAX_TRANSCRIPTS) {
+      reason = `a move carries at most ${WORKTREE_MOVE_MAX_TRANSCRIPTS} chats`
+    }
+    if (!reason && carriedBytes + (chat.transcriptBytes ?? 0) > budget) {
+      reason = `it would pass the ${settings.maxTotalMb} MB total for a move`
+    }
     if (reason) {
       skippedChats.push({ chat, reason })
     } else {
+      carriedBytes += chat.transcriptBytes ?? 0
       chats.push(chat)
     }
   }

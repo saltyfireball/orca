@@ -8,6 +8,12 @@ export type WorktreeMoveTranscriptAgent = (typeof WORKTREE_MOVE_TRANSCRIPT_AGENT
 
 /** A transcript larger than this stays behind; the chat is reported as not carried. */
 export const WORKTREE_MOVE_MAX_TRANSCRIPT_BYTES = 64 * 1024 * 1024
+/** Chats whose transcripts one move carries; the rest stay behind. */
+export const WORKTREE_MOVE_MAX_TRANSCRIPTS = 50
+/** Total decoded bytes of the patch and every transcript of one move (the setting's default). */
+export const WORKTREE_MOVE_DEFAULT_MAX_TOTAL_MB = 256
+/** The most a caller can ask a host to accept in one move, whatever the setting says. */
+export const WORKTREE_MOVE_HARD_MAX_TOTAL_BYTES = 2 * 1024 * 1024 * 1024
 /** Uncommitted changes larger than this refuse the patch step. */
 export const WORKTREE_MOVE_MAX_PATCH_BYTES = 64 * 1024 * 1024
 
@@ -28,7 +34,9 @@ export const ForkWorktreeMoveExportParams = z.object({
   /** Build a patch of the uncommitted changes (the index and working tree are left as they are). */
   patch: z.boolean().optional(),
   /** The chats whose transcripts to send. */
-  sessionIds: z.array(Id).max(500).optional()
+  sessionIds: z.array(Id).max(WORKTREE_MOVE_MAX_TRANSCRIPTS).optional(),
+  /** Total bytes of the patch and transcripts to send; the default is 256 MB. */
+  maxTotalBytes: z.number().int().positive().max(WORKTREE_MOVE_HARD_MAX_TOTAL_BYTES).optional()
 })
 
 export const WorktreeMoveTranscript = z.object({
@@ -47,7 +55,9 @@ export const ForkWorktreeMoveImportParams = z.object({
   sourcePath: z.string().min(1).max(4096),
   sourceHome: z.string().min(1).max(4096),
   rewriteHome: z.boolean().optional(),
-  transcripts: z.array(WorktreeMoveTranscript).max(500).optional()
+  transcripts: z.array(WorktreeMoveTranscript).max(WORKTREE_MOVE_MAX_TRANSCRIPTS).optional(),
+  /** Total decoded bytes of the patch and transcripts to accept; the default is 256 MB. */
+  maxTotalBytes: z.number().int().positive().max(WORKTREE_MOVE_HARD_MAX_TOTAL_BYTES).optional()
 })
 
 export type WorktreeMoveTranscriptWire = z.infer<typeof WorktreeMoveTranscript>
@@ -75,6 +85,9 @@ export type WorktreeMoveInspectResult = {
   remote: string | null
   upstream: string | null
   dirty: boolean
+  /** Untracked files that are not ignored: a move's patch carries them (capped; see the count). */
+  untracked?: string[]
+  untrackedCount?: number
   /** The source host's home folder, for transcript path rewriting. */
   home: string
   comment: string
