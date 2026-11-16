@@ -68,6 +68,7 @@ import {
   type PeerServerAnswerStatus
 } from './orchestration/federation/peer-mail/peer-mail-relay'
 import { structuredAgentSessionHostTabId } from '../../shared/agent-session/view/structured-agent-session-host-tab-id'
+import { startForkUnattendedResume } from '../fork/unattended-resume/unattended-resume-service'
 
 const OrcaRuntimeSidebarBase: typeof OrcaRuntimeWithAgentTransitions = ORCA_SIDEBAR_INPUTS_IS_MAIN
   ? OrcaRuntimeWithSidebarTemporal
@@ -263,6 +264,8 @@ class OrcaRuntimeService extends OrcaRuntimeSidebarBase {
     this.agentLaunchRecordWarmup.startupSettled()
     // Retry only: watches are admitted by the host's serving milestone, which this timer can precede.
     this.startPullRequestWatches()
+    // Fork (SLRM-2268): continue cut unattended work once per process; orcad calls it too.
+    startForkUnattendedResume(this)
   }
 
   /** Warm up before the first client launch so that launch does not open the record. */
