@@ -1,6 +1,9 @@
 // Auto placement (FORK.md, SLRM-2266): each machine has a placement setting, and `--on auto` /
 // `--host auto` start new work on the eligible machine with the most spare CPU and memory.
 // Pure: the main process probes the machines and the CLI rewrites the flag; this file ranks them.
+import { LOCAL_EXECUTION_HOST_ID, normalizeExecutionHostId } from '../execution-host'
+import type { Project, ProjectHostSetup } from '../project-types'
+import { normalizeTypedName } from '../typed-name-normalization'
 
 /** How willingly a machine takes new work picked automatically. Named machines are never refused. */
 export type ForkPlacementPreference = 'prefer' | 'normal' | 'less' | 'manual'
@@ -82,8 +85,15 @@ export type ForkMachineLoad = {
  * - unreachable: the probe failed or timed out.
  * - no-probe: it answers but has no load probe (stock Orca or an older Blackfish).
  * - no-repo: the requested repo is not on it.
+ * - no-setup: the requested project has no ready setup on it (or it is too old to say).
  */
-export type ForkPlacementStatus = 'eligible' | 'manual' | 'unreachable' | 'no-probe' | 'no-repo'
+export type ForkPlacementStatus =
+  | 'eligible'
+  | 'manual'
+  | 'unreachable'
+  | 'no-probe'
+  | 'no-repo'
+  | 'no-setup'
 
 /** A machine as the probe saw it. */
 export type ForkPlacementProbe = {
@@ -199,7 +209,36 @@ export function describeForkPlacementCandidate(candidate: ForkPlacementCandidate
           ? 'no load probe (stock Orca or an older Blackfish)'
           : candidate.status === 'no-repo'
             ? 'repo not on this machine'
-            : 'unreachable'
+            : candidate.status === 'no-setup'
+              ? 'project has no ready setup here (or its Blackfish is too old to say)'
+              : 'unreachable'
   const preference = candidate.preference === 'less' ? 'less often' : candidate.preference
   return `${candidate.name} (${candidate.hostKey}, ${preference}): ${facts ? `${facts}, ` : ''}${status}`
+}
+
+/**
+ * Whether a project selector (id, else a display name naming exactly one project) has a ready
+ * setup on this machine itself, as `worktree create --project <p> --host runtime:<this id>` would
+ * find when routed here. Setups this machine keeps for other hosts do not count.
+ */
+export function forkProjectReadyHere(
+  projects: readonly Pick<Project, 'id' | 'displayName'>[],
+  setups: readonly Pick<ProjectHostSetup, 'projectId' | 'hostId' | 'setupState'>[],
+  selector: string
+): boolean {
+  let projectId: string | undefined
+  if (projects.some((project) => project.id === selector)) {
+    projectId = selector
+  } else {
+    const wanted = normalizeTypedName(selector)
+    const named = projects.filter((project) => normalizeTypedName(project.displayName) === wanted)
+    projectId = named.length === 1 ? named[0]?.id : undefined
+  }
+  const id = projectId ?? selector
+  return setups.some(
+    (setup) =>
+      setup.projectId === id &&
+      setup.setupState === 'ready' &&
+      normalizeExecutionHostId(setup.hostId) === LOCAL_EXECUTION_HOST_ID
+  )
 }
