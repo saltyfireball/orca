@@ -25,6 +25,12 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Finished children count toward that total; unset is on.","o":true}',
   forkChildTallyCountTasks:
     '{"t":{"k":"boolean"},"d":"Background shell tasks and monitors count as children; unset is on.","o":true}',
+  forkEndpointFailover:
+    '{"t":{"k":"boolean"},"d":"Endpoint failover: try a saved server\'s other routes when one stops answering, and move back to a better one; unset is on.","o":true}',
+  forkEndpointFailoverRetrySeconds:
+    '{"t":{"k":"number"},"d":"Endpoint failover: seconds between tries of a better route while on a worse one; unset is 60.","o":true}',
+  forkEndpointLearnAddresses:
+    '{"t":{"k":"boolean"},"d":"Endpoint failover: ask a Blackfish server for its current LAN and Tailscale addresses; unset is on.","o":true}',
   forkIdleSweepClassifierCommand:
     '{"t":{"k":"string"},"d":"Idle recovery: the command that judges an ending (JSON on stdin, a JSON verdict on stdout); unset uses the built-in check. Set it in the Settings screen.","o":true}',
   forkIdleSweepClassifierTimeoutSeconds:

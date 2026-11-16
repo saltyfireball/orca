@@ -105,6 +105,12 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkBoundaryCompactPreferCold?: boolean
     /** Fork boundary compaction: minutes of rest after which a chat is compacted even on a warm cache; unset is 20. */
     forkBoundaryCompactMaxWaitMinutes?: number
+    /** Fork endpoint failover: try a saved server's other routes when one stops answering, and move back to a better one; unset is on. */
+    forkEndpointFailover?: boolean
+    /** Fork endpoint failover: seconds between tries of a better route while on a worse one; unset is 60. */
+    forkEndpointFailoverRetrySeconds?: number
+    /** Fork endpoint failover: ask a Blackfish server for its current LAN and Tailscale addresses; unset is on. */
+    forkEndpointLearnAddresses?: boolean
   }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */

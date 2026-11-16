@@ -605,6 +605,45 @@ named Orca Fork until SLRM-1367. `main` is always
     that declare compaction), run by the desktop app. Not terminal agents, and not chats run by
     the headless server.
 
+- **Endpoint failover (SLRM-2267).** On by default (`forkEndpointFailover`, Settings >
+  Blackfish > Remote servers > Server routes). A saved remote server can be reached on more
+  than one address. Stock dials only the saved (or first) endpoint; the fork tries the routes
+  in order and uses the first that answers, then moves back to a better one when it answers
+  again. The idea comes from T3 Code (MIT); only the idea is ported, none of its code.
+  - **Routes.** The saved endpoint, any other saved endpoint of the same server (same host
+    key), and the addresses the server reports for itself. They are tried LAN first, then
+    Tailscale (100.64.0.0/10), then any other address, then loopback; a saved route goes
+    before a learned one of the same kind. Port, path and scheme always come from the saved
+    URL.
+  - **Learned addresses.** With `forkEndpointLearnAddresses` (on), a connected desktop asks a
+    Blackfish server, through the RPC method `fork.endpoints.addresses`, for its current IPv4
+    LAN and Tailscale addresses, once every 10 minutes. They are kept in
+    `fork-endpoint-routes.json` in the data folder (mode 0600), keyed by server and its host
+    public key, so a re-paired server with another key starts empty. Not learned for a `wss:`
+    endpoint or a loopback one. A stock Orca server does not have the method, and only its
+    saved endpoints are used.
+  - **When it moves.** A connection down for 10 s probes the routes in order (at most every
+    15 s) and moves to the first that answers. While on a worse route, the better ones are
+    probed every `forkEndpointFailoverRetrySeconds` (60) and the first that answers wins. A
+    better route that answers a probe but drops again within two retry intervals doubles its
+    wait, up to 32 times. A probe is its own short-lived socket that finishes the E2EE
+    handshake against the pinned host key, so an answer proves it reached the same server.
+  - **What a move does.** The picked route lives only in memory; `orca-environments.json` is
+    never changed, so stock Orca on shared data and re-pairing see the saved endpoint. The
+    desktop closes its connections to that server and opens them again on the new route; its
+    subscriptions resubscribe. Terminals and chats keep running on the server. Turning the
+    setting off moves every server back to its saved route.
+  - **Not covered.** Servers reached through an SSH tunnel, SSH access or an orcad deployment
+    keep their own path. The `orca` CLI dials the saved endpoint. IPv6 addresses are not
+    learned. There is no relay route.
+  - Code is in `src/main/fork/endpoint-failover/` and `src/shared/fork/endpoint-failover*.ts`;
+    the server method is `src/main/runtime/rpc/methods/fork/fork-endpoint-addresses.ts`. Three
+    one-line upstream hooks: `getPreferredPairedRuntimeConnection` in
+    `src/shared/remote-runtime/host-catalog/runtime-environments.ts` dials
+    `forkActiveEndpointRoute(...)`, `rpc-method-registry.ts` spreads
+    `FORK_ENDPOINT_ADDRESSES_METHODS`, and `src/main/index.ts` calls
+    `startForkEndpointFailover`.
+
 - **Settings from the CLI (SLRM-2160).** `orca settings` reads and writes the app's whole
   global settings object from a terminal or through one file, so no setting needs the Settings
   screen.
@@ -648,11 +687,11 @@ named Orca Fork until SLRM-1367. `main` is always
 - **The fork's own Settings pane (SLRM-2228).** Every fork setting that sat at the end of
   Settings > Advanced is in one pane of its own, Settings > Blackfish, listed in the sidebar's
   Advanced group. No setting changed: same keys, same defaults, same controls.
-  - Six sections, each feature in its own card: Chats (chat survive, chat sleep, Sleepers,
+  - Seven sections, each feature in its own card: Chats (chat survive, chat sleep, Sleepers,
     stalled chats, cache-cold cue, boundary compaction, MCP profiles), Agents and workers (child count, state
     colors, finished worker cleanup, agent limit, launch defaults, memory), Idle recovery,
-    Usage and accounts (Claude account chip, usage report), Projects (Lost work, Per project)
-    and Sync and updates (fork sync status). A row of section links stays at the top of the
+    Usage and accounts (Claude account chip, usage report), Projects (Lost work, Per project),
+    Remote servers (server routes, SLRM-2267) and Sync and updates (fork sync status). A row of section links stays at the top of the
     pane while it scrolls, and each link jumps to its section.
   - Projects are listed once. MCP profiles and Lost work each listed every project, so each
     project showed twice. "Per project" is now the one list: a project is a closed row that
@@ -758,6 +797,7 @@ Apply these in this order. Each one is a single commit.
 85. `SLRM-2230 Lost work: in-use guard, select all, project groups, suggested actions, bulk summary`
 86. `SLRM-2257 Boundary compaction: ask an idle chat with a large context to compact between turns`
 87. `SLRM-2263 Chat survive: carry chats over an app update, say why a claim is refused`
+88. `SLRM-2267 Endpoint failover: try a saved server's routes in order and move back to the better one`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

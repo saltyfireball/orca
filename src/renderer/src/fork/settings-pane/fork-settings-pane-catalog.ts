@@ -7,26 +7,12 @@ import type { SettingsNavSection } from '@/components/settings/navigation/settin
 import type { SettingsSearchEntry } from '@/components/settings/search/settings-search'
 import { translate } from '@/i18n/i18n'
 import type { Translate } from '@/i18n/use-translate'
+import type { ForkSettingsSection, ForkSettingsSectionId } from './fork-settings-pane-types'
+import { getForkRemoteSettingsSectionParts } from '../endpoint-failover/endpoint-failover-search'
 
 export const FORK_SETTINGS_PANE_ID = 'fork'
 
-export type ForkSettingsSectionId =
-  | 'chats'
-  | 'agents'
-  | 'idle-recovery'
-  | 'usage'
-  | 'projects'
-  | 'sync'
-
-export type ForkSettingsSection = {
-  id: ForkSettingsSectionId
-  /** DOM id of the section, the target of the pane's own section links. */
-  anchorId: string
-  title: string
-  description: string
-  /** One entry per card in the section, in the order the pane renders them. */
-  entries: SettingsSearchEntry[]
-}
+export type { ForkSettingsSection, ForkSettingsSectionId } from './fork-settings-pane-types'
 
 /** Search keywords: setting keys and plain English terms, the same in every language. */
 function words(...terms: string[]): string[] {
@@ -40,7 +26,7 @@ export function getForkSettingsPaneTitle(t: Translate = translate): string {
 export function getForkSettingsPaneDescription(t: Translate = translate): string {
   return t(
     'fork.settingsPane.description',
-    'Settings for what this fork adds to Orca: chats, agents, idle recovery, usage, projects and sync.'
+    'Settings for what this fork adds to Orca: chats, agents, idle recovery, usage, projects, remote servers and sync.'
   )
 }
 
@@ -266,6 +252,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         }
       ]
     ),
+    section('remote', ...getForkRemoteSettingsSectionParts(t)),
     section(
       'sync',
       t('fork.settingsPane.sync.title', 'Sync and updates'),
