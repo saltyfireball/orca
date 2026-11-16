@@ -86,6 +86,8 @@ import { FORK_USAGE_REPORT_METHODS } from './fork/fork-usage-report'
 import { FORK_AUTO_PLACEMENT_METHODS } from './fork/fork-auto-placement'
 import { FORK_ENDPOINT_ADDRESSES_METHODS } from './fork/fork-endpoint-addresses'
 import { FORK_WORKTREE_MOVE_METHODS } from './fork/fork-worktree-move'
+import { FORK_DEVICE_APPROVAL_METHODS } from './fork/fork-device-approval'
+import { FORK_WEBHOOK_METHODS } from './fork/fork-webhooks'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
 import { STRUCTURED_AGENT_SESSION_ATTACHMENT_METHODS } from './structured-sessions/attachments/structured-agent-session-attachments'
@@ -287,7 +289,11 @@ const SERVICE_RPC_METHODS = [
   // SLRM-2266: the load probe and pick behind --on auto and --host auto (FORK.md).
   ...FORK_AUTO_PLACEMENT_METHODS,
   // SLRM-2265: each host's half of `orca worktree move` (FORK.md).
-  ...FORK_WORKTREE_MOVE_METHODS
+  ...FORK_WORKTREE_MOVE_METHODS,
+  // SLRM-2271: list, approve, deny and revoke paired devices behind `orca devices` (FORK.md).
+  ...FORK_DEVICE_APPROVAL_METHODS,
+  // SLRM-2271: signed webhooks that start automation runs, behind `orca webhooks` (FORK.md).
+  ...FORK_WEBHOOK_METHODS
 ] as const
 
 type ConcatMethods<A extends readonly unknown[], B extends readonly unknown[]> = readonly [
