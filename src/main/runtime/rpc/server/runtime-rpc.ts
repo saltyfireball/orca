@@ -2,6 +2,8 @@
 import { RuntimeRpcMobilePairing } from './runtime-rpc-mobile-pairing'
 import { publishHostDescriptor } from '../../hosts/platform-probe/host-descriptor'
 import type { OrcaRuntimeRpcServerOptions } from './runtime-rpc-pairing-types'
+import { attachForkDeviceApproval } from '../../../fork/device-approval/device-approval-service'
+import { attachForkWebhooks } from '../../../fork/webhooks/webhook-service'
 
 export type RuntimeRpcClientActivity = {
   openConnections: number
@@ -12,6 +14,8 @@ export type RuntimeRpcClientActivity = {
 export class OrcaRuntimeRpcServer extends RuntimeRpcMobilePairing {
   constructor(options: OrcaRuntimeRpcServerOptions) {
     super(options)
+    attachForkDeviceApproval(this, options) // Fork SLRM-2271: device approval (FORK.md).
+    attachForkWebhooks(options) // Fork SLRM-2271: webhook automations (FORK.md).
   }
 
   /** Why: test-only seam — runs one ownership check instead of waiting out the poll interval. */
