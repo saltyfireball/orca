@@ -29,6 +29,8 @@ import { opensClaudeParentConversation } from '@/lib/agent-session/navigation/cl
 import { IdleChildAgentGroupRow } from './worktree-card-idle-child-agents'
 import type { AgentChildren } from '@/store/slices/agent-status/agent-row-display-index'
 import type { DashboardAgentRow as AgentRow } from '@/components/dashboard/rows/dashboard-agent-row'
+import { ForkSnoozeAgentRowMenu } from '@/fork/snooze/ForkSnoozeAgentRowMenu'
+import { useForkWithoutSnoozedPanes } from '@/fork/snooze/use-fork-snooze'
 
 const stopBubble = (event: React.SyntheticEvent) => event.stopPropagation()
 type Props = {
@@ -47,7 +49,8 @@ export default React.memo(function WorktreeCardAgents({
     `roots\0${worktreeId}`,
     useCallback((p) => p.display.roots(worktreeId), [worktreeId])
   )
-  const roots = useHostRootKeys(worktreeId, executionHostId, allRoots)
+  // SLRM-2269: fork hook, snoozed chats leave the card (FORK.md "Snooze").
+  const roots = useForkWithoutSnoozedPanes(useHostRootKeys(worktreeId, executionHostId, allRoots))
   return roots.length ? (
     <WorktreeCardAgentsBody
       worktreeId={worktreeId}
@@ -304,25 +307,30 @@ const AgentBranch = React.memo(function AgentBranch({
   )
   return (
     <div className={compact ? cn('min-w-0', root && 'ms-2') : undefined}>
-      {compact ? (
-        <CompactAgentRow
-          {...common}
-          parentConversationDescription={
-            opensClaudeParentConversation(row)
-              ? t('auto.lib.claudeAgentRowView.openParentConversation', 'Open parent conversation')
-              : undefined
-          }
-          cacheTimerActive={timerActive}
-        />
-      ) : (
-        <DashboardAgentRow
-          {...common}
-          onDismiss={context.onDismiss}
-          stateDotSize="sm"
-          hideExpand
-          hideLineageConnectors
-        />
-      )}
+      <ForkSnoozeAgentRowMenu row={row} worktreeId={context.worktreeId} enabled={root}>
+        {compact ? (
+          <CompactAgentRow
+            {...common}
+            parentConversationDescription={
+              opensClaudeParentConversation(row)
+                ? t(
+                    'auto.lib.claudeAgentRowView.openParentConversation',
+                    'Open parent conversation'
+                  )
+                : undefined
+            }
+            cacheTimerActive={timerActive}
+          />
+        ) : (
+          <DashboardAgentRow
+            {...common}
+            onDismiss={context.onDismiss}
+            stateDotSize="sm"
+            hideExpand
+            hideLineageConnectors
+          />
+        )}
+      </ForkSnoozeAgentRowMenu>
       {hasChildren ? (
         compact ? (
           <CompactAgentExpansion expanded={expanded}>

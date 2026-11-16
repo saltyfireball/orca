@@ -20,6 +20,7 @@ import { WorktreeWslHostStartMenuItem } from '../../workspace-card/host/Worktree
 import { WorktreeContextMenuOverlays } from './WorktreeContextMenuOverlays'
 import { WorktreeContextMenuDeleteItems } from './WorktreeContextMenuDeleteItems'
 import { ForkMoveWorktreeMenuItem } from '@/fork/worktree-move/ForkMoveWorktreeMenuItem'
+import { ForkSnoozeWorktreeMenuItem } from '@/fork/snooze/ForkSnoozeWorktreeMenuItem'
 import {
   WorktreeCopySubMenu,
   WorktreeLineageSubMenu,
@@ -208,6 +209,8 @@ export default function WorktreeContextMenuView({ model }: { model: WorktreeCont
               <WorktreeProjectGroupSubMenu model={model} />
               {/* SLRM-2265: fork hook (FORK.md "Worktree move") */}
               <ForkMoveWorktreeMenuItem worktreeId={worktree.id} disabled={isDeleting} />
+              {/* SLRM-2269: fork hook (FORK.md "Snooze") */}
+              <ForkSnoozeWorktreeMenuItem worktree={worktree} disabled={isDeleting} />
             </>
           )}
           {isMultiContext && hasAnyContextLineage ? (

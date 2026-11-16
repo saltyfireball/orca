@@ -98,6 +98,7 @@ import { forkChatSleepApi } from './fork/chat-sleep-bridge'
 import { forkBoundaryCompactionApi } from './fork/boundary-compaction-bridge'
 import { forkMemoryApi } from './fork/memory-truth-bridge'
 import { forkAgentQueueApi } from './fork/agent-queue-bridge'
+import { forkSnoozeApi } from './fork/snooze-bridge'
 import { forkChatStallApi } from './fork/chat-stall-bridge'
 import { forkWorkerCleanupApi } from './fork/worker-cleanup-bridge'
 import { forkMcpProfilesApi } from './fork/mcp-profiles-bridge'
@@ -196,6 +197,7 @@ const api = {
   forkUsageLedger: forkUsageLedgerApi,
   forkSyncStatus: forkSyncStatusApi,
   forkIdleRecovery: forkIdleRecoveryApi,
+  forkSnooze: forkSnoozeApi,
   docPreview: docPreviewApi,
   notebook: notebookApi,
   fs: fsApi,

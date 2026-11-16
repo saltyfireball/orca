@@ -131,6 +131,22 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkEndpointLearnAddresses?: boolean
     /** Fork endpoint failover: use a learned address only when it is in a saved endpoint's /24 or is a Tailscale address; unset is on. */
     forkEndpointLearnSameSubnetOnly?: boolean
+    /** Fork snooze (SLRM-2269): snooze workspaces and chats out of the sidebar; unset is on. */
+    forkSnooze?: boolean
+    /** Fork snooze: a snoozed workspace or chat comes back when it needs an approval or asks a question; unset is on. */
+    forkSnoozeWakeOnAttention?: boolean
+    /** Fork snooze: a snoozed workspace or chat comes back when its agent fails or errors; unset is on. */
+    forkSnoozeWakeOnFailure?: boolean
+    /** Fork snooze: opening a snoozed workspace or chat wakes it; unset is on. */
+    forkSnoozeWakeOnOpen?: boolean
+    /** Fork snooze: the hour (0-23) of the tomorrow and next Monday morning presets; unset is 9. */
+    forkSnoozeMorningHour?: number
+    /** Fork snooze: the hour (0-23) of the this evening preset; unset is 18. */
+    forkSnoozeEveningHour?: number
+    /** Fork snooze: the idle days of the menu's until idle choice; unset is 3. */
+    forkSnoozeIdleDays?: number
+    /** Fork snooze: a command run once when a snooze settles (its pull request merged or its idle days passed); unset is none. Set it in the Settings screen. */
+    forkSnoozeSettleCommand?: string
   }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */
