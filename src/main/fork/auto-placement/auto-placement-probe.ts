@@ -69,7 +69,10 @@ export type ForkPlacementDeps = {
   /** Paired servers saved on this machine. */
   listEnvironments: () => readonly { id: string; name: string }[]
   /** This machine's own fork.placement.load answer. */
-  localLoad: (repo: string | undefined) => Promise<ForkPlacementLoadResult>
+  localLoad: (
+    repo: string | undefined,
+    project: string | undefined
+  ) => Promise<ForkPlacementLoadResult>
   /** Calls a paired server's runtime; rejects with an error carrying `code` on failure. */
   callEnvironment: (
     environmentId: string,
@@ -79,7 +82,31 @@ export type ForkPlacementDeps = {
   ) => Promise<unknown>
 }
 
-export type ForkPlacementRequest = { hosts?: readonly string[]; repo?: string; unnamed?: boolean }
+export type ForkPlacementRequest = {
+  hosts?: readonly string[]
+  repo?: string
+  project?: string
+  unnamed?: boolean
+}
+
+type ProbeStatus = ForkPlacementProbe['status']
+
+/** Folds the repo and project answers into a status for a machine whose probe answered. */
+function answeredStatus(
+  request: ForkPlacementRequest,
+  answer: unknown,
+  knownReady: boolean
+): ProbeStatus {
+  const fields = typeof answer === 'object' && answer !== null ? answer : {}
+  if (request.repo && 'repoFound' in fields && fields.repoFound === false) {
+    return 'no-repo'
+  }
+  const projectReady = 'projectReady' in fields && fields.projectReady === true
+  if (request.project && !knownReady && !projectReady) {
+    return 'no-setup'
+  }
+  return 'ok'
+}
 
 const LOCAL_NAME = 'this machine'
 
@@ -91,21 +118,24 @@ function errorCode(error: unknown): string | undefined {
 async function probeEnvironment(
   deps: ForkPlacementDeps,
   environmentId: string,
-  repo: string | undefined
+  request: ForkPlacementRequest,
+  knownReady: boolean
 ): Promise<Pick<ForkPlacementProbe, 'load' | 'status'>> {
   try {
     const answer = await deps.callEnvironment(
       environmentId,
       'fork.placement.load',
-      repo ? { repo } : {},
+      {
+        ...(request.repo ? { repo: request.repo } : {}),
+        ...(request.project && !knownReady ? { project: request.project } : {})
+      },
       FORK_PLACEMENT_PROBE_TIMEOUT_MS
     )
     const load = parseForkMachineLoad((answer as { load?: unknown } | null)?.load)
     if (!load) {
       return { load: null, status: 'unreachable' }
     }
-    const repoFound = (answer as { repoFound?: unknown }).repoFound
-    return { load, status: repo && repoFound === false ? 'no-repo' : 'ok' }
+    return { load, status: answeredStatus(request, answer, knownReady) }
   } catch (error) {
     return {
       load: null,
@@ -114,7 +144,13 @@ async function probeEnvironment(
   }
 }
 
-/** Probes the requested machines (this one and every paired server by default) and ranks them. */
+/**
+ * Probes the requested machines (this one and every paired server by default) and ranks them.
+ * With `project`, this machine and every paired server are considered on top of `hosts`, and a
+ * machine qualifies only when it is in `hosts` (the caller already saw a ready setup for it) or
+ * answers that the project has a ready setup there: project setups are kept per Orca, so the
+ * caller's own list does not show what each paired server has set up for itself.
+ */
 export async function pickForkPlacementOnHosts(
   deps: ForkPlacementDeps,
   request: ForkPlacementRequest
@@ -125,12 +161,16 @@ export async function pickForkPlacementOnHosts(
   }
   const environments = deps.listEnvironments()
   const byId = new Map(environments.map((environment) => [environment.id, environment]))
-  const keys = request.hosts
-    ? [...new Set(request.hosts)]
-    : [
-        FORK_PLACEMENT_LOCAL_KEY,
-        ...environments.map((environment) => RUNTIME_PREFIX + environment.id)
-      ]
+  const everyMachine = [
+    FORK_PLACEMENT_LOCAL_KEY,
+    ...environments.map((environment) => RUNTIME_PREFIX + environment.id)
+  ]
+  const keys = request.project
+    ? [...new Set([...(request.hosts ?? []), ...everyMachine])]
+    : request.hosts
+      ? [...new Set(request.hosts)]
+      : everyMachine
+  const knownReady = new Set(request.project ? (request.hosts ?? []) : [])
   const probes = await mapWithConcurrency(keys, PROBE_CONCURRENCY, async (hostKey) => {
     const preference = forkPlacementFor(settings, hostKey)
     if (hostKey === FORK_PLACEMENT_LOCAL_KEY) {
@@ -139,8 +179,9 @@ export async function pickForkPlacementOnHosts(
         return { hostKey, name, preference, load: null, status: 'ok' } satisfies ForkPlacementProbe
       }
       try {
-        const answer = await deps.localLoad(request.repo)
-        const status = request.repo && answer.repoFound === false ? 'no-repo' : 'ok'
+        const ready = knownReady.has(hostKey)
+        const answer = await deps.localLoad(request.repo, ready ? undefined : request.project)
+        const status = answeredStatus(request, answer, ready)
         return { hostKey, name, preference, load: answer.load, status } satisfies ForkPlacementProbe
       } catch {
         return {
@@ -175,7 +216,7 @@ export async function pickForkPlacementOnHosts(
         status: 'ok'
       } satisfies ForkPlacementProbe
     }
-    const probed = await probeEnvironment(deps, environment.id, request.repo)
+    const probed = await probeEnvironment(deps, environment.id, request, knownReady.has(hostKey))
     return { hostKey, name: environment.name, preference, ...probed } satisfies ForkPlacementProbe
   })
   return pickForkPlacement(probes)
