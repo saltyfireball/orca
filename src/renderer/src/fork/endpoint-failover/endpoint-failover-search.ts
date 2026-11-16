@@ -11,7 +11,7 @@ export function getForkRemoteSettingsSectionParts(
     t('fork.settingsPane.remote.title', 'Remote servers'),
     t(
       'fork.settingsPane.remote.description',
-      'How this desktop reaches the remote servers it is paired with.'
+      'How this desktop reaches the remote servers it is paired with, which devices may pair with it, and webhooks it accepts.'
     ),
     [
       {
@@ -31,6 +31,23 @@ export function getForkRemoteSettingsSectionParts(
           'endpoint',
           'forkEndpointFailover'
         ]
+      },
+      // SLRM-2271: the Device approval and Webhooks cards (their headings).
+      {
+        title: t('fork.deviceApproval.title', 'Device approval'),
+        description: t(
+          'fork.settingsPane.search.deviceApproval',
+          'A newly paired device waits until an approved device or this host approves it.'
+        ),
+        keywords: ['pairing', 'pair', 'approve', 'device', 'phone', 'revoke', 'forkDeviceApproval']
+      },
+      {
+        title: t('fork.webhooks.title', 'Webhooks'),
+        description: t(
+          'fork.settingsPane.search.webhooks',
+          'Start an automation when a signed webhook arrives, such as a failed CI run.'
+        ),
+        keywords: ['webhook', 'automation', 'ci', 'github', 'trigger', 'forkWebhooks']
       }
     ]
   ]
