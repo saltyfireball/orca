@@ -669,6 +669,53 @@ named Orca Fork until SLRM-1367. `main` is always
     `FORK_ENDPOINT_ADDRESSES_METHODS`, and `src/main/index.ts` calls
     `startForkEndpointFailover`.
 
+- **Device approval (SLRM-2271).** Off by default (`forkDeviceApproval`, Settings > Blackfish >
+  Remote servers > Device approval). A device that pairs with this host waits until it is
+  approved, so a leaked pairing link alone does not give access.
+  - **Waiting.** A waiting device may only finish its own pairing (`status.get`,
+    `runtime.clientCapabilities.update`, ticket exchange, device-key registration). Every other
+    call is refused with the error code `device_approval_pending` and a message that shows an
+    approval code (`XXXX-XXXX`). Clients keep their pairing and retry.
+  - **Approving.** On the host, `orca devices list|approve|deny|revoke`; from another machine,
+    the same with `--environment`, or the Device approval card, which lists the devices of this
+    computer or of any paired server. Approve and deny take the code, the device id or a unique
+    id prefix of 6 or more characters. Deny removes the waiting pairing; revoke removes any
+    paired device and whatever was paired through it. The four RPC methods
+    (`fork.devices.*`) need host-admin access.
+  - **Lineage.** Approval belongs to the pairing a device started from: a re-keyed install or
+    a device paired through an approved one is approved with it.
+  - **Upgrade.** The first time the host checks a device after the update it records every
+    device that had already signed in as approved, so paired laptops and phones keep working.
+    A device that signs in while the setting is off is approved too, so turning it on never
+    locks out a device in use. A pairing link not yet used when the setting is turned on waits.
+  - **State.** `fork-device-approvals.json` in the data folder (mode 0600). An unreadable file
+    approves nobody rather than starting over.
+
+- **Webhook automations (SLRM-2271).** Off by default (`forkWebhooks.enabled`, Settings >
+  Blackfish > Remote servers > Webhooks). An outside service, such as a failed CI run, can
+  start an automation.
+  - **Listener.** Plain HTTP on `forkWebhooks.bindHost` (127.0.0.1) and `forkWebhooks.port`
+    (47390). Only `POST /hooks/<id>` is served. To take requests from elsewhere, bind an
+    address the sender reaches (a Tailscale address) or put a TLS reverse proxy in front.
+  - **Hooks.** `orca webhooks add --name N --automation ID [--event workflow_run]
+    [--when workflow_run.conclusion=failure]` prints the URL and a secret once;
+    `orca webhooks list|rotate|remove`. Hooks and secrets are kept in `fork-webhooks.json`
+    (mode 0600), not in settings, so a settings export carries no secret.
+  - **Checks.** Every request needs `X-Hub-Signature-256` (or `X-Blackfish-Signature-256`):
+    `sha256=` and the HMAC-SHA256 of the raw body under the hook's secret, compared in constant
+    time; unknown hooks are checked against a throwaway secret. The body is capped at
+    `forkWebhooks.maxBodyKb` (256), each hook at `forkWebhooks.perHookPerMinute` (30), a source
+    with 20 failed signatures in 10 minutes gets 429 for unsigned requests (its signed ones
+    still pass, for senders behind one proxy), at most 16 requests run at once and 4 per
+    source, and a repeated delivery id starts no second run unless the first failed to start.
+    GitHub's `ping` is answered without a run. The signature covers only the body, so use TLS
+    in front of a listener reached over an untrusted network.
+  - **Untrusted payload.** The run's prompt gains the payload, cut at
+    `forkWebhooks.payloadMaxChars` (20000), in a `<webhook-payload trust="untrusted">` block
+    that tells the agent to treat it as data, never as instructions. Every `<` in the payload
+    is escaped, so it cannot close the block. A payload goes to the next manual run of its
+    automation that starts within 5 minutes, or to none.
+
 - **Settings from the CLI (SLRM-2160).** `orca settings` reads and writes the app's whole
   global settings object from a terminal or through one file, so no setting needs the Settings
   screen.
@@ -716,7 +763,7 @@ named Orca Fork until SLRM-1367. `main` is always
     stalled chats, cache-cold cue, boundary compaction, MCP profiles), Agents and workers (child count, state
     colors, finished worker cleanup, agent limit, launch defaults, memory), Idle recovery,
     Usage and accounts (Claude account chip, usage report), Projects (Lost work, Move to host, Per project),
-    Remote servers (server routes, SLRM-2267) and Sync and updates (fork sync status). A row of section links stays at the top of the
+    Remote servers (server routes, SLRM-2267; device approval and webhooks, SLRM-2271) and Sync and updates (fork sync status). A row of section links stays at the top of the
     pane while it scrolls, and each link jumps to its section.
   - Projects are listed once. MCP profiles and Lost work each listed every project, so each
     project showed twice. "Per project" is now the one list: a project is a closed row that
@@ -910,6 +957,7 @@ Apply these in this order. Each one is a single commit.
 90. `SLRM-2267 Endpoint failover: try a saved server's routes in order and move back to the better one`
 91. `SLRM-2265 Worktree move: move a workspace and its chats to another host`
 92. `SLRM-2264 Pairing on a pinned bind: pair a server bound to a Tailscale or LAN address, and release the Linux server tarballs`
+93. `SLRM-2271 Device approval and webhook automations: approve new paired devices, start automations from signed webhooks`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1321,6 +1369,21 @@ Upstream files only get short hooks, which keeps rebases small:
   - `src/main/index.ts` calls `startForkEndpointFailover(...)` once the app is ready.
   - The card and the Remote servers section are in the fork's Settings pane; the section's
     types moved to `fork-settings-pane-types.ts` for the catalog's line budget.
+
+- Device approval and webhook automations (SLRM-2271), from `src/shared/fork/device-approval.ts`,
+  `src/shared/fork/webhooks.ts`, `src/main/fork/device-approval/`, `src/main/fork/webhooks/`,
+  `src/cli/fork/device-approval-*`, `src/cli/fork/webhooks-*` and
+  `src/renderer/src/fork/device-approval/`, `src/renderer/src/fork/webhooks/`:
+  - The `OrcaRuntimeRpcServer` constructor (`runtime-rpc.ts`) calls
+    `attachForkDeviceApproval(this, options)` and `attachForkWebhooks(options)`.
+  - `runtime-rpc-websocket-dispatch.ts` asks `forkDeviceApprovalWait(...)` once a request's
+    device is known and replies `device_approval_pending` when it returns a message.
+  - `automation-dispatch-request.ts` passes the automation through `withForkWebhookPayload`.
+  - `rpc-method-registry.ts` spreads `FORK_DEVICE_APPROVAL_METHODS` and `FORK_WEBHOOK_METHODS`;
+    `cli-command-names.ts` adds `devices` and `webhooks`; `src/cli/specs/index.ts` spreads their
+    specs.
+  - The two cards are in the fork's Settings pane. The settings are in
+    `src/shared/fork/fork-global-settings.ts`.
 
 - Launch defaults (SLRM-2102), from `src/shared/fork/launch-defaults/`,
   `src/main/fork/launch-defaults/`, `src/renderer/src/fork/launch-defaults/` and

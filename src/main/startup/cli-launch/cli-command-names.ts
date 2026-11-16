@@ -20,6 +20,7 @@ export const CLI_COMMAND_NAMES = [
   'console',
   'cookie',
   'dblclick',
+  'devices',
   'diagnostics',
   'dialog',
   'download',
@@ -91,5 +92,6 @@ export const CLI_COMMAND_NAMES = [
   'viewport',
   'vm',
   'wait',
+  'webhooks',
   'worktree'
 ] as const

@@ -44,6 +44,7 @@ import {
   ForkClaudeAccountMoveParams,
   ForkClaudeAccountWhichParams
 } from '../fork/claude-account-move'
+import { ForkDeviceListParams, ForkDeviceTargetParams } from '../fork/device-approval'
 import { ForkEndpointAddressesParams } from '../fork/endpoint-failover'
 import {
   ForkIdleRecoveryAnswerParams,
@@ -60,6 +61,11 @@ import {
   ForkSleepersSleepParams
 } from '../fork/sleepers-wire'
 import { ForkUsageReportParams } from '../fork/usage-report'
+import {
+  ForkWebhookAddParams,
+  ForkWebhookListParams,
+  ForkWebhookTargetParams
+} from '../fork/webhooks'
 import {
   ForkWorktreeMoveExportParams,
   ForkWorktreeMoveImportParams,
@@ -1174,6 +1180,10 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.claudeAccount.cancel': ForkClaudeAccountCancelParams,
   'fork.claudeAccount.move': ForkClaudeAccountMoveParams,
   'fork.claudeAccount.which': ForkClaudeAccountWhichParams,
+  'fork.devices.approve': ForkDeviceTargetParams,
+  'fork.devices.deny': ForkDeviceTargetParams,
+  'fork.devices.list': ForkDeviceListParams,
+  'fork.devices.revoke': ForkDeviceTargetParams,
   'fork.endpoints.addresses': ForkEndpointAddressesParams,
   'fork.idleRecovery.answer': ForkIdleRecoveryAnswerParams,
   'fork.idleRecovery.inbox': ForkIdleRecoveryInboxParams,
@@ -1192,6 +1202,10 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.sleepers.pin': ForkSleepersPinParams,
   'fork.sleepers.sleep': ForkSleepersSleepParams,
   'fork.usageLedger.report': ForkUsageReportParams,
+  'fork.webhooks.add': ForkWebhookAddParams,
+  'fork.webhooks.list': ForkWebhookListParams,
+  'fork.webhooks.remove': ForkWebhookTargetParams,
+  'fork.webhooks.rotate': ForkWebhookTargetParams,
   'fork.worktreeMove.export': ForkWorktreeMoveExportParams,
   'fork.worktreeMove.import': ForkWorktreeMoveImportParams,
   'fork.worktreeMove.inspect': ForkWorktreeMoveInspectParams,

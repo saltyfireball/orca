@@ -77,5 +77,17 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-worktree-move',
     keys: ['worktree move'],
     load: async () => (await import('./worktree-move-handlers.js')).FORK_WORKTREE_MOVE_HANDLERS
+  },
+  // SLRM-2271: approve, deny and revoke paired devices (FORK.md "Device approval").
+  {
+    name: 'fork-device-approval',
+    keys: ['devices list', 'devices approve', 'devices deny', 'devices revoke'],
+    load: async () => (await import('./device-approval-handlers.js')).FORK_DEVICE_APPROVAL_HANDLERS
+  },
+  // SLRM-2271: signed webhooks that start automation runs (FORK.md "Webhook automations").
+  {
+    name: 'fork-webhooks',
+    keys: ['webhooks list', 'webhooks add', 'webhooks rotate', 'webhooks remove'],
+    load: async () => (await import('./webhooks-handlers.js')).FORK_WEBHOOK_HANDLERS
   }
 ]
