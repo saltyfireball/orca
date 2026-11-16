@@ -11,6 +11,7 @@ import { getForkChatsSearchEntries } from './fork-settings-pane-catalog-chats'
 import { forkAutoPlacementSearchEntry } from '../auto-placement/auto-placement-search-entry'
 import type { ForkSettingsSection, ForkSettingsSectionId } from './fork-settings-pane-types'
 import { getForkRemoteSettingsSectionParts } from '../endpoint-failover/endpoint-failover-search'
+import { worktreeMoveSearchEntry } from '../worktree-move/worktree-move-search-entry'
 
 export const FORK_SETTINGS_PANE_ID = 'fork'
 
@@ -170,7 +171,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
       t('fork.settingsPane.projects.title', 'Projects'),
       t(
         'fork.settingsPane.projects.description',
-        'The Lost work scan, and what the fork sets for one project.'
+        'The Lost work scan, moving a workspace to another host, and what the fork sets for one project.'
       ),
       [
         {
@@ -181,6 +182,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
           ),
           keywords: words('scan', 'worktrees', 'stashes', 'branches', 'archive', 'forkLostWork')
         },
+        worktreeMoveSearchEntry(t),
         {
           title: t('fork.settingsPane.projectList.title', 'Per project'),
           description: t(
