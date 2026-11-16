@@ -708,7 +708,7 @@ named Orca Fork until SLRM-1367. `main` is always
   - Seven sections, each feature in its own card: Chats (chat survive, chat sleep, Sleepers,
     stalled chats, cache-cold cue, boundary compaction, MCP profiles), Agents and workers (child count, state
     colors, finished worker cleanup, agent limit, launch defaults, memory), Idle recovery,
-    Usage and accounts (Claude account chip, usage report), Projects (Lost work, Per project),
+    Usage and accounts (Claude account chip, usage report), Projects (Lost work, Move to host, Per project),
     Remote servers (server routes, SLRM-2267) and Sync and updates (fork sync status). A row of section links stays at the top of the
     pane while it scrolls, and each link jumps to its section.
   - Projects are listed once. MCP profiles and Lost work each listed every project, so each
@@ -723,6 +723,49 @@ named Orca Fork until SLRM-1367. `main` is always
     the sections and their search entries, and `ForkSettingsPane.tsx` places the cards: a new
     fork setting is added to both (`ForkSettingsPane.test.tsx` fails when a search entry has
     no card heading to land on).
+- **Worktree move (SLRM-2265).** Move a workspace and its chats to another host: `orca worktree
+  move --to <host>` (`local`, `runtime:<environment-id>` or a paired server's name; `--worktree`,
+  `--stop-turns`, `--dry-run`, `--json`) or the workspace menu's "Move to Host". The menu lists
+  this machine and every paired server except the workspace's own host, and opens a confirm
+  dialog that shows the dry run first.
+  - **Steps.** The source host reports the workspace (`fork.worktreeMove.inspect`) and the
+    shared planner (`src/shared/fork/worktree-move/worktree-move-plan.ts`) refuses, asks or
+    plans. Then: the source stops agreed turns and exports the patch and transcripts
+    (`fork.worktreeMove.export`); the stock `git.push` pushes the branch; the target's stock
+    `worktree.create` checks the pushed branch out (`open-existing-v2`); the target applies the
+    patch and files each transcript with its paths rewritten (`fork.worktreeMove.import`); the
+    target's `agentSession.create` with `resumeFrom` reopens each chat with its history; and
+    the stock `worktree.set` adds `[moved to <host> on <date>]` to the source's comment. The
+    runner (`worktree-move-runner.ts`) is shared by the CLI and the desktop; each step runs on
+    the host that owns it, so no host reaches another.
+  - **Never silent.** Nothing is committed: uncommitted changes (tracked and untracked) are
+    diffed through a scratch index and carried as a binary patch, and stay on the source too. A
+    patch that does not apply is saved in the target's git folder and named in the result. A
+    chat mid-turn makes the move ask (or refuse, by setting); the CLI needs `--stop-turns`. The
+    source is never reset or deleted. A transcript already at the destination is kept beside it
+    as `.before-move-<time>`.
+  - **Transcripts.** Claude and Codex chats are carried. A transcript goes where the target's
+    adoption looks: Claude under `~/.claude/projects/<target folder bucket>/`, Codex under the
+    target's `sessions/` with its dated folders. The workspace path, and the home folder when
+    `rewriteHome` is on, are rewritten in both their plain and JSON-escaped spellings, whole
+    path names only. Other agents, chats with no conversation and transcripts over 64 MB stay
+    behind and are listed.
+  - **Refused.** The same host, SSH hosts (no runtime serves them here; pair the machine as an
+    Orca server instead), workspaces inside WSL, a detached HEAD, a branch with no remote, and a
+    target where the project is not set up.
+  - **Settings** (`forkWorktreeMove`, Settings > Blackfish > Projects > Move to host): `menu`
+    (on), `whenBusy` (`ask` or `refuse`), `uncommitted` (`patch`, `leave` or `refuse`), `push`
+    (on), `chats` (on), `rewriteHome` (on), `markSource` (on).
+  - **Hooks in upstream files:** `rpc-method-registry.ts` spreads
+    `FORK_WORKTREE_MOVE_METHODS`; `src/cli/specs/index.ts` spreads
+    `FORK_WORKTREE_MOVE_COMMAND_SPECS`; `fork-handler-groups.ts` lists the `worktree move`
+    group; `fork-global-settings.ts` declares the setting; `WorktreeContextMenuView.tsx`
+    renders `ForkMoveWorktreeMenuItem`; `ForkRootHosts.tsx` mounts the dialog host and
+    `ForkSettingsPane.tsx` and `fork-settings-pane-catalog.ts` place the card. The RPC params
+    catalog and the settings catalog are regenerated.
+  - **Not covered yet:** Claude projects whose bucket name is hashed (folders over 200
+    characters); a target that already has a stale local branch of that name checks that one
+    out; chats of other agents.
 
 - **Auto placement (SLRM-2266).** `orchestration worker-start --on auto` and
   `worktree create --host auto` start the work on the machine (this one or a paired server)
@@ -839,6 +882,7 @@ Apply these in this order. Each one is a single commit.
 88. `SLRM-2268 Unattended resume: continue interrupted workers and automation runs after a restart`
 89. `SLRM-2266 Auto placement: pick the machine with the most spare CPU and memory for --on auto and --host auto`
 90. `SLRM-2267 Endpoint failover: try a saved server's routes in order and move back to the better one`
+91. `SLRM-2265 Worktree move: move a workspace and its chats to another host`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
