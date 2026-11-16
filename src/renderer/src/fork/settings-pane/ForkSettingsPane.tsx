@@ -27,6 +27,7 @@ import { ForkLostWorkSettings } from '../lost-work/ForkLostWorkSettings'
 import { ForkSyncNoticeSetting } from '../sync-status/ForkSyncNoticeSetting'
 import { ForkAutoPlacementSetting } from '../auto-placement/ForkAutoPlacementSetting'
 import { ForkEndpointFailoverSetting } from '../endpoint-failover/ForkEndpointFailoverSetting'
+import { ForkWorktreeMoveSettings } from '../worktree-move/ForkWorktreeMoveSettings'
 import { ForkProjectSettingsList } from './ForkProjectSettingsList'
 import { ForkSettingsSectionLinks } from './ForkSettingsSectionLinks'
 import { getForkSettingsSections, type ForkSettingsSectionId } from './fork-settings-pane-catalog'
@@ -69,6 +70,7 @@ const SECTION_CARDS: Record<
   ],
   projects: [
     ['lost-work', ForkLostWorkSettings],
+    ['worktree-move', ForkWorktreeMoveSettings],
     ['project-settings-list', ForkProjectSettingsList]
   ],
   remote: [['endpoint-failover', ForkEndpointFailoverSetting]],
