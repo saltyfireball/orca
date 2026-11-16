@@ -100,6 +100,7 @@ import type { ForkMemoryApi } from '../shared/fork/memory-truth'
 import type { ForkAgentQueueApi } from '../shared/fork/agent-queue'
 import type { ForkChatStallApi } from '../shared/fork/chat-stall'
 import type { ForkIdleRecoveryApi } from '../shared/fork/idle-recovery-wire'
+import type { ForkSnoozeApi } from '../shared/fork/snooze-wire'
 import type { ForkSyncStatusApi } from '../shared/fork/fork-sync-status'
 import type { ForkWorkerCleanupApi } from '../shared/fork/worker-cleanup'
 import type { ForkMcpProfilesApi } from '../shared/fork/mcp-profiles'
@@ -193,6 +194,8 @@ export type PreloadApi = {
   forkSyncStatus?: ForkSyncStatusApi
   /** Fork idle recovery and the Decision inbox; desktop only. */
   forkIdleRecovery?: ForkIdleRecoveryApi
+  /** Fork snooze (SLRM-2269); desktop only. */
+  forkSnooze?: ForkSnoozeApi
   notebook: FilesystemApi['notebook']
   docPreview: DocPreviewApi['docPreview']
   stats: StatsApi

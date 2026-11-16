@@ -55,11 +55,13 @@ const ACCOUNTS: SettingsKey[] = [
   'activeCodexManagedAccountIdsByRuntime'
 ]
 
-/** Idle recovery's classifier and notification targets: a write here is code execution. */
+/** Commands and addresses the app runs or calls (idle recovery, snooze): a write here is code execution. */
 const RUNS_COMMAND: SettingsKey[] = [
   'forkIdleSweepClassifierCommand',
   'forkInboxNotifyCommand',
-  'forkInboxNotifyWebhookUrl'
+  'forkInboxNotifyWebhookUrl',
+  // SLRM-2269: the snooze settle cleanup command.
+  'forkSnoozeSettleCommand'
 ]
 
 /** One-time migration and "already defaulted" markers. */
