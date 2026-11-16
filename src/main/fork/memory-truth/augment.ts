@@ -3,8 +3,8 @@
 // tree (reparented to init), the app's non-Electron helpers and the terminal host's leftovers,
 // then writes the whole-tree numbers back into the snapshot so the badge and rows agree.
 import os from 'node:os'
-import { getAppEnvironment } from '../../../shared/app-environment'
-import type { MemorySnapshot, UsageValues } from '../../../shared/process-stats-types'
+import { getAppEnvironment } from '../../../shared/app-lifecycle/app-environment'
+import type { MemorySnapshot, UsageValues } from '../../../shared/diagnostics/process-stats-types'
 import {
   emptyForkMemoryBreakdown,
   type ForkMemoryTruth,

@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { ProviderRateLimits, RateLimitState } from '../../../../shared/rate-limit-types'
+import type {
+  ProviderRateLimits,
+  RateLimitState
+} from '../../../../shared/agent-usage/rate-limits/rate-limit-types'
 import type { ClaudeHostSnapshot } from './claude-chip-host-cache'
 
 vi.mock('@/store', () => ({ useAppStore: vi.fn() }))

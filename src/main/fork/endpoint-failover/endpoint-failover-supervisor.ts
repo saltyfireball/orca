@@ -44,7 +44,7 @@ export type LearnedRoutes = { addresses: ForkLearnedAddress[]; learnedAt: number
 
 export type EndpointFailoverDeps = {
   readSettings: () => ForkGlobalSettings | null | undefined
-  listEnvironments: () => KnownRuntimeEnvironment[]
+  listEnvironments: () => KnownRuntimeEnvironment[] | Promise<KnownRuntimeEnvironment[]>
   /** 'idle' when the desktop holds no connection to it (or it was disconnected by hand). */
   connectionState: (environmentId: string) => FailoverConnectionState
   /** Whether the server answers on this route, authenticated with its pairing and host key. */
@@ -129,7 +129,7 @@ export class EndpointFailoverSupervisor {
   /** One pass over every saved server; exported for tests, which await it. */
   async tick(): Promise<void> {
     const settings = this.deps.readSettings()
-    const environments = this.deps.listEnvironments()
+    const environments = await this.deps.listEnvironments()
     if (!forkEndpointFailoverEnabled(settings)) {
       this.releaseAll(environments)
       return

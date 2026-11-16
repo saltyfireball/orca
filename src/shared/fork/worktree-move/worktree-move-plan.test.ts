@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { ProjectHostSetup } from '../../project-types'
+import type { ProjectHostSetup } from '../../project/project-types'
 import {
   pickWorktreeMoveTargetRepo,
   planWorktreeMove,

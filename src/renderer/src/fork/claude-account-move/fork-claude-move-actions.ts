@@ -10,7 +10,7 @@ import {
   structuredAgentSessionTargetForTab
 } from '@/runtime/native-chat/session-ownership/structured-agent-session-owner'
 import type { ForkClaudeMoveResponse } from '../../../../shared/fork/claude-account-move'
-import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
+import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 import { moveClaudeChatsToAccount, type ForkClaudeMoveScope } from './claude-account-move-client'
 import { canMoveClaudePanesIn, queueClaudePaneAccountMoves } from './claude-pane-account-move'
 import type { ForkClaudeMoveAccountChoice } from './use-fork-claude-move-accounts'
