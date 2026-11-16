@@ -117,6 +117,81 @@ describe('pickForkPlacementOnHosts', () => {
   })
 })
 
+describe('pickForkPlacementOnHosts with a project', () => {
+  const project = 'github:o/r'
+
+  it('asks each paired server about its own setup and picks one that has it', async () => {
+    const fake = deps(
+      { forkPlacement: { 'runtime:env-c': 'manual' } },
+      {
+        'env-a': { load: load(16, 1, 48), projectReady: true },
+        'env-b': { load: load(32, 0, 60), projectReady: false }
+      }
+    )
+    const result = await pickForkPlacementOnHosts(fake, { hosts: ['local'], project })
+    if (result.off === true) {
+      throw new Error('unexpected off')
+    }
+    expect(result.picked).toMatchObject({ hostKey: 'runtime:env-a', name: 'alpha' })
+    expect(Object.fromEntries(result.ranked.map((c) => [c.hostKey, c.status]))).toEqual({
+      'runtime:env-a': 'eligible',
+      local: 'eligible',
+      'runtime:env-b': 'no-setup',
+      'runtime:env-c': 'manual'
+    })
+    expect(fake.callEnvironment).toHaveBeenCalledWith(
+      'env-a',
+      'fork.placement.load',
+      { project },
+      2_500
+    )
+    // A manual machine is never asked.
+    expect(fake.callEnvironment).not.toHaveBeenCalledWith(
+      'env-c',
+      expect.anything(),
+      expect.anything(),
+      expect.anything()
+    )
+  })
+
+  it('skips a server that times out or is too old to answer about the project', async () => {
+    const fake = deps(
+      {},
+      {
+        'env-a': codeError('timeout'),
+        'env-b': { load: load(32, 0, 60) },
+        'env-c': codeError('method_not_found')
+      }
+    )
+    const result = await pickForkPlacementOnHosts(fake, { hosts: [], project })
+    if (result.off === true) {
+      throw new Error('unexpected off')
+    }
+    expect(result.picked).toBeNull()
+    expect(Object.fromEntries(result.ranked.map((c) => [c.hostKey, c.status]))).toEqual({
+      local: 'no-setup',
+      'runtime:env-a': 'unreachable',
+      'runtime:env-b': 'no-setup',
+      'runtime:env-c': 'no-probe'
+    })
+  })
+
+  it('trusts the caller for hosts it listed and asks this machine about the rest', async () => {
+    const fake = deps({}, { 'env-a': { load: load(2, 2, 1) } })
+    fake.listEnvironments = () => [{ id: 'env-a', name: 'alpha' }]
+    const localLoad = vi.fn(async () => ({ load: load(8, 0, 32), projectReady: true }))
+    fake.localLoad = localLoad
+    const result = await pickForkPlacementOnHosts(fake, { hosts: ['runtime:env-a'], project })
+    if (result.off === true) {
+      throw new Error('unexpected off')
+    }
+    expect(localLoad).toHaveBeenCalledWith(undefined, project)
+    expect(fake.callEnvironment).toHaveBeenCalledWith('env-a', 'fork.placement.load', {}, 2_500)
+    expect(result.picked?.hostKey).toBe('local')
+    expect(result.ranked.map((c) => c.status)).toEqual(['eligible', 'eligible'])
+  })
+})
+
 describe('parseDarwinVmStat', () => {
   it('counts free, inactive, speculative and purgeable pages', () => {
     const text = [
