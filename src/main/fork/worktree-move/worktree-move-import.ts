@@ -7,6 +7,10 @@ import {
   createTranscriptPathRewriter,
   worktreeMoveRewrites
 } from '../../../shared/fork/worktree-move/transcript-path-rewrite'
+import {
+  WORKTREE_MOVE_DEFAULT_MAX_TOTAL_MB,
+  WORKTREE_MOVE_HARD_MAX_TOTAL_BYTES
+} from '../../../shared/fork/worktree-move/worktree-move-wire'
 import type {
   WorktreeMoveImportResult,
   WorktreeMoveTranscriptWire
@@ -30,12 +34,37 @@ export type WorktreeMoveImportParams = {
   sourceHome: string
   rewriteHome?: boolean
   transcripts?: WorktreeMoveTranscriptWire[]
+  /** Total decoded bytes of the patch and transcripts this host accepts; unset is 256 MB. */
+  maxTotalBytes?: number
 }
 
 type RunGit = (args: string[], cwd: string) => Promise<string>
 
 const CLAUDE_FILE = /^[A-Za-z0-9._-]+\.jsonl$/
 const CODEX_REL = /^(?:\d{4}\/\d{2}\/\d{2}\/)?[A-Za-z0-9._-]+\.jsonl$/
+
+/** Decoded size of base64 text, without decoding it. */
+function base64Bytes(text: string): number {
+  const padding = text.endsWith('==') ? 2 : text.endsWith('=') ? 1 : 0
+  return Math.max(0, Math.floor((text.length * 3) / 4) - padding)
+}
+
+/**
+ * Whether the provider session id the source named is the one the file is for: Claude names the
+ * transcript `<id>.jsonl`, Codex `rollout-<time>-<id>.jsonl`. Anything else could adopt another
+ * conversation's file under a lying id.
+ */
+export function worktreeMoveSessionIdMatchesFile(
+  transcript: Pick<WorktreeMoveTranscriptWire, 'agent' | 'relPath' | 'providerSessionId'>
+): boolean {
+  const file = transcript.relPath.split('/').at(-1) ?? ''
+  const stem = file.endsWith('.jsonl') ? file.slice(0, -'.jsonl'.length) : file
+  const id = transcript.providerSessionId
+  if (!id) {
+    return false
+  }
+  return transcript.agent === 'claude' ? stem === id : stem === id || stem.endsWith(`-${id}`)
+}
 
 /** Where a carried transcript goes on this host; null for a name that could leave the store. */
 export function worktreeMoveTranscriptDestination(
@@ -87,6 +116,19 @@ export async function worktreeMoveImport(
   targetPath: string,
   git: RunGit
 ): Promise<WorktreeMoveImportResult> {
+  const budget = Math.min(
+    params.maxTotalBytes ?? WORKTREE_MOVE_DEFAULT_MAX_TOTAL_MB * 1024 * 1024,
+    WORKTREE_MOVE_HARD_MAX_TOTAL_BYTES
+  )
+  const total =
+    base64Bytes(params.patch ?? '') +
+    (params.transcripts ?? []).reduce((sum, item) => sum + base64Bytes(item.content), 0)
+  if (total > budget) {
+    // Nothing has been written yet: the whole import is refused rather than part of it.
+    throw new Error(
+      `The move carries ${Math.ceil(total / (1024 * 1024))} MB, over the ${Math.floor(budget / (1024 * 1024))} MB this host accepts.`
+    )
+  }
   const patch = params.patch
     ? await applyPatch(deps, params.patch, targetPath, git)
     : { kind: 'none' as const }
@@ -100,7 +142,10 @@ export async function worktreeMoveImport(
     })
   )
   const transcripts: WorktreeMoveImportResult['transcripts'] = []
-  for (const transcript of params.transcripts ?? []) {
+  // One transcript at a time: each is decoded, written and released before the next is touched.
+  const incoming = params.transcripts ?? []
+  for (let index = 0; index < incoming.length; index += 1) {
+    const transcript = incoming[index]
     const entry = {
       sessionId: transcript.sessionId,
       providerSessionId: transcript.providerSessionId,
@@ -115,6 +160,15 @@ export async function worktreeMoveImport(
       })
       continue
     }
+    if (!worktreeMoveSessionIdMatchesFile(transcript)) {
+      transcripts.push({
+        ...entry,
+        written: false,
+        reason: 'its file name does not match its session id'
+      })
+      incoming[index] = { ...transcript, content: '' }
+      continue
+    }
     try {
       if (await deps.fs.exists(destination)) {
         // A copy from an earlier move or a shared store: keep it beside, never overwrite it silently.
@@ -127,6 +181,7 @@ export async function worktreeMoveImport(
       const reason = error instanceof Error ? error.message : String(error)
       transcripts.push({ ...entry, written: false, reason: `${basename(destination)}: ${reason}` })
     }
+    incoming[index] = { ...transcript, content: '' }
   }
   return { patch, transcripts }
 }
