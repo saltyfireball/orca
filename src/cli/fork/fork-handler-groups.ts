@@ -89,5 +89,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-webhooks',
     keys: ['webhooks list', 'webhooks add', 'webhooks rotate', 'webhooks remove'],
     load: async () => (await import('./webhooks-handlers.js')).FORK_WEBHOOK_HANDLERS
+  },
+  // SLRM-2269: snooze workspaces and chats out of the sidebar (FORK.md "Snooze").
+  {
+    name: 'fork-snooze',
+    keys: ['snooze', 'snooze list', 'snooze wake'],
+    load: async () => (await import('./snooze-handlers.js')).FORK_SNOOZE_HANDLERS
   }
 ]

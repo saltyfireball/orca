@@ -31,6 +31,10 @@ import {
   subscribeHiddenVmCheckouts,
   withoutHiddenVmWorktrees
 } from '@/runtime/ephemeral-vm/vm-create-hidden-checkouts'
+import {
+  forkWithoutSnoozedWorktrees,
+  useForkSnoozedWorktreeKeys
+} from '@/fork/snooze/use-fork-snooze'
 
 const EMPTY_WORKTREE_ID_SET: ReadonlySet<string> = new Set()
 
@@ -128,6 +132,8 @@ export function useVisibleSidebarWorktrees(args: {
   })
 
   const hiddenVmCheckouts = useSyncExternalStore(subscribeHiddenVmCheckouts, readHiddenVmCheckouts)
+  // SLRM-2269: fork hook, snoozed workspaces leave the list (FORK.md "Snooze").
+  const forkSnoozed = useForkSnoozedWorktreeKeys()
   const recomputedVisibleWorktrees = useMemo(() => {
     const visible = computeVisibleWorktrees(worktreesByRepo, sortedIds, {
       filterRepoIds,
@@ -160,8 +166,12 @@ export function useVisibleSidebarWorktrees(args: {
         ? [args.agentSendTargetWorktreeId]
         : undefined
     })
-    return withoutHiddenVmWorktrees(visible, hiddenVmCheckouts)
+    return forkWithoutSnoozedWorktrees(
+      withoutHiddenVmWorktrees(visible, hiddenVmCheckouts),
+      forkSnoozed
+    )
   }, [
+    forkSnoozed,
     hiddenVmCheckouts,
     args.agentSendTargetWorktreeId,
     worktreeIdsWithLiveAgent,
