@@ -65,5 +65,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
       'settings apply'
     ],
     load: async () => (await import('./settings-handlers.js')).FORK_SETTINGS_HANDLERS
+  },
+  // SLRM-2266: rank machines for --on auto and --host auto (FORK.md "Auto placement").
+  {
+    name: 'fork-auto-placement',
+    keys: ['placement'],
+    load: async () => (await import('./auto-placement-handlers.js')).FORK_AUTO_PLACEMENT_HANDLERS
   }
 ]
