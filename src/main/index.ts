@@ -27,6 +27,7 @@ import { shouldActivateDesktopForSecondInstance } from './startup/profile-startu
 import { resolveOsOpenedDocuments } from './startup/open-routing/os-opened-documents'
 import { installForkRestartGuard } from './fork/restart-guard/restart-guard'
 import { startForkBoundaryCompaction } from './fork/boundary-compaction/boundary-compaction-bridge'
+import { startForkEndpointFailover } from './fork/endpoint-failover/endpoint-failover-install'
 import { installForkChatSleepBridge } from './fork/chat-sleep/chat-sleep-bridge'
 import { installForkMemoryWatch } from './fork/memory-truth/memory-watch'
 import { installForkAgentQueueApp } from './fork/agent-queue/agent-queue-ipc'
@@ -217,6 +218,8 @@ if (preflightReady) {
   })
   // Fork: boundary compaction, off unless switched on (FORK.md).
   startForkBoundaryCompaction(() => state.store?.getSettings(), { store: () => state.store })
+  // Fork (SLRM-2267): endpoint failover between a saved server's routes (FORK.md).
+  void app.whenReady().then(() => startForkEndpointFailover(() => state.store?.getSettings()))
   void app.whenReady().then(async () => {
     try {
       await initializeMainProcessReady({

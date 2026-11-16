@@ -44,6 +44,7 @@ import {
   ForkClaudeAccountMoveParams,
   ForkClaudeAccountWhichParams
 } from '../fork/claude-account-move'
+import { ForkEndpointAddressesParams } from '../fork/endpoint-failover'
 import {
   ForkIdleRecoveryAnswerParams,
   ForkIdleRecoveryInboxParams,
@@ -1168,6 +1169,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.claudeAccount.cancel': ForkClaudeAccountCancelParams,
   'fork.claudeAccount.move': ForkClaudeAccountMoveParams,
   'fork.claudeAccount.which': ForkClaudeAccountWhichParams,
+  'fork.endpoints.addresses': ForkEndpointAddressesParams,
   'fork.idleRecovery.answer': ForkIdleRecoveryAnswerParams,
   'fork.idleRecovery.inbox': ForkIdleRecoveryInboxParams,
   'fork.idleRecovery.pause': ForkIdleRecoveryPauseParams,
