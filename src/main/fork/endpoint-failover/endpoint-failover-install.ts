@@ -3,9 +3,6 @@
 // routes file, and starts its timer. A probe is its own short-lived authenticated socket, so it
 // never disturbs the live connection; a move closes this desktop's connections to that server and
 // opens its status owner again, which dials the new route.
-import { ELECTRON_REMOTE_RUNTIME_CLIENT_CAPABILITIES } from '../../../shared/electron-remote-runtime-client-capabilities'
-import { pairedRuntimeConnectionFromOffer } from '../../../shared/remote-runtime/pairing/paired-runtime-connection'
-import { RemoteRuntimeRequestConnection } from '../../../shared/remote-runtime/requests/remote-runtime-request-connection'
 import { listEnvironments } from '../../../shared/remote-runtime/host-store/runtime-environment-store'
 import { getPreferredPairedRuntimeConnection } from '../../../shared/remote-runtime/host-catalog/runtime-environments'
 import { FORK_ENDPOINT_ADDRESSES_METHOD } from '../../../shared/fork/endpoint-failover'
@@ -22,6 +19,7 @@ import {
   EndpointFailoverSupervisor,
   type FailoverConnectionState
 } from './endpoint-failover-supervisor'
+import { probeEndpointRoute } from './endpoint-failover-probe'
 import { EndpointRoutesFile } from './endpoint-routes-file'
 
 const LEARN_TIMEOUT_MS = 5_000
@@ -40,25 +38,6 @@ function connectionState(environmentId: string): FailoverConnectionState {
   return diagnostics.state === 'ready' && diagnostics.unresponsiveSince === undefined
     ? 'ready'
     : 'down'
-}
-
-async function probe(
-  route: { endpoint: string; deviceToken: string; publicKeyB64: string; pairedDeviceId?: string },
-  timeoutMs: number
-): Promise<boolean> {
-  const connection = new RemoteRuntimeRequestConnection(
-    pairedRuntimeConnectionFromOffer(route),
-    ELECTRON_REMOTE_RUNTIME_CLIENT_CAPABILITIES
-  )
-  try {
-    // The reply only comes over a socket that finished the handshake against the pinned host key.
-    const response = await connection.request('status.get', { probe: true }, timeoutMs)
-    return response.ok
-  } catch {
-    return false
-  } finally {
-    connection.close()
-  }
 }
 
 export function startForkEndpointFailover(
@@ -82,7 +61,7 @@ export function startForkEndpointFailover(
       return environments
     },
     connectionState,
-    probe,
+    probe: probeEndpointRoute,
     learn: async (environmentId) => {
       const environment = listEnvironments(userDataPath).find((entry) => entry.id === environmentId)
       if (!environment) {

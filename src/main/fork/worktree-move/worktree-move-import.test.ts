@@ -14,7 +14,11 @@ import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { encodeClaudeProjectPath } from '../../ai-vault/scanners/claude/claude-project-dir-encoding'
 import type { WorktreeMoveFs } from './worktree-move-service'
-import { worktreeMoveImport, worktreeMoveTranscriptDestination } from './worktree-move-import'
+import {
+  worktreeMoveImport,
+  worktreeMoveSessionIdMatchesFile,
+  worktreeMoveTranscriptDestination
+} from './worktree-move-import'
 
 let root: string
 
@@ -151,5 +155,79 @@ describe('worktreeMoveImport', () => {
     expect(await readdir(gitDir)).toEqual(['orca-worktree-move-1000.patch'])
     // The scratch folders are cleaned up either way.
     expect((await readdir(root)).filter((name) => name.startsWith('tmp-'))).toEqual([])
+  })
+})
+
+describe('worktreeMoveSessionIdMatchesFile', () => {
+  it('needs the Claude file stem or the Codex rollout name to carry the session id', () => {
+    const t = (agent: 'claude' | 'codex', relPath: string, providerSessionId: string) =>
+      worktreeMoveSessionIdMatchesFile({ agent, relPath, providerSessionId })
+    expect(t('claude', 'abc.jsonl', 'abc')).toBe(true)
+    expect(t('claude', 'abc.jsonl', 'other')).toBe(false)
+    expect(t('claude', 'xabc.jsonl', 'abc')).toBe(false)
+    expect(t('codex', '2026/01/02/rollout-2026-01-02T03-04-05-abc.jsonl', 'abc')).toBe(true)
+    expect(t('codex', '2026/01/02/rollout-2026-01-02T03-04-05-abc.jsonl', 'bc')).toBe(false)
+    expect(t('codex', 'rollout-x-abc.jsonl', 'zzz')).toBe(false)
+  })
+})
+
+describe('worktreeMoveImport hardening', () => {
+  const git = async () => ''
+  const wire = (providerSessionId: string, relPath: string, text = 'x') => ({
+    sessionId: `s-${providerSessionId}`,
+    agent: 'claude' as const,
+    providerSessionId,
+    name: relPath,
+    relPath,
+    content: b64(text)
+  })
+
+  it('does not file a transcript whose session id does not match its file name', async () => {
+    const result = await worktreeMoveImport(
+      deps(),
+      {
+        worktree: 'id:w',
+        sourcePath: '/a',
+        sourceHome: '/h',
+        transcripts: [wire('victim', 'attacker.jsonl'), wire('ok', 'ok.jsonl')]
+      },
+      '/srv/r',
+      git
+    )
+    expect(result.transcripts.map((t) => t.written)).toEqual([false, true])
+    expect(result.transcripts[0].reason).toContain('does not match')
+    const dir = join(root, 'claude', 'projects', encodeClaudeProjectPath('/srv/r'))
+    expect(await readdir(dir)).toEqual(['ok.jsonl'])
+  })
+
+  it('refuses the whole import over the byte budget and writes nothing', async () => {
+    await expect(
+      worktreeMoveImport(
+        deps(),
+        {
+          worktree: 'id:w',
+          patch: b64('p'.repeat(60)),
+          sourcePath: '/a',
+          sourceHome: '/h',
+          maxTotalBytes: 100,
+          transcripts: [wire('a', 'a.jsonl', 'x'.repeat(50)), wire('b', 'b.jsonl', 'x'.repeat(50))]
+        },
+        '/srv/r',
+        git
+      )
+    ).rejects.toThrow(/over the/)
+    expect(await readdir(root)).toEqual([])
+  })
+
+  it('accepts a move at the budget and releases each transcript after writing it', async () => {
+    const transcripts = [wire('a', 'a.jsonl', 'x'.repeat(40)), wire('b', 'b.jsonl', 'x'.repeat(40))]
+    const result = await worktreeMoveImport(
+      deps(),
+      { worktree: 'id:w', sourcePath: '/a', sourceHome: '/h', maxTotalBytes: 80, transcripts },
+      '/srv/r',
+      git
+    )
+    expect(result.transcripts.every((t) => t.written)).toBe(true)
+    expect(transcripts.every((t) => t.content === '')).toBe(true)
   })
 })

@@ -11,7 +11,9 @@ import {
   buildForkEndpointCandidates,
   forkEndpointFailoverEnabled,
   forkEndpointFailoverRetrySeconds,
+  filterForkLearnedAddresses,
   forkEndpointLearnAddresses,
+  forkEndpointLearnSameSubnetOnly,
   normalizeForkLearnedAddresses,
   type ForkEndpointCandidate,
   type ForkLearnedAddress
@@ -134,6 +136,7 @@ export class EndpointFailoverSupervisor {
     }
     const retryMs = forkEndpointFailoverRetrySeconds(settings) * 1000
     const learn = forkEndpointLearnAddresses(settings)
+    const sameSubnetOnly = forkEndpointLearnSameSubnetOnly(settings)
     const live = new Set<string>()
     await Promise.all(
       environments.map(async (environment) => {
@@ -147,7 +150,7 @@ export class EndpointFailoverSupervisor {
         }
         state.busy = true
         try {
-          await this.checkServer(environment, state, retryMs, learn)
+          await this.checkServer(environment, state, retryMs, learn, sameSubnetOnly)
         } catch (error) {
           this.deps.log?.(
             `[fork-endpoint-failover] ${environment.name}: check failed: ${String(error)}`
@@ -186,7 +189,8 @@ export class EndpointFailoverSupervisor {
     environment: KnownRuntimeEnvironment,
     state: ServerState,
     retryMs: number,
-    learn: boolean
+    learn: boolean,
+    sameSubnetOnly: boolean
   ): Promise<void> {
     const preferred = savedPreferred(environment)
     if (!preferred) {
@@ -206,7 +210,11 @@ export class EndpointFailoverSupervisor {
     const candidates = buildForkEndpointCandidates(
       preferred,
       environment.endpoints.filter((entry) => entry.id !== preferred.id),
-      stored?.addresses ?? []
+      filterForkLearnedAddresses(
+        stored?.addresses ?? [],
+        environment.endpoints.map((entry) => entry.endpoint),
+        sameSubnetOnly
+      )
     )
     const active = forkActiveEndpointRoute(preferred)
     const activeIndex = candidates.findIndex((candidate) => sameRoute(candidate, active))
