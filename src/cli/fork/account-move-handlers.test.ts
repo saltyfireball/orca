@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { RuntimeClient } from '../runtime/client'
-import { RuntimeClientError } from '../runtime/types'
+import { RuntimeClientError } from '../runtime/connection/types'
 import { FORK_ACCOUNT_MOVE_HANDLERS, formatWhich } from './account-move-handlers'
-import type { RuntimeRpcSuccess } from '../../shared/runtime-rpc-envelope'
+import type { RuntimeRpcSuccess } from '../../shared/remote-runtime/rpc/runtime-rpc-envelope'
 
 /** A fake paired host answering accounts.list and the fork move RPC. */
 function remoteHost(answers: Record<string, unknown>) {

@@ -1,7 +1,7 @@
 // Idle recovery (FORK.md): `orca inbox` against a fake client; no app is contacted.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { HandlerContext } from '../dispatch/dispatch'
-import { RuntimeClientError } from '../runtime/types'
+import { RuntimeClientError } from '../runtime/connection/types'
 import type {
   ForkIdleRecoveryInboxItem,
   ForkIdleRecoveryInboxResult

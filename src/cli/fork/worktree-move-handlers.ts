@@ -5,7 +5,7 @@ import type { CommandHandler } from '../dispatch/dispatch'
 import { getRequiredStringFlag } from '../arguments/flags'
 import { printResult } from '../output/command-result-output'
 import { RuntimeClient } from '../runtime/client'
-import { RuntimeClientError } from '../runtime/types'
+import { RuntimeClientError } from '../runtime/connection/types'
 import {
   getRequiredWorktreeSelector,
   resolveCurrentWorktreeSelector
@@ -29,7 +29,7 @@ export type WorktreeMoveHost = { hostId: string; environmentId: string | null; l
 async function environments(userDataPath: string): Promise<{ id: string; name: string }[]> {
   const { listEnvironments } =
     await import('../../shared/remote-runtime/host-store/runtime-environment-store.js')
-  return listEnvironments(userDataPath).map((entry) => ({ id: entry.id, name: entry.name }))
+  return (await listEnvironments(userDataPath)).map((entry) => ({ id: entry.id, name: entry.name }))
 }
 
 /** `local`, `runtime:<id>` or a paired server's name, as a host id and the environment to dial. */

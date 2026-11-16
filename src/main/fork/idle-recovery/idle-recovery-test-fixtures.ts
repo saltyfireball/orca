@@ -4,7 +4,7 @@ import {
   readIdleRecoverySettings,
   type IdleRecoverySettings
 } from '../../../shared/fork/idle-recovery-settings'
-import type { RuntimeWorktreeAgentRow } from '../../../shared/runtime-worktree-contracts'
+import type { RuntimeWorktreeAgentRow } from '../../../shared/worktree/catalog/runtime-worktree-contracts'
 import type { IdleRecoveryHost, IdleRecoveryPsWorktree } from './idle-recovery-host'
 
 export const NOW = 1_700_000_000_000

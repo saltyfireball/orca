@@ -2,7 +2,7 @@
 import { cleanup, render } from '@testing-library/react'
 import type React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
+import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 import type { ForkClaudeAccountResolution } from './claude-account-identity'
 import type { ClaudeChipEvidence } from './claude-chip-evidence'
 
@@ -53,7 +53,7 @@ vi.mock('./use-claude-account', () => ({
 vi.mock('./claude-account-usage', () => ({
   useForkClaudeAccountUsage: () => ({ limits: null, isFetching: false, refresh: () => undefined })
 }))
-vi.mock('@/components/status-bar/InlineProviderUsage', () => ({
+vi.mock('@/components/status-bar/usage/InlineProviderUsage', () => ({
   InlineUsageBars: () => null
 }))
 vi.mock('@/runtime/provider-accounts/observations/runtime-provider-accounts-client', () => ({

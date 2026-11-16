@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildForkMemoryStatus, resolveForkMemorySettings } from '../../shared/fork/memory-truth'
-import type { MemorySnapshot } from '../../shared/process-stats-types'
+import type { MemorySnapshot } from '../../shared/diagnostics/process-stats-types'
 import { formatForkMemoryTruth, withForkMemoryTruth } from './memory-truth-format'
 
 const GB = 1024 ** 3

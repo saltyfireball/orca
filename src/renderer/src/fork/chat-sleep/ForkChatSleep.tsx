@@ -48,7 +48,7 @@ export function useSleepingChatTab(worktreeId: string, sessionId: string | undef
       return false
     }
     const paneKey = chatPaneKeyForSession(s.unifiedTabsByWorktree[worktreeId], sessionId)
-    return paneKey !== null && isSleepingChatStatus(s.agentStatusByPaneKey[paneKey])
+    return paneKey !== null && isSleepingChatStatus(s.agentStatusByPaneKey.get(paneKey))
   })
 }
 
@@ -78,7 +78,7 @@ export function useSleepingChatRow(agent: RowSubject): boolean {
     (s) =>
       agent.rowSource !== 'subagent' &&
       enabled(s) &&
-      isSleepingChatStatus(s.agentStatusByPaneKey[agent.paneKey]) &&
+      isSleepingChatStatus(s.agentStatusByPaneKey.get(agent.paneKey)) &&
       isChatPaneKey(s.unifiedTabsByWorktree[agent.tab.worktreeId], agent.paneKey)
   )
 }

@@ -1,6 +1,6 @@
 import { defineFixture } from '../../component-fixtures/component-fixture'
 import { getDefaultSettings } from '../../../../shared/constants'
-import type { Repo } from '../../../../shared/repo-types'
+import type { Repo } from '../../../../shared/repository/repo-types'
 import { ForkProjectSettingsList } from './ForkProjectSettingsList'
 import { ForkSettingsPane } from './ForkSettingsPane'
 
