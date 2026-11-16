@@ -95,5 +95,7 @@ export const FORK_SETTINGS_ROWS_FORK = {
   forkWorkerCleanupOnDone:
     '{"t":{"k":"boolean"},"d":"Worker cleanup: clean up once the worker reports done; unset is on.","o":true}',
   forkWorkerCleanupOnMerged:
-    '{"t":{"k":"boolean"},"d":"Worker cleanup: clean up once the worker\'s branch is merged; unset is off.","o":true}'
+    '{"t":{"k":"boolean"},"d":"Worker cleanup: clean up once the worker\'s branch is merged; unset is off.","o":true}',
+  forkWorktreeMove:
+    '{"t":{"k":"object","fields":{"menu":{"k":"boolean","optional":true},"whenBusy":{"k":"enum","values":["ask","refuse"],"optional":true},"uncommitted":{"k":"enum","values":["leave","patch","refuse"],"optional":true},"push":{"k":"boolean","optional":true},"chats":{"k":"boolean","optional":true},"rewriteHome":{"k":"boolean","optional":true},"markSource":{"k":"boolean","optional":true}}},"d":"Moving a workspace and its chats to another host; unset keys take the defaults.","o":true}'
 }

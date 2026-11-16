@@ -24,6 +24,7 @@ import { ForkAccountChipSetting } from '../claude-account-chip/ForkAccountChipSe
 import { ForkUsageReportSettings } from '../usage-report/ForkUsageReportSettings'
 import { ForkLostWorkSettings } from '../lost-work/ForkLostWorkSettings'
 import { ForkSyncNoticeSetting } from '../sync-status/ForkSyncNoticeSetting'
+import { ForkWorktreeMoveSettings } from '../worktree-move/ForkWorktreeMoveSettings'
 import { ForkProjectSettingsList } from './ForkProjectSettingsList'
 import { ForkSettingsSectionLinks } from './ForkSettingsSectionLinks'
 import { getForkSettingsSections, type ForkSettingsSectionId } from './fork-settings-pane-catalog'
@@ -64,6 +65,7 @@ const SECTION_CARDS: Record<
   ],
   projects: [
     ['lost-work', ForkLostWorkSettings],
+    ['worktree-move', ForkWorktreeMoveSettings],
     ['project-settings-list', ForkProjectSettingsList]
   ],
   sync: [['sync-notice', ForkSyncNoticeSetting]]
