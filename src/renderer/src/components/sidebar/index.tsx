@@ -26,6 +26,7 @@ import { StalledTerminalDaemonBanner } from '../maintenance/terminal-daemon/Stal
 import { StartupWorktreeRefreshStatus } from './worktree-list/listing/StartupWorktreeRefreshStatus'
 import { WorktreeCardsIntroNotice } from './workspace-card/template/WorktreeCardsIntroNotice'
 import { WorktreeCardsUpdateNotice } from './workspace-card/template/WorktreeCardsUpdateNotice'
+import { ForkSnoozedSection } from '@/fork/snooze/ForkSnoozedSection'
 
 // Load the shared Activity badge/list pipeline after the sidebar shell.
 const SidebarAgentsList = lazyWithRetry(() => import('../activity/sidebar/SidebarAgentsList'))
@@ -236,6 +237,8 @@ function Sidebar({
                   <HiddenProjectsSection />
                 </>
               )}
+              {/* SLRM-2269: fork hook (FORK.md "Snooze") */}
+              <ForkSnoozedSection />
 
               <div className="relative shrink-0">
                 <SetupScriptPromptCard />

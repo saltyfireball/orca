@@ -888,6 +888,46 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/main/fork/apfs-clone/`; clonefile is called through
     `/usr/bin/osascript -l JavaScript` because Node has no binding for it.
 
+- **Snooze (SLRM-2269).** Snooze a workspace or a chat out of the sidebar until a time, until
+  its pull request merges, or until it has sat idle for some days. Idea from T3 Code's thread
+  sidebar (MIT). The settings are in Settings > Blackfish > Projects, "Snooze".
+  - "Snooze..." in the workspace menu and in a right-click menu on sidebar agent rows (chats and
+    terminal agents): 1 hour, this evening, tomorrow morning, next Monday morning, until its pull
+    request merges, until idle for N days, or Custom... (a date and time). A snoozed workspace
+    shows "Wake" in its menu instead.
+  - Snoozed items leave their place in the list (workspaces from the workspace list, chats from
+    their card) and gather in a collapsed "Snoozed (N)" row at the bottom of the sidebar, built
+    from the Hidden projects section's row styles. Opened, each row shows its wake label ("until
+    6pm", "until Mon 9am", "until merge"); a click opens it and Wake ends the snooze. The Agents
+    view of the sidebar is not filtered.
+  - A snooze ends early when one of its agents waits on an approval, a permission or a question
+    (`forkSnoozeWakeOnAttention`), when its agent fails or errors (`forkSnoozeWakeOnFailure`),
+    and when the user opens it (`forkSnoozeWakeOnOpen`); all on by default. Only events after the
+    snooze count. `forkSnooze` (unset is on) turns the feature off, which shows everything again.
+    `forkSnoozeMorningHour` (9), `forkSnoozeEveningHour` (18) and `forkSnoozeIdleDays` (3) set the
+    presets.
+  - Until merge and until idle settle: when the pull request is merged (the hidden card's review
+    is refreshed every 10 minutes) or the item has had no activity for N days, the snooze ends
+    and `forkSnoozeSettleCommand` runs once, if set (unset is none). It runs through the system
+    shell with the user's rights, from the workspace folder (the home folder for a paired
+    server's workspace), with `ORCA_SNOOZE_ID`, `_KIND`, `_REASON`, `_HOST`, `_WORKTREE_ID`,
+    `_PANE_KEY`, `_LABEL`, `_PATH` and `_BRANCH` in its environment and the snooze as JSON on
+    stdin, for at most 5 minutes. A snooze set over RPC by a paired device settles without it. The
+    command is a runs-command setting: `orca settings`
+    refuses to write it, and only the desktop window's settle call can start it; no RPC method
+    takes or runs a command.
+  - The snoozes live where the sidebar lives, in `fork-snooze.json` in userData (owner-only),
+    also for workspaces on paired servers, and survive restarts. The window ends snoozes as it
+    sees their triggers; main drops a timed snooze when its time comes.
+  - CLI: `orca snooze [<workspace selector>|chat:<id>] --until <time|merge|idle:Nd>`
+    (`--host runtime:<id>` for a paired server's workspace id), `orca snooze list [--json]` and
+    `orca snooze wake <id>`. `--until` also takes durations (90m, 2h, 3d, 1w), evening,
+    tomorrow, monday, a clock time and a date and time. The RPC (`fork.snooze.list`, `.set`,
+    `.wake`) needs workspace permission, so a paired phone can use it too.
+  - Code is in `src/shared/fork/snooze*.ts`, `src/main/fork/snooze/`,
+    `src/main/runtime/rpc/methods/fork/fork-snooze.ts`, `src/preload/fork/snooze-bridge.ts`,
+    `src/renderer/src/fork/snooze/` and `src/cli/fork/snooze-*`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -987,6 +1027,7 @@ Apply these in this order. Each one is a single commit.
 93. `SLRM-2270 APFS clone: fast new worktrees on macOS with copy-on-write clones of node_modules and, opt-in, the checkout`
 94. `SLRM-2271 Device approval and webhook automations: approve new paired devices, start automations from signed webhooks`
 95. `SLRM-2278 Follow upstream 1.4.261's moved modules and APIs in fork code`
+96. `SLRM-2269 Snooze: hide a workspace or chat until a time, its merge or idle days, waking early when it needs you`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1544,6 +1585,24 @@ Upstream files only get short hooks, which keeps rebases small:
     and `cli-command-names.ts` lists `placement`.
   - The two settings are in `src/shared/fork/fork-global-settings.ts` and
     `settings-rows-fork.generated.ts` is regenerated; the card is in the fork's Settings pane.
+
+- Snooze (SLRM-2269), from `src/shared/fork/snooze*.ts`, `src/main/fork/snooze/`,
+  `src/cli/fork/snooze-*.ts` and `src/renderer/src/fork/snooze/`:
+  - `rpc-method-registry.ts` spreads `FORK_SNOOZE_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-snooze.ts`); `rpc-params-catalog.generated.ts` is
+    regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_SNOOZE_COMMAND_SPECS`, `fork-handler-groups.ts` adds the
+    `fork-snooze` group and `cli-command-names.ts` lists `snooze`.
+  - `src/main/index.ts` calls `installForkSnoozeApp`; `preload/index.ts` and `api-types.ts` add
+    `forkSnooze` (`src/preload/fork/snooze-bridge.ts`).
+  - `use-visible-worktrees.ts` reads `useForkSnoozedWorktreeKeys()` and passes its list through
+    `forkWithoutSnoozedWorktrees`; `WorktreeCardAgents.tsx` passes its root keys through
+    `useForkWithoutSnoozedPanes` and wraps each root row in `ForkSnoozeAgentRowMenu`.
+  - `sidebar/index.tsx` renders `ForkSnoozedSection` under the list;
+    `WorktreeContextMenuView.tsx` renders `ForkSnoozeWorktreeMenuItem` after the move item.
+  - `ForkRootHosts.tsx` mounts `ForkSnoozeCustomDialogHost` and `ForkSnoozeWatcher`; the card is
+    in the fork's Settings pane and `forkSnoozeSettleCommand` is a runs-command key in
+    `settings-access.ts`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
