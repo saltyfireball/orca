@@ -30,6 +30,7 @@ import {
 import type { WorktreeCreateTimingRecorder } from '../../../workspaces/creation/worktree-create-timing'
 import { exactNameLateCollision } from '../../../workspaces/creation/worktree-create-exact-name'
 import { runtimePathExists } from '../catalog/runtime-worktree-filesystem'
+import { forkCloneIgnoredFolders } from '../../../fork/apfs-clone/apfs-clone-folders'
 
 export type RuntimeLocalBaseRefRefresh = {
   /** Awaits the deferred refresh started before naming, if any. */
@@ -212,6 +213,8 @@ export async function createRuntimeLocalGitWorktree(args: {
         })
       : error
   }
+  // Fork (SLRM-2270): on macOS clone ignored folders (node_modules) from the project before setup.
+  await forkCloneIgnoredFolders(args.repo.path, args.worktreePath, args.localWorktreeGitOptions)
   // New worktree is now listable; invalidate scans started before it appeared.
   runWorktreeChangeInvalidators(args.repo.id)
   if (shouldRetireGeneratedName) {

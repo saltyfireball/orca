@@ -859,6 +859,26 @@ named Orca Fork until SLRM-1367. `main` is always
   - The pick happens in the CLI before stock routing: it rewrites `--on` or `--host` and prints
     the pick and the skipped machines on stderr. Stock worker-start and host resolution are not
     edited.
+- **Fast new worktrees on macOS (SLRM-2270).** APFS copy-on-write clones for new local worktrees
+  (Settings > Blackfish > Projects, "Fast new worktrees (macOS)"). Idea from T3 Code's "Fast
+  worktree checkout" (MIT). Other systems, WSL and other volumes create worktrees as before.
+  - `forkApfsCloneFolders` (default `node_modules`): git-ignored folders cloned from the
+    project's own checkout into the new worktree with one clonefile(2) call each, before the
+    setup script runs. Skipped when the worktree already has the path, Git does not ignore it
+    there, the source leaves the project, or relative links in it would point elsewhere from
+    the worktree (pnpm's store links when the worktree sits at another depth). Hooked after the
+    worktree add in `runtime-local-git-worktree-create.ts` and `ipc/worktree-remote.ts`.
+  - `forkApfsCloneCheckout` (off by default): `addWorktree` adds with `--no-checkout`, a cached
+    checkout in `<git common dir>/blackfish-clone-cache` is moved to the new commit with a
+    two-tree `read-tree -m -u`, cloned whole and moved in, and its index copied. The index is
+    left lazy: on a 37k-file repo the worktree is ready in about 0.5 s instead of 3 s, but the
+    first `git status` refreshes every stat (about 4 s instead of 1.3 s), so it pays off for
+    worktrees that are made often and inspected rarely. Repositories with a post-checkout hook,
+    a sparse checkout, a `filter=` in .gitattributes or any `filter.*` in Git config (which
+    `git lfs install` adds globally), a busy cache lock or any failure fall back to
+    `git reset --hard HEAD`, a plain checkout.
+  - Code is in `src/main/fork/apfs-clone/`; clonefile is called through
+    `/usr/bin/osascript -l JavaScript` because Node has no binding for it.
 
 ## Patch list
 
@@ -956,7 +976,8 @@ Apply these in this order. Each one is a single commit.
 90. `SLRM-2267 Endpoint failover: try a saved server's routes in order and move back to the better one`
 91. `SLRM-2265 Worktree move: move a workspace and its chats to another host`
 92. `SLRM-2264 Pairing on a pinned bind: pair a server bound to a Tailscale or LAN address, and release the Linux server tarballs`
-93. `SLRM-2271 Device approval and webhook automations: approve new paired devices, start automations from signed webhooks`
+93. `SLRM-2270 APFS clone: fast new worktrees on macOS with copy-on-write clones of node_modules and, opt-in, the checkout`
+94. `SLRM-2271 Device approval and webhook automations: approve new paired devices, start automations from signed webhooks`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
