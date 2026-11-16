@@ -1,7 +1,7 @@
 // SLRM-1966: the row's tab color as an overlay, so CompactAgentRow's hook is one element.
 import React from 'react'
 import { useAppStore } from '@/store'
-import type { DashboardAgentRow } from '@/components/dashboard/useDashboardData'
+import type { DashboardAgentRow } from '@/components/dashboard/rows/dashboard-agent-row'
 import { agentRowTintStyle, resolveAgentRowTabColor } from './agent-row-tab-tint'
 import { ForkChatSleepRowDim } from '../chat-sleep/ForkChatSleep'
 import { ForkRowStateColor } from '../agent-state-color/ForkAgentStateColor'

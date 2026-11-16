@@ -5,7 +5,7 @@
 import { join } from 'node:path'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import type { PipedProcessSpawner, PipedProcessSpec } from '@orca/process-host/process-spec'
-import { ORCA_AGENT_SESSION_ID_ENV } from '../../../shared/agent-session/lifecycle/agent-session-caller-env'
+import { ORCA_AGENT_SESSION_ID_ENV } from '../../../shared/agent-session/lifecycle/launch/agent-session-caller-env'
 import { chatSurviveAdoptedChild } from './chat-survive-adopted-child'
 import {
   chatSurviveClaimStopping,

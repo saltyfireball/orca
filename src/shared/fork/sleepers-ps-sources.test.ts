@@ -1,6 +1,6 @@
 // Sleepers (FORK.md): turning a runtime's agent rows into sleeper sources.
 import { describe, expect, it } from 'vitest'
-import type { RuntimeWorktreeAgentRow } from '../runtime-worktree-contracts'
+import type { RuntimeWorktreeAgentRow } from '../worktree/catalog/runtime-worktree-contracts'
 import { structuredAgentSessionTabId } from '../agent-session/view/structured-agent-session-projection'
 import { sleeperChatSessionId, sleeperSourcesFromPs, sleeperTitle } from './sleepers-ps-sources'
 

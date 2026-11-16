@@ -2,7 +2,7 @@
 // profiles drops the param, as it does any param it does not know.
 import { FORK_MCP_PROFILE_PARAM, isForkMcpProfileName } from '../../shared/fork/mcp-profiles'
 import { getOptionalStringFlag } from '../arguments/flags'
-import { RuntimeClientError } from '../runtime/types'
+import { RuntimeClientError } from '../runtime/connection/types'
 import { FORK_MCP_PROFILE_FLAG } from './mcp-profile-specs'
 
 export function readForkMcpProfileFlag(flags: Map<string, string | boolean>): {

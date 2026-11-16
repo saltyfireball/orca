@@ -6,6 +6,7 @@ import {
   agentIconRingStyle,
   agentRowTintStyle,
   normalizeHexColor,
+  resolveAgentIconTabColor,
   resolveAgentRowTabColor,
   ROW_TINT_ALPHA_HEX
 } from './agent-row-tab-tint'
@@ -135,6 +136,41 @@ describe('resolveAgentRowTabColor', () => {
         paneKey: 't1:leaf',
         tabsByWorktree: { wt: [terminalTab('t1', PINK)] },
         unifiedTabsByWorktree: undefined
+      })
+    ).toBeNull()
+  })
+})
+
+describe('resolveAgentIconTabColor', () => {
+  const LEAF = '0b6f4a2e-58a4-4d3c-9a7e-1f2d3c4b5a69'
+
+  it('finds a terminal pane by the tab id its pane key starts with, in any worktree', () => {
+    expect(
+      resolveAgentIconTabColor({
+        paneKey: `t2:${LEAF}`,
+        tabsByWorktree: { a: [terminalTab('t1', YELLOW)], b: [terminalTab('t2', PINK)] },
+        unifiedTabsByWorktree: {}
+      })
+    ).toBe(PINK)
+  })
+
+  it('finds a native chat by its exact pane key', () => {
+    const paneKey = structuredAgentSessionPaneKey('chat-2', 'session-2')
+    expect(
+      resolveAgentIconTabColor({
+        paneKey,
+        tabsByWorktree: {},
+        unifiedTabsByWorktree: { wt: [chatTab('chat-2', 'session-2', PINK)] }
+      })
+    ).toBe(PINK)
+  })
+
+  it('gives a key that is not a terminal pane key no color', () => {
+    expect(
+      resolveAgentIconTabColor({
+        paneKey: `t2:${LEAF}:subagent`,
+        tabsByWorktree: { wt: [terminalTab('t2', PINK)] },
+        unifiedTabsByWorktree: {}
       })
     ).toBeNull()
   })

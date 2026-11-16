@@ -6,7 +6,7 @@ import { LOCAL_EXECUTION_HOST_ID } from '../execution-host'
 import type {
   RuntimeWorktreeAgentRow,
   RuntimeWorktreePsSummary
-} from '../runtime-worktree-contracts'
+} from '../worktree/catalog/runtime-worktree-contracts'
 import type { SleeperSource } from './sleepers'
 
 /** What this process's chat host says of a chat whose provider runs. */

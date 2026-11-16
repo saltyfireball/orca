@@ -3,7 +3,7 @@
 import type { CommandHandler } from '../dispatch/dispatch'
 import { getOptionalPositiveIntegerFlag, getOptionalStringFlag } from '../arguments/flags'
 import { printResult } from '../output/command-result-output'
-import { RuntimeClientError } from '../runtime/types'
+import { RuntimeClientError } from '../runtime/connection/types'
 import {
   FORK_USAGE_REPORT_GROUPS,
   formatForkUsd,

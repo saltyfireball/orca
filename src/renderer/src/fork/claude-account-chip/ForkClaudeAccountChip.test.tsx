@@ -6,7 +6,7 @@ import type { ForkClaudeAccount, ForkClaudeAccountResolution } from './claude-ac
 vi.mock('./claude-account-usage', () => ({
   useForkClaudeAccountUsage: () => ({ limits: null, isFetching: false, refresh: () => undefined })
 }))
-vi.mock('@/components/status-bar/InlineProviderUsage', () => ({
+vi.mock('@/components/status-bar/usage/InlineProviderUsage', () => ({
   InlineUsageBars: () => null
 }))
 

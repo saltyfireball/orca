@@ -1,8 +1,8 @@
 // SLRM-1503: the home a native Claude chat last launched under, which `fork.claudeAccount.which`
 // reports so the account chip can name the account by its folder.
 import type { AgentSessionRecord } from '../../../shared/agent-session/lifecycle/agent-session-record'
-import { acquiredAgentSessionAccount } from '../../../shared/agent-session/lifecycle/agent-session-acquired-account'
-import { agentSessionAccountHomePath } from '../../../shared/agent-session/lifecycle/agent-session-account-home'
+import { acquiredAgentSessionAccount } from '../../../shared/agent-session/lifecycle/accounts/agent-session-acquired-account'
+import { agentSessionAccountHomePath } from '../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
 import type { ForkClaudeLaunchHome } from '../../../shared/fork/claude-account-move'
 
 /** The account a chat runs on: the one the host last launched it under, else its founding home. */
