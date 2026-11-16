@@ -25,6 +25,8 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Finished children count toward that total; unset is on.","o":true}',
   forkChildTallyCountTasks:
     '{"t":{"k":"boolean"},"d":"Background shell tasks and monitors count as children; unset is on.","o":true}',
+  forkDeviceApproval:
+    '{"t":{"k":"boolean"},"d":"A newly paired device needs approval from an approved device or this host\'s owner. Off unless true.","o":true}',
   forkEndpointFailover:
     '{"t":{"k":"boolean"},"d":"Endpoint failover: try a saved server\'s other routes when one stops answering, and move back to a better one; unset is on.","o":true}',
   forkEndpointFailoverRetrySeconds:
@@ -102,6 +104,8 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"record","of":{"k":"object","fields":{"input":{"k":"number"},"output":{"k":"number"},"cacheRead":{"k":"number"},"cacheWrite":{"k":"number"},"cacheWrite1h":{"k":"number","optional":true}}}},"d":"User price table, USD per million tokens, by model; empty uses defaults.","o":true}',
   forkUsageRetentionDays:
     '{"t":{"k":"number"},"d":"Days of usage history the ledger keeps; unset is 90.","o":true}',
+  forkWebhooks:
+    '{"t":{"k":"object","fields":{"enabled":{"k":"boolean","optional":true},"bindHost":{"k":"string","optional":true},"port":{"k":"number","optional":true},"maxBodyKb":{"k":"number","optional":true},"perHookPerMinute":{"k":"number","optional":true},"payloadMaxChars":{"k":"number","optional":true}}},"d":"Signed webhooks that start automation runs; off unless enabled is true.","o":true}',
   forkWorkerCleanup:
     '{"t":{"k":"boolean"},"d":"Worker cleanup: finished workers give up their agent, replacing the stock auto-release. Off unless true.","o":true}',
   forkWorkerCleanupAction:

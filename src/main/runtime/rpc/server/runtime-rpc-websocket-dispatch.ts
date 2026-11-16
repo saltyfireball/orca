@@ -18,6 +18,8 @@ import { MOBILE_RPC_METHOD_ALLOWLIST } from './runtime-rpc-mobile-method-allowli
 import { MOBILE_RPC_METHOD_ROUTES } from './runtime-rpc-mobile-method-routing'
 import { parseExecutionHostId } from '../../../../shared/execution-host'
 import { WorktreeRemove } from '../../../../shared/rpc-contract/workspaces/worktree-params'
+import { forkDeviceApprovalWait } from '../../../fork/device-approval/device-approval-service'
+import { FORK_DEVICE_APPROVAL_PENDING_CODE } from '../../../../shared/fork/device-approval'
 
 // Stamp proven scope at transport boundary; status.get has no connection context.
 function injectDeviceScope(response: string, scope: DeviceScope): string {
@@ -176,6 +178,14 @@ export class RuntimeRpcWebSocketDispatch extends RuntimeRpcMobileDevices {
       : this.deviceRegistry?.validateToken(token ?? '')
     if (!device) {
       reply(JSON.stringify(this.buildError(request.id, 'unauthorized', 'Invalid device token')))
+      return
+    }
+    // Fork SLRM-2271 (FORK.md "Device approval"): a device waiting for approval gets no access.
+    const approvalWait = forkDeviceApprovalWait(this, device, request.method)
+    if (approvalWait) {
+      reply(
+        JSON.stringify(this.buildError(request.id, FORK_DEVICE_APPROVAL_PENDING_CODE, approvalWait))
+      )
       return
     }
     const principal = devicePrincipalOf(device)
