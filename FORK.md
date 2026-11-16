@@ -842,7 +842,8 @@ named Orca Fork until SLRM-1367. `main` is always
 
 - **Auto placement (SLRM-2266).** `orchestration worker-start --on auto` and
   `worktree create --host auto` start the work on the machine (this one or a paired server)
-  with the most spare CPU and memory. `orca placement [--repo <selector>]` shows the ranking.
+  with the most spare CPU and memory. `orca placement [--repo <selector>] [--project <p>]` shows
+  the ranking.
   - Each machine has a placement setting in Settings > Blackfish > Agents and workers, Auto
     placement: prefer, normal (the default), less often or manual only (`forkPlacement`, keyed
     `local` or `runtime:<id>`). A manual only machine is never picked, only named. The score is
@@ -853,10 +854,16 @@ named Orca Fork until SLRM-1367. `main` is always
     skipped, and with `--repo` so is one where the repo does not resolve. SSH targets have no
     probe and are skipped. Windows reports no load average, so only memory and cores count there.
   - `--on auto` needs `--worktree new-child` or `new-top-level` and `--repo`; `--host auto`
-    needs `--project` and picks among the machines the project is set up on.
+    needs `--project` and picks among the machines the project is set up on. Project setups are
+    kept per Orca, so the pick sends the project to every paired server's load probe and each
+    says whether it has a ready setup of its own (host `local` there); machines this Orca lists
+    a ready setup for count as set up. A server without one, or too old to say, is skipped as
+    "no ready setup". A remote pick runs as `--host runtime:<id>` would.
+  - The stderr note names the pick once, then each other machine as "not picked".
   - Off by default: `forkPlacementAutoWhenUnnamed` also places a start that names no machine (a
     worker in a new worktree with `--repo` and no remote selected, or a worktree create for a
-    project set up on two or more machines). A failed pick then falls back to stock behavior.
+    project set up on two or more machines, or only on a paired server). A failed pick then
+    falls back to stock behavior.
   - The pick happens in the CLI before stock routing: it rewrites `--on` or `--host` and prints
     the pick and the skipped machines on stderr. Stock worker-start and host resolution are not
     edited.

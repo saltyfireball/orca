@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest'
 import {
   describeForkPlacementCandidate,
   forkPlacementFor,
+  forkProjectReadyHere,
   parseForkMachineLoad,
   pickForkPlacement,
   withForkPlacement,
   type ForkMachineLoad,
   type ForkPlacementProbe
 } from './auto-placement'
+import type { ExecutionHostId } from '../execution-host'
+import type { ProjectHostSetup, ProjectHostSetupState } from '../project-types'
 
 const GIB = 1024 ** 3
 
@@ -148,5 +151,40 @@ describe('describeForkPlacementCandidate', () => {
     expect(describeForkPlacementCandidate(ranked[1]!)).toBe(
       'old (runtime:b, less often): no load probe (stock Orca or an older Blackfish)'
     )
+  })
+})
+
+describe('forkProjectReadyHere', () => {
+  const projects = [
+    { id: 'github:o/r', displayName: 'Web' },
+    { id: 'github:o/s', displayName: 'Docs' }
+  ]
+  type Setup = Pick<ProjectHostSetup, 'projectId' | 'hostId' | 'setupState'>
+  const ready = (
+    projectId: string,
+    hostId: ExecutionHostId = 'local',
+    setupState: ProjectHostSetupState = 'ready'
+  ): Setup => ({ projectId, hostId, setupState })
+
+  it('matches a ready setup on this machine by id or by a unique name', () => {
+    expect(forkProjectReadyHere(projects, [ready('github:o/r')], 'github:o/r')).toBe(true)
+    expect(forkProjectReadyHere(projects, [ready('github:o/r')], ' web ')).toBe(true)
+    expect(forkProjectReadyHere(projects, [ready('github:o/r')], 'docs')).toBe(false)
+  })
+
+  it('ignores setups for other hosts and setups that are not ready', () => {
+    const setups = [
+      ready('github:o/r', 'runtime:env-a'),
+      ready('github:o/r', 'local', 'setting-up')
+    ]
+    expect(forkProjectReadyHere(projects, setups, 'github:o/r')).toBe(false)
+  })
+
+  it('never guesses between projects sharing a name', () => {
+    const twins = [
+      { id: 'a', displayName: 'Same' },
+      { id: 'b', displayName: 'Same' }
+    ]
+    expect(forkProjectReadyHere(twins, [ready('a')], 'same')).toBe(false)
   })
 })
