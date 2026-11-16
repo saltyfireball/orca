@@ -3,7 +3,7 @@ import { RuntimeClientError } from '../runtime/types'
 import type { RuntimeClient } from '../runtime/client'
 import type { ForkPlacementPickResult } from '../../shared/fork/auto-placement-wire'
 import type { ForkPlacementCandidate } from '../../shared/fork/auto-placement'
-import { forkResolveAutoPlacement } from './auto-placement-resolve'
+import { forkResolveAutoPlacement, formatForkPlacementNote } from './auto-placement-resolve'
 
 vi.mock('../projects/project-selector', () => ({
   findProjectSetups: async (_client: unknown, setups: unknown[]) => setups,
@@ -157,12 +157,70 @@ describe('forkResolveAutoPlacement', () => {
     expect(parsed.get('host')).toBe('runtime:env-b')
     expect(call).toHaveBeenCalledWith(
       'fork.placement.pick',
-      { hosts: ['local', 'runtime:env-b'] },
+      { hosts: ['local', 'runtime:env-b'], project: 'web' },
       { timeoutMs: 20_000 }
     )
   })
 
-  it('does not place an unnamed worktree create for a project set up on one machine', async () => {
+  it('places --host auto on a paired server whose own setup only it knows about', async () => {
+    // This machine lists only its own setup; the server answered the pick with its own.
+    const { client, call } = fakeClient(picked('runtime:env-a'), [
+      { hostId: 'local', setupState: 'ready' }
+    ])
+    const parsed = flags({ project: 'github:o/r', host: 'auto' })
+    await forkResolveAutoPlacement(
+      { commandPath: ['worktree', 'create'], flags: parsed },
+      () => client
+    )
+    expect(parsed.get('host')).toBe('runtime:env-a')
+    expect(call).toHaveBeenCalledWith(
+      'fork.placement.pick',
+      { hosts: ['local'], project: 'github:o/r' },
+      { timeoutMs: 20_000 }
+    )
+  })
+
+  it('asks the paired servers even when this machine has no ready setup', async () => {
+    const { client } = fakeClient(picked('runtime:env-a'), [])
+    const parsed = flags({ project: 'github:o/r', host: 'auto' })
+    await forkResolveAutoPlacement(
+      { commandPath: ['worktree', 'create'], flags: parsed },
+      () => client
+    )
+    expect(parsed.get('host')).toBe('runtime:env-a')
+    const none = fakeClient({ picked: null, ranked: [] }, [])
+    await expect(
+      forkResolveAutoPlacement(
+        { commandPath: ['worktree', 'create'], flags: flags({ project: 'p', host: 'auto' }) },
+        () => none.client
+      )
+    ).rejects.toMatchObject({ code: 'invalid_argument' })
+  })
+
+  it('lists the picked machine once, never under not picked', () => {
+    // Over the wire picked and ranked[0] are separate objects with the same host key.
+    const chosen = candidate('local')
+    const other: ForkPlacementCandidate = { ...candidate('runtime:env-a'), name: 'alpha' }
+    const skipped: ForkPlacementCandidate = {
+      ...candidate('runtime:env-b'),
+      name: 'beta',
+      status: 'no-setup',
+      load: null,
+      score: undefined
+    }
+    const lines = formatForkPlacementNote(
+      { picked: { ...chosen }, ranked: [{ ...chosen }, other, skipped] },
+      '--host'
+    )
+    expect(lines[0]).toMatch(/^Auto placement \(--host\): picked local \(local, normal\)/)
+    expect(lines.filter((line) => line.includes('(local,'))).toHaveLength(1)
+    expect(lines.slice(1)).toEqual([
+      expect.stringMatching(/^ {2}not picked: alpha /),
+      expect.stringMatching(/^ {2}not picked: beta .*no ready setup/)
+    ])
+  })
+
+  it('leaves an unnamed worktree create alone when only the machine stock would use is eligible', async () => {
     const { client, call } = fakeClient(picked('local'), [{ hostId: 'local', setupState: 'ready' }])
     const parsed = flags({ project: 'web' })
     await forkResolveAutoPlacement(
@@ -170,6 +228,7 @@ describe('forkResolveAutoPlacement', () => {
       () => client
     )
     expect(parsed.has('host')).toBe(false)
-    expect(call.mock.calls.filter(([method]) => method === 'fork.placement.pick')).toHaveLength(1)
+    // The setting check, then the pick that asks the paired servers about their own setups.
+    expect(call.mock.calls.filter(([method]) => method === 'fork.placement.pick')).toHaveLength(2)
   })
 })
