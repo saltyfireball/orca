@@ -34,6 +34,7 @@ import {
   ORCAD_FENCED_AUTOMATION
 } from '../ownership/orcad-fenced-automation'
 import { AutomationDispatchCancelledError } from './automation-dispatch-cancelled-error'
+import { withForkWebhookPayload } from '../../fork/webhooks/webhook-payload'
 
 export { AutomationDispatchCancelledError }
 
@@ -178,7 +179,7 @@ export async function requestAutomationDispatch(
   ) =>
     runAutomationLaunch({
       ...ctx,
-      automation,
+      automation: withForkWebhookPayload(automation, run), // Fork SLRM-2271: webhook payload (FORK.md).
       run,
       target: launchTarget,
       // The status check and the store write share one synchronous step, so a settled run stays settled.

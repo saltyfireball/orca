@@ -23,6 +23,7 @@ export const CLI_COMMAND_NAMES = [
   'contacts',
   'cookie',
   'dblclick',
+  'devices',
   'diagnostics',
   'dialog',
   'docs',

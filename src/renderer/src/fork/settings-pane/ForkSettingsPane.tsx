@@ -28,6 +28,8 @@ import { ForkSyncNoticeSetting } from '../sync-status/ForkSyncNoticeSetting'
 import { ForkAutoPlacementSetting } from '../auto-placement/ForkAutoPlacementSetting'
 import { ForkEndpointFailoverSetting } from '../endpoint-failover/ForkEndpointFailoverSetting'
 import { ForkWorktreeMoveSettings } from '../worktree-move/ForkWorktreeMoveSettings'
+import { ForkDeviceApprovalSetting } from '../device-approval/ForkDeviceApprovalSetting'
+import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
 import { ForkProjectSettingsList } from './ForkProjectSettingsList'
 import { ForkSettingsSectionLinks } from './ForkSettingsSectionLinks'
 import { getForkSettingsSections, type ForkSettingsSectionId } from './fork-settings-pane-catalog'
@@ -73,7 +75,11 @@ const SECTION_CARDS: Record<
     ['worktree-move', ForkWorktreeMoveSettings],
     ['project-settings-list', ForkProjectSettingsList]
   ],
-  remote: [['endpoint-failover', ForkEndpointFailoverSetting]],
+  remote: [
+    ['endpoint-failover', ForkEndpointFailoverSetting],
+    ['device-approval', ForkDeviceApprovalSetting],
+    ['webhooks', ForkWebhooksSetting]
+  ],
   sync: [['sync-notice', ForkSyncNoticeSetting]]
 }
 
