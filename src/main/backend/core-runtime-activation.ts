@@ -32,6 +32,7 @@ import { restoreOrcadTerminalAuthority } from '../orcad/host-runtime/orcad-resto
 import { installOrcadFeatureReadiness } from '../runtime/rpc/startup/orcad-readiness'
 import { isAgentStatusHooksEnabled } from '../../shared/agent-hook-listener/configuration/agent-status-hooks-setting'
 import { installOrcadConnectorHost, installOrcadRelayAndAccount } from '../orcad/orcad-orca-account'
+import { startForkUnattendedResume } from '../fork/unattended-resume/unattended-resume-service'
 
 export async function activateBackendRuntime(
   host: BackendCoreHost,
@@ -311,6 +312,8 @@ export async function activateBackendRuntime(
   registerCleanup(() => rpc.stop())
   await timed('rpc', () => rpc.start())
   worktreeRemovalLifetime.resume(() => runtime.finishInterruptedWorktreeRemovals())
+  // Fork (SLRM-2268): continue cut unattended work; the desktop and serve call it at start-up settle.
+  startForkUnattendedResume(runtime)
   startOrcadSchedulers(runtime, profileStore, usageClients, registerCleanup)
   connector.connect()
   relay.start(rpc)
