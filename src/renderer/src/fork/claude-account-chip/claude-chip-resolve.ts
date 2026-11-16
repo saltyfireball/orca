@@ -1,6 +1,6 @@
 // SLRM-1503: a session's account, resolved against the host that runs it, never this desktop's.
-import type { ClaudeManagedAccount } from '../../../../shared/managed-account-types'
-import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
+import type { ClaudeManagedAccount } from '../../../../shared/agent-accounts/managed-account-types'
+import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 import {
   NO_ACCOUNT,
   SYSTEM_DEFAULT_ACCOUNT_ID,

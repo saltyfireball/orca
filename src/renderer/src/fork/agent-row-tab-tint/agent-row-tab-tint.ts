@@ -5,6 +5,7 @@ import type { CSSProperties } from 'react'
 import type { Tab } from '../../../../shared/tab-types'
 import type { TerminalTab } from '../../../../shared/workspace-layout/terminal-tab-types'
 import { structuredAgentSessionPaneKey } from '../../../../shared/agent-session/view/structured-agent-session-projection'
+import { parsePaneKey } from '../../../../shared/workspace-layout/stable-pane-id'
 
 /** Alpha of the row tint, as two hex digits (0x24 = about 14%). */
 export const ROW_TINT_ALPHA_HEX = '24'
@@ -49,6 +50,43 @@ export function resolveAgentRowTabColor({
   }
   const terminal = (tabsByWorktree?.[worktreeId] ?? []).find((tab) => tab.id === tabId)
   return terminal?.color || null
+}
+
+/**
+ * The tab color of a collapsed strip icon, which since upstream 1.4.261 carries only its pane key
+ * (no worktree or tab). The chat lookup matches the exact pane key; a terminal pane key must be
+ * `<tabId>:<leaf uuid>`, so a sub-agent's derived key never borrows its parent tab's color.
+ */
+export function resolveAgentIconTabColor({
+  paneKey,
+  tabsByWorktree,
+  unifiedTabsByWorktree
+}: Omit<AgentRowTabColorInput, 'worktreeId' | 'tabId'>): string | null {
+  const tabId = paneKey.slice(0, Math.max(0, paneKey.indexOf(':')))
+  if (!tabId) {
+    return null
+  }
+  for (const tabs of Object.values(unifiedTabsByWorktree ?? {})) {
+    const chat = tabs?.find(
+      (tab) =>
+        tab.id === tabId &&
+        tab.contentType === 'agent-session' &&
+        structuredAgentSessionPaneKey(tab.id, tab.entityId) === paneKey
+    )
+    if (chat) {
+      return chat.color || null
+    }
+  }
+  if (parsePaneKey(paneKey)?.tabId !== tabId) {
+    return null
+  }
+  for (const tabs of Object.values(tabsByWorktree ?? {})) {
+    const terminal = tabs?.find((tab) => tab.id === tabId)
+    if (terminal) {
+      return terminal.color || null
+    }
+  }
+  return null
 }
 
 /** Expand `#rgb` to `#rrggbb`; anything that is not a hex color comes back null. */

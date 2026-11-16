@@ -4,8 +4,8 @@ import type { AgentSessionRecord } from '../../../shared/agent-session/lifecycle
 import {
   CLAUDE_INJECTED_CONFIG_DIR_ENV,
   CLAUDE_PROFILE_POINTER_ENV
-} from '../../../shared/claude-profile-routing'
-import type { ClaudeManagedAccount } from '../../../shared/managed-account-types'
+} from '../../../shared/agent-accounts/claude/claude-profile-routing'
+import type { ClaudeManagedAccount } from '../../../shared/agent-accounts/managed-account-types'
 import { POSIX_PROVIDER_SUPERVISOR_SCRIPT } from '../../provider-process/provider-process-supervisor'
 import { chatSurviveLaunchPrint } from '../chat-survive/chat-survive-launch-hash'
 import { forkPinnedClaudeAccountHome, forkPinnedClaudeLaunchAccount } from './claude-pinned-launch'

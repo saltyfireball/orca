@@ -4,9 +4,9 @@
 import type { CommandHandler, HandlerContext } from '../dispatch/dispatch'
 import { getOptionalStringFlag, getPresentStringFlag } from '../arguments/flags'
 import { printResult } from '../output/command-result-output'
-import { RuntimeClientError } from '../runtime/types'
+import { RuntimeClientError } from '../runtime/connection/types'
 import { getOptionalWorktreeSelector } from '../workspace-selection/workspace-selector'
-import { readInjectedAgentSessionId } from '../../shared/agent-session/lifecycle/agent-session-caller-env'
+import { readInjectedAgentSessionId } from '../../shared/agent-session/lifecycle/launch/agent-session-caller-env'
 import {
   FORK_CLAUDE_SYSTEM_DEFAULT,
   type ForkClaudeCantMoveReason,
@@ -15,7 +15,7 @@ import {
   type ForkClaudeSessionAccount,
   type ForkClaudeWhichResponse
 } from '../../shared/fork/claude-account-move'
-import type { RuntimeWorktreeRecord } from '../../shared/runtime-worktree-contracts'
+import type { RuntimeWorktreeRecord } from '../../shared/worktree/catalog/runtime-worktree-contracts'
 
 type ClaudeAccountChoice = { id: string; email?: string | null }
 type AccountsListResult = { claude: { accounts: ClaudeAccountChoice[] } }

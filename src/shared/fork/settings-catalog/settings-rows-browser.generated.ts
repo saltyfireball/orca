@@ -8,7 +8,9 @@ export const FORK_SETTINGS_ROWS_BROWSER = {
   browserExtensionsEnabled:
     '{"t":{"k":"boolean"},"d":"Chrome extensions in local browser profiles; switching it applies immediately.","o":true}',
   browserGuestWorktreeRetentionBudget:
-    '{"t":{"k":"boolean"},"d":"Kill switch for the browser-guest worktree retention budget: destroys the least-recently-activated hidden worktrees\' webview guests beyond an LRU count budget.","o":true}',
+    '{"t":{"k":"boolean"},"d":"Settings > Browser > Memory Saver; kept under its earlier kill-switch key so opt-outs carry over.","o":true}',
+  browserMemorySaverHours:
+    '{"t":{"k":"number"},"d":"Awake hours a hidden page goes unviewed before it is freed.","o":true}',
   browserPasswordsFillRequiresReauth:
     '{"t":{"k":"boolean"},"d":"Advanced: confirm with Touch ID before every fill; absent means off.","o":true}',
   browserPasswordsOfferToSave:

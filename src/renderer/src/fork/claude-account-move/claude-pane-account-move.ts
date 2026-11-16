@@ -19,7 +19,7 @@ const paneMarks = new Map<string, string>()
 type PaneMoveState = {
   tabsByWorktree: Record<string, readonly { id: string }[] | undefined>
   terminalLayoutsByTabId: Record<string, { ptyIdsByLeafId?: Record<string, string> } | undefined>
-  agentStatusByPaneKey: Record<string, { agentType?: string } | undefined>
+  agentStatusByPaneKey: Pick<ReadonlyMap<string, { agentType?: string }>, 'get'>
   queuePaneAccountRestarts(ptyIds: string[], agent: 'claude'): void
 }
 
@@ -43,7 +43,7 @@ export function queueClaudePaneAccountMoves(
     const leaves = state.terminalLayoutsByTabId[tab.id]?.ptyIdsByLeafId ?? {}
     for (const [leafId, ptyId] of Object.entries(leaves)) {
       const paneKey = makePaneKey(tab.id, leafId)
-      if (state.agentStatusByPaneKey[paneKey]?.agentType !== 'claude') {
+      if (state.agentStatusByPaneKey.get(paneKey)?.agentType !== 'claude') {
         continue
       }
       paneMarks.set(paneKey, accountId ?? FORK_CLAUDE_SYSTEM_DEFAULT)

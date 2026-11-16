@@ -5,7 +5,7 @@ import type {
   ForkUpdateInstallWait,
   ForkUpdateInstallWaitApi
 } from '../../../../shared/fork/update-install-wait'
-import type { UpdateStatus } from '../../../../shared/update-status-types'
+import type { UpdateStatus } from '../../../../shared/updater/update-status-types'
 import { ForkUpdateCardContent, forkUpdateWaitingCard } from './ForkUpdateWaitingContent'
 import { useForkUpdateInstallWait } from './use-fork-update-install-wait'
 

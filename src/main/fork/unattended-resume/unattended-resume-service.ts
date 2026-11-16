@@ -15,7 +15,7 @@ import {
   type UnattendedResumeSettingsSource,
   type UnattendedRunKind
 } from '../../../shared/fork/unattended-resume'
-import type { AgentSessionResumeMarker } from '../../../shared/agent-session/lifecycle/agent-session-resume-marker'
+import type { AgentSessionResumeMarker } from '../../../shared/agent-session/lifecycle/resume/agent-session-resume-marker'
 import type { AgentSessionRecord } from '../../../shared/agent-session/lifecycle/agent-session-record'
 import type { StructuredAgentSessionResumeCandidate } from '../../native-chat/agent-session-wire/recovery/structured-agent-session-restart-resume-set'
 import type { OrchestrationDb } from '../../runtime/orchestration/db/orchestration-db'

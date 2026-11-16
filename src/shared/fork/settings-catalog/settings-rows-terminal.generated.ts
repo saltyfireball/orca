@@ -9,6 +9,8 @@ export const FORK_SETTINGS_ROWS_TERMINAL = {
     '{"t":{"k":"boolean"},"d":"One-shot migration flag for the floating-workspace default-on rollout; after migration an explicit off sticks.","o":true}',
   floatingTerminalEnabled:
     '{"t":{"k":"boolean"},"d":"Floating Workspace: global surface for terminal/browser/markdown tabs outside repo/worktree context."}',
+  floatingTerminalNewTabMenuLayout:
+    '{"t":{"k":"object","fields":{"order":{"k":"array","of":{"k":"string"}},"hidden":{"k":"array","of":{"k":"string"}}}},"d":"Order and hidden items of the + menu in the floating terminal; unset keeps the default.","o":true}',
   floatingTerminalTriggerLocation:
     '{"t":{"k":"enum","values":["floating-button","status-bar"]},"d":"Where the Floating Workspace toggle is shown; defaults to the floating button for discoverability."}',
   floatingTerminalTrustedCwds:
