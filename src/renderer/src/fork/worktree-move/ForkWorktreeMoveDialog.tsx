@@ -15,11 +15,7 @@ import { Button } from '@/components/ui/button'
 import { useTranslate } from '@/i18n/use-translate'
 import { translate } from '@/i18n/i18n'
 import { stripWorktreeMoveControlChars as clean } from '../../../../shared/fork/worktree-move/worktree-move-ref'
-import {
-  WORKTREE_MOVE_TRANSCRIPTS_NOTICE,
-  WORKTREE_MOVE_UNTRACKED_NOTICE,
-  worktreeMoveUntrackedNames
-} from '../../../../shared/fork/worktree-move/worktree-move-notice'
+import { worktreeMoveUntrackedNames } from '../../../../shared/fork/worktree-move/worktree-move-notice'
 import type { WorktreeMoveRunResult } from '../../../../shared/fork/worktree-move/worktree-move-runner'
 import { runDesktopWorktreeMove, type WorktreeMoveRequest } from './worktree-move-client'
 
@@ -63,10 +59,18 @@ function previewLines(result: WorktreeMoveRunResult): string[] {
   const { plan } = result
   const { names, more } = worktreeMoveUntrackedNames(result.source)
   return [
-    translate('fork.worktreeMove.copiesTranscripts', WORKTREE_MOVE_TRANSCRIPTS_NOTICE),
+    // Inline English, as fork-localization.test.mjs requires; the CLI says the same sentences
+    // (WORKTREE_MOVE_*_NOTICE in worktree-move-notice.ts).
+    translate(
+      'fork.worktreeMove.copiesTranscripts',
+      'Full chat transcripts of the carried chats are copied to the target.'
+    ),
     ...(plan.carryPatch
       ? [
-          translate('fork.worktreeMove.copiesUntracked', WORKTREE_MOVE_UNTRACKED_NOTICE),
+          translate(
+            'fork.worktreeMove.copiesUntracked',
+            'Untracked files that are not ignored are copied to the target with the uncommitted changes.'
+          ),
           ...names.map(
             (name) => `${translate('fork.worktreeMove.untrackedFile', 'Untracked')}: ${name}`
           ),

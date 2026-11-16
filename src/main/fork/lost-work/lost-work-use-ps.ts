@@ -1,6 +1,6 @@
 // SLRM-2230 (FORK.md "Lost work"): which workspaces are in use, read from the runtime's
 // `worktree.ps` rows through the same sources Sleepers lists, so `orca lost-work` agrees with it.
-import type { RuntimeWorktreePsSummary } from '../../../shared/runtime-worktree-contracts'
+import type { RuntimeWorktreePsSummary } from '../../../shared/worktree/catalog/runtime-worktree-contracts'
 import type { LostWorkUse } from '../../../shared/fork/lost-work-use'
 import { deriveSleeperState, type SleeperSource } from '../../../shared/fork/sleepers'
 

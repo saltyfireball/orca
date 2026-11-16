@@ -2,8 +2,8 @@
 // `--host auto` start new work on the eligible machine with the most spare CPU and memory.
 // Pure: the main process probes the machines and the CLI rewrites the flag; this file ranks them.
 import { LOCAL_EXECUTION_HOST_ID, normalizeExecutionHostId } from '../execution-host'
-import type { Project, ProjectHostSetup } from '../project-types'
-import { normalizeTypedName } from '../typed-name-normalization'
+import type { Project, ProjectHostSetup } from '../project/project-types'
+import { normalizeTypedName } from '../text/typed-name-normalization'
 
 /** How willingly a machine takes new work picked automatically. Named machines are never refused. */
 export type ForkPlacementPreference = 'prefer' | 'normal' | 'less' | 'manual'

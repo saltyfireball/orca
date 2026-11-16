@@ -1,8 +1,8 @@
 // SLRM-1503: what the chip asks hosts, read once per host or chat and shared by every chip.
 // No polling: a host is read on first use and again when a hover opens or its roster changes.
-import type { ClaudeRateLimitAccountsState } from '../../../../shared/managed-account-types'
-import type { RateLimitState } from '../../../../shared/rate-limit-types'
-import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
+import type { ClaudeRateLimitAccountsState } from '../../../../shared/agent-accounts/managed-account-types'
+import type { RateLimitState } from '../../../../shared/agent-usage/rate-limits/rate-limit-types'
+import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 import type { ForkClaudeLaunchHome } from '../../../../shared/fork/claude-account-move'
 import { fetchProviderAccountsSnapshot } from '@/runtime/provider-accounts/observations/runtime-provider-accounts-client'
 import {

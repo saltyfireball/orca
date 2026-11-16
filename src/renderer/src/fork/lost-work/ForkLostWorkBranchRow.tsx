@@ -1,7 +1,7 @@
 // FORK.md "Lost work": one project's default branch for the Lost work scan, a row of the fork
 // Settings pane's project list. Stored by repo id in `forkLostWork.defaultBranches`.
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
-import type { Repo } from '../../../../shared/repo-types'
+import type { Repo } from '../../../../shared/repository/repo-types'
 import {
   isSafeRefName,
   resolveLostWorkSettings,

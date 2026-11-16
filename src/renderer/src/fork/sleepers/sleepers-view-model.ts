@@ -2,7 +2,7 @@
 // are on screen (it hears that only while chat sleep is on), the resource monitor's memory
 // samples, or terminal agents that hibernation or workspace sleep already shut down; the
 // renderer holds those, so they are laid over the host's rows here.
-import type { MemorySnapshot } from '../../../../shared/process-stats-types'
+import type { MemorySnapshot } from '../../../../shared/diagnostics/process-stats-types'
 import type { SleepingAgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-resume'
 import { buildSleeperRows, canSleepNow, type SleeperRow } from '../../../../shared/fork/sleepers'
 

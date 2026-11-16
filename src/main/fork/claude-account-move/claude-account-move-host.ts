@@ -4,7 +4,7 @@
 import { realpath } from 'node:fs/promises'
 import { hostname } from 'node:os'
 import { join } from 'node:path'
-import { agentSessionAccountHomePath } from '../../../shared/agent-session/lifecycle/agent-session-account-home'
+import { agentSessionAccountHomePath } from '../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
 import { getClaudeProfileRouter } from '../../claude-accounts/profiles/routing/claude-profile-installed-router'
 import type { ClaudeProfileRouter } from '../../claude-accounts/profiles/routing/claude-profile-router'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'

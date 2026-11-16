@@ -30,7 +30,7 @@ export function forkAgentQueueClaimStart(
   context: Pick<StructuredAgentSessionAttachContext, 'deps' | 'sessions' | 'serialize'>,
   sessionId: string,
   start: (refused?: Outcome) => Promise<Outcome>,
-  claimAgain: () => StructuredAgentSessionStartClaim
+  claimAgain: () => StructuredAgentSessionStartClaim | Promise<StructuredAgentSessionStartClaim>
 ): StructuredAgentSessionStartClaim {
   return {
     outcome: forkAgentQueueStart<Outcome>({

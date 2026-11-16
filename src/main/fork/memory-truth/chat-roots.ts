@@ -2,7 +2,7 @@
 // chat's provider process (and everything it starts) was never counted. The chat host is wired in
 // from the main process at startup; the collector itself stays free of it.
 import { isLocalExecutionHost } from '../../../shared/execution-host'
-import { folderWorkspaceKey } from '../../../shared/workspace-scope'
+import { folderWorkspaceKey } from '../../../shared/workspace/identity/workspace-scope'
 import { TUI_AGENT_CONFIG } from '../../../shared/agent-launch/catalog/tui-agent-config'
 import { normalizeProcessName } from './process-table'
 import type { ForkSessionRoot } from './attribution'
