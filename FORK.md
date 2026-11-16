@@ -734,7 +734,10 @@ named Orca Fork until SLRM-1367. `main` is always
   as is. Stock Orca tried to widen it to all interfaces, refused, and failed every pairing with
   `network_exposure_failed`. `runtime-rpc-network-exposure.ts` returns early when
   `isPinnedToNetworkAddress` (`src/shared/fork/pinned-bind-host.ts`) says so; loopback and
-  wildcard pins behave as before.
+  wildcard pins behave as before. Linux servers without the desktop app run the
+  server-only tarball, so the fork release carries its own `orca-server-linux-x64.tar.gz`,
+  `orca-server-linux-arm64.tar.gz` and `orca-server-sha256sums.txt` (fork-sync's
+  orca-server-linux jobs, see How sync works); stock tarballs lack this fix.
 - **Worktree move (SLRM-2265).** Move a workspace and its chats to another host: `orca worktree
   move --to <host>` (`local`, `runtime:<environment-id>` or a paired server's name; `--worktree`,
   `--stop-turns`, `--dry-run`, `--json`) or the workspace menu's "Move to Host". The menu lists
@@ -905,7 +908,7 @@ Apply these in this order. Each one is a single commit.
 89. `SLRM-2266 Auto placement: pick the machine with the most spare CPU and memory for --on auto and --host auto`
 90. `SLRM-2267 Endpoint failover: try a saved server's routes in order and move back to the better one`
 91. `SLRM-2265 Worktree move: move a workspace and its chats to another host`
-92. `SLRM-2264 Pairing on a pinned bind: pair a server bound to a Tailscale or LAN address`
+92. `SLRM-2264 Pairing on a pinned bind: pair a server bound to a Tailscale or LAN address, and release the Linux server tarballs`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1645,7 +1648,14 @@ runs in a fork, never in the upstream repository (`stablyai/orca`). Every third-
    - Waits until every job of orcad-template has passed, upstream's own template assembly
      included (`fork-run-gate.mjs qualified`). Nothing is published before that.
    - Publishes the arm64 dmg, the arm64 zip and `latest-mac.yml` as release `v<fork version>`.
-5. **status** (ubuntu-latest) runs after every other job on every run, whatever failed or was
+5. **orca-server-linux** calls upstream's `orca-server-artifact.yml` (unchanged) once
+   orcad-template-fork has uploaded, with that template: it packs and smoke-tests
+   `orca-server-linux-x64.tar.gz` (ubuntu-24.04) and `orca-server-linux-arm64.tar.gz`
+   (ubuntu-24.04-arm). **publish-orca-server-linux** then, after build-mac has published,
+   writes `orca-server-sha256sums.txt` and uploads all three to release `v<fork version>`, as
+   upstream's release-cut does (SLRM-2264). Nothing waits on these, so a failure leaves only the
+   tarballs missing.
+6. **status** (ubuntu-latest) runs after every other job on every run, whatever failed or was
    cancelled, and publishes the sync status (see Sync status).
 
 ### Base detection
