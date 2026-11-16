@@ -28,6 +28,7 @@ import { ForkSyncNoticeSetting } from '../sync-status/ForkSyncNoticeSetting'
 import { ForkAutoPlacementSetting } from '../auto-placement/ForkAutoPlacementSetting'
 import { ForkEndpointFailoverSetting } from '../endpoint-failover/ForkEndpointFailoverSetting'
 import { ForkWorktreeMoveSettings } from '../worktree-move/ForkWorktreeMoveSettings'
+import { ForkApfsCloneSetting } from '../apfs-clone/ForkApfsCloneSetting'
 import { ForkDeviceApprovalSetting } from '../device-approval/ForkDeviceApprovalSetting'
 import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
 import { ForkProjectSettingsList } from './ForkProjectSettingsList'
@@ -73,6 +74,7 @@ const SECTION_CARDS: Record<
   projects: [
     ['lost-work', ForkLostWorkSettings],
     ['worktree-move', ForkWorktreeMoveSettings],
+    ['apfs-clone', ForkApfsCloneSetting],
     ['project-settings-list', ForkProjectSettingsList]
   ],
   remote: [
