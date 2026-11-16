@@ -186,3 +186,49 @@ describe('runWorktreeMove', () => {
     expect(result).toMatchObject({ kind: 'moved', pushed: false, marked: false })
   })
 })
+
+describe('runWorktreeMove hardening', () => {
+  it('stops on an unsafe branch from the source before any call reaches the target', async () => {
+    const hosts = fakeHosts({
+      'fork.worktreeMove.inspect': { ...inspect, branch: '--upload-pack=evil' }
+    })
+    const result = await runWorktreeMove(args(hosts.call))
+    expect(result).toMatchObject({ kind: 'refuse', plan: { code: 'unsafe-ref' } })
+    expect(hosts.calls.map((c) => c.method)).toEqual(['fork.worktreeMove.inspect'])
+  })
+
+  it('stops on an unsafe remote even when it is only a dry run', async () => {
+    const hosts = fakeHosts({ 'fork.worktreeMove.inspect': { ...inspect, remote: '-x' } })
+    const result = await runWorktreeMove(args(hosts.call, { dryRun: true }))
+    expect(result.kind).toBe('refuse')
+    expect(hosts.calls.some((c) => c.method === 'worktree.create')).toBe(false)
+  })
+
+  it('sends the byte budget to the export and the import', async () => {
+    const hosts = fakeHosts()
+    await runWorktreeMove(
+      args(hosts.call, { settings: { ...WORKTREE_MOVE_DEFAULTS, maxTotalMb: 8 } })
+    )
+    const sent = (method: string) => hosts.calls.find((c) => c.method === method)?.params
+    expect(sent('fork.worktreeMove.export')?.maxTotalBytes).toBe(8 * 1024 * 1024)
+    expect(sent('fork.worktreeMove.import')?.maxTotalBytes).toBe(8 * 1024 * 1024)
+  })
+
+  it('strips control characters from the remote-supplied patch error and path', async () => {
+    const hosts = fakeHosts({
+      'fork.worktreeMove.import': {
+        patch: { kind: 'failed', error: 'bad\u001b[2Jpatch', savedTo: '/x\u0007/y.patch' },
+        transcripts: []
+      }
+    })
+    const result = await runWorktreeMove(args(hosts.call))
+    expect(result.kind === 'moved' && result.patch).toEqual({
+      kind: 'failed',
+      error: 'bad[2Jpatch',
+      savedTo: '/x/y.patch'
+    })
+    const warnings = result.kind === 'moved' ? result.warnings.join(' ') : ''
+    // eslint-disable-next-line no-control-regex -- checking that none are left
+    expect(warnings).not.toMatch(/[\u0000-\u0008\u001b]/)
+  })
+})
