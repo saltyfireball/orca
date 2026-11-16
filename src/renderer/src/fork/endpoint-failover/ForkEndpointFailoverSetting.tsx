@@ -6,7 +6,8 @@ import {
   FORK_ENDPOINT_RETRY_SECOND_CHOICES,
   forkEndpointFailoverEnabled,
   forkEndpointFailoverRetrySeconds,
-  forkEndpointLearnAddresses
+  forkEndpointLearnAddresses,
+  forkEndpointLearnSameSubnetOnly
 } from '../../../../shared/fork/endpoint-failover'
 import {
   SettingsRow,
@@ -41,6 +42,7 @@ export function ForkEndpointFailoverSetting({
   const labelId = useId()
   const enabled = forkEndpointFailoverEnabled(settings)
   const learn = forkEndpointLearnAddresses(settings)
+  const sameSubnet = forkEndpointLearnSameSubnetOnly(settings)
   const retry = forkEndpointFailoverRetrySeconds(settings)
   // Keep a hand-edited value selectable rather than showing a blank trigger.
   const choices = FORK_ENDPOINT_RETRY_SECOND_CHOICES.includes(retry)
@@ -101,6 +103,16 @@ export function ForkEndpointFailoverSetting({
         checked={learn}
         disabled={!enabled}
         onChange={() => updateSettings({ forkEndpointLearnAddresses: !learn })}
+      />
+      <SettingsSwitchRow
+        label={t('fork.endpointFailover.sameSubnetLabel', 'Only nearby learned addresses')}
+        description={t(
+          'fork.endpointFailover.sameSubnetHelp',
+          'Try a learned address only when it is in the same /24 as a saved endpoint or is a Tailscale address, so a server cannot point this desktop at other machines.'
+        )}
+        checked={sameSubnet}
+        disabled={!enabled || !learn}
+        onChange={() => updateSettings({ forkEndpointLearnSameSubnetOnly: !sameSubnet })}
       />
     </section>
   )
