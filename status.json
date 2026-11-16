@@ -1,13 +1,13 @@
 {
   "schema": 1,
-  "state": "in-sync",
-  "reason": null,
+  "state": "error",
+  "reason": "main is on v1.4.261, but the release build failed.",
   "upstreamVersion": "1.4.261",
   "upstreamSha": "92d4266cc4ffa945dbc1fa52850e62448d2dfc1c",
   "forkBaseVersion": "1.4.261",
   "forkBaseSha": "92d4266cc4ffa945dbc1fa52850e62448d2dfc1c",
   "conflicts": [],
-  "since": null,
-  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/43866490722",
-  "checkedAt": "2026-11-16T12:46:45.048Z"
+  "since": "2026-11-16T18:18:17.869Z",
+  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/43924163307",
+  "checkedAt": "2026-11-16T18:18:17.869Z"
 }
