@@ -605,6 +605,25 @@ named Orca Fork until SLRM-1367. `main` is always
     that declare compaction), run by the desktop app. Not terminal agents, and not chats run by
     the headless server.
 
+- **Unattended resume (SLRM-2268).** On by default (`forkUnattendedResume`, Settings >
+  Blackfish > Chats). A restart or update cuts every running turn and stock Orca offers to
+  continue them, waiting for a person. Once per process, after start-up settles, the fork
+  continues by itself the cut turns of chats nobody is watching: an orchestration worker with an
+  open dispatch, or the chat of an automation run that was open (or failed by the cut) at the
+  time. It sends the stock "Continue" through the chat host's own `continueAfterRestart`, so
+  eligibility, the offer reservation and the chat notes are the stock ones. It runs wherever the
+  chat host runs: the desktop app and the headless server (`orca serve`, orcad).
+  - **Never on a person's turn.** A turn that was waiting on an approval or a question, or whose
+    stop-time activity was not captured, is left for a person. Interactive chats keep the stock
+    offer.
+  - **Try cap.** At most `forkUnattendedResumeMaxTries` (3) automatic continuations of one chat
+    in a row. The count is kept in `fork-unattended-resume.json` in the data folder and goes up
+    before the continuation is sent, so a crash loop stops at the cap; it is dropped once a start
+    finds no cut turn for that chat. A crash writes no restart offer, so a crash alone is never
+    resumed.
+  - **Heuristic.** A person who goes on typing in an automation's chat after its run failed is
+    taken for the automation until a new run settles.
+
 - **Settings from the CLI (SLRM-2160).** `orca settings` reads and writes the app's whole
   global settings object from a terminal or through one file, so no setting needs the Settings
   screen.
@@ -758,6 +777,7 @@ Apply these in this order. Each one is a single commit.
 85. `SLRM-2230 Lost work: in-use guard, select all, project groups, suggested actions, bulk summary`
 86. `SLRM-2257 Boundary compaction: ask an idle chat with a large context to compact between turns`
 87. `SLRM-2263 Chat survive: carry chats over an app update, say why a claim is refused`
+88. `SLRM-2268 Unattended resume: continue interrupted workers and automation runs after a restart`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1145,6 +1165,17 @@ Upstream files only get short hooks, which keeps rebases small:
     gives nothing for any row the feature did not send.
   - The reporter is mounted in the fork's `ForkRootHosts.tsx` and the card in the fork's
     Settings pane, so neither adds an upstream hook. The five settings are in
+    `src/shared/fork/fork-global-settings.ts`.
+
+- Unattended resume (SLRM-2268), from `src/shared/fork/unattended-resume.ts`,
+  `src/main/fork/unattended-resume/` and `src/renderer/src/fork/unattended-resume/`. On unless
+  `forkUnattendedResume` is false:
+  - `noteAgentLaunchStartupSettled()` (`orca-runtime.ts`, the desktop and `orca serve`) and
+    `orcad-entry.ts` (after `runtime.startPullRequestWatches()`) call
+    `startForkUnattendedResume(...)`; the pass runs once per process.
+  - The Chats section's search entries moved to `fork-settings-pane-catalog-chats.ts` for the
+    catalog's line budget.
+  - The card is in the fork's Settings pane. The two settings are in
     `src/shared/fork/fork-global-settings.ts`.
 
 - Launch defaults (SLRM-2102), from `src/shared/fork/launch-defaults/`,
