@@ -79,6 +79,7 @@ export const CLI_COMMAND_NAMES = [
   'skills',
   'sleepers',
   'snapshot',
+  'snooze',
   'speech',
   'status',
   'storage',

@@ -94,6 +94,22 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Sleepers: the sidebar toolbar\'s Sleepers button; unset is shown.","o":true}',
   forkSleepersPinned:
     '{"t":{"k":"array","of":{"k":"string"}},"d":"Sleepers: native chat session ids that never auto-sleep; unset is none.","o":true}',
+  forkSnooze:
+    '{"t":{"k":"boolean"},"d":"Snooze (SLRM-2269): snooze workspaces and chats out of the sidebar; unset is on.","o":true}',
+  forkSnoozeEveningHour:
+    '{"t":{"k":"number"},"d":"Snooze: the hour (0-23) of the this evening preset; unset is 18.","o":true}',
+  forkSnoozeIdleDays:
+    '{"t":{"k":"number"},"d":"Snooze: the idle days of the menu\'s until idle choice; unset is 3.","o":true}',
+  forkSnoozeMorningHour:
+    '{"t":{"k":"number"},"d":"Snooze: the hour (0-23) of the tomorrow and next Monday morning presets; unset is 9.","o":true}',
+  forkSnoozeSettleCommand:
+    '{"t":{"k":"string"},"d":"Snooze: a command run once when a snooze settles (its pull request merged or its idle days passed); unset is none. Set it in the Settings screen.","o":true}',
+  forkSnoozeWakeOnAttention:
+    '{"t":{"k":"boolean"},"d":"Snooze: a snoozed workspace or chat comes back when it needs an approval or asks a question; unset is on.","o":true}',
+  forkSnoozeWakeOnFailure:
+    '{"t":{"k":"boolean"},"d":"Snooze: a snoozed workspace or chat comes back when its agent fails or errors; unset is on.","o":true}',
+  forkSnoozeWakeOnOpen:
+    '{"t":{"k":"boolean"},"d":"Snooze: opening a snoozed workspace or chat wakes it; unset is on.","o":true}',
   forkSyncNotice:
     '{"t":{"k":"boolean"},"d":"Sync status: say when the fork is behind upstream or its last sync failed; unset is on.","o":true}',
   forkSyncNoticeStaleDays:

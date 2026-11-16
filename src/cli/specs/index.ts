@@ -49,6 +49,7 @@ import { FORK_SETTINGS_COMMAND_SPECS } from '../fork/settings-specs'
 import { FORK_WORKTREE_MOVE_COMMAND_SPECS } from '../fork/worktree-move-specs'
 import { FORK_DEVICE_APPROVAL_COMMAND_SPECS } from '../fork/device-approval-specs'
 import { FORK_WEBHOOK_COMMAND_SPECS } from '../fork/webhooks-specs'
+import { FORK_SNOOZE_COMMAND_SPECS } from '../fork/snooze-specs'
 import {
   FORK_AUTO_PLACEMENT_COMMAND_SPECS,
   withForkAutoPlacementNotes
@@ -107,6 +108,7 @@ export const COMMAND_SPECS: CommandSpec[] = withForkAutoPlacementNotes(
     ...FORK_AUTO_PLACEMENT_COMMAND_SPECS,
     ...FORK_WORKTREE_MOVE_COMMAND_SPECS,
     ...FORK_DEVICE_APPROVAL_COMMAND_SPECS,
-    ...FORK_WEBHOOK_COMMAND_SPECS
+    ...FORK_WEBHOOK_COMMAND_SPECS,
+    ...FORK_SNOOZE_COMMAND_SPECS
   ])
 )
