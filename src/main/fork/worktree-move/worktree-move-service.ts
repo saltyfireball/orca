@@ -6,8 +6,8 @@
 import { basename, join, resolve } from 'node:path'
 import type { AgentSessionRecord } from '../../../shared/agent-session/lifecycle/agent-session-record'
 import type { AgentSessionStatusSummary } from '../../../shared/agent-session/agent-session-wire'
-import { agentSessionProviderHandleChainHead } from '../../../shared/agent-session/lifecycle/agent-session-provider-handle'
-import type { RuntimeWorktreeRecord } from '../../../shared/runtime-worktree-contracts'
+import { agentSessionProviderHandleChainHead } from '../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle'
+import type { RuntimeWorktreeRecord } from '../../../shared/worktree/catalog/runtime-worktree-contracts'
 import {
   WORKTREE_MOVE_DEFAULT_MAX_TOTAL_MB,
   WORKTREE_MOVE_MAX_PATCH_BYTES,

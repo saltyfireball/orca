@@ -8,6 +8,7 @@ import type { AppState } from '@/store/types'
 import { _resetChildTallyCacheForTest } from './agent-child-tally'
 import { _resetChildTallyStoreCacheForTest } from './use-agent-child-tally'
 import { ForkAgentRowChildTally, ForkAgentStripChildTally } from './ForkAgentChildTallyBadge'
+import { acceptedAgentStatuses } from '@/store/slices/agent-status/accepted-agent-statuses'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -25,8 +26,10 @@ function seed(settings: Partial<AppState['settings']> = {}): void {
   })
   useAppStore.setState({
     settings: { ...initial.settings, ...settings } as AppState['settings'],
-    agentStatusByPaneKey: { coord: entry('coord'), other: entry('other') },
-    retainedAgentsByPaneKey: {},
+    agentStatusByPaneKey: acceptedAgentStatuses([
+      ['coord', entry('coord')],
+      ['other', entry('other')]
+    ]),
     runtimeAgentOrchestrationByPaneKey: {
       w1: { taskId: 't1', dispatchId: 'd1', dispatchStatus: 'dispatched', parentPaneKey: 'coord' },
       w2: { taskId: 't2', dispatchId: 'd2', dispatchStatus: 'completed', parentPaneKey: 'coord' },

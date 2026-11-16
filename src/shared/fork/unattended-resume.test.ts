@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { AgentSessionRestartActivity } from '../agent-session/lifecycle/agent-session-restart-activity'
+import type { AgentSessionRestartActivity } from '../agent-session/lifecycle/stopping/agent-session-restart-activity'
 import {
   chatRunsAutomation,
   decideUnattendedResume,

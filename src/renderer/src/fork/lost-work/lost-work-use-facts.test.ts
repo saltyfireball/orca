@@ -11,7 +11,7 @@ function facts(over: Partial<LostWorkUseFacts>): LostWorkUseFacts {
     tabsByWorktree: {},
     unifiedTabsByWorktree: {},
     ptyIdsByTabId: {},
-    agentStatusByPaneKey: {},
+    agentStatusByPaneKey: new Map(),
     sleepingAgentSessionsByPaneKey: {},
     ...over
   } as LostWorkUseFacts
@@ -33,7 +33,7 @@ describe('lostWorkUseByWorktree', () => {
         unifiedTabsByWorktree: {
           w1: [chatTab('t1', 's1'), chatTab('t2', 's2'), { id: 't3', contentType: 'terminal' }]
         },
-        agentStatusByPaneKey: { [asleep]: { state: 'done' } }
+        agentStatusByPaneKey: new Map([[asleep, { state: 'done' }]])
       } as unknown as Partial<LostWorkUseFacts>),
       ['w1'],
       NOW
@@ -71,16 +71,19 @@ describe('lostWorkUseByWorktree', () => {
     const uses = lostWorkUseByWorktree(
       facts({
         tabsByWorktree: { w1: [{ id: 'a' }] },
-        agentStatusByPaneKey: {
-          'a:leaf': {
-            paneKey: 'a:leaf',
-            worktreeId: 'w1',
-            state: 'working',
-            prompt: '',
-            updatedAt: NOW,
-            stateStartedAt: NOW
-          }
-        }
+        agentStatusByPaneKey: new Map([
+          [
+            'a:leaf',
+            {
+              paneKey: 'a:leaf',
+              worktreeId: 'w1',
+              state: 'working',
+              prompt: '',
+              updatedAt: NOW,
+              stateStartedAt: NOW
+            }
+          ]
+        ])
       } as unknown as Partial<LostWorkUseFacts>),
       ['w1'],
       NOW

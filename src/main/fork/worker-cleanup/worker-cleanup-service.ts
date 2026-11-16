@@ -3,10 +3,10 @@
 // while the setting is on. The desktop bridge publishes its notices and runs Undo.
 import { gitExecFileAsync } from '../../git/command-runner/git-exec-file'
 import { ghExecFileAsync } from '../../git/command-runner/hosted-cli/gh-exec-file'
-import { isFolderRepo } from '../../../shared/repo-kind'
+import { isFolderRepo } from '../../../shared/repository/repo-kind'
 import { getRepoExecutionHostId, LOCAL_EXECUTION_HOST_ID } from '../../../shared/execution-host'
 import { splitWorktreeId } from '../../../shared/worktree/id'
-import type { Repo } from '../../../shared/repo-types'
+import type { Repo } from '../../../shared/repository/repo-types'
 import type { ForkGlobalSettings } from '../../../shared/fork/fork-global-settings'
 import {
   forkWorkerCleanupEnabled,

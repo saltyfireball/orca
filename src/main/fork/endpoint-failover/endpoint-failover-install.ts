@@ -51,8 +51,8 @@ export function startForkEndpointFailover(
   let lastRetainAt = Number.NEGATIVE_INFINITY
   supervisor = new EndpointFailoverSupervisor({
     readSettings,
-    listEnvironments: () => {
-      const environments = listEnvironments(userDataPath)
+    listEnvironments: async () => {
+      const environments = await listEnvironments(userDataPath)
       const now = Date.now()
       if (now - lastRetainAt >= RETAIN_EVERY_MS) {
         lastRetainAt = now
@@ -63,7 +63,9 @@ export function startForkEndpointFailover(
     connectionState,
     probe: probeEndpointRoute,
     learn: async (environmentId) => {
-      const environment = listEnvironments(userDataPath).find((entry) => entry.id === environmentId)
+      const environment = (await listEnvironments(userDataPath)).find(
+        (entry) => entry.id === environmentId
+      )
       if (!environment) {
         return null
       }
@@ -79,7 +81,11 @@ export function startForkEndpointFailover(
     reconnect: (environmentId) => {
       closeRemoteRuntimeRequestConnection(environmentId)
       if (!isRuntimeEnvironmentManuallyDisconnected(environmentId)) {
-        getRuntimeEnvironmentStatusOwner(userDataPath, environmentId).activate()
+        void getRuntimeEnvironmentStatusOwner(userDataPath, environmentId)
+          .then((owner) => owner.activate())
+          .catch((error: unknown) =>
+            console.warn(`[fork-endpoint-failover] reconnect failed: ${String(error)}`)
+          )
       }
     },
     readRoutes: (environmentId, hostKey) => routes.read(environmentId, hostKey),

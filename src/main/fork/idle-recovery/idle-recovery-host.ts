@@ -8,12 +8,13 @@ import type { SleeperChatHostFact } from '../../../shared/fork/sleepers-ps-sourc
 import type {
   RuntimeWorktreeAgentRow,
   RuntimeWorktreePsSummary
-} from '../../../shared/runtime-worktree-contracts'
+} from '../../../shared/worktree/catalog/runtime-worktree-contracts'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import type { OrcaRuntimeService } from '../../runtime/orca-runtime'
 import { forkSleeperChatFacts } from '../sleepers/sleepers-host'
 import { forkSleeperLifecycleOverlay } from '../sleepers/sleepers-lifecycle'
 import { readIdleRecoveryDispatchRows, type IdleRecoveryDispatchRow } from './idle-recovery-roles'
+import { readChatJournalTail } from '../chat-journal-tail'
 
 export type IdleRecoveryPsWorktree = Pick<
   RuntimeWorktreePsSummary,
@@ -99,7 +100,7 @@ export function liveIdleRecoveryHost(): IdleRecoveryHost {
       if (!host || !host.loadedSessionIds().includes(sessionId)) {
         return null
       }
-      return (await host.journalCurrentRead(sessionId)).items
+      return (await readChatJournalTail(host, sessionId)).items
     },
     terminalStatus: async (paneKey) => {
       const runtime = await currentRuntime()

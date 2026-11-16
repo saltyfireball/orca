@@ -5,7 +5,12 @@ import {
   collectLocalizationKeyReferences,
   collectSourceFiles
 } from '../localization/catalog-validation/verify-localization-catalog.mjs'
-import { FORK_LOCALIZED_SOURCE_DIRS, isForkLocalizedSource } from './fork-localization.mjs'
+import {
+  FORK_LOCALIZED_IGNORE_GLOBS,
+  FORK_LOCALIZED_SOURCE_DIRS,
+  UPSTREAM_SOURCES_IN_FORK_DIRS,
+  isForkLocalizedSource
+} from './fork-localization.mjs'
 
 const repoRoot = resolve(import.meta.dirname, '../../..')
 const SOURCE_RE = /\.(?:ts|tsx|js|jsx|mts|cts)$/
@@ -34,6 +39,7 @@ function forkSourceFiles(dir) {
   return readdirSync(join(repoRoot, dir), { recursive: true })
     .map((entry) => String(entry))
     .filter((entry) => SOURCE_RE.test(entry) && !TEST_RE.test(entry))
+    .filter((entry) => isForkLocalizedSource(`${dir}/${entry}`))
     .map((entry) => join(repoRoot, dir, entry))
 }
 
@@ -47,9 +53,27 @@ describe('fork localization', () => {
     expect(isForkLocalizedSource('src/renderer/src/components/fork/x.tsx')).toBe(false)
   })
 
-  it("keeps upstream's catalog verifiers off the fork folders", async () => {
+  it("keeps upstream's catalog verifiers off the fork folders, but on upstream's files there", async () => {
     for (const dir of FORK_LOCALIZED_SOURCE_DIRS) {
-      expect(await collectSourceFiles(repoRoot, join(repoRoot, dir))).toEqual([])
+      const kept = (await collectSourceFiles(repoRoot, join(repoRoot, dir))).map((file) =>
+        relative(repoRoot, file).split('\\').join('/')
+      )
+      expect(kept).toEqual(
+        UPSTREAM_SOURCES_IN_FORK_DIRS.filter((file) => file.startsWith(`${dir}/`))
+      )
+    }
+  })
+
+  it('lets i18next extract upstream files in native-chat/fork and skip the fork ones', () => {
+    const dir = 'src/renderer/src/components/native-chat/fork'
+    const ignored = FORK_LOCALIZED_IGNORE_GLOBS.filter((glob) => glob.startsWith(`${dir}/`))
+    const names = readdirSync(join(repoRoot, dir)).filter(
+      (name) => SOURCE_RE.test(name) && !TEST_RE.test(name)
+    )
+    const matches = (name) =>
+      ignored.some((glob) => name.startsWith(glob.slice(dir.length + 1).replace(/\*$/, '')))
+    for (const name of names) {
+      expect(matches(name), name).toBe(isForkLocalizedSource(`${dir}/${name}`))
     }
   })
 

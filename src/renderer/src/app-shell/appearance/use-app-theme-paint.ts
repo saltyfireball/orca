@@ -12,7 +12,8 @@ import {
   applyDocumentTheme,
   applyPluginAppTheme,
   readCachedPluginAppTheme,
-  resolveDocumentTheme
+  resolveDocumentTheme,
+  type AppThemePaint
 } from './document-theme'
 import { browserColorProbe } from './plugin-theme-tokens'
 import {
@@ -55,7 +56,8 @@ export type AppThemePaintState = {
   theme: GlobalSettings['theme'] | undefined
   dark: boolean
   requestedDark: boolean
-  appTheme: TerminalAppTheme | PluginThemeRegistration | null
+  // Fork (SLRM-2097): or the user's custom app theme, which is a paint only.
+  appTheme: TerminalAppTheme | PluginThemeRegistration | AppThemePaint | null
   pluginTheme: PluginThemeRegistration | null
   pluginThemes: PluginThemeRegistration[]
   pluginThemesLoaded: boolean

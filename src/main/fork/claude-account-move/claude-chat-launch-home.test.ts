@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { agentSessionRecordFixture } from '../../../shared/agent-session/lifecycle/agent-session-record.test-fixture'
+import { agentSessionRecordFixture } from '../../../shared/agent-session/lifecycle/records/agent-session-record.test-fixture'
 import { claudeChatLaunchHome } from './claude-chat-launch-home'
 
 const claudeRecord = {
