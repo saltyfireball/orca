@@ -58,6 +58,7 @@ export const CLI_COMMAND_NAMES = [
   'orchestration',
   'pair',
   'pdf',
+  'placement',
   'plugin',
   'ports',
   'profile',
