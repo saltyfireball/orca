@@ -88,6 +88,7 @@ export const CLI_COMMAND_NAMES = [
   'slack',
   'sleepers',
   'snapshot',
+  'snooze',
   'speech',
   'status',
   'storage',

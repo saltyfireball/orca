@@ -13,6 +13,7 @@ import type { ForkSettingsSection, ForkSettingsSectionId } from './fork-settings
 import { getForkRemoteSettingsSectionParts } from '../endpoint-failover/endpoint-failover-search'
 import { worktreeMoveSearchEntry } from '../worktree-move/worktree-move-search-entry'
 import { apfsCloneSearchEntry } from '../apfs-clone/apfs-clone-search-entry'
+import { snoozeSearchEntry } from '../snooze/snooze-search-entry'
 
 export const FORK_SETTINGS_PANE_ID = 'fork'
 
@@ -185,6 +186,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         },
         worktreeMoveSearchEntry(t),
         apfsCloneSearchEntry(t),
+        snoozeSearchEntry(t),
         {
           title: t('fork.settingsPane.projectList.title', 'Per project'),
           description: t(
