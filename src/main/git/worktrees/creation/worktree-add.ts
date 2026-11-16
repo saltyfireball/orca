@@ -28,6 +28,7 @@ import {
 import { bumpWorktreeScanGeneration } from '../catalog/worktree-scan-cache'
 import { assertNoPendingWorktreeRemovalConflict } from '../../../workspaces/removal/worktree-removal-table'
 import { createWorktreeCheckoutProgressReader } from './worktree-checkout-progress'
+import { withForkApfsCheckout } from '../../../fork/apfs-clone/apfs-clone-checkout'
 
 export type WorktreeAddBaseContext = Pick<AddWorktreeResult, 'localBaseRefUpdateSuggestion'> & {
   effectiveBase: string
@@ -210,14 +211,17 @@ export async function addWorktreeDeferringLocalBaseUpdate(
   try {
     return await withRepoRefMaintenancePaused('worktree-add', () =>
       runWithGitReadCacheInvalidation(() =>
-        performAddWorktree(
-          repoPath,
-          worktreePath,
-          branch,
-          baseBranch,
-          refreshLocalBaseRef,
-          noCheckout,
-          options
+        // Fork (SLRM-2270): on macOS this may add with --no-checkout and fill from an APFS clone.
+        withForkApfsCheckout(repoPath, worktreePath, noCheckout, options, (forkNoCheckout) =>
+          performAddWorktree(
+            repoPath,
+            worktreePath,
+            branch,
+            baseBranch,
+            refreshLocalBaseRef,
+            forkNoCheckout,
+            options
+          )
         )
       )
     )
