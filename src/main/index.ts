@@ -39,6 +39,7 @@ import {
   forkUsageLedgerStoreReader
 } from './fork/usage-ledger/usage-ledger-ipc'
 import { installForkSyncStatusBridge } from './fork/sync-status/sync-status-bridge'
+import { installForkApfsCloneSettingsReader } from './fork/apfs-clone/apfs-clone-settings-reader'
 import { installForkIdleRecoveryBridge } from './fork/idle-recovery/idle-recovery-bridge'
 import { setIdleRecoveryDesktopNotifier } from './fork/idle-recovery/idle-recovery-notify'
 import { startForkIdleRecovery } from './fork/idle-recovery/idle-recovery-service'
@@ -202,6 +203,8 @@ if (preflightReady) {
   installForkWorkerCleanupBridge()
   // Fork: MCP profiles; every chat loads every server until profiles are set.
   installForkMcpProfilesApp(() => state.store?.getSettings())
+  // Fork (SLRM-2270): APFS clones for new worktrees on macOS.
+  installForkApfsCloneSettingsReader(() => state.store?.getSettings())
   // Fork (SLRM-2103/2104): the usage ledger behind the cache-cold cue and the usage report.
   installForkUsageLedger(() => forkUsageLedgerStoreReader(state.store))
   installForkSyncStatusBridge()

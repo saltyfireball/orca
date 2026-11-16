@@ -6,6 +6,7 @@ import { worktreeCreateGit } from '../git/worktrees/creation/worktree-create-git
 import { getStoredRepoExecutionHostId } from '../workspaces/execution-host/repo-execution-host'
 import type { BrowserWindow } from 'electron'
 import { existsSync } from 'node:fs'
+import { forkCloneIgnoredFolders } from '../fork/apfs-clone/apfs-clone-folders'
 import { randomUUID } from 'node:crypto'
 import type { Store } from '../persistence/loading-store/store'
 import type { GitAdmissionTier } from '../../shared/rpc-contract/source-control/git-admission-tier-params'
@@ -1650,6 +1651,8 @@ async function performLocalWorktreeCreate(
         })
       : error
   }
+  // Fork (SLRM-2270): on macOS clone ignored folders (node_modules) from the project before setup.
+  await forkCloneIgnoredFolders(repo.path, worktreePath, localWorktreeGitOptions)
   // Creation makes the checkout listable; older detected scans must not publish or cache pre-create catalogs.
   runWorktreeChangeInvalidators(repo.id)
 
