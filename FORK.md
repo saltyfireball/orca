@@ -730,6 +730,12 @@ named Orca Fork until SLRM-1367. `main` is always
     the sections and their search entries, and `ForkSettingsPane.tsx` places the cards: a new
     fork setting is added to both (`ForkSettingsPane.test.tsx` fails when a search entry has
     no card heading to land on).
+- **Pairing on a pinned bind (SLRM-2264).** `orca serve --bind <ip>` with a real network
+  address (a Tailscale or LAN IP) is already reachable there, so laptop and phone pairing use it
+  as is. Stock Orca tried to widen it to all interfaces, refused, and failed every pairing with
+  `network_exposure_failed`. `runtime-rpc-network-exposure.ts` returns early when
+  `isPinnedToNetworkAddress` (`src/shared/fork/pinned-bind-host.ts`) says so; loopback and
+  wildcard pins behave as before.
 - **Worktree move (SLRM-2265).** Move a workspace and its chats to another host: `orca worktree
   move --to <host>` (`local`, `runtime:<environment-id>` or a paired server's name; `--worktree`,
   `--stop-turns`, `--dry-run`, `--json`) or the workspace menu's "Move to Host". The menu lists
@@ -900,6 +906,7 @@ Apply these in this order. Each one is a single commit.
 89. `SLRM-2266 Auto placement: pick the machine with the most spare CPU and memory for --on auto and --host auto`
 90. `SLRM-2267 Endpoint failover: try a saved server's routes in order and move back to the better one`
 91. `SLRM-2265 Worktree move: move a workspace and its chats to another host`
+92. `SLRM-2264 Pairing on a pinned bind: pair a server bound to a Tailscale or LAN address`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

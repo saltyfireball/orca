@@ -2,6 +2,7 @@ import { WebSocketTransport } from '../transports/websocket/ws-transport'
 import { writeWsFallbackPort } from '../transports/websocket/ws-fallback-port-store'
 import { RuntimeRpcLifecycle } from './runtime-rpc-lifecycle'
 import { WS_BIND_HOST_ALL_INTERFACES, WS_BIND_HOST_LOOPBACK } from './runtime-rpc-pairing-types'
+import { isPinnedToNetworkAddress } from '../../../../shared/fork/pinned-bind-host'
 
 export class RuntimeRpcNetworkExposure extends RuntimeRpcLifecycle {
   // Advertise addresses the widened listener will answer, not its current loopback bind.
@@ -11,6 +12,11 @@ export class RuntimeRpcNetworkExposure extends RuntimeRpcLifecycle {
 
   // LAN opt-in rebinds loopback and disconnects local clients; reuse their already-issued port so all endpoints can reconnect (STA-2370).
   async ensureNetworkExposure(): Promise<void> {
+    // A server pinned to a specific network address (`orca serve --bind 100.x.y.z`) is already
+    // reachable on that address; pairing must not try to widen it, nor fail.
+    if (isPinnedToNetworkAddress(this.pinnedBindHost)) {
+      return
+    }
     if (this.pinnedBindHost && this.pinnedBindHost !== WS_BIND_HOST_ALL_INTERFACES) {
       // Throw on failed widening so callers return network_exposure_failed rather than advertise unreachable LAN.
       throw new Error(
