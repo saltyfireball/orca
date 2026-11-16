@@ -9,6 +9,7 @@ import type { AgentSessionStatusSummary } from '../../../shared/agent-session/ag
 import { agentSessionProviderHandleChainHead } from '../../../shared/agent-session/lifecycle/agent-session-provider-handle'
 import type { RuntimeWorktreeRecord } from '../../../shared/runtime-worktree-contracts'
 import {
+  WORKTREE_MOVE_DEFAULT_MAX_TOTAL_MB,
   WORKTREE_MOVE_MAX_PATCH_BYTES,
   WORKTREE_MOVE_MAX_TRANSCRIPT_BYTES,
   WORKTREE_MOVE_TRANSCRIPT_AGENTS,
@@ -50,6 +51,8 @@ export type WorktreeMoveDeps = WorktreeMoveImportDeps & {
   sleep(ms: number): Promise<void>
 }
 
+/** Untracked file names a dry run lists; the rest are counted. */
+const WORKTREE_MOVE_LISTED_UNTRACKED = 200
 const STOP_WAIT_MS = 15_000
 const STOP_POLL_MS = 250
 
@@ -86,6 +89,14 @@ export class WorktreeMoveService {
   private async optionalGit(args: string[], cwd: string): Promise<string | null> {
     try {
       return (await this.deps.git(args, { cwd })).trim() || null
+    } catch {
+      return null
+    }
+  }
+
+  private async optionalGitRaw(args: string[], cwd: string): Promise<string | null> {
+    try {
+      return await this.deps.git(args, { cwd })
     } catch {
       return null
     }
@@ -129,6 +140,11 @@ export class WorktreeMoveService {
       cwd
     )
     const status = await this.deps.git(['status', '--porcelain', '--untracked-files=all'], { cwd })
+    const untrackedAll = (
+      (await this.optionalGitRaw(['ls-files', '--others', '--exclude-standard', '-z'], cwd)) ?? ''
+    )
+      .split('\0')
+      .filter(Boolean)
     const chats: WorktreeMoveChat[] = []
     for (const record of this.chatsOf(worktree.id)) {
       const { agent, providerSessionId } = chatIdentity(record)
@@ -157,6 +173,8 @@ export class WorktreeMoveService {
       remote: await this.remoteOf(cwd, branch),
       upstream,
       dirty: status.trim().length > 0,
+      untracked: untrackedAll.slice(0, WORKTREE_MOVE_LISTED_UNTRACKED),
+      untrackedCount: untrackedAll.length,
       home: this.deps.home(),
       comment: worktree.comment,
       wsl: this.deps.isWslPath(cwd),
@@ -205,6 +223,7 @@ export class WorktreeMoveService {
     stopTurns?: boolean
     patch?: boolean
     sessionIds?: string[]
+    maxTotalBytes?: number
   }): Promise<WorktreeMoveExportResult> {
     const worktree = await this.deps.showWorktree(params.worktree)
     const cwd = worktree.git.path
@@ -220,6 +239,11 @@ export class WorktreeMoveService {
     if (patch && patch.length > WORKTREE_MOVE_MAX_PATCH_BYTES) {
       throw new Error('The uncommitted changes are too large to carry as a patch.')
     }
+    const budget = params.maxTotalBytes ?? WORKTREE_MOVE_DEFAULT_MAX_TOTAL_MB * 1024 * 1024
+    if (patch && patch.length > budget) {
+      throw new Error('The uncommitted changes pass the total size a move may carry.')
+    }
+    let carried = patch?.length ?? 0
     const transcripts: WorktreeMoveTranscriptWire[] = []
     const skipped: { sessionId: string; reason: string }[] = []
     for (const record of records) {
@@ -232,7 +256,22 @@ export class WorktreeMoveService {
         skipped.push({ sessionId: record.sessionId, reason: 'its transcript was not found' })
         continue
       }
+      const size = await this.deps.fs.size(path)
+      if (size !== null && carried + size > budget) {
+        skipped.push({
+          sessionId: record.sessionId,
+          reason: 'it would pass the total size a move may carry'
+        })
+        continue
+      }
       const content = await this.deps.fs.read(path)
+      if (carried + content.length > budget) {
+        skipped.push({
+          sessionId: record.sessionId,
+          reason: 'it would pass the total size a move may carry'
+        })
+        continue
+      }
       if (content.length > WORKTREE_MOVE_MAX_TRANSCRIPT_BYTES) {
         skipped.push({
           sessionId: record.sessionId,
@@ -240,6 +279,7 @@ export class WorktreeMoveService {
         })
         continue
       }
+      carried += content.length
       transcripts.push({
         sessionId: record.sessionId,
         agent,

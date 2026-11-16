@@ -640,6 +640,12 @@ named Orca Fork until SLRM-1367. `main` is always
     public key, so a re-paired server with another key starts empty. Not learned for a `wss:`
     endpoint or a loopback one. A stock Orca server does not have the method, and only its
     saved endpoints are used.
+  - **Learned addresses stay near.** With `forkEndpointLearnSameSubnetOnly` (on), a learned
+    address is probed only when it shares the /24 of a saved IPv4 endpoint or is a Tailscale
+    (100.64.0.0/10) address, so a compromised paired server cannot make the desktop probe other
+    machines on its network. Turn it off to probe any learned LAN address. A test
+    (`endpoint-failover-probe.test.ts`, loopback only) shows a server answering with a host key
+    other than the pinned one is rejected.
   - **When it moves.** A connection down for 10 s probes the routes in order (at most every
     15 s) and moves to the first that answers. While on a worse route, the better ones are
     probed every `forkEndpointFailoverRetrySeconds` (60) and the first that answers wins. A
@@ -738,6 +744,16 @@ named Orca Fork until SLRM-1367. `main` is always
     the stock `worktree.set` adds `[moved to <host> on <date>]` to the source's comment. The
     runner (`worktree-move-runner.ts`) is shared by the CLI and the desktop; each step runs on
     the host that owns it, so no host reaches another.
+  - **Hardening.** A branch or remote from the source's inspect reply that starts with `-`,
+    holds whitespace or control characters, or fails `git check-ref-format --branch` rules is
+    refused before anything reaches `git worktree add` (`worktree-move-ref.ts`). One move
+    carries at most 50 chats and `maxTotalMb` (setting `forkWorktreeMove.maxTotalMb`, default 256) of patch plus transcripts: the planner leaves chats over it behind, the export stops at
+    it, and the import refuses the whole request over it before writing, then decodes, writes
+    and releases each transcript in turn. The import files a transcript only when its
+    `providerSessionId` matches the Claude file stem or the Codex rollout file name. The dialog
+    and `--dry-run` say that untracked non-ignored files and full chat transcripts are copied
+    (the dry run lists the untracked names), and control characters are stripped from remote
+    strings (patch error, saved path, chat names, reasons) before they print or reach a toast.
   - **Never silent.** Nothing is committed: uncommitted changes (tracked and untracked) are
     diffed through a scratch index and carried as a binary patch, and stay on the source too. A
     patch that does not apply is saved in the target's git folder and named in the result. A

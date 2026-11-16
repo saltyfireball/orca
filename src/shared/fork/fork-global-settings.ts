@@ -121,6 +121,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkEndpointFailoverRetrySeconds?: number
     /** Fork endpoint failover: ask a Blackfish server for its current LAN and Tailscale addresses; unset is on. */
     forkEndpointLearnAddresses?: boolean
+    /** Fork endpoint failover: use a learned address only when it is in a saved endpoint's /24 or is a Tailscale address; unset is on. */
+    forkEndpointLearnSameSubnetOnly?: boolean
   }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */

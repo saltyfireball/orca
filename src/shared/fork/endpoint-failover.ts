@@ -19,7 +19,10 @@ export const FORK_ENDPOINT_MAX_LEARNED = 8
 
 type EndpointFailoverSettings = Pick<
   ForkGlobalSettings,
-  'forkEndpointFailover' | 'forkEndpointFailoverRetrySeconds' | 'forkEndpointLearnAddresses'
+  | 'forkEndpointFailover'
+  | 'forkEndpointFailoverRetrySeconds'
+  | 'forkEndpointLearnAddresses'
+  | 'forkEndpointLearnSameSubnetOnly'
 >
 
 /** Unset is on; only an explicit false turns it off. */
@@ -34,6 +37,13 @@ export function forkEndpointLearnAddresses(
   settings: EndpointFailoverSettings | null | undefined
 ): boolean {
   return settings?.forkEndpointLearnAddresses !== false
+}
+
+/** Unset is on; only an explicit false lets a learned address outside the saved subnets be probed. */
+export function forkEndpointLearnSameSubnetOnly(
+  settings: EndpointFailoverSettings | null | undefined
+): boolean {
+  return settings?.forkEndpointLearnSameSubnetOnly !== false
 }
 
 /** Whole seconds from 15 to an hour; anything else reads as the default 60. */
@@ -93,6 +103,58 @@ export function normalizeForkLearnedAddresses(value: unknown): ForkLearnedAddres
     }
   }
   return result
+}
+
+function ipv4Parts(host: string): number[] | null {
+  const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host)
+  if (!match) {
+    return null
+  }
+  const parts = match.slice(1).map(Number)
+  return parts.every((part) => part <= 255) ? parts : null
+}
+
+function isTailscaleIpv4(parts: number[]): boolean {
+  // 100.64.0.0/10
+  return parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127
+}
+
+/**
+ * A compromised paired server could report addresses that make this desktop probe other hosts on
+ * its network. With the setting on, a learned address stays only when it shares the /24 of a saved
+ * endpoint's IPv4 host or is a Tailscale (100.64.0.0/10) address.
+ */
+export function filterForkLearnedAddresses(
+  learned: readonly ForkLearnedAddress[],
+  savedEndpoints: readonly string[],
+  sameSubnetOnly: boolean
+): ForkLearnedAddress[] {
+  if (!sameSubnetOnly) {
+    return [...learned]
+  }
+  const subnets: number[][] = []
+  for (const endpoint of savedEndpoints) {
+    try {
+      const parts = ipv4Parts(new URL(endpoint).hostname)
+      if (parts) {
+        subnets.push(parts)
+      }
+    } catch {
+      // An unparsable saved endpoint names no subnet.
+    }
+  }
+  return learned.filter((entry) => {
+    const parts = ipv4Parts(entry.address)
+    if (!parts) {
+      return false
+    }
+    return (
+      isTailscaleIpv4(parts) ||
+      subnets.some(
+        (subnet) => subnet[0] === parts[0] && subnet[1] === parts[1] && subnet[2] === parts[2]
+      )
+    )
+  })
 }
 
 // ---- Routes -----------------------------------------------------------------------------------

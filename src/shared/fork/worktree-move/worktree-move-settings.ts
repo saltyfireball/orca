@@ -1,5 +1,6 @@
 // SLRM-2265 (FORK.md): the settings of a workspace move to another host. Every behavior is a
 // setting; unset keys take the defaults below.
+import { WORKTREE_MOVE_DEFAULT_MAX_TOTAL_MB } from './worktree-move-wire'
 
 export type ForkWorktreeMoveSettings = {
   /** Show "Move to Host" on the workspace menu; unset is on. */
@@ -16,6 +17,8 @@ export type ForkWorktreeMoveSettings = {
   rewriteHome?: boolean
   /** Mark the source workspace as moved (its comment); unset is on. The source is never deleted. */
   markSource?: boolean
+  /** Most megabytes of patch and chat transcripts one move carries, 1 to 2048; unset is 256. */
+  maxTotalMb?: number
 }
 
 export type ResolvedWorktreeMoveSettings = Required<ForkWorktreeMoveSettings>
@@ -27,7 +30,8 @@ export const WORKTREE_MOVE_DEFAULTS: ResolvedWorktreeMoveSettings = {
   push: true,
   chats: true,
   rewriteHome: true,
-  markSource: true
+  markSource: true,
+  maxTotalMb: WORKTREE_MOVE_DEFAULT_MAX_TOTAL_MB
 }
 
 function pick<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
@@ -51,6 +55,13 @@ export function resolveWorktreeMoveSettings(
     push: flag(v.push, d.push),
     chats: flag(v.chats, d.chats),
     rewriteHome: flag(v.rewriteHome, d.rewriteHome),
-    markSource: flag(v.markSource, d.markSource)
+    markSource: flag(v.markSource, d.markSource),
+    maxTotalMb:
+      typeof v.maxTotalMb === 'number' &&
+      Number.isInteger(v.maxTotalMb) &&
+      v.maxTotalMb >= 1 &&
+      v.maxTotalMb <= 2048
+        ? v.maxTotalMb
+        : d.maxTotalMb
   }
 }

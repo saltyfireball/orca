@@ -14,6 +14,7 @@ import {
   type WorktreeMoveStep,
   type WorktreeMoveTargetRepo
 } from './worktree-move-plan'
+import { stripWorktreeMoveControlChars as clean } from './worktree-move-ref'
 import type { ResolvedWorktreeMoveSettings } from './worktree-move-settings'
 import {
   worktreeMovedComment,
@@ -81,7 +82,7 @@ export class WorktreeMoveStepError extends Error {
     readonly cause: unknown,
     readonly done: readonly string[]
   ) {
-    const reason = cause instanceof Error ? cause.message : String(cause)
+    const reason = clean(cause instanceof Error ? cause.message : String(cause))
     const progress = done.length > 0 ? ` Done before it: ${done.join('; ')}.` : ''
     super(`Move stopped at ${step}: ${reason}${progress}`)
     this.name = 'WorktreeMoveStepError'
@@ -152,7 +153,8 @@ export async function runWorktreeMove(args: WorktreeMoveRunArgs): Promise<Worktr
         worktree: sourceSelector,
         stopTurns: plan.stopTurns,
         patch: plan.carryPatch,
-        sessionIds: plan.chats.map((chat) => chat.sessionId)
+        sessionIds: plan.chats.map((chat) => chat.sessionId),
+        maxTotalBytes: args.settings.maxTotalMb * 1024 * 1024
       })) as WorktreeMoveExportResult
   )
   done.push('read the changes and chats')
@@ -191,6 +193,7 @@ export async function runWorktreeMove(args: WorktreeMoveRunArgs): Promise<Worktr
         sourcePath: source.path,
         sourceHome: source.home,
         rewriteHome: args.settings.rewriteHome,
+        maxTotalBytes: args.settings.maxTotalMb * 1024 * 1024,
         transcripts: exported.transcripts
       })) as WorktreeMoveImportResult
   )
@@ -212,7 +215,7 @@ export async function runWorktreeMove(args: WorktreeMoveRunArgs): Promise<Worktr
   const warnings = [...plan.warnings]
   if (imported.patch.kind === 'failed') {
     warnings.push(
-      `The uncommitted changes did not apply on the target (${imported.patch.error}); the patch is saved at ${imported.patch.savedTo} and the changes are still on the source.`
+      `The uncommitted changes did not apply on the target (${clean(imported.patch.error)}); the patch is saved at ${clean(imported.patch.savedTo)} and the changes are still on the source.`
     )
   }
   return {
@@ -221,7 +224,14 @@ export async function runWorktreeMove(args: WorktreeMoveRunArgs): Promise<Worktr
     source,
     target,
     pushed: plan.push,
-    patch: imported.patch,
+    patch:
+      imported.patch.kind === 'failed'
+        ? {
+            kind: 'failed',
+            error: clean(imported.patch.error),
+            savedTo: clean(imported.patch.savedTo)
+          }
+        : imported.patch,
     chats,
     marked,
     warnings
@@ -246,18 +256,18 @@ async function reopenChats(
   for (const skipped of exported.skipped) {
     outcomes.push({
       sessionId: skipped.sessionId,
-      name: names.get(skipped.sessionId) ?? skipped.sessionId,
+      name: clean(names.get(skipped.sessionId) ?? skipped.sessionId),
       targetSessionId: null,
-      reason: skipped.reason
+      reason: clean(skipped.reason)
     })
   }
   const written = imported.transcripts.filter((entry) => entry.written)
   for (const entry of imported.transcripts.filter((item) => !item.written)) {
     outcomes.push({
       sessionId: entry.sessionId,
-      name: names.get(entry.sessionId) ?? entry.sessionId,
+      name: clean(names.get(entry.sessionId) ?? entry.sessionId),
       targetSessionId: null,
-      reason: entry.reason ?? 'not written on the target'
+      reason: clean(entry.reason ?? 'not written on the target')
     })
   }
   if (written.length === 0) {
@@ -265,7 +275,7 @@ async function reopenChats(
   }
   await step('reopen-chats', async () => {
     for (const entry of written) {
-      const name = names.get(entry.sessionId) ?? entry.sessionId
+      const name = clean(names.get(entry.sessionId) ?? entry.sessionId)
       const sessionId = createStructuredAgentSessionId(entry.agent, args.randomUuid)
       try {
         const result = (await args.call(
@@ -285,7 +295,7 @@ async function reopenChats(
         outcomes.push({ sessionId: entry.sessionId, name, targetSessionId: sessionId })
       } catch (error) {
         // One chat that will not reopen leaves its transcript there to resume by hand.
-        const reason = error instanceof Error ? error.message : String(error)
+        const reason = clean(error instanceof Error ? error.message : String(error))
         outcomes.push({ sessionId: entry.sessionId, name, targetSessionId: null, reason })
       }
     }
