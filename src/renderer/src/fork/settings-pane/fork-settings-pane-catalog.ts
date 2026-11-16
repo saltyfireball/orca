@@ -7,6 +7,7 @@ import type { SettingsNavSection } from '@/components/settings/navigation/settin
 import type { SettingsSearchEntry } from '@/components/settings/search/settings-search'
 import { translate } from '@/i18n/i18n'
 import type { Translate } from '@/i18n/use-translate'
+import { getForkChatsSearchEntries } from './fork-settings-pane-catalog-chats'
 
 export const FORK_SETTINGS_PANE_ID = 'fork'
 
@@ -65,64 +66,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         'fork.settingsPane.chats.description',
         'How chats survive a restart, sleep, stall, compact and choose their MCP servers.'
       ),
-      [
-        {
-          title: t('fork.chatSurvive.title', 'Chat survive (experimental)'),
-          description: t(
-            'fork.chatSurvive.description',
-            'Keep Claude chats running in the background while Orca restarts.'
-          ),
-          keywords: words('restart', 'background', 'claude', 'forkChatSurvive')
-        },
-        {
-          title: t('fork.chatSleep.title', 'Chat sleep (experimental)'),
-          description: t(
-            'fork.settingsPane.search.chatSleep',
-            'Free the memory of chats you are not using.'
-          ),
-          keywords: words('idle', 'memory', 'sleep after', 'wake', 'forkChatSleep')
-        },
-        {
-          title: t('fork.sleepers.settings.title', 'Sleepers'),
-          description: t(
-            'fork.settingsPane.search.sleepers',
-            'One list of every chat and terminal agent, and its sidebar button.'
-          ),
-          keywords: words('asleep', 'list', 'button', 'sidebar', 'forkSleepersButton')
-        },
-        {
-          title: t('fork.chatStall.title', 'Stalled chats'),
-          description: t(
-            'fork.settingsPane.search.chatStall',
-            'Mark a chat whose turn is open but has had no output for a while.'
-          ),
-          keywords: words('stall', 'stuck', 'interrupt', 'release', 'forkChatStallMinutes')
-        },
-        {
-          title: t('fork.cacheCold.setting.title', 'Cache-cold cue'),
-          description: t(
-            'fork.settingsPane.search.cacheCold',
-            'Say when a chat has sat idle long enough for its prompt cache to expire.'
-          ),
-          keywords: words('cache', 'prompt cache', 'compact', 'cost', 'forkCacheColdCue')
-        },
-        {
-          title: t('fork.boundaryCompaction.title', 'Boundary compaction (experimental)'),
-          description: t(
-            'fork.settingsPane.search.boundaryCompaction',
-            'Ask an idle chat with a large context to compact between turns.'
-          ),
-          keywords: words('compact', 'context', 'idle', 'threshold', 'forkBoundaryCompactMode')
-        },
-        {
-          title: t('fork.mcpProfiles.setting.title', 'MCP profiles'),
-          description: t(
-            'fork.settingsPane.search.mcpProfiles',
-            'Choose which MCP servers a Claude chat loads.'
-          ),
-          keywords: words('mcp', 'servers', 'profile', 'workers', 'automation', 'forkMcpProfiles')
-        }
-      ]
+      getForkChatsSearchEntries(t)
     ),
     section(
       'agents',
