@@ -22,6 +22,7 @@ import { WorktreeNotificationMuteMenuItem } from './WorktreeNotificationMuteMenu
 import { WslMovedWorkspaceUseHereMenuItem } from '@/components/wsl-move/WslMovedUseHereMenuItem'
 import { WorktreeContextMenuDeleteItems } from './WorktreeContextMenuDeleteItems'
 import { ForkMoveWorktreeMenuItem } from '@/fork/worktree-move/ForkMoveWorktreeMenuItem'
+import { ForkSnoozeWorktreeMenuItem } from '@/fork/snooze/ForkSnoozeWorktreeMenuItem'
 import {
   WorktreeCopySubMenu,
   WorktreeLineageSubMenu,
@@ -214,6 +215,8 @@ export default function WorktreeContextMenuView({ model }: { model: WorktreeCont
               <WslMovedWorkspaceUseHereMenuItem worktree={worktree} />
               {/* SLRM-2265: fork hook (FORK.md "Worktree move") */}
               <ForkMoveWorktreeMenuItem worktreeId={worktree.id} disabled={isDeleting} />
+              {/* SLRM-2269: fork hook (FORK.md "Snooze") */}
+              <ForkSnoozeWorktreeMenuItem worktree={worktree} disabled={isDeleting} />
             </>
           )}
           {isMultiContext && hasAnyContextLineage ? (
