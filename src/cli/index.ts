@@ -28,6 +28,7 @@ import {
   isLocalEnvironmentSelector,
   refuseLocalManagementSelector
 } from './hosts/local-environment-selector'
+import { forkResolveAutoPlacement } from './fork/auto-placement-resolve'
 
 const COMMAND_PATHS = COMMAND_SPECS.flatMap((spec) => specPaths(spec))
 
@@ -106,6 +107,11 @@ export async function main(
     refuseConflictingSessionCallerFlags(commandSpec, parsed.flags)
     await refuseLocalManagementSelector(parsed.commandPath, parsed.flags)
     const RuntimeClientClass = await loadRuntimeClientClass()
+    // Fork (SLRM-2266): --on auto / --host auto name a picked machine before routing (FORK.md).
+    await forkResolveAutoPlacement(
+      parsed,
+      () => new RuntimeClientClass(undefined, undefined, null, null)
+    )
     // `--on` runs on the caller's own Orca, which reaches that server; an inherited selection never reroutes it.
     const onCallersOrca = runsOnCallersOrca(parsed.commandPath, parsed.flags)
     if (

@@ -7,6 +7,7 @@ import type { SettingsNavSection } from '@/components/settings/navigation/settin
 import type { SettingsSearchEntry } from '@/components/settings/search/settings-search'
 import { translate } from '@/i18n/i18n'
 import type { Translate } from '@/i18n/use-translate'
+import { forkAutoPlacementSearchEntry } from '../auto-placement/auto-placement-search-entry'
 
 export const FORK_SETTINGS_PANE_ID = 'fork'
 
@@ -129,7 +130,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
       t('fork.settingsPane.agents.title', 'Agents and workers'),
       t(
         'fork.settingsPane.agents.description',
-        'How agents show in the sidebar, get cleaned up, wait to launch, start, and back off when memory runs short.'
+        'How agents show in the sidebar, get cleaned up, wait to launch, start, back off when memory runs short, and which machine takes new work.'
       ),
       [
         {
@@ -179,7 +180,8 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
             'Warn when the system runs short of memory, and pause new agents.'
           ),
           keywords: words('pressure', 'swap', 'pause new agents', 'ram', 'forkMemoryWarnPressure')
-        }
+        },
+        forkAutoPlacementSearchEntry(t)
       ]
     ),
     section(

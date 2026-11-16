@@ -5,13 +5,16 @@ import type { ForkLaunchDefaultsSettings } from './launch-defaults/launch-defaul
 import type { ForkAgentColorState } from './agent-state-color'
 import type { ForkMcpProfileSettings } from './mcp-profiles'
 import type { ForkUsageLedgerSettings } from './usage-ledger'
+import type { ForkAutoPlacementSettings } from './auto-placement'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkMemoryGlobalSettings &
   /** Fork: MCP profiles and their defaults; unset is "all" everywhere. */
   ForkMcpProfileSettings &
-  ForkUsageLedgerSettings & {
+  ForkUsageLedgerSettings &
+  /** Fork (SLRM-2266): per-machine placement and auto placement when no machine is named. */
+  ForkAutoPlacementSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */
     forkLostWork?: LostWorkSettings
     /** Fork (SLRM-1394): Claude chats keep running through an app restart. Off unless true. */

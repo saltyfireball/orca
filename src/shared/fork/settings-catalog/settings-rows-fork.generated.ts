@@ -68,6 +68,10 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"enum","values":["critical","off","warn"]},"d":"Memory pressure level that raises the warning.","o":true}',
   forkMemoryWarnSwapGb:
     '{"t":{"k":"number"},"d":"Swap in use, in GB, that raises the memory warning.","o":true}',
+  forkPlacement:
+    '{"t":{"k":"record","of":{"k":"enum","values":["less","manual","normal","prefer"]}},"d":"Auto placement: per machine (\'local\' or \'runtime:<environment id>\'), how willingly it takes automatically placed work; unset machines are \'normal\'.","o":true}',
+  forkPlacementAutoWhenUnnamed:
+    '{"t":{"k":"boolean"},"d":"Auto placement: when no machine is named and more than one could take the work, pick one as `auto` would. Off unless true.","o":true}',
   forkShowAccountChip:
     '{"t":{"k":"boolean"},"d":"Show which Claude account each session runs on; unset is on.","o":true}',
   forkShowChildTally:
