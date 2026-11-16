@@ -7,6 +7,7 @@ import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import { SettingsGroupHeader } from '@/components/settings/section-layout/SettingsGroup'
 import { useTranslate } from '@/i18n/use-translate'
 import { ForkChatSurviveSetting } from '../ForkChatSurviveSetting'
+import { ForkUnattendedResumeSetting } from '../unattended-resume/ForkUnattendedResumeSetting'
 import { ForkBoundaryCompactionSetting } from '../boundary-compaction/ForkBoundaryCompactionSetting'
 import { ForkChatSleepSetting } from '../chat-sleep/ForkChatSleepSetting'
 import { ForkSleepersSetting } from '../sleepers/ForkSleepersSetting'
@@ -43,6 +44,7 @@ const SECTION_CARDS: Record<
 > = {
   chats: [
     ['chat-survive', ForkChatSurviveSetting],
+    ['unattended-resume', ForkUnattendedResumeSetting],
     ['chat-sleep', ForkChatSleepSetting],
     ['sleepers', ForkSleepersSetting],
     ['chat-stall', ForkChatStallSetting],

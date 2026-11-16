@@ -31,6 +31,7 @@ import { installOrcadFeatureReadiness } from '../../runtime/rpc/startup/orcad-re
 import { ORCA_SERVE_SUPERVISED_ENV } from '../../../shared/serve-supervised-terminal-durability'
 import { activateBackendServices } from '../../backend/service-composition'
 import { isAgentStatusHooksEnabled } from '../../../shared/agent-hook-listener/configuration/agent-status-hooks-setting'
+import { startForkUnattendedResume } from '../../fork/unattended-resume/unattended-resume-service'
 
 let closeOrcadObservability = (): Promise<void> => Promise.resolve()
 
@@ -316,6 +317,8 @@ async function activateOrcadRuntime(
   worktreeRemovalLifetime.resume(() => runtime.finishInterruptedWorktreeRemovals())
   // The daemon has no window to wait for; its CI-line watches start with the runtime.
   runtime.startPullRequestWatches()
+  // Fork (SLRM-2268): continue cut unattended work; the desktop and serve call it at start-up settle.
+  startForkUnattendedResume(runtime)
   startOrcadSchedulers(runtime, profileStore, registerCleanup)
   const pushService = DesktopPushService.create({
     runtime,
