@@ -14,6 +14,12 @@ import {
 import { Button } from '@/components/ui/button'
 import { useTranslate } from '@/i18n/use-translate'
 import { translate } from '@/i18n/i18n'
+import { stripWorktreeMoveControlChars as clean } from '../../../../shared/fork/worktree-move/worktree-move-ref'
+import {
+  WORKTREE_MOVE_TRANSCRIPTS_NOTICE,
+  WORKTREE_MOVE_UNTRACKED_NOTICE,
+  worktreeMoveUntrackedNames
+} from '../../../../shared/fork/worktree-move/worktree-move-notice'
 import type { WorktreeMoveRunResult } from '../../../../shared/fork/worktree-move/worktree-move-runner'
 import { runDesktopWorktreeMove, type WorktreeMoveRequest } from './worktree-move-client'
 
@@ -44,21 +50,40 @@ type Preview =
   | { kind: 'ready'; result: WorktreeMoveRunResult }
 
 function errorText(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
+  return clean(error instanceof Error ? error.message : String(error))
 }
 
 function previewLines(result: WorktreeMoveRunResult): string[] {
   if (result.kind === 'refuse' || result.kind === 'ask') {
-    return [result.plan.message]
+    return [clean(result.plan.message)]
   }
   if (result.kind !== 'dry-run') {
     return []
   }
   const { plan } = result
+  const { names, more } = worktreeMoveUntrackedNames(result.source)
   return [
-    ...plan.chats.map((chat) => `Carries chat: ${chat.name} (${chat.agent})`),
-    ...plan.skippedChats.map(({ chat, reason }) => `Stays behind: ${chat.name} (${reason})`),
-    ...plan.warnings
+    translate('fork.worktreeMove.copiesTranscripts', WORKTREE_MOVE_TRANSCRIPTS_NOTICE),
+    ...(plan.carryPatch
+      ? [
+          translate('fork.worktreeMove.copiesUntracked', WORKTREE_MOVE_UNTRACKED_NOTICE),
+          ...names.map(
+            (name) => `${translate('fork.worktreeMove.untrackedFile', 'Untracked')}: ${name}`
+          ),
+          ...(more > 0
+            ? [
+                translate(
+                  'fork.worktreeMove.untrackedMore',
+                  '...and {{count}} more untracked file(s)',
+                  { count: more }
+                )
+              ]
+            : [])
+        ]
+      : []),
+    ...plan.chats.map((chat) => clean(`Carries chat: ${chat.name} (${chat.agent})`)),
+    ...plan.skippedChats.map(({ chat, reason }) => clean(`Stays behind: ${chat.name} (${reason})`)),
+    ...plan.warnings.map(clean)
   ]
 }
 
@@ -75,7 +100,7 @@ async function runMove(current: WorktreeMoveRequest, stopTurns: boolean): Promis
       toast.error(
         result.kind === 'dry-run'
           ? translate('fork.worktreeMove.notRun', 'The move did not run.')
-          : result.plan.message,
+          : clean(result.plan.message),
         {
           id: pending
         }
@@ -91,7 +116,7 @@ async function runMove(current: WorktreeMoveRequest, stopTurns: boolean): Promis
         description: [
           `${reopened} chat(s) reopened${left > 0 ? `, ${left} left behind` : ''}.`,
           result.patch.kind === 'failed'
-            ? `Uncommitted changes did not apply; the patch is saved at ${result.patch.savedTo}.`
+            ? `Uncommitted changes did not apply; the patch is saved at ${clean(result.patch.savedTo)}.`
             : '',
           result.marked ? 'The source workspace is marked as moved and was not deleted.' : ''
         ]

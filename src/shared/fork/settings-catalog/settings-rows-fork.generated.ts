@@ -31,6 +31,8 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"number"},"d":"Endpoint failover: seconds between tries of a better route while on a worse one; unset is 60.","o":true}',
   forkEndpointLearnAddresses:
     '{"t":{"k":"boolean"},"d":"Endpoint failover: ask a Blackfish server for its current LAN and Tailscale addresses; unset is on.","o":true}',
+  forkEndpointLearnSameSubnetOnly:
+    '{"t":{"k":"boolean"},"d":"Endpoint failover: use a learned address only when it is in a saved endpoint\'s /24 or is a Tailscale address; unset is on.","o":true}',
   forkIdleSweepClassifierCommand:
     '{"t":{"k":"string"},"d":"Idle recovery: the command that judges an ending (JSON on stdin, a JSON verdict on stdout); unset uses the built-in check. Set it in the Settings screen.","o":true}',
   forkIdleSweepClassifierTimeoutSeconds:
@@ -111,5 +113,5 @@ export const FORK_SETTINGS_ROWS_FORK = {
   forkWorkerCleanupOnMerged:
     '{"t":{"k":"boolean"},"d":"Worker cleanup: clean up once the worker\'s branch is merged; unset is off.","o":true}',
   forkWorktreeMove:
-    '{"t":{"k":"object","fields":{"menu":{"k":"boolean","optional":true},"whenBusy":{"k":"enum","values":["ask","refuse"],"optional":true},"uncommitted":{"k":"enum","values":["leave","patch","refuse"],"optional":true},"push":{"k":"boolean","optional":true},"chats":{"k":"boolean","optional":true},"rewriteHome":{"k":"boolean","optional":true},"markSource":{"k":"boolean","optional":true}}},"d":"Moving a workspace and its chats to another host; unset keys take the defaults.","o":true}'
+    '{"t":{"k":"object","fields":{"menu":{"k":"boolean","optional":true},"whenBusy":{"k":"enum","values":["ask","refuse"],"optional":true},"uncommitted":{"k":"enum","values":["leave","patch","refuse"],"optional":true},"push":{"k":"boolean","optional":true},"chats":{"k":"boolean","optional":true},"rewriteHome":{"k":"boolean","optional":true},"markSource":{"k":"boolean","optional":true},"maxTotalMb":{"k":"number","optional":true}}},"d":"Moving a workspace and its chats to another host; unset keys take the defaults.","o":true}'
 }

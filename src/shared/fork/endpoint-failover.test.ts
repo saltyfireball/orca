@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
+  filterForkLearnedAddresses,
   buildForkEndpointCandidates,
   forkEndpointFailoverEnabled,
   forkEndpointFailoverRetrySeconds,
@@ -143,5 +144,33 @@ describe('active endpoint route', () => {
       publicKeyB64: 'someone-else'
     })
     expect(forkActiveEndpointRoute(saved).endpoint).toBe(saved.endpoint)
+  })
+})
+
+describe('filterForkLearnedAddresses', () => {
+  const learned = [
+    { address: '192.168.1.20', kind: 'lan' as const },
+    { address: '192.168.2.20', kind: 'lan' as const },
+    { address: '100.64.0.1', kind: 'tailscale' as const },
+    { address: '100.127.255.254', kind: 'tailscale' as const },
+    { address: '100.128.0.1', kind: 'tailscale' as const },
+    { address: '10.0.0.5', kind: 'lan' as const }
+  ]
+
+  it('keeps the same /24 of a saved IPv4 endpoint and the Tailscale range', () => {
+    expect(
+      filterForkLearnedAddresses(learned, ['ws://192.168.1.5:6768/', 'wss://host.example/'], true)
+    ).toEqual([learned[0], learned[2], learned[3]])
+  })
+
+  it('keeps nothing but Tailscale addresses when no saved endpoint is an IPv4 address', () => {
+    expect(filterForkLearnedAddresses(learned, ['wss://host.example/'], true)).toEqual([
+      learned[2],
+      learned[3]
+    ])
+  })
+
+  it('keeps everything when the limit is off', () => {
+    expect(filterForkLearnedAddresses(learned, [], false)).toEqual(learned)
   })
 })
