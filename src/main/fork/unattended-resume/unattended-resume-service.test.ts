@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { AgentSessionRestartActivity } from '../../../shared/agent-session/lifecycle/agent-session-restart-activity'
+import type { AgentSessionRestartActivity } from '../../../shared/agent-session/lifecycle/stopping/agent-session-restart-activity'
 import type { StructuredAgentSessionResumeCandidate } from '../../native-chat/agent-session-wire/recovery/structured-agent-session-restart-resume-set'
 import {
   runUnattendedResumePass,

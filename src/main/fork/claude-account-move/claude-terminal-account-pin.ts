@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path'
 import {
   CLAUDE_INJECTED_CONFIG_DIR_ENV,
   CLAUDE_PROFILE_POINTER_ENV
-} from '../../../shared/claude-profile-routing'
+} from '../../../shared/agent-accounts/claude/claude-profile-routing'
 import {
   FORK_CLAUDE_SYSTEM_DEFAULT,
   FORK_CLAUDE_TERMINAL_ACCOUNT_ENV

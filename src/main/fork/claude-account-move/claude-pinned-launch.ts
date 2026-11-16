@@ -1,16 +1,16 @@
 // SLRM-1503: the stock launch and launch-home reads ask here first. A pinned chat launches under its
 // pin; every other chat falls through to the global selection exactly as stock does.
 import { stat } from 'node:fs/promises'
-import type { ClaudeAccountRecipe } from '../../../shared/agent-session/lifecycle/agent-session-acquired-account'
+import type { ClaudeAccountRecipe } from '../../../shared/agent-session/lifecycle/accounts/agent-session-acquired-account'
 import {
   agentSessionAccountHome,
   type AgentSessionAccountHome
-} from '../../../shared/agent-session/lifecycle/agent-session-account-home'
+} from '../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
 import type { AgentSessionRecord } from '../../../shared/agent-session/lifecycle/agent-session-record'
 import {
   CLAUDE_INJECTED_CONFIG_DIR_ENV,
   CLAUDE_PROFILE_POINTER_ENV
-} from '../../../shared/claude-profile-routing'
+} from '../../../shared/agent-accounts/claude/claude-profile-routing'
 import { getClaudeProfileRouter } from '../../claude-accounts/profiles/routing/claude-profile-installed-router'
 import type { ClaudeProfileRouter } from '../../claude-accounts/profiles/routing/claude-profile-router'
 import { CLAUDE_STRUCTURED_AGENT } from '../../claude/structured/claude-structured-agent-definition'

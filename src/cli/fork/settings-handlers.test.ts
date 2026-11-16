@@ -8,7 +8,7 @@ import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli-argument-boun
 import { specPaths } from '../discovery/command-spec'
 import type { HandlerContext } from '../dispatch/dispatch'
 import { formatCommandHelp } from '../discovery/help'
-import { RuntimeClientError } from '../runtime/types'
+import { RuntimeClientError } from '../runtime/connection/types'
 import { COMMAND_SPECS } from '../specs'
 import { getDefaultSettings } from '../../shared/constants'
 import { redactForkSettings } from '../../shared/fork/settings-catalog/settings-plan'

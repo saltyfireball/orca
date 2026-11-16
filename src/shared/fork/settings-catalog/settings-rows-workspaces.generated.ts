@@ -28,6 +28,8 @@ export const FORK_SETTINGS_ROWS_WORKSPACES = {
   workspaceDir: '{"t":{"k":"string"},"d":"Folder that holds new workspaces."}',
   workspaceDirHistory:
     '{"t":{"k":"array","of":{"k":"object","fields":{"path":{"k":"string"},"nestWorkspaces":{"k":"boolean"}}}},"d":"Workspace folders used before, so their worktrees stay listed.","o":true}',
+  worktreeCardDetailsRow:
+    '{"t":{"k":"boolean"},"d":"Experimental card: draw the details row (Card display items) under each name unless explicitly disabled.","o":true}',
   worktreeVisibilityDefaults:
     '{"t":{"k":"object","fields":{"external":{"k":"enum","values":["hide","show"],"optional":true},"customSources":{"k":"array","of":{"k":"object","fields":{"id":{"k":"string"},"rootPath":{"k":"string"}}},"optional":true},"sourcePreferences":{"k":"object","fields":{"builtIn":{"k":"object","fields":{"claude":{"k":"enum","values":["hide","show"],"optional":true},"gsd":{"k":"enum","values":["hide","show"],"optional":true}},"optional":true},"custom":{"k":"record","of":{"k":"enum","values":["hide","show"]},"optional":true}},"optional":true}}},"d":"Host-owned defaults used when a repository has no explicit visibility override.","o":true}'
 }

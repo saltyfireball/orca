@@ -3,7 +3,7 @@
 // pass fakes.
 import os from 'node:os'
 import { execFile } from 'node:child_process'
-import { mapWithConcurrency } from '../../../shared/map-with-concurrency'
+import { mapWithConcurrency } from '../../../shared/concurrency/map-with-concurrency'
 import {
   FORK_PLACEMENT_LOCAL_KEY,
   forkPlacementAutoWhenUnnamed,
@@ -67,7 +67,9 @@ export async function readLocalMachineLoad(
 export type ForkPlacementDeps = {
   settings: () => ForkAutoPlacementSettings | null | undefined
   /** Paired servers saved on this machine. */
-  listEnvironments: () => readonly { id: string; name: string }[]
+  listEnvironments: () =>
+    | readonly { id: string; name: string }[]
+    | Promise<readonly { id: string; name: string }[]>
   /** This machine's own fork.placement.load answer. */
   localLoad: (
     repo: string | undefined,
@@ -159,7 +161,7 @@ export async function pickForkPlacementOnHosts(
   if (request.unnamed && !forkPlacementAutoWhenUnnamed(settings)) {
     return { off: true }
   }
-  const environments = deps.listEnvironments()
+  const environments = await deps.listEnvironments()
   const byId = new Map(environments.map((environment) => [environment.id, environment]))
   const everyMachine = [
     FORK_PLACEMENT_LOCAL_KEY,

@@ -15,7 +15,6 @@ type TallyState = Pick<
   AppState,
   | 'settings'
   | 'agentStatusByPaneKey'
-  | 'retainedAgentsByPaneKey'
   | 'runtimeAgentOrchestrationByPaneKey'
   | 'unifiedTabsByWorktree'
   | 'tabsByWorktree'
@@ -57,10 +56,10 @@ export function selectAgentChildTally(state: TallyState, rootKey: string): Child
     return EMPTY_CHILD_TALLY
   }
   const contexts = selectVisibleAgentOrchestration(state)
+  // Since upstream 1.4.261 finished agents stay in the live map (no separate retained map).
   const live = state.agentStatusByPaneKey
-  const retained = state.retainedAgentsByPaneKey
   const options = childTallyOptions(state)
-  const inputs = [contexts, live, retained, options.countFinished, options.countTasks]
+  const inputs = [contexts, live, options.countFinished, options.countTasks]
   const previous = cache.get(rootKey)
   if (previous && inputs.every((value, index) => value === previous.inputs[index])) {
     return previous.tally
@@ -69,13 +68,8 @@ export function selectAgentChildTally(state: TallyState, rootKey: string): Child
     rootKey.split(ROOT_SEPARATOR),
     {
       contexts,
-      entryFor: (paneKey) => live[paneKey] ?? retained[paneKey]?.entry,
-      entries: function* (): Iterable<AgentStatusEntry> {
-        yield* Object.values(live)
-        for (const item of Object.values(retained)) {
-          yield item.entry
-        }
-      }
+      entryFor: (paneKey) => live.get(paneKey),
+      entries: (): Iterable<AgentStatusEntry> => live.values()
     },
     options
   )

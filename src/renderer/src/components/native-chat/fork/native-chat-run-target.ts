@@ -2,7 +2,7 @@ import {
   toRuntimeExecutionHostId,
   type ExecutionHostId
 } from '../../../../../shared/execution-host'
-import type { RuntimeClientTarget } from '../../../../../shared/runtime-client-target'
+import type { RuntimeClientTarget } from '../../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 import type { HostRoute } from '@/runtime/rpc/targets/runtime-client-target'
 
 /** Where a workspace runs right now: its row's host and its owner's transport plus place. */

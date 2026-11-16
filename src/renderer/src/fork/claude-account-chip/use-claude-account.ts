@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react'
 import { useAppStore } from '@/store'
 import type { AppState } from '@/store/types'
-import type { ClaudeManagedAccount } from '../../../../shared/managed-account-types'
+import type { ClaudeManagedAccount } from '../../../../shared/agent-accounts/managed-account-types'
 import { NO_ACCOUNT, type ForkClaudeAccountResolution } from './claude-account-identity'
 import {
   agentRowEvidence,

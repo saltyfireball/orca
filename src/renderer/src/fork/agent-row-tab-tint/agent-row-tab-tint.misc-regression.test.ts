@@ -78,7 +78,6 @@ function rowColor(entry: AgentStatusEntry): string | null {
     tabs: tabsByWorktree[MISC] ?? [],
     representedTabs: new Map([[weeklyPlanPaneKey, weeklyPlan]]),
     entries: [entry],
-    retained: [],
     now: 1794353100000
   })
   expect(rows).toHaveLength(1)

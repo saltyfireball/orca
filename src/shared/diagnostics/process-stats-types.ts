@@ -1,4 +1,4 @@
-import type { ForkMemoryTruth } from './fork/memory-truth'
+import type { ForkMemoryTruth } from '../fork/memory-truth'
 
 export type StatsSummary = {
   totalAgentsSpawned: number

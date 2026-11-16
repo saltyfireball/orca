@@ -1,8 +1,8 @@
 // SLRM-2265: run a workspace move between two hosts' runtimes. The CLI and the desktop each give
 // it a `call` that reaches the source and the target; every step runs on the host that owns it.
 // The source is never deleted or reset: at most its turns stop (when agreed) and it gets marked.
-import type { ProjectHostSetup } from '../../project-types'
-import type { RuntimeWorktreeCreateResult } from '../../runtime-worktree-contracts'
+import type { ProjectHostSetup } from '../../project/project-types'
+import type { RuntimeWorktreeCreateResult } from '../../worktree/catalog/runtime-worktree-contracts'
 import {
   createStructuredAgentSessionId,
   structuredAgentSessionCreateParams

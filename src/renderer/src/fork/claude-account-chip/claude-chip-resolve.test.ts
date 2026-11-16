@@ -3,8 +3,8 @@ import type {
   ClaudeManagedAccount,
   ClaudeManagedAccountSummary,
   ClaudeRateLimitAccountsState
-} from '../../../../shared/managed-account-types'
-import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
+} from '../../../../shared/agent-accounts/managed-account-types'
+import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 import type { ClaudeChipEvidence } from './claude-chip-evidence'
 import type { ChatHomeEntry, ClaudeHostSnapshot } from './claude-chip-host-cache'
 

@@ -8,11 +8,11 @@ import { inboxItem, installFakeBridge, NOW } from './decision-inbox-test-kit'
 type FakeState = {
   settings: Record<string, unknown>
   unifiedTabsByWorktree: Record<string, unknown[]>
-  agentStatusByPaneKey: Record<string, { worktreeId: string }>
+  agentStatusByPaneKey: ReadonlyMap<string, { worktreeId: string }>
 }
 
 const state: { current: FakeState } = {
-  current: { settings: {}, unifiedTabsByWorktree: {}, agentStatusByPaneKey: {} }
+  current: { settings: {}, unifiedTabsByWorktree: {}, agentStatusByPaneKey: new Map() }
 }
 const activate = vi.fn()
 const toast = { message: vi.fn(), success: vi.fn(), error: vi.fn() }
@@ -60,7 +60,7 @@ beforeEach(() => {
   state.current = {
     settings: { forkIdleSweepMode: 'inbox' },
     unifiedTabsByWorktree: { wt1: [CHAT_TAB] },
-    agentStatusByPaneKey: {}
+    agentStatusByPaneKey: new Map()
   }
   vi.clearAllMocks()
 })

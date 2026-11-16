@@ -3,12 +3,12 @@
 import type {
   ClaudeManagedAccount,
   ClaudeRateLimitAccountsState
-} from '../../../../shared/managed-account-types'
+} from '../../../../shared/agent-accounts/managed-account-types'
 import {
   isClaudePaneOnAccount,
   resolveClaudePaneFolder
 } from '@/lib/agent-session/accounts/claude/claude-pane-account-folder'
-import { signedInClaudeAccountCount } from '@/components/status-bar/status-bar-claude-accounts'
+import { signedInClaudeAccountCount } from '@/components/status-bar/accounts/status-bar-claude-accounts'
 import { translate } from '@/i18n/i18n'
 
 /** Account id the chip uses for System default, which has no saved account. */
