@@ -76,6 +76,7 @@ import { FORK_SLEEPERS_METHODS } from './fork/fork-sleepers'
 import { FORK_IDLE_RECOVERY_RPC_METHODS } from './fork/fork-idle-recovery'
 import { FORK_MCP_PROFILE_METHODS } from './fork/fork-mcp-profiles'
 import { FORK_USAGE_REPORT_METHODS } from './fork/fork-usage-report'
+import { FORK_AUTO_PLACEMENT_METHODS } from './fork/fork-auto-placement'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
 import { STRUCTURED_AGENT_SESSION_ATTACHMENT_METHODS } from './structured-sessions/attachments/structured-agent-session-attachments'
@@ -194,5 +195,7 @@ export const ALL_RPC_METHODS = [
   ...FORK_USAGE_REPORT_METHODS,
   // Fork: idle recovery, the Decision inbox behind `orca inbox` (FORK.md).
   ...FORK_IDLE_RECOVERY_RPC_METHODS,
-  ...FORK_SETTINGS_METHODS
+  ...FORK_SETTINGS_METHODS,
+  // SLRM-2266: the load probe and pick behind --on auto and --host auto (FORK.md).
+  ...FORK_AUTO_PLACEMENT_METHODS
 ]

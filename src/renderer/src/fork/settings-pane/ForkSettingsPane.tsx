@@ -25,6 +25,7 @@ import { ForkAccountChipSetting } from '../claude-account-chip/ForkAccountChipSe
 import { ForkUsageReportSettings } from '../usage-report/ForkUsageReportSettings'
 import { ForkLostWorkSettings } from '../lost-work/ForkLostWorkSettings'
 import { ForkSyncNoticeSetting } from '../sync-status/ForkSyncNoticeSetting'
+import { ForkAutoPlacementSetting } from '../auto-placement/ForkAutoPlacementSetting'
 import { ForkProjectSettingsList } from './ForkProjectSettingsList'
 import { ForkSettingsSectionLinks } from './ForkSettingsSectionLinks'
 import { getForkSettingsSections, type ForkSettingsSectionId } from './fork-settings-pane-catalog'
@@ -57,7 +58,8 @@ const SECTION_CARDS: Record<
     ['worker-cleanup', ForkWorkerCleanupSetting],
     ['agent-queue', ForkAgentQueueSetting],
     ['launch-defaults', ForkLaunchDefaultsSetting],
-    ['memory', ForkMemorySettings]
+    ['memory', ForkMemorySettings],
+    ['auto-placement', ForkAutoPlacementSetting]
   ],
   'idle-recovery': [['idle-recovery', ForkIdleRecoverySetting]],
   usage: [
