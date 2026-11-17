@@ -236,7 +236,7 @@ owner-gone signal, and fences decide who may write).
    check before any session is restored; a chat started within the few milliseconds after the
    setting is switched on, before that check lands, runs as today. Record writes are async and queued
    per path, so the spawn's write, the detach rewrite and the exit's removal stay in order;
-   quit waits for every queued write and removal before the process ends. orcad never installs the setting reader, so it is always off there. Each
+   quit waits for every queued write and removal before the process ends. orcad never installs the setting reader, so it is always off there, and `orca settings` refuses to write `forkChatSurvive` on such a host (SLRM-2307). Each
    broker gets a record `{v, sessionId, brokerPid, socketPath, token, launch}` at
    `userData/chat-survive/<sessionId>.<brokerPid>.json` (folder 0700, file 0600), removed when the
    broker exits; a stale one after a crash names a dead pid and is harmless. A broker the app
