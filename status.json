@@ -1,13 +1,21 @@
 {
   "schema": 1,
-  "state": "in-sync",
-  "reason": null,
-  "upstreamVersion": "1.4.261",
-  "upstreamSha": "92d4266cc4ffa945dbc1fa52850e62448d2dfc1c",
+  "state": "conflict",
+  "reason": "Rebasing the fork commits onto v1.4.262 stopped on conflicts.",
+  "upstreamVersion": "1.4.262",
+  "upstreamSha": "13619bc1c1f07bf10af2aba61def9a4cc532e108",
   "forkBaseVersion": "1.4.261",
   "forkBaseSha": "92d4266cc4ffa945dbc1fa52850e62448d2dfc1c",
-  "conflicts": [],
-  "since": null,
-  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/44149878824",
-  "checkedAt": "2026-11-17T18:39:13.896Z"
+  "conflicts": [
+    "src/main/updater/releases/updater-prerelease-feed-readiness.test.ts",
+    "src/main/updater/releases/updater-prerelease-feed.test.ts",
+    "src/main/updater/testing/updater-test-harness.ts",
+    "src/main/updater/updater.build-channel-selection.test.ts",
+    "src/main/updater/updater.check-failure.test.ts",
+    "src/main/updater/updater.check-preflight.test.ts",
+    "src/main/updater/updater.publishing-window-feed.test.ts"
+  ],
+  "since": "2026-11-17T23:20:56.573Z",
+  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/44198271029",
+  "checkedAt": "2026-11-17T23:20:56.573Z"
 }
