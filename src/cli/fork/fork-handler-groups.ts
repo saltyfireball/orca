@@ -95,5 +95,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-snooze',
     keys: ['snooze', 'snooze list', 'snooze wake'],
     load: async () => (await import('./snooze-handlers.js')).FORK_SNOOZE_HANDLERS
+  },
+  // SLRM-2309: chats and terminal agents parked on a usage limit (FORK.md "Limit resume").
+  {
+    name: 'fork-limits',
+    keys: ['limits list', 'limits resume-now', 'limits cancel'],
+    load: async () => (await import('./limits-handlers.js')).FORK_LIMITS_HANDLERS
   }
 ]

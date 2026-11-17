@@ -34,6 +34,22 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkUnattendedResume?: boolean
     /** Fork (SLRM-2268): automatic continuations of one chat in a row; unset is 3. */
     forkUnattendedResumeMaxTries?: number
+    /** Fork (SLRM-2309): chats and terminal agents stopped on a usage limit resume at the reset; unset is on. */
+    forkLimitResume?: boolean
+    /** Fork (SLRM-2309): also read Claude Code and Codex terminal agents for limit stops; unset is on. */
+    forkLimitResumeTerminals?: boolean
+    /** Fork (SLRM-2309): automatic resumes of one chat in a row (native chats at most 5); unset is 5. */
+    forkLimitResumeMaxTries?: number
+    /** Fork (SLRM-2309): a chat whose message box has text, or a terminal typed into since the stop, waits; unset is on. */
+    forkLimitResumeHoldWhileTyping?: boolean
+    /** Fork (SLRM-2309): seconds after a terminal agent's reset before it is resumed; unset is 60. */
+    forkLimitResumeDelaySeconds?: number
+    /** Fork (SLRM-2309): first wait when a terminal agent names no reset, doubling per try up to 6 h; unset is 30. */
+    forkLimitResumeBackoffMinutes?: number
+    /** Fork (SLRM-2309): what a resumed terminal agent is told; unset is "continue". */
+    forkLimitResumeMessage?: string
+    /** Fork (SLRM-2309): 'dismiss' presses Esc on Codex's "Approaching rate limits" menu (keeps the model); unset is 'dismiss'. */
+    forkLimitResumeCodexSwitchPrompt?: 'dismiss' | 'leave'
     /** Fork (SLRM-1503): show which Claude account each session runs on; unset is on. */
     forkShowAccountChip?: boolean
     /** Fork (SLRM-2095): the running/total child count on sidebar agent rows; unset is on. */

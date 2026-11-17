@@ -28,6 +28,14 @@ export function getForkChatsSearchEntries(t: Translate): SettingsSearchEntry[] {
       keywords: words('restart', 'update', 'worker', 'automation', 'tries', 'forkUnattendedResume')
     },
     {
+      title: t('fork.limitResume.title', 'Limit resume'),
+      description: t(
+        'fork.limitResume.description',
+        'Resume chats and terminal agents that stopped on a usage limit once it resets.'
+      ),
+      keywords: words('usage limit', 'rate limit', 'reset', 'continue', 'codex', 'forkLimitResume')
+    },
+    {
       title: t('fork.chatSleep.title', 'Chat sleep (experimental)'),
       description: t(
         'fork.settingsPane.search.chatSleep',

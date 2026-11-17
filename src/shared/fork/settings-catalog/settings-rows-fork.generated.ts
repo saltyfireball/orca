@@ -63,6 +63,22 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"string"},"d":"Decision inbox: an http(s) address that gets a POST when a chat starts waiting on you; unset is none. Set it in the Settings screen.","o":true}',
   forkLaunchDefaults:
     '{"t":{"k":"object","fields":{"automation":{"k":"record","of":{"k":"object","fields":{"model":{"k":"string","optional":true},"effort":{"k":"string","optional":true}}},"optional":true},"cli":{"k":"record","of":{"k":"object","fields":{"model":{"k":"string","optional":true},"effort":{"k":"string","optional":true}}},"optional":true},"worker":{"k":"record","of":{"k":"object","fields":{"model":{"k":"string","optional":true},"effort":{"k":"string","optional":true}}},"optional":true}}},"d":"Launch defaults: model and effort per launch kind and agent; empty is stock.","o":true}',
+  forkLimitResume:
+    '{"t":{"k":"boolean"},"d":"Chats and terminal agents stopped on a usage limit resume at the reset; unset is on.","o":true}',
+  forkLimitResumeBackoffMinutes:
+    '{"t":{"k":"number"},"d":"First wait when a terminal agent names no reset, doubling per try up to 6 h; unset is 30.","o":true}',
+  forkLimitResumeCodexSwitchPrompt:
+    '{"t":{"k":"enum","values":["dismiss","leave"]},"d":"\'dismiss\' presses Esc on Codex\'s \\"Approaching rate limits\\" menu (keeps the model); unset is \'dismiss\'.","o":true}',
+  forkLimitResumeDelaySeconds:
+    '{"t":{"k":"number"},"d":"Seconds after a terminal agent\'s reset before it is resumed; unset is 60.","o":true}',
+  forkLimitResumeHoldWhileTyping:
+    '{"t":{"k":"boolean"},"d":"A chat whose message box has text, or a terminal typed into since the stop, waits; unset is on.","o":true}',
+  forkLimitResumeMaxTries:
+    '{"t":{"k":"number"},"d":"Automatic resumes of one chat in a row (native chats at most 5); unset is 5.","o":true}',
+  forkLimitResumeMessage:
+    '{"t":{"k":"string"},"d":"What a resumed terminal agent is told; unset is \\"continue\\".","o":true}',
+  forkLimitResumeTerminals:
+    '{"t":{"k":"boolean"},"d":"Also read Claude Code and Codex terminal agents for limit stops; unset is on.","o":true}',
   forkLostWork:
     '{"t":{"k":"object","fields":{"checks":{"k":"record","of":{"k":"boolean"},"keys":["finishedWorktrees","missingFolders","pullRequests","stashes","unmergedBranches","unmergedWorktrees","untrackedWorktrees"],"optional":true},"defaultBranches":{"k":"record","of":{"k":"string"},"optional":true},"archiveFolder":{"k":"string","optional":true},"squashLookback":{"k":"number","optional":true},"pullRequestLimit":{"k":"number","optional":true},"pullRequestTimeoutSeconds":{"k":"number","optional":true},"projectConcurrency":{"k":"number","optional":true},"itemConcurrency":{"k":"number","optional":true},"inUse":{"k":"object","fields":{"activeWorkspace":{"k":"boolean","optional":true},"liveTerminals":{"k":"boolean","optional":true},"openChats":{"k":"boolean","optional":true},"runningAgents":{"k":"boolean","optional":true},"sleepingChats":{"k":"boolean","optional":true}},"optional":true}}},"d":"The lost work scan\'s checks, base branches and archive folder.","o":true}',
   forkMcpDefaultBackground:

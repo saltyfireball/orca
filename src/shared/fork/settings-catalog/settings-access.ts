@@ -61,7 +61,9 @@ const RUNS_COMMAND: SettingsKey[] = [
   'forkInboxNotifyCommand',
   'forkInboxNotifyWebhookUrl',
   // SLRM-2269: the snooze settle cleanup command.
-  'forkSnoozeSettleCommand'
+  'forkSnoozeSettleCommand',
+  // SLRM-2309: the text typed into every terminal agent resumed after a usage limit.
+  'forkLimitResumeMessage'
 ]
 
 /** One-time migration and "already defaulted" markers. */

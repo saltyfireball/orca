@@ -82,6 +82,7 @@ import { FORK_WORKTREE_MOVE_METHODS } from './fork/fork-worktree-move'
 import { FORK_DEVICE_APPROVAL_METHODS } from './fork/fork-device-approval'
 import { FORK_WEBHOOK_METHODS } from './fork/fork-webhooks'
 import { FORK_SNOOZE_METHODS } from './fork/fork-snooze'
+import { FORK_LIMIT_RESUME_METHODS } from './fork/fork-limit-resume'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
 import { STRUCTURED_AGENT_SESSION_ATTACHMENT_METHODS } from './structured-sessions/attachments/structured-agent-session-attachments'
@@ -212,5 +213,7 @@ export const ALL_RPC_METHODS = [
   // SLRM-2271: signed webhooks that start automation runs, behind `orca webhooks` (FORK.md).
   ...FORK_WEBHOOK_METHODS,
   // SLRM-2269: snoozed workspaces and chats behind `orca snooze` (FORK.md).
-  ...FORK_SNOOZE_METHODS
+  ...FORK_SNOOZE_METHODS,
+  // SLRM-2309: chats and terminal agents parked on a usage limit, behind `orca limits` (FORK.md).
+  ...FORK_LIMIT_RESUME_METHODS
 ]
