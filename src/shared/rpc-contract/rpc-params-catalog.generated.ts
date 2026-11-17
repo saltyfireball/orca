@@ -46,6 +46,7 @@ import {
   ForkIdleRecoveryPauseParams,
   ForkIdleRecoveryStatusParams
 } from '../fork/idle-recovery-wire'
+import { ForkLimitsListParams, ForkLimitsTargetParams } from '../fork/limit-resume-wire'
 import { ForkLostWorkScanParams } from '../fork/lost-work'
 import { ForkMcpChatParams, ForkMcpChatSetParams, ForkMcpListParams } from '../fork/mcp-profiles'
 import { ForkServerHealthListParams } from '../fork/server-health'
@@ -1224,6 +1225,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.idleRecovery.pause': ForkIdleRecoveryPauseParams,
   'fork.idleRecovery.status': ForkIdleRecoveryStatusParams,
   'fork.launchDefaults.show': null,
+  'fork.limits.cancel': ForkLimitsTargetParams,
+  'fork.limits.list': ForkLimitsListParams,
+  'fork.limits.resumeNow': ForkLimitsTargetParams,
   'fork.lostWork.scan': ForkLostWorkScanParams,
   'fork.mcpProfiles.chat': ForkMcpChatParams,
   'fork.mcpProfiles.list': ForkMcpListParams,

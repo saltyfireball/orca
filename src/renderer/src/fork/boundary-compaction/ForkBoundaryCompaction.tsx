@@ -1,7 +1,7 @@
 // Boundary compaction (FORK.md) in the renderer. The reporter tells main which native chats hold
 // text in their message box, so a chat someone is writing to is never compacted. The mark labels
 // the transcript row of a compaction the app asked for, so it does not read as the user's own.
-// The reporter does nothing while the mode is off.
+// The reporter does nothing while the mode is off and limit resume does not hold for drafts.
 import React, { useEffect } from 'react'
 import { useAppStore } from '@/store'
 import { useTranslate } from '@/i18n/use-translate'
@@ -9,6 +9,7 @@ import {
   boundaryCompactionEnabled,
   isForkBoundaryCompactionMessageId
 } from '../../../../shared/fork/boundary-compaction'
+import { limitResumeWatchesDrafts } from '../../../../shared/fork/limit-resume'
 import { hydrateNativeChatComposerDrafts } from '@/components/native-chat/drafts/native-chat-composer-draft-load'
 import {
   readNativeChatComposerDraft,
@@ -21,7 +22,8 @@ import { nativeChatSessionIds, typedChatSessionIds } from './boundary-compaction
 export function ForkBoundaryCompactionReporter(): null {
   // A joined string, so only a real change in the chat list re-subscribes. Null while off.
   const joined = useAppStore((s) =>
-    boundaryCompactionEnabled(s.settings)
+    // SLRM-2309: limit resume holds a chat whose message box has text, from the same report.
+    boundaryCompactionEnabled(s.settings) || limitResumeWatchesDrafts(s.settings)
       ? nativeChatSessionIds(s.unifiedTabsByWorktree).join('\n')
       : null
   )

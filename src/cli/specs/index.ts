@@ -51,6 +51,7 @@ import { FORK_DEVICE_APPROVAL_COMMAND_SPECS } from '../fork/device-approval-spec
 import { FORK_SERVER_HEALTH_COMMAND_SPECS } from '../fork/server-health-specs'
 import { FORK_WEBHOOK_COMMAND_SPECS } from '../fork/webhooks-specs'
 import { FORK_SNOOZE_COMMAND_SPECS } from '../fork/snooze-specs'
+import { FORK_LIMITS_COMMAND_SPECS } from '../fork/limits-specs'
 import { FORK_SERVERS_COMMAND_SPECS } from '../fork/servers-specs'
 import {
   FORK_AUTO_PLACEMENT_COMMAND_SPECS,
@@ -113,6 +114,7 @@ export const COMMAND_SPECS: CommandSpec[] = withForkAutoPlacementNotes(
     ...FORK_WEBHOOK_COMMAND_SPECS,
     ...FORK_SNOOZE_COMMAND_SPECS,
     ...FORK_SERVER_HEALTH_COMMAND_SPECS,
+    ...FORK_LIMITS_COMMAND_SPECS,
     ...FORK_SERVERS_COMMAND_SPECS
   ])
 )
