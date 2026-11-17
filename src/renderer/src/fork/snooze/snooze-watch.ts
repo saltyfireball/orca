@@ -15,7 +15,7 @@ import {
   getRepoExecutionHostId,
   parseExecutionHostId,
   type ExecutionHostId
-} from '../../../../shared/execution-host'
+} from '../../../../shared/execution-host/execution-host'
 import type { Worktree } from '../../../../shared/worktree/types'
 import type { Repo } from '../../../../shared/repository/repo-types'
 import type { ForkSnoozeEntry, ForkSnoozeFacts } from '../../../../shared/fork/snooze'

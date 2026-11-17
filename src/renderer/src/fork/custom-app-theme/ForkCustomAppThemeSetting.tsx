@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { useSettingsDarkTheme } from '@/hooks/use-document-dark-theme'
 import { useTranslate } from '@/i18n/use-translate'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import { SettingsSubsectionHeader } from '../../components/settings/form-controls/SettingsFormControls'
 import { SearchableSetting } from '../../components/settings/section-layout/SearchableSetting'
 import {

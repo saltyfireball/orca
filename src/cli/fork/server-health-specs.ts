@@ -1,5 +1,5 @@
 // SLRM-2311 (FORK.md "Server health"): `orca servers health`.
-import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli-argument-boundary'
+import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli/cli-argument-boundary'
 import type { CommandSpec } from '../discovery/command-spec'
 
 export const FORK_SERVER_HEALTH_COMMAND_SPECS: CommandSpec[] = [

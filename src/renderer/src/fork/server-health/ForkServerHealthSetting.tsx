@@ -3,7 +3,7 @@
 // here too so they can be set without turning idle recovery on. Main reads the settings on every
 // reading, so a change takes effect within seconds, with no restart.
 import React, { useEffect, useId, useState } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   FORK_SERVER_HEALTH_LIST_METHOD,
   FORK_SERVER_HEALTH_OFFLINE_MINUTE_CHOICES,

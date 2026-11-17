@@ -1,5 +1,5 @@
 import { defineFixture } from '../../component-fixtures/component-fixture'
-import { getDefaultSettings } from '../../../../shared/constants'
+import { getDefaultSettings } from '../../../../shared/orca-profiles/constants'
 import type { Repo } from '../../../../shared/repository/repo-types'
 import { ForkProjectSettingsList } from './ForkProjectSettingsList'
 import { ForkSettingsPane } from './ForkSettingsPane'

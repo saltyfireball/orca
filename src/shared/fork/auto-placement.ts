@@ -1,7 +1,7 @@
 // Auto placement (FORK.md, SLRM-2266): each machine has a placement setting, and `--on auto` /
 // `--host auto` start new work on the eligible machine with the most spare CPU and memory.
 // Pure: the main process probes the machines and the CLI rewrites the flag; this file ranks them.
-import { LOCAL_EXECUTION_HOST_ID, normalizeExecutionHostId } from '../execution-host'
+import { LOCAL_EXECUTION_HOST_ID, normalizeExecutionHostId } from '../execution-host/execution-host'
 import type { Project, ProjectHostSetup } from '../project/project-types'
 import { normalizeTypedName } from '../text/typed-name-normalization'
 

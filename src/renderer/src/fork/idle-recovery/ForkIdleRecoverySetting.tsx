@@ -1,7 +1,7 @@
 // Idle recovery (FORK.md) settings. Ships off. The classifier command, the notification command
 // and the webhook address can be set only here: `orca settings` refuses to write them.
 import React, { useId } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   readIdleRecoverySettings,
   type IdleRecoveryMode

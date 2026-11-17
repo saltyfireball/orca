@@ -1,5 +1,5 @@
 // Server updates (FORK.md, SLRM-2310): `orca servers list|update|rollback`.
-import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli-argument-boundary'
+import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli/cli-argument-boundary'
 import type { CommandSpec } from '../discovery/command-spec'
 
 const DESKTOP_NOTE =

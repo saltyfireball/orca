@@ -1,6 +1,6 @@
 // Agent state colors (FORK.md) settings. Ships off, since it changes how tabs and rows look.
 import React, { useId } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   FORK_AGENT_COLOR_STATES,
   FORK_AGENT_THEME_COLOR_IDS,
