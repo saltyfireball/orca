@@ -11,7 +11,7 @@ export function getForkRemoteSettingsSectionParts(
     t('fork.settingsPane.remote.title', 'Remote servers'),
     t(
       'fork.settingsPane.remote.description',
-      'How this desktop reaches the remote servers it is paired with, which devices may pair with it, and webhooks it accepts.'
+      'How this desktop reaches and watches the remote servers it is paired with, its heartbeat, which devices may pair with it, and webhooks it accepts.'
     ),
     [
       {
@@ -31,6 +31,23 @@ export function getForkRemoteSettingsSectionParts(
           'endpoint',
           'forkEndpointFailover'
         ]
+      },
+      // SLRM-2311: the Server health and Heartbeat cards (their headings).
+      {
+        title: t('fork.serverHealth.title', 'Server health'),
+        description: t(
+          'fork.settingsPane.search.serverHealth',
+          'Alert when a paired server stops answering and when it is back.'
+        ),
+        keywords: ['offline', 'down', 'outage', 'alert', 'monitor', 'forkServerHealth']
+      },
+      {
+        title: t('fork.serverHeartbeat.title', 'Heartbeat'),
+        description: t(
+          'fork.settingsPane.search.serverHeartbeat',
+          'Call a monitor address every few seconds so it notices when this host stops.'
+        ),
+        keywords: ['heartbeat', 'healthchecks', 'uptime', 'ping', 'forkServerHeartbeatUrl']
       },
       // SLRM-2271: the Device approval and Webhooks cards (their headings).
       {
