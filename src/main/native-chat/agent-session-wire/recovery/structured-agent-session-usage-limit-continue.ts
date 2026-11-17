@@ -1,7 +1,10 @@
 import type { UsageLimitContinueDeps } from './structured-agent-session-usage-limit-continue-deps'
 import { AgentSessionPreDispatchError } from '../operations/structured-agent-session-operation-settlement'
 import {
-  USAGE_LIMIT_CONTINUE_CHAIN_LIMIT,
+  forkUsageLimitChainLimit,
+  forkUsageLimitHeld
+} from '../../../fork/limit-resume/limit-resume-native'
+import {
   usageLimitContinueIdentity as identity,
   type HostUsageLimitCut
 } from './structured-agent-session-usage-limit-chain'
@@ -125,7 +128,7 @@ export class StructuredAgentSessionUsageLimitContinue {
     const attempt = this.attempts.get(id)
     const state = cancelsCut(cancel, cut)
       ? 'cancelled'
-      : cut.chain >= USAGE_LIMIT_CONTINUE_CHAIN_LIMIT ||
+      : cut.chain >= forkUsageLimitChainLimit() ||
           (attempt?.identity === identity(cut) && (attempt.count >= 5 || attempt.unconfirmed))
         ? 'failed'
         : this.eligible(id, cut)
@@ -169,7 +172,7 @@ export class StructuredAgentSessionUsageLimitContinue {
     const record = this.deps.host.store.getRecord(id)
     return (
       !this.disposed &&
-      cut.chain < USAGE_LIMIT_CONTINUE_CHAIN_LIMIT &&
+      cut.chain < forkUsageLimitChainLimit() &&
       this.deps.host.usageLimitAutoContinue?.isEnabled() === true &&
       this.holds.schedulable(id, cut, this.deps.now()) &&
       record !== null &&
@@ -226,7 +229,13 @@ export class StructuredAgentSessionUsageLimitContinue {
           await this.attribute(id, cut)
         }
         const attempt = this.attempts.get(id)
-        if (!cut || !this.eligible(id, cut) || attempt?.unconfirmed || (attempt?.count ?? 0) >= 5) {
+        if (
+          !cut ||
+          !this.eligible(id, cut) ||
+          attempt?.unconfirmed ||
+          (attempt?.count ?? 0) >= 5 ||
+          forkUsageLimitHeld(id)
+        ) {
           continue
         }
         const retryAt = attempt ? attempt.at + 60_000 * 2 ** Math.max(0, attempt.count - 1) : 0
@@ -311,6 +320,7 @@ export class StructuredAgentSessionUsageLimitContinue {
             !current ||
             identity(current) !== identity(cut) ||
             !this.eligible(id, current) ||
+            forkUsageLimitHeld(id) ||
             !this.holds.witnessHolds(id, this.deps.host, witness) ||
             !this.holds.ready(id, current, this.deps.now())
           ) {

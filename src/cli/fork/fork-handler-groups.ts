@@ -105,5 +105,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
       ...(await import('./server-health-handlers.js')).FORK_SERVER_HEALTH_HANDLERS,
       ...(await import('./servers-handlers.js')).FORK_SERVERS_HANDLERS
     })
+  },
+  // SLRM-2309: chats and terminal agents parked on a usage limit (FORK.md "Limit resume").
+  {
+    name: 'fork-limits',
+    keys: ['limits list', 'limits resume-now', 'limits cancel'],
+    load: async () => (await import('./limits-handlers.js')).FORK_LIMITS_HANDLERS
   }
 ]
