@@ -1,6 +1,6 @@
 // SLRM-2097: which custom app theme is in use, and the settings writes that save, use, rename,
 // delete and reset them. The terminal half rides the stock custom terminal theme list.
-import type { GlobalSettings } from '../../global-settings-types'
+import type { GlobalSettings } from '../../settings/global-settings-types'
 import {
   makeCustomTerminalThemeSelection,
   normalizeTerminalCustomThemes,

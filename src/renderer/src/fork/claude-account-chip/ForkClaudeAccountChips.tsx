@@ -2,7 +2,7 @@
 // "Move to account" on its own host unless the caller passes its own `menu`.
 import React from 'react'
 import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
-import { TAB_LABEL_WIDTH_CLASSES } from '@/components/tab-bar/tab-width-rules'
+import { TAB_LABEL_WIDTH_CLASSES } from '@/components/tab-bar/strip/tab-width-rules'
 import { ForkClaudeAccountChip, type ForkClaudeAccountChipProps } from './ForkClaudeAccountChip'
 import { ForkAgentQueueTabBadge } from '../agent-queue/ForkAgentQueueBanner'
 import {

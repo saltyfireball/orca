@@ -1,5 +1,5 @@
 // SLRM-2095: the switches for the child count badge. All three ship on; unset counts as on.
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   SettingsSubsectionHeader,
   SettingsSwitchRow

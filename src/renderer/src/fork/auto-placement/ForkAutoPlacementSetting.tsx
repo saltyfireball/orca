@@ -2,7 +2,7 @@
 // that names no machine is placed as `auto` would. The CLI reads them through fork.placement.pick.
 import type React from 'react'
 import { useId } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   FORK_PLACEMENT_LOCAL_KEY,
   FORK_PLACEMENT_PREFERENCES,

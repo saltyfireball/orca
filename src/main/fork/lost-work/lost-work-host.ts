@@ -3,7 +3,7 @@
 // `fork.lostWork.scan` RPC.
 import { ipcMain } from 'electron'
 import type { Store } from '../../persistence/loading-store/store'
-import { abortWhenRendererGone } from '../../ipc/renderer-lifetime-abort'
+import { abortWhenRendererGone } from '../../ipc/renderer-requests/renderer-lifetime-abort'
 import {
   LOST_WORK_CHANNELS,
   type LostWorkActionArgs,

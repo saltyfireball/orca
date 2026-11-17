@@ -6,7 +6,7 @@ import { worktreeCreateGit } from '../../git/worktrees/creation/worktree-create-
 import { getStoredRepoExecutionHostId } from '../../workspaces/execution-host/repo-execution-host'
 import type { BrowserWindow } from 'electron'
 import { existsSync } from 'node:fs'
-import { forkCloneIgnoredFolders } from '../fork/apfs-clone/apfs-clone-folders'
+import { forkCloneIgnoredFolders } from '../../fork/apfs-clone/apfs-clone-folders'
 import { randomUUID } from 'node:crypto'
 import type { Store } from '../../persistence/loading-store/store'
 import type { GitAdmissionTier } from '../../../shared/rpc-contract/source-control/git-admission-tier-params'

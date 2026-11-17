@@ -1,6 +1,6 @@
 // Worker cleanup (FORK.md) settings. Ships off; main reads them on every sweep.
 import React, { useId } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   FORK_WORKER_CLEANUP_GRACE_CHOICES,
   forkWorkerCleanupAction,

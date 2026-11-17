@@ -2,7 +2,10 @@
 // waking it first when "wake when opened" is on.
 import { activateAndRevealWorktree } from '@/lib/workspace/activation/worktree-activation'
 import { activateWorktreeAgentPane } from '@/components/sidebar/workspace-card/activity/use-worktree-agent-activation'
-import { parseExecutionHostId, type ExecutionHostId } from '../../../../shared/execution-host'
+import {
+  parseExecutionHostId,
+  type ExecutionHostId
+} from '../../../../shared/execution-host/execution-host'
 import { parsePaneKey } from '../../../../shared/workspace-layout/stable-pane-id'
 import type { ForkSnoozeEntry } from '../../../../shared/fork/snooze'
 import { wakeForkSnooze } from './snooze-client'

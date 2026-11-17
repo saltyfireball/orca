@@ -1,7 +1,7 @@
 // SLRM-2099: Settings > Blackfish > Memory. When to warn about system memory, whether to pause new
 // agents while over that line, and how often the background check runs.
 import { useEffect } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   FORK_MEMORY_POLL_SECONDS_MAX,
   FORK_MEMORY_POLL_SECONDS_MIN,

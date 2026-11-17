@@ -1,7 +1,7 @@
 // Snooze (FORK.md): `orca settings` may switch snooze and its triggers, but never write the settle
 // cleanup command. Agents run that CLI; the command is set only in the Settings screen.
 import { describe, expect, it, vi } from 'vitest'
-import { getDefaultSettings } from '../../../shared/constants'
+import { getDefaultSettings } from '../../../shared/orca-profiles/constants'
 import { updateForkSettings, type ForkSettingsCliDeps } from '../settings-cli/settings-cli-apply'
 
 const defaults: Record<string, unknown> = { ...getDefaultSettings('/home/someone') }
