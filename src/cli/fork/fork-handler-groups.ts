@@ -95,5 +95,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-snooze',
     keys: ['snooze', 'snooze list', 'snooze wake'],
     load: async () => (await import('./snooze-handlers.js')).FORK_SNOOZE_HANDLERS
+  },
+  // SLRM-2311: paired server health and this host's heartbeat (FORK.md "Server health").
+  {
+    name: 'fork-server-health',
+    keys: ['servers health'],
+    load: async () => (await import('./server-health-handlers.js')).FORK_SERVER_HEALTH_HANDLERS
   }
 ]

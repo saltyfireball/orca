@@ -21,6 +21,10 @@ import {
 } from './endpoint-failover-supervisor'
 import { probeEndpointRoute } from './endpoint-failover-probe'
 import { EndpointRoutesFile } from './endpoint-routes-file'
+import {
+  observeForkServerHealth,
+  startForkServerHeartbeat
+} from '../server-health/server-health-service'
 
 const LEARN_TIMEOUT_MS = 5_000
 const RETAIN_EVERY_MS = 10 * 60_000
@@ -54,6 +58,8 @@ export function startForkEndpointFailover(
     listEnvironments: async () => {
       const environments = await listEnvironments(userDataPath)
       const now = Date.now()
+      // SLRM-2311: server health reads the same connection states (FORK.md "Server health").
+      observeForkServerHealth(environments, connectionState, readSettings(), now)
       if (now - lastRetainAt >= RETAIN_EVERY_MS) {
         lastRetainAt = now
         routes.retain(new Set(environments.map((environment) => environment.id)))
@@ -94,4 +100,5 @@ export function startForkEndpointFailover(
     log: (message) => console.warn(message)
   })
   supervisor.start()
+  startForkServerHeartbeat(readSettings)
 }

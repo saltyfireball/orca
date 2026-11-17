@@ -675,6 +675,45 @@ named Orca Fork until SLRM-1367. `main` is always
     `FORK_ENDPOINT_ADDRESSES_METHODS`, and `src/main/index.ts` calls
     `startForkEndpointFailover`.
 
+- **Server health (SLRM-2311).** On by default (`forkServerHealth`, Settings > Blackfish >
+  Remote servers > Server health). A desktop says once when a paired remote server stops
+  answering, and once when it is back, with how long it was down.
+  - **What it reads.** The endpoint failover supervisor's reading of this desktop's own
+    connection to each saved server, every 5 s (also with failover off). No second prober and
+    nothing extra on the wire. A server the desktop holds no connection to (disconnected by hand,
+    or never opened) is "not watched" and never alerts.
+  - **Hysteresis.** The offline alert goes out once a server has not answered for
+    `forkServerHealthOfflineMinutes` (5). It is back once it has answered for
+    `forkServerHealthRecoverySeconds` (60) in a row; the back alert carries the downtime, from the
+    first failed reading to the first answer. A short answer inside a drop does not end it, and
+    a drop under the offline time sends nothing, so a flapping server gives one pair of alerts
+    per outage. Time the desktop itself slept (readings more than 60 s apart) is not counted.
+  - **Targets.** The Decision inbox's (SLRM-2208): a desktop notification, a POST of JSON to
+    `forkInboxNotifyWebhookUrl`, the same JSON on stdin of `forkInboxNotifyCommand`. Each has its
+    own switch: `forkServerHealthAlertDesktop` (unset follows `forkInboxNotifyDesktop`),
+    `forkServerHealthAlertWebhook` and `forkServerHealthAlertCommand` (unset: on when the address
+    or command is set). The JSON has `event` (`server-offline` or `server-recovered`), `server`
+    (id and name), `downSince`, `lastSeenAt` or `downtimeSeconds`, and `at`. The card shows the
+    webhook and command fields too, so they can be set with idle recovery off. `orca settings`
+    cannot write `forkServerHealthAlertCommand`, like the command itself.
+  - **Status.** The card lists each server with its state and last seen time;
+    `orca servers health [--json] [--environment NAME]` prints the same over the RPC method
+    `fork.serverHealth.list` (workspace permission, so a paired phone can read it too). Last seen
+    times live in memory and start when the app starts.
+  - **Heartbeat.** Off by default. With `forkServerHeartbeatUrl` set to an http(s) address
+    (no user or password in it), the host calls it every `forkServerHeartbeatSeconds` (60) with
+    `forkServerHeartbeatMethod` (`GET`, or `POST` with an empty body), so an outside monitor
+    (healthchecks, n8n, Home Assistant) notices when the host stops even while no desktop is
+    awake. It runs on the desktop app and on a headless server (`orca serve`); set it on a server
+    with `orca settings set forkServerHeartbeatUrl URL --environment NAME`. Nothing about the host
+    is sent, redirects are refused, the address is a secret to `orca settings` (never shown,
+    exported or returned), and only a change between working and failing is logged, without the
+    address. An address that is not valid turns the heartbeat off and the card says so.
+  - Code is in `src/shared/fork/server-health.ts`, `src/main/fork/server-health/`,
+    `src/main/runtime/rpc/methods/fork/fork-server-health.ts`, `src/cli/fork/server-health-*`
+    and `src/renderer/src/fork/server-health/`. The inbox targets' sender is
+    `sendForkNotifyTargets` in `idle-recovery-notify.ts`.
+
 - **Device approval (SLRM-2271).** Off by default (`forkDeviceApproval`, Settings > Blackfish >
   Remote servers > Device approval). A device that pairs with this host waits until it is
   approved, so a leaked pairing link alone does not give access.
@@ -780,7 +819,7 @@ named Orca Fork until SLRM-1367. `main` is always
     stalled chats, cache-cold cue, boundary compaction, MCP profiles), Agents and workers (child count, state
     colors, finished worker cleanup, agent limit, launch defaults, memory), Idle recovery,
     Usage and accounts (Claude account chip, usage report), Projects (Lost work, Move to host, Per project),
-    Remote servers (server routes, SLRM-2267; device approval and webhooks, SLRM-2271) and Sync and updates (fork sync status). A row of section links stays at the top of the
+    Remote servers (server routes, SLRM-2267; server health and heartbeat, SLRM-2311; device approval and webhooks, SLRM-2271) and Sync and updates (fork sync status). A row of section links stays at the top of the
     pane while it scrolls, and each link jumps to its section.
   - Projects are listed once. MCP profiles and Lost work each listed every project, so each
     project showed twice. "Per project" is now the one list: a project is a closed row that
@@ -1046,6 +1085,7 @@ Apply these in this order. Each one is a single commit.
 95. `SLRM-2278 Follow upstream 1.4.261's moved modules and APIs in fork code`
 96. `SLRM-2269 Snooze: hide a workspace or chat until a time, its merge or idle days, waking early when it needs you`
 97. `SLRM-2307 Settings on a server: orca settings writes a headless host's own store, and boundary compaction runs there`
+98. `SLRM-2311 Server health: alert when a paired server stops answering and when it is back, and an optional heartbeat`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1472,6 +1512,14 @@ Upstream files only get short hooks, which keeps rebases small:
   - `src/main/index.ts` calls `startForkEndpointFailover(...)` once the app is ready.
   - The card and the Remote servers section are in the fork's Settings pane; the section's
     types moved to `fork-settings-pane-types.ts` for the catalog's line budget.
+
+- Server health (SLRM-2311), from `src/shared/fork/server-health.ts`,
+  `src/main/fork/server-health/` and `src/renderer/src/fork/server-health/`. On unless
+  `forkServerHealth` is false; the heartbeat is off until `forkServerHeartbeatUrl` is set:
+  - `rpc-method-registry.ts` spreads `FORK_SERVER_HEALTH_METHODS` (`fork.serverHealth.list`) and
+    `src/cli/specs/index.ts` spreads `FORK_SERVER_HEALTH_COMMAND_SPECS`.
+  - No other upstream hook: the endpoint failover install feeds the readings and starts the
+    heartbeat on the desktop, and `installForkHeadlessHost` starts it on a headless server.
 
 - Device approval and webhook automations (SLRM-2271), from `src/shared/fork/device-approval.ts`,
   `src/shared/fork/webhooks.ts`, `src/main/fork/device-approval/`, `src/main/fork/webhooks/`,
