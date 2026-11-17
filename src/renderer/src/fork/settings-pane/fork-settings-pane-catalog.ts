@@ -14,6 +14,7 @@ import { getForkRemoteSettingsSectionParts } from '../endpoint-failover/endpoint
 import { worktreeMoveSearchEntry } from '../worktree-move/worktree-move-search-entry'
 import { apfsCloneSearchEntry } from '../apfs-clone/apfs-clone-search-entry'
 import { snoozeSearchEntry } from '../snooze/snooze-search-entry'
+import { serverUpdateSearchEntry } from '../server-update/server-update-search-entry'
 
 export const FORK_SETTINGS_PANE_ID = 'fork'
 
@@ -33,6 +34,20 @@ export function getForkSettingsPaneDescription(t: Translate = translate): string
     'fork.settingsPane.description',
     'Settings for what this fork adds to Orca: chats, agents, idle recovery, usage, projects, remote servers and sync.'
   )
+}
+
+/** Remote servers, with the Server updates card (SLRM-2310) after the section's own entries. */
+function remoteSection(
+  section: (
+    id: ForkSettingsSectionId,
+    title: string,
+    description: string,
+    entries: SettingsSearchEntry[]
+  ) => ForkSettingsSection,
+  t: Translate
+): ForkSettingsSection {
+  const [title, description, entries] = getForkRemoteSettingsSectionParts(t)
+  return section('remote', title, description, [...entries, serverUpdateSearchEntry(t)])
 }
 
 export function getForkSettingsSections(t: Translate = translate): ForkSettingsSection[] {
@@ -204,7 +219,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         }
       ]
     ),
-    section('remote', ...getForkRemoteSettingsSectionParts(t)),
+    remoteSection(section, t),
     section(
       'sync',
       t('fork.settingsPane.sync.title', 'Sync and updates'),

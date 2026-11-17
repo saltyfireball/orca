@@ -63,7 +63,11 @@ const RUNS_COMMAND: SettingsKey[] = [
   // SLRM-2269: the snooze settle cleanup command.
   'forkSnoozeSettleCommand',
   // SLRM-2311: whether server health alerts run the notification command.
-  'forkServerHealthAlertCommand'
+  'forkServerHealthAlertCommand',
+  // SLRM-2310: where a server downloads new code from, and whose signature it accepts.
+  'forkServerUpdateReleasesUrl',
+  'forkServerUpdateMacCertSha1',
+  'forkServerUpdateMacTeamId'
 ]
 
 /** One-time migration and "already defaulted" markers. */
