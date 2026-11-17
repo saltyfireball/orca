@@ -49,6 +49,7 @@ function setup(
     typed?: (sessionId: string) => boolean | null
     cacheStates?: ForkCacheState[]
     outcome?: BoundaryCompactionSendOutcome
+    windowless?: boolean
   } = {}
 ) {
   const settings: Record<string, unknown> = { forkBoundaryCompactMode: 'on', ...options.settings }
@@ -87,7 +88,10 @@ function setup(
       listener = next
     }
   }
-  service.start(() => settings, { store: () => store })
+  service.start(() => settings, {
+    store: () => store,
+    ...(options.windowless ? { windowless: () => true } : {})
+  })
   return {
     service,
     host,
@@ -210,6 +214,21 @@ describe('boundary compaction sweep', () => {
     expect(unknown.sent).toEqual([])
     expect(unknown.host.journal).not.toHaveBeenCalled()
     expect(unknown.service.lastOutcomes().get('a')).toBe('typed-unknown')
+  })
+
+  it('does not wait for a report on a host that has no window', async () => {
+    const server = setup({ a: chat(), b: chat() }, { typed: () => null, windowless: true })
+    await server.service.sweep()
+    expect(server.sent.map((entry) => entry.sessionId)).toEqual(['a', 'b'])
+
+    // A report that does arrive is still honored there.
+    const reported = setup(
+      { a: chat(), b: chat() },
+      { typed: (id) => id === 'a', windowless: true }
+    )
+    await reported.service.sweep()
+    expect(reported.sent.map((entry) => entry.sessionId)).toEqual(['b'])
+    expect(reported.service.lastOutcomes().get('a')).toBe('typed-text')
   })
 
   it('waits for a warm cache, up to the longest wait', async () => {
