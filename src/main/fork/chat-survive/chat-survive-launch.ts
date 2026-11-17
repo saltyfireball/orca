@@ -5,7 +5,7 @@ import { randomBytes } from 'node:crypto'
 import { lstat, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { PipedProcessSpec } from '@orca/process-host/process-spec'
+import type { ProcessSpec } from '@orca/process-host/process-spec'
 import { POSIX_PROVIDER_SUPERVISOR_SCRIPT } from '../../provider-process/provider-process-supervisor'
 import {
   CHAT_SURVIVE_SPEC_ENV,
@@ -23,7 +23,7 @@ export const CHAT_SURVIVE_DEFAULT_ORPHAN_TIMEOUT_MS = 60 * 60 * 1000
 const MAX_SOCKET_PATH_BYTES = 103
 
 /** The spawn of upstream's POSIX provider supervisor, which is the only thing a broker may run. */
-export function isProviderSupervisorSpawn(spec: Pick<PipedProcessSpec, 'args'>): boolean {
+export function isProviderSupervisorSpawn(spec: Pick<ProcessSpec, 'args'>): boolean {
   const [flag, script, separator] = spec.args ?? []
   return flag === '-e' && script === POSIX_PROVIDER_SUPERVISOR_SCRIPT && separator === '--'
 }
@@ -52,7 +52,7 @@ export async function chatSurviveSocketDir(base: string = tmpdir()): Promise<str
 }
 
 export type ChatSurviveBrokerPlan = {
-  spawn: PipedProcessSpec
+  spawn: ProcessSpec
   socketPath: string
   token: string
 }
@@ -62,7 +62,7 @@ export type ChatSurviveBrokerPlan = {
  * (not a supervisor spawn, no private socket folder, a path too long to bind).
  */
 export function planChatSurviveBrokerSpawn(
-  supervisor: PipedProcessSpec,
+  supervisor: ProcessSpec,
   input: {
     entryPath: string
     socketDir: string | null

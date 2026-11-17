@@ -1,6 +1,6 @@
 // Settings from the CLI (FORK.md): the settings file, written and read.
 import { describe, expect, it, vi } from 'vitest'
-import { getDefaultSettings } from '../../constants'
+import { getDefaultSettings } from '../../orca-profiles/constants'
 import { parseForkSettingsFile, renderForkSettingsFile } from './settings-jsonc'
 import { redactForkSettings } from './settings-plan'
 

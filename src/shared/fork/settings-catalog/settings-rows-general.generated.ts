@@ -7,8 +7,14 @@ export const FORK_SETTINGS_ROWS_GENERAL = {
     '{"t":{"k":"boolean"},"d":"Capability gate for public artifact publishing; on for new profiles, enforced in main, not just the UI.","o":true}',
   artifactsEnabled:
     '{"t":{"k":"boolean"},"d":"Deprecated: Artifacts are always available. Use showArtifactsButton for sidebar visibility.","o":true}',
+  deleteChatHistoryWithWorkspace:
+    '{"t":{"k":"boolean"},"d":"Workspace cleanup also deletes agent chat history whose Orca workspace folder is gone. Absent means off.","o":true}',
   keybindings:
     '{"t":{"k":"record","of":{"k":"array","of":{"k":"string"}}},"d":"Legacy shortcut overrides; new writes go to ~/.orca/keybindings.json.","o":true}',
+  languagePackSuggestionShown:
+    '{"t":{"k":"boolean"},"d":"One-time marker that the language pack suggestion was shown.","o":true}',
+  managedAccountDisplayNames:
+    '{"t":{"k":"object","fields":{"claude":{"k":"record","of":{"k":"string"},"optional":true},"codex":{"k":"record","of":{"k":"string"},"optional":true}}},"d":"Absent means every saved Claude/Codex account shows its sign-in email.","o":true}',
   newTabMenuLayout:
     '{"t":{"k":"object","fields":{"order":{"k":"array","of":{"k":"string"}},"hidden":{"k":"array","of":{"k":"string"}}}},"d":"Order and hidden items of the + menu in the tab bar; unset keeps the default.","o":true}',
   nonMacSearchKeybindingSeed:

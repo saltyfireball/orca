@@ -1,5 +1,5 @@
 // SLRM-2265 (FORK.md "Worktree move"): `orca worktree move`.
-import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli-argument-boundary'
+import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli/cli-argument-boundary'
 import type { CommandSpec } from '../discovery/command-spec'
 
 export const FORK_WORKTREE_MOVE_COMMAND_SPECS: CommandSpec[] = [

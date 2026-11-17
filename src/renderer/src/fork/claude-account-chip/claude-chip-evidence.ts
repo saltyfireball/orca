@@ -3,7 +3,7 @@
 // account switch uses (claude-session-account-move.ts); native chats are asked through the fork RPC.
 import type { AppState } from '@/store/types'
 import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
-import type { ExecutionHostId } from '../../../../shared/execution-host'
+import type { ExecutionHostId } from '../../../../shared/execution-host/execution-host'
 import { normalizeAgentProviderSession } from '../../../../shared/agent-session/lifecycle/agent-session-resume'
 import { structuredAgentSessionPaneKey } from '../../../../shared/agent-session/view/structured-agent-session-projection'
 import { isTerminalLeafId, makePaneKey } from '../../../../shared/workspace-layout/stable-pane-id'

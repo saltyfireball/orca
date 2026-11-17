@@ -16,8 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SpawnOptions as SdkSpawnOptions } from '@anthropic-ai/claude-agent-sdk'
 import { spawnProcess } from '@orca/process-host'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
-import type { PipedProcessSpec } from '@orca/process-host/process-spec'
-import { createProviderSpawnSpec } from '../../provider-process/provider-process-supervisor'
+import type { ProcessSpec } from '@orca/process-host/process-spec'
 import { proveClaudeChildExit } from '../../claude/child-process/claude-agent-sdk-exit-proof'
 import { createClaudeCodeProcessSpawn } from '../../claude/child-process/claude-agent-sdk-process-spawn'
 import { PassThrough } from 'node:stream'
@@ -36,6 +35,8 @@ import {
   refreshChatSurviveLaunchReady,
   resetChatSurviveLaunchReadyForTests
 } from './chat-survive-launch-ready'
+import { forkLegacyProviderLaunch } from './chat-survive-legacy-launch'
+import { supervisorSpawnSpec } from './chat-survive-supervisor-spec.test-fixture'
 import {
   chatSurviveRecordName,
   forkChatSurviveSpawner,
@@ -86,21 +87,16 @@ function tempDir(): string {
   return dir
 }
 
-function supervisorSpawn(): PipedProcessSpec {
-  const spec = createProviderSpawnSpec(
-    { command: process.execPath, args: ['-e', FAKE_CLAUDE] },
-    process.env,
-    'darwin'
-  )
-  return { program: spec.program, args: spec.args, env: spec.env, cwd: spec.cwd, detached: true }
+function supervisorSpawn(): ProcessSpec {
+  return supervisorSpawnSpec({ command: process.execPath, args: ['-e', FAKE_CLAUDE] })
 }
 
 /** Records each spec and runs a stand-in: `true`, or Node with `nodeArgs` to stay up a while. */
 function recordingSpawner(nodeArgs?: string[]): {
-  specs: PipedProcessSpec[]
-  spawn: (spec: PipedProcessSpec) => ChildProcessWithoutNullStreams
+  specs: ProcessSpec[]
+  spawn: (spec: ProcessSpec) => ChildProcessWithoutNullStreams
 } {
-  const specs: PipedProcessSpec[] = []
+  const specs: ProcessSpec[] = []
   return {
     specs,
     spawn: (spec) => {
@@ -126,7 +122,7 @@ describe('chat-survive spawn hook', () => {
     // As the default does: no socket folder unless the broker entry is on disk.
     const socketDir = (entryPath: string): string | null =>
       existsSync(entryPath) ? tempDir() : null
-    const cases: { setup: () => void; spec?: PipedProcessSpec; platform?: NodeJS.Platform }[] = [
+    const cases: { setup: () => void; spec?: ProcessSpec; platform?: NodeJS.Platform }[] = [
       { setup: () => setChatSurviveConfigReader(null) },
       { setup: () => enable(tempDir(), ENTRY, false) },
       { setup: () => enable(tempDir(), '/no/such/entry.js') },
@@ -143,12 +139,17 @@ describe('chat-survive spawn hook', () => {
       setup()
       const base = recordingSpawner()
       const input = spec ?? supervisor
-      forkChatSurviveSpawner(base.spawn, platform ?? 'darwin', {}, socketDir)(input)
+      const spawner = forkChatSurviveSpawner(base.spawn, platform ?? 'darwin', {}, socketDir)
+      // No broker can run, so upstream keeps its native launcher (SLRM-2316).
+      expect(forkLegacyProviderLaunch(spawner)).toBe(spec !== undefined)
+      spawner(input)
       expect(base.specs).toEqual([input])
     }
     enable(tempDir())
     const base = recordingSpawner()
-    forkChatSurviveSpawner(base.spawn, 'darwin', {}, () => null)(supervisor)
+    const spawner = forkChatSurviveSpawner(base.spawn, 'darwin', {}, () => null)
+    expect(forkLegacyProviderLaunch(spawner)).toBe(false)
+    spawner(supervisor)
     expect(base.specs).toEqual([supervisor])
   })
 
@@ -157,12 +158,15 @@ describe('chat-survive spawn hook', () => {
     enable(recordDir)
     const supervisor = supervisorSpawn()
     const base = recordingSpawner(['-e', 'setTimeout(() => {}, 1500)'])
-    const child = forkChatSurviveSpawner(
+    const spawner = forkChatSurviveSpawner(
       base.spawn,
       'linux',
       { ORCA_AGENT_SESSION_ID: 'abc-1' },
       () => tempDir()
-    )(supervisor)
+    )
+    // A broker runs upstream's Node supervisor, so this spawn asks for it (SLRM-2316).
+    expect(forkLegacyProviderLaunch(spawner)).toBe(true)
+    const child = spawner(supervisor)
     if (child.pid !== undefined) {
       pids.add(child.pid)
     }
@@ -216,6 +220,8 @@ describe('chat-survive spawn hook', () => {
     holdChatSurviveClaim({ connection, record, recordPath: join(recordDir, 'x'), mark, fence: 2 })
     const base = recordingSpawner()
     const spawn = forkChatSurviveSpawner(base.spawn, 'darwin', { ORCA_AGENT_SESSION_ID: 'held' })
+    // A held provider is adopted in the Node supervisor's place, so its chat's start asks for it.
+    expect(forkLegacyProviderLaunch(spawn)).toBe(true)
     expect(() => spawn({ program: 'claude', args: ['--print'] })).toThrow(/held for adoption/)
     expect(base.specs).toEqual([])
     dropChatSurviveClaim('held')
@@ -236,7 +242,7 @@ describe('chat-survive launch check', () => {
   const GONE_PID = 2_147_483_646
 
   /** A chat's provider launch as the app hands it to the spawn hook. */
-  function launch(args: string[]): PipedProcessSpec {
+  function launch(args: string[]): ProcessSpec {
     return {
       program: '/bin/sh',
       args: ['-e', POSIX_PROVIDER_SUPERVISOR_SCRIPT, '--', 'claude', ...args],
@@ -256,7 +262,7 @@ describe('chat-survive launch check', () => {
   }
 
   /** A broker the earlier app instance handed off, claimed and held for this chat's next start. */
-  function held(session: string, spec: PipedProcessSpec, env: Record<string, string>) {
+  function held(session: string, spec: ProcessSpec, env: Record<string, string>) {
     const recordDir = join(tempDir(), 'chat-survive')
     const recordPath = join(recordDir, `${session}.${GONE_PID}.json`)
     const ended = Promise.withResolvers<ChatSurviveConnectionEnd>()

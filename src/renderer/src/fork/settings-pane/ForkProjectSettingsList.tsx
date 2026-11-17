@@ -3,7 +3,7 @@
 // a fixed height and a filter, which keeps the pane short however many projects there are.
 import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import type { Repo } from '../../../../shared/repository/repo-types'
 import { isFolderRepo } from '../../../../shared/repository/repo-kind'
 import { SettingsSubsectionHeader } from '@/components/settings/form-controls/SettingsFormControls'

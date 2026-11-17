@@ -1,5 +1,5 @@
 // SLRM-2271 (FORK.md "Device approval"): `orca devices`.
-import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli-argument-boundary'
+import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli/cli-argument-boundary'
 import type { CommandSpec } from '../discovery/command-spec'
 
 const TARGET_NOTE =

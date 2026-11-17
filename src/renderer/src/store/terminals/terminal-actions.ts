@@ -7,7 +7,7 @@ import type {
   TerminalTab
 } from '../../../../shared/workspace-layout/terminal-tab-types'
 import type { TuiAgent } from '../../../../shared/agent-launch/catalog/tui-agent'
-import type { ExecutionHostId } from '../../../../shared/execution-host'
+import type { ExecutionHostId } from '../../../../shared/execution-host/execution-host'
 import type { WorkspaceSessionState } from '../../../../shared/workspace-session/workspace-session-state-types'
 import type {
   AgentProviderSessionMetadata,

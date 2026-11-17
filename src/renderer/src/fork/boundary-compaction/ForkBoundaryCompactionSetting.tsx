@@ -1,5 +1,5 @@
 // Boundary compaction (FORK.md): its settings card. Off by default; with it off nothing runs.
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   BOUNDARY_COMPACTION_DEFAULT_IDLE_SECONDS,
   BOUNDARY_COMPACTION_DEFAULT_MAX_WAIT_MINUTES,
