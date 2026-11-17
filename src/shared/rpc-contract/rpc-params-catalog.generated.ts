@@ -49,6 +49,7 @@ import {
 import { ForkLimitsListParams, ForkLimitsTargetParams } from '../fork/limit-resume-wire'
 import { ForkLostWorkScanParams } from '../fork/lost-work'
 import { ForkMcpChatParams, ForkMcpChatSetParams, ForkMcpListParams } from '../fork/mcp-profiles'
+import { ForkServerHealthListParams } from '../fork/server-health'
 import { ForkSettingsGetParams, ForkSettingsUpdateParams } from '../fork/settings-wire'
 import {
   ForkSleepersListParams,
@@ -1210,6 +1211,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.mcpProfiles.set': ForkMcpChatSetParams,
   'fork.placement.load': ForkPlacementLoadParams,
   'fork.placement.pick': ForkPlacementPickParams,
+  'fork.serverHealth.list': ForkServerHealthListParams,
   'fork.settings.get': ForkSettingsGetParams,
   'fork.settings.update': ForkSettingsUpdateParams,
   'fork.sleepers.list': ForkSleepersListParams,
