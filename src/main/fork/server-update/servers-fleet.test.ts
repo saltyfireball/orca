@@ -1,0 +1,84 @@
+import { describe, expect, it } from 'vitest'
+import type { ForkServerUpdateStatus } from '../../../shared/fork/server-update-wire'
+import { runForkServers, type ForkServersDeps } from './servers-fleet'
+
+function status(
+  version: string,
+  job: ForkServerUpdateStatus['job'] = null
+): ForkServerUpdateStatus {
+  return {
+    version,
+    platform: 'linux',
+    arch: 'x64',
+    install: { kind: 'linux-server', path: '/srv/orca-server', service: 'orca-serve.service' },
+    accept: true,
+    previousVersion: null,
+    job
+  }
+}
+
+function job(phase: 'downloading' | 'restarting' | 'done' | 'failed', message?: string) {
+  return {
+    id: 'j1',
+    kind: 'update' as const,
+    phase,
+    fromVersion: '1.4.259010',
+    targetVersion: '1.4.261002',
+    startedAt: 1,
+    updatedAt: 1,
+    ...(message ? { message } : {})
+  }
+}
+
+describe('runForkServers', () => {
+  it('updates servers one at a time; one that fails or is down does not stop the rest', async () => {
+    const calls: string[] = []
+    // kif: updates and is briefly down while it restarts. m2mac: down. wsl: its download fails.
+    const replies: Record<string, unknown[]> = {
+      kif: [
+        status('1.4.259010'),
+        { job: job('downloading') },
+        'down',
+        status('1.4.261002', job('done'))
+      ],
+      m2mac: ['down'],
+      wsl: [
+        status('1.4.259010'),
+        { job: job('downloading') },
+        status('1.4.259010', job('failed', 'checksum mismatch'))
+      ]
+    }
+    let clock = 0
+    const deps: ForkServersDeps = {
+      listEnvironments: async () => [
+        { id: 'kif', name: 'kif' },
+        { id: 'm2mac', name: 'm2mac' },
+        { id: 'wsl', name: 'wsl-work' }
+      ],
+      call: async (id, method) => {
+        calls.push(`${id} ${method}`)
+        const next = replies[id].shift()
+        if (next === 'down' || next === undefined) {
+          throw Object.assign(new Error('connection refused'), { code: 'runtime_unavailable' })
+        }
+        return next
+      },
+      localVersion: () => '1.4.261002',
+      turnWaitMinutes: () => 30,
+      now: () => clock,
+      sleep: async (ms) => {
+        clock += ms
+      }
+    }
+    const rows = await runForkServers(deps, { kind: 'update', version: '1.4.261002', servers: [] })
+    expect(rows.map((row) => [row.name, row.outcome, row.version, row.message ?? ''])).toEqual([
+      ['kif', 'updated', '1.4.261002', ''],
+      ['m2mac', 'failed', undefined, 'it did not answer'],
+      ['wsl-work', 'failed', '1.4.259010', 'checksum mismatch']
+    ])
+    // Strictly in order: each server finishes before the next is asked.
+    expect(calls.findIndex((call) => call.startsWith('m2mac'))).toBeGreaterThan(
+      calls.lastIndexOf('kif fork.serverUpdate.status')
+    )
+  })
+})
