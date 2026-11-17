@@ -6,7 +6,7 @@ import { FORK_BOUNDARY_COMPACTION_CHANNELS } from '../../../shared/fork/boundary
 import {
   startForkBoundaryCompactionService,
   type BoundaryCompactionSettingsReader,
-  type BoundaryCompactionStore
+  type BoundaryCompactionStartHooks
 } from './boundary-compaction-service'
 import {
   clearForkBoundaryCompactionTyped,
@@ -17,7 +17,7 @@ let installed = false
 
 export function startForkBoundaryCompaction(
   reader: BoundaryCompactionSettingsReader,
-  hooks?: { store?: () => BoundaryCompactionStore | null | undefined }
+  hooks?: BoundaryCompactionStartHooks
 ): void {
   startForkBoundaryCompactionService(reader, hooks)
   if (installed) {
