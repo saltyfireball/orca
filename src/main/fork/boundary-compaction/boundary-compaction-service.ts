@@ -60,6 +60,15 @@ export type BoundaryCompactionStore = {
   onSettingsChanged?: (listener: (updates: Partial<ForkGlobalSettings>) => void) => unknown
 }
 
+export type BoundaryCompactionStartHooks = {
+  store?: () => BoundaryCompactionStore | null | undefined
+  /**
+   * True on a host that runs without the desktop app (`orca serve`). No window reports there,
+   * so "no report" does not hold the sweep back; a draft in a paired client is not seen.
+   */
+  windowless?: () => boolean
+}
+
 export type BoundaryCompactionServiceDeps = {
   now: () => number
   host: BoundaryCompactionHost
@@ -93,6 +102,7 @@ export function createBoundaryCompactionService(
   }
   let readSettings: BoundaryCompactionSettingsReader = () => undefined
   let readStore: () => BoundaryCompactionStore | null | undefined = () => null
+  let windowless: () => boolean = () => false
   const storesWatched = new WeakSet<object>()
   let stopTimer: (() => void) | null = null
   let running = false
@@ -147,7 +157,8 @@ export function createBoundaryCompactionService(
       inTurn: rest.inTurn,
       backgroundRunning: rest.backgroundRunning,
       paused: paused.has(sessionId),
-      typed: deps.typed(sessionId),
+      // A host with no window never gets a report, and has no message box of its own.
+      typed: deps.typed(sessionId) ?? (windowless() ? false : null),
       idleSince: rest.idleSince,
       lastCallAt: cache?.lastAt ?? null,
       // A lifetime the provider reported for this chat wins over the setting.
@@ -253,10 +264,11 @@ export function createBoundaryCompactionService(
     /** Idempotent: a second call swaps the readers and keeps the timer. */
     start(
       reader: BoundaryCompactionSettingsReader,
-      hooks: { store?: () => BoundaryCompactionStore | null | undefined } = {}
+      hooks: BoundaryCompactionStartHooks = {}
     ): void {
       readSettings = reader
       readStore = hooks.store ?? (() => null)
+      windowless = hooks.windowless ?? (() => false)
       watchStore()
       if (!stopTimer) {
         startTimer()
@@ -282,8 +294,13 @@ let service: BoundaryCompactionService | null = null
 /** Starts the sweep's timer. Idempotent. Called by the bridge from `src/main/index.ts`. */
 export function startForkBoundaryCompactionService(
   reader: BoundaryCompactionSettingsReader,
-  hooks?: { store?: () => BoundaryCompactionStore | null | undefined }
+  hooks?: BoundaryCompactionStartHooks
 ): void {
   service ??= createBoundaryCompactionService()
   service.start(reader, hooks)
+}
+
+/** Stops the timer at shutdown; a later start begins it again. */
+export function stopForkBoundaryCompactionService(): void {
+  service?.stop()
 }
