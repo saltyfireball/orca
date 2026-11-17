@@ -597,6 +597,12 @@ named Orca Fork until SLRM-1367. `main` is always
     off), holds a queued message, has text or an image in its message box, or already had a
     command since its last request. No chat at all while no window has reported its message
     boxes. One attempt per turn ending, whatever its outcome.
+  - **On a server (SLRM-2307).** A host that runs without the desktop app (`orca serve`) runs
+    the same sweep over the chats whose agent runs there, read from the server's own settings
+    (`orca settings set forkBoundaryCompactMode on --environment NAME`). It has no window, so
+    it does not wait for a report of the message boxes: a draft typed in a paired client is
+    not seen, and such a chat can be compacted once it has rested. It has no usage ledger, so
+    the cache lifetime is `forkCacheWindowMinutes`.
   - **How.** The host's own conversation command, the one the composer's `/compact` uses, sent
     without a delivery mode so a chat that got busy refuses it instead of queueing it. The row
     is labelled "Automatic compaction between turns" in the transcript. Idle recovery skips
@@ -733,6 +739,17 @@ named Orca Fork until SLRM-1367. `main` is always
   - A write goes through the app's own `settings:set` handler, the one the Settings screen
     uses, so its guards, normalization and side effects all run and every open window gets
     `settings:changed`. The reply says when the app stored something other than what was asked.
+  - **On a server (SLRM-2307).** A host that runs without the desktop app (`orca serve`) has
+    no `settings:set` handler, so there `orca settings ... --environment NAME` writes the
+    server's own settings store, on disk before the reply, and the store's listeners hear it.
+    The value survives a restart and `orca settings get` and `list` show it. The window-free
+    rules of the handler still apply (the dropped keys, the network and terminal
+    normalizations). Settings only the desktop app acts on are refused by name there: `theme`,
+    `appIcon`, `uiLanguage`, `computerAwakeMode`, `keepComputerAwakeWhileAgentsRun`,
+    `floatingTerminalCwd` and `forkChatSurvive` (the list is in
+    `src/main/fork/settings-cli/settings-cli-headless.ts`). Any other setting is stored; a
+    setting of a feature that runs only in the desktop app is stored and does nothing on the
+    server.
   - Read-only from the CLI, each with its reason: the keys `settings:set` drops
     (`activeRuntimeEnvironmentId`, `floatingTerminalTrustedCwds`, `antigravityChatAuth`,
     `pluginConsents`, `disabledPlugins`, `pluginExternalHostGrants`);
@@ -1028,6 +1045,7 @@ Apply these in this order. Each one is a single commit.
 94. `SLRM-2271 Device approval and webhook automations: approve new paired devices, start automations from signed webhooks`
 95. `SLRM-2278 Follow upstream 1.4.261's moved modules and APIs in fork code`
 96. `SLRM-2269 Snooze: hide a workspace or chat until a time, its merge or idle days, waking early when it needs you`
+97. `SLRM-2307 Settings on a server: orca settings writes a headless host's own store, and boundary compaction runs there`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1421,6 +1439,10 @@ Upstream files only get short hooks, which keeps rebases small:
     `api-types.ts` types it as optional.
   - `NativeChatUserMessageRow.tsx` renders `ForkBoundaryCompactionMark` under the message, which
     gives nothing for any row the feature did not send.
+  - orcad's `src/main/backend/core-runtime-activation.ts` calls `installForkHeadlessHost(...)`
+    (`src/main/fork/headless-host.ts`) before its RPC server is made (one import, one call, with
+    the call's result registered as a cleanup). It starts the same sweep with `windowless` set
+    and marks the host for `orca settings` writes (SLRM-2307).
   - Since upstream 1.4.261 stores chats in SQLite, it and idle recovery read a chat's newest
     page through the host's `history` (`src/main/fork/chat-journal-tail.ts`, at most 200 rows),
     not the whole current journal.
@@ -1565,7 +1587,9 @@ Upstream files only get short hooks, which keeps rebases small:
     same function. Nothing in the handler is edited.
   - `rpc-method-registry.ts` registers `FORK_SETTINGS_METHODS`
     (`src/main/runtime/rpc/methods/fork/fork-settings.ts`): `fork.settings.get` and
-    `fork.settings.update`; `rpc-params-catalog.generated.ts` is regenerated with it.
+    `fork.settings.update`; `rpc-params-catalog.generated.ts` is regenerated with it. On a
+    host marked by `installForkHeadlessHost` (orcad) the update is written by
+    `forkApplyHeadlessSettings` (`settings-cli-headless.ts`) instead of the captured handler.
   - `src/cli/specs/index.ts` adds `FORK_SETTINGS_COMMAND_SPECS`, the manifest lists the
     `fork-settings` group, and `cli-command-names.ts` lists `settings`.
   - `src/cli/discovery/help.ts` wraps the root help in `withForkSettingsRootHelp`, which adds the
