@@ -98,6 +98,7 @@ import type { ForkBoundaryCompactionApi } from '../shared/fork/boundary-compacti
 import type { ForkMemoryApi } from '../shared/fork/memory-truth'
 import type { ForkAgentQueueApi } from '../shared/fork/agent-queue'
 import type { ForkChatStallApi } from '../shared/fork/chat-stall'
+import type { ForkLimitResumeApi } from '../shared/fork/limit-resume-wire'
 import type { ForkIdleRecoveryApi } from '../shared/fork/idle-recovery-wire'
 import type { ForkSnoozeApi } from '../shared/fork/snooze-wire'
 import type { ForkSyncStatusApi } from '../shared/fork/fork-sync-status'
@@ -184,6 +185,7 @@ export type PreloadApi = {
   forkAgentQueue?: ForkAgentQueueApi
   /** Fork chat stall; desktop only. */
   forkChatStall?: ForkChatStallApi
+  forkLimitResume?: ForkLimitResumeApi
   forkWorkerCleanup?: ForkWorkerCleanupApi
   forkMcpProfiles?: ForkMcpProfilesApi
   /** Fork usage ledger (SLRM-2103/2104); desktop only. */

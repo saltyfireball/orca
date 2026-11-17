@@ -3,7 +3,10 @@ import { AgentSessionPreDispatchError } from '../operations/structured-agent-ses
 import { randomUUID } from 'node:crypto'
 import { NATIVE_CHAT_USAGE_LIMIT_CONTINUE_MESSAGE } from '../../../../shared/native-chat/transcript/continuation/native-chat-usage-limit-cut'
 import {
-  USAGE_LIMIT_CONTINUE_CHAIN_LIMIT,
+  forkUsageLimitChainLimit,
+  forkUsageLimitHeld
+} from '../../../fork/limit-resume/limit-resume-native'
+import {
   usageLimitContinueIdentity as identity,
   usageLimitContinueMessageId,
   usageLimitContinueTag,
@@ -115,7 +118,7 @@ export class StructuredAgentSessionUsageLimitContinue {
     const state =
       cancel?.turnItemId === cut.turnItemId && cancel.resetsAt === cut.resetsAt
         ? 'cancelled'
-        : cut.chain >= USAGE_LIMIT_CONTINUE_CHAIN_LIMIT ||
+        : cut.chain >= forkUsageLimitChainLimit() ||
             (attempt?.identity === identity(cut) && (attempt.count >= 5 || attempt.unconfirmed))
           ? 'failed'
           : this.eligible(id, cut)
@@ -140,7 +143,7 @@ export class StructuredAgentSessionUsageLimitContinue {
     const record = this.deps.host.store.getRecord(id)
     return (
       !this.disposed &&
-      cut.chain < USAGE_LIMIT_CONTINUE_CHAIN_LIMIT &&
+      cut.chain < forkUsageLimitChainLimit() &&
       this.deps.host.usageLimitAutoContinue?.isEnabled() === true &&
       this.holds.schedulable(id, cut, this.deps.now()) &&
       record !== null &&
@@ -200,7 +203,13 @@ export class StructuredAgentSessionUsageLimitContinue {
           await this.attribute(id, cut)
         }
         const attempt = this.attempts.get(id)
-        if (!cut || !this.eligible(id, cut) || attempt?.unconfirmed || (attempt?.count ?? 0) >= 5) {
+        if (
+          !cut ||
+          !this.eligible(id, cut) ||
+          attempt?.unconfirmed ||
+          (attempt?.count ?? 0) >= 5 ||
+          forkUsageLimitHeld(id)
+        ) {
           continue
         }
         const retryAt = attempt ? attempt.at + 60_000 * 2 ** Math.max(0, attempt.count - 1) : 0
@@ -294,6 +303,7 @@ export class StructuredAgentSessionUsageLimitContinue {
             !current ||
             identity(current) !== identity(cut) ||
             !this.eligible(id, current) ||
+            forkUsageLimitHeld(id) ||
             !this.holds.witnessHolds(id, this.deps.host, witness) ||
             !this.holds.ready(id, current, this.deps.now())
           ) {
