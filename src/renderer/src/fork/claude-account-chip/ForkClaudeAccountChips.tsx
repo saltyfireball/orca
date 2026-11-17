@@ -22,6 +22,7 @@ import {
   ForkWorkerCleanupTabMark
 } from '../worker-cleanup/ForkWorkerCleanup'
 import { ForkCacheColdMark, ForkCacheColdRowMark } from '../cache-cold/ForkCacheColdCue'
+import { ForkLimitResumeRowMark, ForkLimitResumeTabMark } from '../limit-resume/ForkLimitResume'
 
 type SlotProps = Pick<ForkClaudeAccountChipProps, 'className' | 'onOpenMenu' | 'menu'>
 
@@ -66,6 +67,8 @@ export function ForkTabTitle({
       {/* SLRM-2098: queued for a free agent slot. */}
       <ForkAgentQueueTabBadge sessionId={chip.chat?.sessionId} />
       <ForkChatStallTabMark sessionId={chip.chat?.sessionId} />
+      {/* SLRM-2309: parked on a usage limit. */}
+      <ForkLimitResumeTabMark tabId={chip.tab.id} sessionId={chip.chat?.sessionId} />
       <ForkWorkerCleanupTabMark sessionId={chip.chat?.sessionId} />
       <ForkClaudeAccountTabChip {...chip} />
     </>
@@ -95,6 +98,7 @@ export function ForkClaudeAccountAgentRowChip({
     <>
       <ForkChatSleepRowMark agent={agent} />
       <ForkChatStallRowMark agent={agent} />
+      <ForkLimitResumeRowMark agent={agent} />
       <ForkWorkerCleanupRowMark agent={agent} />
       <ForkCacheColdRowMark agent={agent} />
       <ForkClaudeAccountChip resolution={resolution} menu={menu} {...slot} />

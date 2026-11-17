@@ -8,6 +8,7 @@ import { SettingsGroupHeader } from '@/components/settings/section-layout/Settin
 import { useTranslate } from '@/i18n/use-translate'
 import { ForkChatSurviveSetting } from '../ForkChatSurviveSetting'
 import { ForkUnattendedResumeSetting } from '../unattended-resume/ForkUnattendedResumeSetting'
+import { ForkLimitResumeSetting } from '../limit-resume/ForkLimitResumeSetting'
 import { ForkBoundaryCompactionSetting } from '../boundary-compaction/ForkBoundaryCompactionSetting'
 import { ForkChatSleepSetting } from '../chat-sleep/ForkChatSleepSetting'
 import { ForkSleepersSetting } from '../sleepers/ForkSleepersSetting'
@@ -54,6 +55,7 @@ const SECTION_CARDS: Record<
   chats: [
     ['chat-survive', ForkChatSurviveSetting],
     ['unattended-resume', ForkUnattendedResumeSetting],
+    ['limit-resume', ForkLimitResumeSetting],
     ['chat-sleep', ForkChatSleepSetting],
     ['sleepers', ForkSleepersSetting],
     ['chat-stall', ForkChatStallSetting],
