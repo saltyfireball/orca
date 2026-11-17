@@ -96,10 +96,14 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     keys: ['snooze', 'snooze list', 'snooze wake'],
     load: async () => (await import('./snooze-handlers.js')).FORK_SNOOZE_HANDLERS
   },
-  // SLRM-2311: paired server health and this host's heartbeat (FORK.md "Server health").
+  // SLRM-2311 and SLRM-2310: paired servers, their health (FORK.md "Server health") and their
+  // updates (FORK.md "Server updates"), one `orca servers` group.
   {
-    name: 'fork-server-health',
-    keys: ['servers health'],
-    load: async () => (await import('./server-health-handlers.js')).FORK_SERVER_HEALTH_HANDLERS
+    name: 'fork-servers',
+    keys: ['servers health', 'servers list', 'servers update', 'servers rollback'],
+    load: async () => ({
+      ...(await import('./server-health-handlers.js')).FORK_SERVER_HEALTH_HANDLERS,
+      ...(await import('./servers-handlers.js')).FORK_SERVERS_HANDLERS
+    })
   }
 ]
