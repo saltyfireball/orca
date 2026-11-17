@@ -105,6 +105,7 @@ import { forkMemoryApi } from './fork/memory-truth-bridge'
 import { forkAgentQueueApi } from './fork/agent-queue-bridge'
 import { forkSnoozeApi } from './fork/snooze-bridge'
 import { forkChatStallApi } from './fork/chat-stall-bridge'
+import { forkLimitResumeApi } from './fork/limit-resume-bridge'
 import { forkWorkerCleanupApi } from './fork/worker-cleanup-bridge'
 import { forkMcpProfilesApi } from './fork/mcp-profiles-bridge'
 import { forkUsageLedgerApi } from './fork/usage-ledger-bridge'
@@ -202,6 +203,7 @@ const api = {
   forkMemory: forkMemoryApi,
   forkAgentQueue: forkAgentQueueApi,
   forkChatStall: forkChatStallApi,
+  forkLimitResume: forkLimitResumeApi,
   forkWorkerCleanup: forkWorkerCleanupApi,
   forkMcpProfiles: forkMcpProfilesApi,
   forkUsageLedger: forkUsageLedgerApi,

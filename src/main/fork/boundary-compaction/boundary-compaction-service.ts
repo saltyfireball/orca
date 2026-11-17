@@ -30,6 +30,7 @@ import {
   type ForkUsageLedgerSettings
 } from '../../../shared/fork/usage-ledger'
 import { startForkBackoffTimer } from '../fork-backoff-timer'
+import { limitResumeWatchesDrafts } from '../../../shared/fork/limit-resume'
 import { forkUsageLedgerCacheStates } from '../usage-ledger/usage-ledger-service'
 import {
   liveBoundaryCompactionHost,
@@ -116,7 +117,10 @@ export function createBoundaryCompactionService(
     tried.clear()
     settled.clear()
     outcomes.clear()
-    deps.forgetTyped()
+    // The windows go on reporting while limit resume reads the same list (SLRM-2309).
+    if (!limitResumeWatchesDrafts(readSettings())) {
+      deps.forgetTyped()
+    }
   }
 
   const startTimer = (): void => {
