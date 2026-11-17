@@ -630,6 +630,56 @@ named Orca Fork until SLRM-1367. `main` is always
   - **Heuristic.** A person who goes on typing in an automation's chat after its run failed is
     taken for the automation until a new run settles.
 
+- **Limit resume (SLRM-2309).** On by default (`forkLimitResume`, Settings > Blackfish > Chats).
+  A Claude or Codex chat or terminal agent that stops on its 5-hour or weekly usage limit waits
+  for the reset and is then told to go on, so work left running overnight is not stuck until
+  someone types again. The idea comes from T3 Code (MIT); only the idea is ported.
+  - **Native chats.** Stock Orca already detects the stop (Claude's `rate_limit_event` and
+    `usage_limit_reached`, Codex's `usageLimitExceeded`), parks the chat with its reset and sends
+    "Continue where you left off." at the reset, behind Settings > Chat's toggle, which is off by
+    default. The fork turns that on whenever `forkLimitResume` is on (the stock toggle still turns
+    it on by itself), caps its chain at `forkLimitResumeMaxTries` (stock counts at most 5), and
+    holds a chat whose message box has text (`forkLimitResumeHoldWhileTyping`), from the same
+    window report boundary compaction reads. With no reset known, stock waits for the account's
+    usage to show room. Only chats with an open tab are continued, as in stock.
+  - **Terminal agents** (`forkLimitResumeTerminals`, on). Every 30 s, the bottom 24 lines of the
+    screen of each Claude Code and Codex terminal agent on this host that is not working (or has
+    reported nothing for 2 min) are read for a limit line:
+    - Claude Code: `You've hit your (session|weekly|Opus|Sonnet|5-hour) limit`,
+      `(5-hour|session|weekly|Opus|Sonnet|usage) limit reached`, with `resets <time>` or
+      `reset at <time>` and an optional `(Area/City)` zone. `continuing automatically at <time>`
+      is Claude Code's own auto-continue, which is left to it; `wrapping up` is skipped.
+    - Codex: `You've hit your usage limit` with `try again at <time>` or `try again in <N hours
+      M minutes>`.
+    - Times read: `3pm`, `3:45 PM`, `14:30`, `Mon 12:00am`, `Oct 9, 2pm`, `Jan 1st, 2027 1:00 PM`,
+      `2026-08-09 00:00 UTC`. A clock time already past is tomorrow. A limit no clock lifts
+      (a spend limit, a budget, credits, `Request a limit increase`) is left alone.
+    - The agent is told `forkLimitResumeMessage` ("continue") at the reset plus
+      `forkLimitResumeDelaySeconds` (60). With no reset printed, after `forkLimitResumeBackoffMinutes`
+      (30), doubling with each resume in the streak, up to 6 hours.
+    - The send is idle recovery's: only when the agent (not a shell) reads the terminal, no turn
+      runs, no dialog is up and its prompt is empty, checked again right before the write. With
+      `forkLimitResumeHoldWhileTyping`, keys typed there since the stop hold it too.
+    - The same stop on screen is never answered twice: the answered line and how often it shows
+      are kept. A streak of at most `forkLimitResumeMaxTries` (5) resumes, counted before each
+      send, ends once the agent works and stops again without a limit. The counts are kept in
+      `fork-limit-resume.json` in the data folder (mode 0600), so a restart keeps them.
+  - **Codex model-switch menu** (`forkLimitResumeCodexSwitchPrompt`, `dismiss`). Between turns
+    Codex may hold its pane on "Approaching rate limits ... Keep current model"; Blackfish presses
+    Esc once per appearance, which keeps the model, so the pane does not freeze overnight.
+    `leave` turns that off.
+  - **Shown.** A parked chat or terminal agent shows "resumes at HH:MM" after its tab title and
+    on its sidebar agent row, in the row's muted text; the native chat also keeps stock's line.
+  - **Servers.** It runs wherever the agents run: the desktop app and `orca serve` / orcad, each
+    with its own settings (`orca settings set forkLimitResume false --environment NAME`). A server
+    has no window, so drafts typed in a paired client are not seen there.
+  - **CLI.** `orca limits list [--json]`, `orca limits resume-now <id>`, `orca limits cancel <id>`
+    (ids or a 4+ character prefix; `--environment` for a paired server). Resume now refuses a busy
+    agent or text in its prompt and does not count as a try. `orca settings` cannot write the
+    message.
+  - Code is in `src/shared/fork/limit-resume*.ts`, `src/main/fork/limit-resume/` and
+    `src/renderer/src/fork/limit-resume/`.
+
 - **Endpoint failover (SLRM-2267).** On by default (`forkEndpointFailover`, Settings >
   Blackfish > Remote servers > Server routes). A saved remote server can be reached on more
   than one address. Stock dials only the saved (or first) endpoint; the fork tries the routes
@@ -1148,7 +1198,8 @@ Apply these in this order. Each one is a single commit.
 96. `SLRM-2269 Snooze: hide a workspace or chat until a time, its merge or idle days, waking early when it needs you`
 97. `SLRM-2307 Settings on a server: orca settings writes a headless host's own store, and boundary compaction runs there`
 98. `SLRM-2311 Server health: alert when a paired server stops answering and when it is back, and an optional heartbeat`
-99. `SLRM-2310 Server updates: update every paired server from the desktop over its own RPC, with a rollback`
+99. `SLRM-2309 Limit resume: resume chats and terminal agents when a usage limit resets`
+100. `SLRM-2310 Server updates: update every paired server from the desktop over its own RPC, with a rollback`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1558,12 +1609,30 @@ Upstream files only get short hooks, which keeps rebases small:
   `forkUnattendedResume` is false:
   - `noteAgentLaunchStartupSettled()` (`orca-runtime.ts`, the desktop and `orca serve`) and
     orcad's `src/main/backend/core-runtime-activation.ts` (after the RPC server starts, before
-    `startOrcadSchedulers`) call `startForkRuntimeHooks(...)` (`src/main/fork/fork-runtime-start.ts`),
-    which calls `startForkUnattendedResume(...)`; the pass runs once per process.
+    `startOrcadSchedulers`) call `startForkUnattendedResume(...)`; the pass runs once per process.
   - The Chats section's search entries moved to `fork-settings-pane-catalog-chats.ts` for the
     catalog's line budget.
   - The card is in the fork's Settings pane. The two settings are in
     `src/shared/fork/fork-global-settings.ts`.
+
+- Limit resume (SLRM-2309), from `src/shared/fork/limit-resume*.ts`, `src/main/fork/limit-resume/`
+  and `src/renderer/src/fork/limit-resume/`. On unless `forkLimitResume` is false:
+  - `orca-runtime.ts` and orcad's `core-runtime-activation.ts` now call
+    `startForkRuntimeSettleServices(...)` (`src/main/fork/runtime-settle-hooks.ts`) in place of
+    `startForkUnattendedResume(...)`; it starts unattended resume and limit resume.
+  - `runtime-structured-agent-host.ts`: the stock usage-limit continue's `isEnabled` reads
+    `forkUsageLimitAutoContinueOn(settings)`.
+  - `structured-agent-session-usage-limit-continue.ts`: the chain cap reads
+    `forkUsageLimitChainLimit()` (two places), and the sweep and the send's `beforeRun` also skip
+    a chat while `forkUsageLimitHeld(id)`.
+  - `src/main/index.ts` calls `installForkLimitResumeBridge()`, `src/preload/index.ts` adds
+    `forkLimitResume` (`src/preload/fork/limit-resume-bridge.ts`) and `api-types.ts` types it.
+  - `rpc-method-registry.ts` spreads `FORK_LIMIT_RESUME_METHODS`, `src/cli/specs/index.ts` spreads
+    `FORK_LIMITS_COMMAND_SPECS` and `cli-command-names.ts` lists `limits`.
+  - Fork files only: the labels render in `ForkTabTitle` and `ForkClaudeAccountAgentRowChip`, the
+    card in the fork's Settings pane, and boundary compaction's message box reporter also runs
+    (and its list is kept) while limit resume holds for drafts. `forkLimitResumeMessage` is kind
+    `runs-command` in `settings-access.ts`.
 
 - Endpoint failover (SLRM-2267), from `src/shared/fork/endpoint-failover*.ts`,
   `src/main/fork/endpoint-failover/` and `src/renderer/src/fork/endpoint-failover/`. On unless
@@ -1590,7 +1659,7 @@ Upstream files only get short hooks, which keeps rebases small:
   - `rpc-method-registry.ts` spreads `FORK_SERVER_UPDATE_METHODS` and `src/cli/specs/index.ts`
     spreads `FORK_SERVERS_COMMAND_SPECS`; `fork-handler-groups.ts` has one `servers` group for
     `servers health` (SLRM-2311) and `servers list|update|rollback`.
-  - The start-up hook (`startForkRuntimeHooks`, see Unattended resume) also calls
+  - `startForkRuntimeSettleServices` (`runtime-settle-hooks.ts`, see Limit resume) also calls
     `startForkServerUpdate(...)`: it settles this host's own update and, with
     `forkServerUpdateAuto` on, starts a run over the paired servers.
   - The card is in the fork's Settings pane; its search entry is
