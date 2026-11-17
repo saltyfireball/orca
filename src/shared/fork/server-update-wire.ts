@@ -136,11 +136,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+const PHASES: readonly string[] = [
+  'downloading',
+  'verifying',
+  'waiting',
+  'restarting',
+  'done',
+  'failed',
+  'rolled-back'
+] satisfies readonly ForkServerUpdatePhase[]
+
 function isJob(value: unknown): value is ForkServerUpdateJob {
   return (
     isRecord(value) &&
     typeof value.id === 'string' &&
     typeof value.phase === 'string' &&
+    PHASES.includes(value.phase) &&
+    (value.kind === 'update' || value.kind === 'rollback') &&
     typeof value.targetVersion === 'string' &&
     typeof value.fromVersion === 'string'
   )

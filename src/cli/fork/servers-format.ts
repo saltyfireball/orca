@@ -37,7 +37,7 @@ function serverState(row: ForkServerRow): string {
   }
   const job = status.job
   if (job && ['downloading', 'verifying', 'waiting', 'restarting'].includes(job.phase)) {
-    return `${job.kind} to ${clean(job.targetVersion)}: ${job.phase}`
+    return `${clean(job.kind)} to ${clean(job.targetVersion)}: ${clean(job.phase)}`
   }
   const versus =
     row.versus === null
@@ -73,7 +73,7 @@ export function formatRunRow(row: ForkServersRunRow): string {
   const from = row.fromVersion ? ` ${clean(row.fromVersion)}` : ''
   const to = row.version && row.version !== row.fromVersion ? ` -> ${clean(row.version)}` : ''
   const message = row.message ? `: ${clean(row.message)}` : ''
-  return `${clean(row.name)}: ${row.outcome}${row.phase && row.outcome === 'running' ? ` (${row.phase})` : ''}${from}${to}${message}`
+  return `${clean(row.name)}: ${row.outcome}${row.phase && row.outcome === 'running' ? ` (${clean(row.phase)})` : ''}${from}${to}${message}`
 }
 
 export function formatServersRun(result: ForkServersRunResult): string {

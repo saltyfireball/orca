@@ -42,10 +42,7 @@ export function forkUpdatePreviousPath(workDir: string): string {
  */
 export async function prepareForkUpdateWorkDir(workDir: string, uid: number | null): Promise<void> {
   await mkdir(workDir, { recursive: true, mode: 0o700 })
-  const info = await lstat(workDir)
-  if (!info.isDirectory() || info.isSymbolicLink() || (uid !== null && info.uid !== uid)) {
-    throw new Error(`${workDir} is not a folder this user owns; remove it and try again`)
-  }
+  await checkForkUpdateOwned(workDir, uid)
   for (const name of ['download', 'unpacked', 'swap']) {
     await rm(join(workDir, name), { recursive: true, force: true })
   }
@@ -53,12 +50,34 @@ export async function prepareForkUpdateWorkDir(workDir: string, uid: number | nu
   await mkdir(join(workDir, 'unpacked'), { mode: 0o700 })
 }
 
+/** A real folder (not a symlink) owned by this user, or an error saying to remove it. */
+export async function checkForkUpdateOwned(path: string, uid: number | null): Promise<void> {
+  const info = await lstat(path)
+  if (!info.isDirectory() || info.isSymbolicLink() || (uid !== null && info.uid !== uid)) {
+    throw new Error(`${path} is not a folder this user owns; remove it and try again`)
+  }
+}
+
+/** Checks the kept macOS app against the signer pin before a rollback runs it again. */
+export async function checkForkMacSigner(
+  run: ForkRun,
+  appPath: string,
+  requirement: string
+): Promise<void> {
+  await mustRun(
+    run,
+    `checking the signature of the kept version (${requirement})`,
+    '/usr/bin/codesign',
+    ['--verify', '--deep', '--strict', `-R=${requirement}`, appPath]
+  )
+}
+
 async function isDirectory(path: string): Promise<boolean> {
   return (await stat(path).catch(() => null))?.isDirectory() === true
 }
 
-async function mustRun(deps: ForkStageDeps, what: string, program: string, args: string[]) {
-  const result = await deps.run(program, args)
+async function mustRun(run: ForkRun, what: string, program: string, args: string[]) {
+  const result = await run(program, args)
   if (result.code !== 0) {
     const detail = result.out.trim().split('\n').slice(-3).join(' ').slice(0, 400)
     throw new Error(`${what} failed${detail ? `: ${detail}` : ''}`)
@@ -94,14 +113,19 @@ export async function stageForkMacRelease(
     throw new Error(`checksum mismatch for ${manifest.file}`)
   }
   const unpacked = join(input.workDir, 'unpacked')
-  await mustRun(deps, `unpacking ${manifest.file}`, '/usr/bin/ditto', ['-x', '-k', zip, unpacked])
+  await mustRun(deps.run, `unpacking ${manifest.file}`, '/usr/bin/ditto', [
+    '-x',
+    '-k',
+    zip,
+    unpacked
+  ])
   const apps = (await readdir(unpacked)).filter((name) => name.endsWith('.app'))
   if (apps.length !== 1) {
     throw new Error(`${manifest.file} holds ${apps.length} apps, not one`)
   }
   const app = join(unpacked, apps[0])
   await mustRun(
-    deps,
+    deps.run,
     `checking the signature of ${apps[0]} (${input.requirement})`,
     '/usr/bin/codesign',
     ['--verify', '--deep', '--strict', `-R=${input.requirement}`, app]
@@ -150,7 +174,7 @@ export async function stageForkLinuxRelease(
   }
   const server = join(input.workDir, 'unpacked', 'server')
   await mkdir(server, { mode: 0o700 })
-  await mustRun(deps, `unpacking ${file}`, 'tar', [
+  await mustRun(deps.run, `unpacking ${file}`, 'tar', [
     '-xzf',
     tarball,
     '-C',
