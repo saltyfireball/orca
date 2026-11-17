@@ -95,5 +95,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-snooze',
     keys: ['snooze', 'snooze list', 'snooze wake'],
     load: async () => (await import('./snooze-handlers.js')).FORK_SNOOZE_HANDLERS
+  },
+  // SLRM-2310: list, update and roll back paired servers (FORK.md "Server updates").
+  {
+    name: 'fork-servers',
+    keys: ['servers list', 'servers update', 'servers rollback'],
+    load: async () => (await import('./servers-handlers.js')).FORK_SERVERS_HANDLERS
   }
 ]
