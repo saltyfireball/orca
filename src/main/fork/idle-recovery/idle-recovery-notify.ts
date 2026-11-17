@@ -60,19 +60,18 @@ function desktopText(items: readonly ForkIdleRecoveryInboxItem[]): { title: stri
   }
 }
 
-function report(channel: string, outcome: Outcome): void {
+function report(logTag: string, channel: string, outcome: Outcome): void {
   if (outcome !== 'ok') {
-    console.warn(`[idle-recovery] notify ${channel}: ${outcome}`)
+    console.warn(`[${logTag}] notify ${channel}: ${outcome}`)
   }
 }
 
 async function sendDesktop(
-  items: readonly ForkIdleRecoveryInboxItem[],
+  text: { title: string; body: string },
   notifier: IdleRecoveryDesktopNotifier
 ): Promise<Outcome> {
   try {
-    const { title, body } = desktopText(items)
-    await notifier(title, body)
+    await notifier(text.title, text.body)
     return 'ok'
   } catch {
     return 'failed'
@@ -144,38 +143,53 @@ function runCommand(command: string, payload: string, timeoutMs: number): Promis
   })
 }
 
-async function guarded(channel: string, run: () => Promise<Outcome>): Promise<void> {
+async function guarded(
+  logTag: string,
+  channel: string,
+  run: () => Promise<Outcome>
+): Promise<void> {
   let outcome: Outcome
   try {
     outcome = await run()
   } catch {
     outcome = 'failed'
   }
-  report(channel, outcome)
+  report(logTag, channel, outcome)
 }
 
-export async function notifyIdleRecoveryWaiting(
-  items: readonly ForkIdleRecoveryInboxItem[],
-  settings: IdleRecoverySettings,
+/** One message for the notify targets; a null target is skipped. */
+export type ForkNotifyMessage = {
+  /** Tags the log line of a failing target, never with its address or output. */
+  logTag: string
+  desktop: { title: string; body: string } | null
+  webhookUrl: string | null
+  command: string | null
+  /** The JSON the webhook gets as its body and the command on stdin. */
+  payload: () => string
+}
+
+/**
+ * The notify targets of SLRM-2208, shared with server health alerts (SLRM-2311): each target
+ * that is set is told once, in parallel; a failing target is logged and stops nothing. Never
+ * throws.
+ */
+export async function sendForkNotifyTargets(
+  message: ForkNotifyMessage,
   options: IdleRecoveryNotifyOptions = {}
 ): Promise<void> {
   try {
-    if (items.length === 0) {
-      return
-    }
     const jobs: Promise<void>[] = []
+    const { logTag, desktop, webhookUrl, command } = message
     const desktopNotifier = options.desktopNotifier ?? desktopNotifierSlot
-    if (settings.notifyDesktop && desktopNotifier) {
-      jobs.push(guarded('desktop', () => sendDesktop(items, desktopNotifier)))
+    if (desktop && desktopNotifier) {
+      jobs.push(guarded(logTag, 'desktop', () => sendDesktop(desktop, desktopNotifier)))
     }
-    const payload =
-      settings.notifyWebhookUrl || settings.notifyCommand ? idleRecoveryNotifyPayload(items) : ''
-    if (settings.notifyWebhookUrl) {
-      const url = settings.notifyWebhookUrl
+    const payload = webhookUrl || command ? message.payload() : ''
+    if (webhookUrl) {
       jobs.push(
-        guarded('webhook', () =>
+        guarded(logTag, 'webhook', () =>
           sendWebhook(
-            url,
+            webhookUrl,
             payload,
             options.webhookTimeoutMs ?? IDLE_RECOVERY_NOTIFY_WEBHOOK_TIMEOUT_MS,
             options.fetchImpl ?? fetch
@@ -183,10 +197,9 @@ export async function notifyIdleRecoveryWaiting(
         )
       )
     }
-    if (settings.notifyCommand) {
-      const command = settings.notifyCommand
+    if (command) {
       jobs.push(
-        guarded('command', () =>
+        guarded(logTag, 'command', () =>
           runCommand(
             command,
             payload,
@@ -197,6 +210,26 @@ export async function notifyIdleRecoveryWaiting(
     }
     await Promise.all(jobs)
   } catch {
-    // Never throws into the sweep.
+    // Never throws into the caller.
   }
+}
+
+export async function notifyIdleRecoveryWaiting(
+  items: readonly ForkIdleRecoveryInboxItem[],
+  settings: IdleRecoverySettings,
+  options: IdleRecoveryNotifyOptions = {}
+): Promise<void> {
+  if (items.length === 0) {
+    return
+  }
+  await sendForkNotifyTargets(
+    {
+      logTag: 'idle-recovery',
+      desktop: settings.notifyDesktop ? desktopText(items) : null,
+      webhookUrl: settings.notifyWebhookUrl,
+      command: settings.notifyCommand,
+      payload: () => idleRecoveryNotifyPayload(items)
+    },
+    options
+  )
 }
