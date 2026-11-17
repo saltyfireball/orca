@@ -24,6 +24,7 @@ import {
   hostShellEnvironmentRevision
 } from '../environment/structured-agent-shell-environment'
 import { usageLimitAccountSources } from './usage-limit-account-usage'
+import { forkUsageLimitAutoContinueOn } from '../../../fork/limit-resume/limit-resume-native'
 
 export abstract class RuntimeStructuredAgentHost extends OrcaRuntimeWithStartTuiIdleVisibleReadProbe {
   /** Apply the host-owning desktop's account overlay to configured agent environment. */
@@ -76,8 +77,8 @@ export abstract class RuntimeStructuredAgentHost extends OrcaRuntimeWithStartTui
   /** Read the setting live so turning it off stops every pending automatic continuation. */
   protected usageLimitAutoContinueHostDeps(): StructuredAgentSessionHostDeps['usageLimitAutoContinue'] {
     return {
-      isEnabled: () =>
-        this.requireStore().getSettings().nativeChatAutoContinueAfterUsageLimit === true,
+      // Fork (SLRM-2309): forkLimitResume turns the stock continue on as well as its own toggle.
+      isEnabled: () => forkUsageLimitAutoContinueOn(this.requireStore().getSettings()),
       subscribe: (changed) => this.requireStore().onSettingsChanged?.(changed) ?? (() => {}),
       isWorkspaceAsleep: (workspaceId) => this.isWorktreeTerminalSleepHeld(workspaceId),
       ...usageLimitAccountSources({

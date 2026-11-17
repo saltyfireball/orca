@@ -33,6 +33,7 @@ import { installForkMemoryWatch } from './fork/memory-truth/memory-watch'
 import { installForkAgentQueueApp } from './fork/agent-queue/agent-queue-ipc'
 import { installForkSnoozeApp } from './fork/snooze/snooze-ipc'
 import { installForkChatStallBridge } from './fork/chat-stall/chat-stall-bridge'
+import { installForkLimitResumeBridge } from './fork/limit-resume/limit-resume-bridge'
 import { installForkWorkerCleanupBridge } from './fork/worker-cleanup/worker-cleanup-bridge'
 import { installForkMcpProfilesApp } from './fork/mcp-profiles/mcp-profiles-ipc'
 import {
@@ -211,6 +212,8 @@ if (preflightReady) {
   // Fork (SLRM-2098): the agent launch queue, off unless switched on.
   installForkAgentQueueApp(() => state.store?.getSettings())
   installForkChatStallBridge()
+  // Fork (SLRM-2309): the "resumes at" labels of chats parked on a usage limit (FORK.md).
+  installForkLimitResumeBridge()
   installForkWorkerCleanupBridge()
   // Fork: MCP profiles; every chat loads every server until profiles are set.
   installForkMcpProfilesApp(() => state.store?.getSettings())
