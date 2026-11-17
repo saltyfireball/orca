@@ -20,7 +20,7 @@ import { useSleepingChatRow, useSleepingChatTab } from '../chat-sleep/ForkChatSl
 import {
   terminalTabActivityToAgentDotState,
   type TerminalTabActivityStatus
-} from '@/components/tab-bar/terminal-tab-activity-status'
+} from '@/components/tab-bar/terminal-tabs/terminal-tab-activity-status'
 
 /** The overlay for a resolved state; the parent must be `relative`. */
 function StateColorOverlay({

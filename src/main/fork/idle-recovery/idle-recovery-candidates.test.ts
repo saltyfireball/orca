@@ -4,7 +4,7 @@ import { buildIdleRecoveryWakeMessage } from '../../../shared/fork/idle-recovery
 import {
   ORCA_DISPATCH_PROMPT_LEAD_LINE,
   ORCA_DISPATCH_STATUS_PREAMBLE_PREFIX
-} from '../../../shared/orca-dispatch-status-prompt'
+} from '../../../shared/orchestration/workers/orca-dispatch-status-prompt'
 import {
   isOrchestrationPrompt,
   listIdleRecoveryCandidates,

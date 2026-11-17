@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Tab } from '../../../../shared/tab-types'
+import type { Tab } from '../../../../shared/workspace-layout/tab-groups/tab-types'
 import { structuredAgentSessionPaneKey } from '../../../../shared/agent-session/view/structured-agent-session-projection'
 import { chatSessionIdForPaneKey, chatStallCanWake, chatStallQuietMinutes } from './chat-stall-view'
 

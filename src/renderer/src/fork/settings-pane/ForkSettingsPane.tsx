@@ -3,7 +3,7 @@
 // this file only decides where a setting sits. The sections and their order come from the catalog,
 // which the Settings search reads too.
 import type React from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import { SettingsGroupHeader } from '@/components/settings/section-layout/SettingsGroup'
 import { useTranslate } from '@/i18n/use-translate'
 import { ForkChatSurviveSetting } from '../ForkChatSurviveSetting'

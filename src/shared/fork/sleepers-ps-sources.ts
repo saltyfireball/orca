@@ -2,7 +2,7 @@
 // chats are named by session id, terminal agents by pane key. Subagent rows are skipped: they
 // live inside their lead's process and sleep with it.
 import { structuredAgentSessionIdFromTabId } from '../agent-session/view/structured-agent-session-tab-id'
-import { LOCAL_EXECUTION_HOST_ID } from '../execution-host'
+import { LOCAL_EXECUTION_HOST_ID } from '../execution-host/execution-host'
 import type {
   RuntimeWorktreeAgentRow,
   RuntimeWorktreePsSummary

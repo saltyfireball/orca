@@ -9,7 +9,7 @@ import {
   type ForkMachineLoad,
   type ForkPlacementProbe
 } from './auto-placement'
-import type { ExecutionHostId } from '../execution-host'
+import type { ExecutionHostId } from '../execution-host/execution-host'
 import type { ProjectHostSetup, ProjectHostSetupState } from '../project/project-types'
 
 const GIB = 1024 ** 3

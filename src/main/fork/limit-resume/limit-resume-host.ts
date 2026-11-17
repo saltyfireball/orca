@@ -2,7 +2,7 @@
 // from `worktree.ps`; screens, refusals and sends go through idle recovery's terminal port, which
 // writes only after proving the agent (not a shell) reads the terminal and nothing is typed or
 // asked there. Keep electron out of this file: the headless server bundles it too.
-import { LOCAL_EXECUTION_HOST_ID } from '../../../shared/execution-host'
+import { LOCAL_EXECUTION_HOST_ID } from '../../../shared/execution-host/execution-host'
 import { sleeperChatSessionId, sleeperTitle } from '../../../shared/fork/sleepers-ps-sources'
 import { isTuiAgent } from '../../../shared/agent-launch/catalog/tui-agent-config'
 import type { OrcaRuntimeService } from '../../runtime/orca-runtime'

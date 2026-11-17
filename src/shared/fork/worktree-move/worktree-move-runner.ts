@@ -3,10 +3,8 @@
 // The source is never deleted or reset: at most its turns stop (when agreed) and it gets marked.
 import type { ProjectHostSetup } from '../../project/project-types'
 import type { RuntimeWorktreeCreateResult } from '../../worktree/catalog/runtime-worktree-contracts'
-import {
-  createStructuredAgentSessionId,
-  structuredAgentSessionCreateParams
-} from '../../agent-session/structured-agent-session-create'
+import { structuredAgentSessionCreateParams } from '../../agent-session/lifecycle/operations/structured-agent-session-create'
+import { createOrcaSessionId } from '../../agent-session/identity/orca-session-address'
 import {
   pickWorktreeMoveTargetRepo,
   planWorktreeMove,
@@ -276,7 +274,7 @@ async function reopenChats(
   await step('reopen-chats', async () => {
     for (const entry of written) {
       const name = clean(names.get(entry.sessionId) ?? entry.sessionId)
-      const sessionId = createStructuredAgentSessionId(entry.agent, args.randomUuid)
+      const sessionId = createOrcaSessionId(args.randomUuid)
       try {
         const result = (await args.call(
           'target',

@@ -1,7 +1,7 @@
 // Snooze (FORK.md, SLRM-2269) settings: on by default, every wake trigger on, no cleanup command.
 // The cleanup command can be set only here: `orca settings` refuses to write it.
 import React, { useState } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import { readForkSnoozeSettings } from '../../../../shared/fork/snooze'
 import {
   SettingsRow,

@@ -10,7 +10,7 @@ import type {
   ForkWorkerCleanupNotice
 } from '../../../../shared/fork/worker-cleanup'
 import type { TuiAgent } from '../../../../shared/agent-launch/catalog/tui-agent'
-import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host'
+import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host/execution-host'
 import { noticeText } from './worker-cleanup-labels'
 
 let held: ForkWorkerCleanupHeld[] = []
