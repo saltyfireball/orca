@@ -31,6 +31,8 @@ import {
 import {
   forkUpdatePreviousPath,
   forkUpdateWorkDir,
+  checkForkMacSigner,
+  checkForkUpdateOwned,
   prepareForkUpdateWorkDir,
   stageForkLinuxRelease,
   stageForkMacRelease,
@@ -308,13 +310,15 @@ export function createForkServerUpdater(deps: ForkServerUpdaterDeps) {
         throw new Error('no earlier version is kept on this server')
       }
       const started = begin('rollback', deps.version(), previous)
-      void runJob(
-        async () => undefined,
-        install,
-        conf,
-        request,
-        () => swapForkPrevious(install.path, workDir)
-      )
+      // The kept install is run again: check the folder is ours and, on macOS, its signer.
+      const check = async (): Promise<void> => {
+        await checkForkUpdateOwned(workDir, deps.uid)
+        await checkForkUpdateOwned(forkUpdatePreviousPath(workDir), deps.uid)
+        if (install.kind === 'mac-app') {
+          await checkForkMacSigner(deps.run, forkUpdatePreviousPath(workDir), conf.macRequirement)
+        }
+      }
+      void runJob(check, install, conf, request, () => swapForkPrevious(install.path, workDir))
       return { job: started }
     }
   }

@@ -714,6 +714,68 @@ named Orca Fork until SLRM-1367. `main` is always
     and `src/renderer/src/fork/server-health/`. The inbox targets' sender is
     `sendForkNotifyTargets` in `idle-recovery-notify.ts`.
 
+- **Server updates (SLRM-2310).** Update every paired server to this desktop's version over the
+  server's own connection, with no SSH: `orca servers update (--all | <name>...)`, the Server
+  updates card (Settings > Blackfish > Remote servers), or on its own once this desktop starts on
+  a new version (`forkServerUpdateAuto`, off by default). `orca servers list` shows each server's
+  version, whether it is behind, how it is installed and the version kept for a rollback.
+  - **Which servers.** Servers that `orca serve service install` or dotfiles orca-server set up:
+    a LaunchAgent (`com.stablyai.orca.serve*`) running Blackfish from an app bundle, or a systemd
+    user unit (`orca-serve*.service`) running an unpacked Linux server's `bin/orca-ide`. The server
+    finds its own unit by the profile in its `ORCA_USER_DATA_PATH`, and the install from the
+    launcher its command line runs. Anything else (no unit, stock Orca, a folder this user cannot
+    replace, Windows) is refused and `orca servers list` says why.
+  - **Steps, on the server.** `fork.serverUpdate.apply` (host-admin) downloads the release from its
+    own `forkServerUpdateReleasesUrl` (the fork's GitHub releases by default; https only, or http
+    on loopback, and every redirect too), into a work folder beside the install
+    (`.<install>.fork-update`, 0700, refused unless it is a real folder this user owns). macOS:
+    `latest-mac.yml` of that version names the zip and its sha512; the zip is unpacked with
+    `ditto`, and must pass `codesign --verify --deep --strict` against the pinned certificate
+    (`forkServerUpdateMacCertSha1`, the fork's self-signed one by default, or
+    `forkServerUpdateMacTeamId` for a Developer ID) and be `com.saltyfireball.orca` at that
+    version. Linux: `orca-server-sha256sums.txt` gives the sha256 of
+    `orca-server-linux-<arch>.tar.gz`, which is unpacked with `tar` and must hold `bin/orca-ide`
+    and that version. Any failure leaves the install untouched. Then it waits until no turn runs
+    (the restart guard's busy chats less those only waiting on a question; terminal agents live
+    in the terminal daemon, which a restart keeps), up to `forkServerUpdateTurnWaitMinutes` (30,
+    or `--wait`); `--now` skips the wait. It moves the running install to `previous` in the work
+    folder, moves the new one in, and starts the watchdog.
+  - **Restart and rollback.** A detached `/bin/sh` watchdog (values only as arguments) restarts the
+    service (`launchctl kickstart -k gui/<uid>/<label>` or `systemctl --user restart <unit>`) and
+    waits `forkServerUpdateReadySeconds` (180) for the new server to write the job's id to
+    `fork-server-update.ready` at start-up. If it does not, and `forkServerUpdateAutoRollback` is
+    on, it puts `previous` back, keeps the new one as `failed`, clears the supervisor's brake and
+    restarts again; the old server then reports the job as rolled back. `orca servers rollback
+    <name>` (`fork.serverUpdate.rollback`, host-admin) swaps the install with `previous` by hand,
+    so a rollback can itself be rolled back, after checking the work folder and `previous` are
+    real folders this user owns and, on macOS, that `previous` still passes the signer pin. One
+    version is kept.
+  - **Rules.** A version older than the running one is refused without `--allow-downgrade`; the
+    same version does nothing. A local build (a version with a suffix) is not a release, so name
+    one with `--version`. One update or rollback at a time per server, and one run at a time per
+    desktop. `forkServerUpdateAccept` (on) lets a server refuse every request. The release
+    address and signer pin are read only from the server's own settings and cannot be set with
+    `orca settings` (a write there is code execution); edit the server's settings file.
+  - **On the desktop.** `fork.servers.update` starts a run that asks the servers one at a time:
+    status, apply, then the server's status until its job is done, failed or rolled back and it
+    answers on the new version (while it restarts it does not answer, which is expected). A
+    server that fails or does not answer is reported and the next one goes. The CLI and the card
+    follow the run with `fork.servers.run`; text from a server is stripped of control characters
+    before it prints.
+  - **Settings:** `forkServerUpdateAccept` (on), `forkServerUpdateReleasesUrl`,
+    `forkServerUpdateMacCertSha1`, `forkServerUpdateMacTeamId`, `forkServerUpdateTurnWaitMinutes`
+    (30), `forkServerUpdateReadySeconds` (180), `forkServerUpdateAutoRollback` (on),
+    `forkServerUpdateAuto` (off).
+  - **Not covered.** A server first has to run a build with this feature: update it once by hand.
+    A turn that starts in the moment between the wait and the restart is cut. The Linux tarball
+    is checked only against the sums file of the same release (there is no signature), so the
+    release address is trusted for Linux servers. Servers reached over
+    SSH keep `orca environment update`. Upstream's `updater.*` methods (Electron serve's own
+    updater) are left as they are.
+  - Code is in `src/shared/fork/server-update*.ts`, `src/main/fork/server-update/`,
+    `src/main/runtime/rpc/methods/fork/fork-server-update.ts`, `src/cli/fork/servers-*` and
+    `src/renderer/src/fork/server-update/`.
+
 - **Device approval (SLRM-2271).** Off by default (`forkDeviceApproval`, Settings > Blackfish >
   Remote servers > Device approval). A device that pairs with this host waits until it is
   approved, so a leaked pairing link alone does not give access.
@@ -819,7 +881,7 @@ named Orca Fork until SLRM-1367. `main` is always
     stalled chats, cache-cold cue, boundary compaction, MCP profiles), Agents and workers (child count, state
     colors, finished worker cleanup, agent limit, launch defaults, memory), Idle recovery,
     Usage and accounts (Claude account chip, usage report), Projects (Lost work, Move to host, Per project),
-    Remote servers (server routes, SLRM-2267; server health and heartbeat, SLRM-2311; device approval and webhooks, SLRM-2271) and Sync and updates (fork sync status). A row of section links stays at the top of the
+    Remote servers (server routes, SLRM-2267; server health and heartbeat, SLRM-2311; device approval and webhooks, SLRM-2271; server updates, SLRM-2310) and Sync and updates (fork sync status). A row of section links stays at the top of the
     pane while it scrolls, and each link jumps to its section.
   - Projects are listed once. MCP profiles and Lost work each listed every project, so each
     project showed twice. "Per project" is now the one list: a project is a closed row that
@@ -1086,6 +1148,7 @@ Apply these in this order. Each one is a single commit.
 96. `SLRM-2269 Snooze: hide a workspace or chat until a time, its merge or idle days, waking early when it needs you`
 97. `SLRM-2307 Settings on a server: orca settings writes a headless host's own store, and boundary compaction runs there`
 98. `SLRM-2311 Server health: alert when a paired server stops answering and when it is back, and an optional heartbeat`
+99. `SLRM-2310 Server updates: update every paired server from the desktop over its own RPC, with a rollback`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1495,7 +1558,8 @@ Upstream files only get short hooks, which keeps rebases small:
   `forkUnattendedResume` is false:
   - `noteAgentLaunchStartupSettled()` (`orca-runtime.ts`, the desktop and `orca serve`) and
     orcad's `src/main/backend/core-runtime-activation.ts` (after the RPC server starts, before
-    `startOrcadSchedulers`) call `startForkUnattendedResume(...)`; the pass runs once per process.
+    `startOrcadSchedulers`) call `startForkRuntimeHooks(...)` (`src/main/fork/fork-runtime-start.ts`),
+    which calls `startForkUnattendedResume(...)`; the pass runs once per process.
   - The Chats section's search entries moved to `fork-settings-pane-catalog-chats.ts` for the
     catalog's line budget.
   - The card is in the fork's Settings pane. The two settings are in
@@ -1520,6 +1584,17 @@ Upstream files only get short hooks, which keeps rebases small:
     `src/cli/specs/index.ts` spreads `FORK_SERVER_HEALTH_COMMAND_SPECS`.
   - No other upstream hook: the endpoint failover install feeds the readings and starts the
     heartbeat on the desktop, and `installForkHeadlessHost` starts it on a headless server.
+
+- Server updates (SLRM-2310), from `src/shared/fork/server-update*.ts`,
+  `src/main/fork/server-update/` and `src/renderer/src/fork/server-update/`:
+  - `rpc-method-registry.ts` spreads `FORK_SERVER_UPDATE_METHODS` and `src/cli/specs/index.ts`
+    spreads `FORK_SERVERS_COMMAND_SPECS`; `fork-handler-groups.ts` has one `servers` group for
+    `servers health` (SLRM-2311) and `servers list|update|rollback`.
+  - The start-up hook (`startForkRuntimeHooks`, see Unattended resume) also calls
+    `startForkServerUpdate(...)`: it settles this host's own update and, with
+    `forkServerUpdateAuto` on, starts a run over the paired servers.
+  - The card is in the fork's Settings pane; its search entry is
+    `server-update-search-entry.ts`, added to the Remote servers section by the catalog.
 
 - Device approval and webhook automations (SLRM-2271), from `src/shared/fork/device-approval.ts`,
   `src/shared/fork/webhooks.ts`, `src/main/fork/device-approval/`, `src/main/fork/webhooks/`,
