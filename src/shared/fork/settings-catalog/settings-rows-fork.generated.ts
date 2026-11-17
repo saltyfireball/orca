@@ -104,6 +104,22 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"number"},"d":"Server heartbeat: seconds between two calls of the heartbeat address; unset is 60.","o":true}',
   forkServerHeartbeatUrl:
     '{"t":{"k":"string"},"d":"Server heartbeat (SLRM-2311): an http(s) address this host calls every few seconds so an outside monitor sees it is alive; unset is none.","o":true}',
+  forkServerUpdateAccept:
+    '{"t":{"k":"boolean"},"d":"Server updates: this host takes update and rollback requests from paired desktops (host-admin); unset is on.","o":true}',
+  forkServerUpdateAuto:
+    '{"t":{"k":"boolean"},"d":"Server updates: when this desktop starts on a new version, update every paired server to it. Off unless true.","o":true}',
+  forkServerUpdateAutoRollback:
+    '{"t":{"k":"boolean"},"d":"Server updates: put the old version back when the new one does not come up; unset is on.","o":true}',
+  forkServerUpdateMacCertSha1:
+    '{"t":{"k":"string"},"d":"Server updates: SHA-1 of the certificate a macOS app must be signed with before it is installed; unset is the fork\'s. Set it in the Settings file.","o":true}',
+  forkServerUpdateMacTeamId:
+    '{"t":{"k":"string"},"d":"Server updates: an Apple Team ID the macOS app must be signed by instead of the certificate pin; unset is none. Set it in the Settings file.","o":true}',
+  forkServerUpdateReadySeconds:
+    '{"t":{"k":"number"},"d":"Server updates: seconds a restarted server has to come up before the old version is put back; unset is 180.","o":true}',
+  forkServerUpdateReleasesUrl:
+    '{"t":{"k":"string"},"d":"Server updates: where this host downloads releases from (https); unset is the fork\'s GitHub releases. Set it in the Settings file.","o":true}',
+  forkServerUpdateTurnWaitMinutes:
+    '{"t":{"k":"number"},"d":"Server updates: minutes a server waits for its running turns to finish before it gives up; unset is 30.","o":true}',
   forkShowAccountChip:
     '{"t":{"k":"boolean"},"d":"Show which Claude account each session runs on; unset is on.","o":true}',
   forkShowChildTally:
