@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AgentJournalMessageItem } from '../../../shared/agent-session/journal/agent-session-journal-types'
-import type { AgentMessageSource } from '../../../shared/agent-session/agent-session-message-source'
+import type { AgentMessageSource } from '../../../shared/agent-session/journal/agent-session-message-source'
 import {
   AGENT_LETTER_LEDGER_ENV,
   agentLetterLedgerPath,
@@ -11,8 +11,8 @@ import {
   claudeContentText,
   normalizeAgentLetterText
 } from './claude-agent-letter-ledger'
-import { dispatchClaudeTurn } from './claude-structured-dispatch'
-import { sessionFor, userMessage } from './claude-structured-dispatch-test-support'
+import { dispatchClaudeTurn } from './dispatch/claude-structured-dispatch'
+import { sessionFor, userMessage } from './claude-agent-letter-ledger.test-fixture'
 
 const FROM_AGENT: AgentMessageSource = {
   kind: 'agent',

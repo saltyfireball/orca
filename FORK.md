@@ -41,6 +41,10 @@ named Orca Fork until SLRM-1367. `main` is always
   (`out/main/chat-survive-broker-entry.js`) that runs upstream's provider supervisor under it.
   With the `forkChatSurvive` setting on (Settings > Blackfish, off by default), new Claude chats
   run their provider supervisor under a broker; Codex and every other provider spawn as before.
+  Since upstream 1.4.262 a supervised provider starts through a native launcher
+  (`orca-provider-exec`), with the Node supervisor kept as its fallback. A chat that will run
+  under a broker, or adopt one, asks for that fallback; every other chat stays on the native
+  launcher (SLRM-2316).
   At quit (or an update install) such a chat's provider is handed to its broker instead of being
   stopped, and the restart guard does not count it as busy. On macOS the next app start's session
   recovery adopts that broker instead of stopping it and starts the chat over the broker's
@@ -1043,7 +1047,7 @@ named Orca Fork until SLRM-1367. `main` is always
     setup script runs. Skipped when the worktree already has the path, Git does not ignore it
     there, the source leaves the project, or relative links in it would point elsewhere from
     the worktree (pnpm's store links when the worktree sits at another depth). Hooked after the
-    worktree add in `runtime-local-git-worktree-create.ts` and `ipc/worktree-remote.ts`.
+    worktree add in `runtime-local-git-worktree-create.ts` and `ipc/worktrees/worktree-remote.ts`.
   - `forkApfsCloneCheckout` (off by default): `addWorktree` adds with `--no-checkout`, a cached
     checkout in `<git common dir>/blackfish-clone-cache` is moved to the new commit with a
     two-tree `read-tree -m -u`, cloned whole and moved in, and its index copied. The index is
@@ -1200,6 +1204,7 @@ Apply these in this order. Each one is a single commit.
 98. `SLRM-2311 Server health: alert when a paired server stops answering and when it is back, and an optional heartbeat`
 99. `SLRM-2309 Limit resume: resume chats and terminal agents when a usage limit resets`
 100. `SLRM-2310 Server updates: update every paired server from the desktop over its own RPC, with a rollback`
+101. `SLRM-2317 Follow upstream 1.4.262's moved modules and native provider launch in fork code`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1363,6 +1368,11 @@ Upstream files only get short hooks, which keeps rebases small:
   stays under max-lines). The builder overlay adds it to `asarUnpack`.
 - Chat survive spawn hook (SLRM-1394): `createClaudeCodeProcessSpawn` passes its `spawnImpl`
   through `forkChatSurviveSpawner` (`src/main/fork/chat-survive/chat-survive-spawn.ts`);
+  `spawnProviderProcess` (`src/main/provider-process/provider-process-spawn.ts`) asks
+  `forkLegacyProviderLaunch` (`chat-survive-legacy-launch.ts`) whether that spawner needs
+  upstream's Node supervisor instead of the native launcher (SLRM-2316, one changed line and an
+  import). Upstream wraps the spawned child, so the broker registry finds its entry by the
+  child's stdin, which the wrapper keeps;
   `main-process-ready-foundation.ts` awaits `installForkReady(store)` in one line (chat survive's
   install and first readiness check, plus the usage ledger's retention watch), imported
   with `forkPostReadyAppName` from `src/main/fork/fork-ready-foundation-hooks.ts` (one import line,
@@ -1774,7 +1784,7 @@ Upstream files only get short hooks, which keeps rebases small:
 - Settings from the CLI (SLRM-2160), from `src/shared/fork/settings-catalog/`,
   `src/shared/fork/settings-wire.ts`, `src/main/fork/settings-cli/` and
   `src/cli/fork/settings-*.ts`:
-  - `src/main/ipc/settings.ts` passes its `settings:set` handler through
+  - `src/main/ipc/settings/settings.ts` passes its `settings:set` handler through
     `forkCaptureSettingsSet` before registering it, unchanged, so the fork RPC can call the
     same function. Nothing in the handler is edited.
   - `rpc-method-registry.ts` registers `FORK_SETTINGS_METHODS`

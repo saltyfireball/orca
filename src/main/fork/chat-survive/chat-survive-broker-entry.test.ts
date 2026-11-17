@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createProviderSpawnSpec } from '../../provider-process/provider-process-supervisor'
 import {
   CHAT_SURVIVE_SPEC_ENV,
   encodeChatSurviveBrokerSpec,
@@ -18,6 +17,7 @@ import {
   isProviderSupervisorSpawn,
   planChatSurviveBrokerSpawn
 } from './chat-survive-launch'
+import { supervisorSpawnSpec } from './chat-survive-supervisor-spec.test-fixture'
 
 const TOKEN = 'a'.repeat(64)
 const tsxLoader = pathToFileURL(createRequire(import.meta.url).resolve('tsx')).href
@@ -31,12 +31,8 @@ rl.on('line', (line) => process.stdout.write('echo:' + line + '\\n'))
 `
 
 function supervisorSpawn() {
-  const spec = createProviderSpawnSpec(
-    { command: process.execPath, args: ['-e', PROVIDER] },
-    process.env,
-    'darwin'
-  )
-  return { program: spec.program, args: spec.args, env: spec.env, cwd: spec.cwd, detached: true }
+  const spec = supervisorSpawnSpec({ command: process.execPath, args: ['-e', PROVIDER] })
+  return { ...spec, args: spec.args ?? [], env: spec.env ?? {} }
 }
 
 function decodeSupervisorOwner(env: NodeJS.ProcessEnv): unknown {

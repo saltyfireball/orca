@@ -1,5 +1,5 @@
 import { shell } from 'electron'
-import { runningForkBundleId } from '../fork/fork-app-identity'
+import { runningForkBundleId } from '../../fork/fork-app-identity'
 
 const MACOS_PACKAGED_BUNDLE_ID = 'com.stablyai.orca'
 const MACOS_NOTIFICATION_SETTINGS_URL =

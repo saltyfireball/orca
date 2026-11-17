@@ -6,6 +6,7 @@ import { supervisedPosixLaunch, type ProviderSpawnSpec } from './provider-proces
 import { DirectProviderChild } from './direct-provider-child'
 import { LegacyProviderChild } from './legacy-provider-child'
 import { providerOwnershipBootId } from './provider-ownership-journal'
+import { forkLegacyProviderLaunch } from '../fork/chat-survive/chat-survive-legacy-launch'
 
 export type ProviderProcessSpawner = (spec: ProcessSpec) => ChildProcess
 
@@ -14,7 +15,9 @@ export function spawnProviderProcess(
   spec: ProviderSpawnSpec,
   spawnImpl: ProviderProcessSpawner = spawnProcess
 ): ProviderChild {
-  const bootId = spec.supervised ? providerOwnershipBootId() : null
+  // Fork (SLRM-2316): a chat-survive broker runs the Node supervisor, never the native launcher.
+  const bootId =
+    spec.supervised && !forkLegacyProviderLaunch(spawnImpl) ? providerOwnershipBootId() : null
   const native = bootId !== null
   const raw = spawnImpl(
     spec.supervised && !native

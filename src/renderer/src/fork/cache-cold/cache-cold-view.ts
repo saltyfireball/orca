@@ -1,5 +1,5 @@
 // SLRM-2103 (FORK.md "Usage ledger and cache-cold cue"): which native chat an agent row shows.
-import type { Tab } from '../../../../shared/tab-types'
+import type { Tab } from '../../../../shared/workspace-layout/tab-groups/tab-types'
 import { structuredAgentSessionPaneKey } from '../../../../shared/agent-session/view/structured-agent-session-projection'
 
 /** The chat session behind an agent row, or undefined for a terminal agent or a gone tab. */

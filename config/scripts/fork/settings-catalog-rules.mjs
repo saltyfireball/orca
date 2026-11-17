@@ -93,6 +93,7 @@ export const DESCRIPTIONS = {
   forkMemoryPollSeconds: 'Seconds between memory readings.',
   forkMemoryWarnPressure: 'Memory pressure level that raises the warning.',
   forkMemoryWarnSwapGb: 'Swap in use, in GB, that raises the memory warning.',
+  languagePackSuggestionShown: 'One-time marker: the language pack suggestion was already shown.',
   leftSidebarTintColor: 'Tint color of the left sidebar.',
   leftSidebarTintOpacity: 'Strength of the left sidebar tint, from 0 to 1.',
   localAccountWslDistro: 'WSL distribution used for accounts when the account runtime is WSL.',
@@ -137,6 +138,8 @@ export const DESCRIPTIONS = {
   terminalWordSeparator: 'Characters that end a word when you double-click terminal text.',
   theme: 'App color mode: follow the system, light or dark.',
   uiLanguage: 'Language of the app interface.',
+  uiLanguageBeforePlugin:
+    'The built-in language in use before a plugin language was picked; switching back returns to it.',
   uiLanguagePortugueseMigrationApplied: 'One-time marker for the Portuguese language migration.',
   workspaceDir: 'Folder that holds new workspaces.',
   workspaceDirHistory: 'Workspace folders used before, so their worktrees stay listed.'

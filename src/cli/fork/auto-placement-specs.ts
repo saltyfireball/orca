@@ -1,5 +1,5 @@
 // Auto placement (FORK.md, SLRM-2266): `orca placement`, and the `auto` value of --on and --host.
-import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli-argument-boundary'
+import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli/cli-argument-boundary'
 import type { CommandSpec } from '../discovery/command-spec'
 
 export const FORK_AUTO_PLACEMENT_COMMAND_SPECS: CommandSpec[] = [

@@ -4,7 +4,7 @@
 // chat's row stayed plain because the resolver only looked at chat tabs while the status entry
 // carried `structuredHostOwned`, which drops once the provider child is released.
 import { describe, expect, it } from 'vitest'
-import type { Tab } from '../../../../shared/tab-types'
+import type { Tab } from '../../../../shared/workspace-layout/tab-groups/tab-types'
 import type { AgentStatusEntry } from '../../../../shared/agent-status/contracts/agent-status-types'
 import type { TerminalTab } from '../../../../shared/workspace-layout/terminal-tab-types'
 import { structuredAgentSessionPaneKey } from '../../../../shared/agent-session/view/structured-agent-session-projection'

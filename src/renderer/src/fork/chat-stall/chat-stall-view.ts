@@ -1,6 +1,6 @@
 // Chat stall (FORK.md): what the renderer derives. Main decides which chats are stalled; the
 // renderer finds a row's chat and words the mark.
-import type { Tab } from '../../../../shared/tab-types'
+import type { Tab } from '../../../../shared/workspace-layout/tab-groups/tab-types'
 import type { ForkChatStallEntry } from '../../../../shared/fork/chat-stall'
 import { structuredAgentSessionPaneKey } from '../../../../shared/agent-session/view/structured-agent-session-projection'
 

@@ -1,6 +1,6 @@
 // Chat sleep (FORK.md): what the renderer knows. Main decides when a chat sleeps; the renderer
 // only reports which chats are on screen and shows a sleeping chat.
-import type { Tab, TabGroup } from '../../../../shared/tab-types'
+import type { Tab, TabGroup } from '../../../../shared/workspace-layout/tab-groups/tab-types'
 import type { AgentStatusState } from '../../../../shared/agent-status/contracts/agent-status-types'
 import { structuredAgentSessionPaneKey } from '../../../../shared/agent-session/view/structured-agent-session-projection'
 

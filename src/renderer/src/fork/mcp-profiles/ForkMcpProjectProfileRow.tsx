@@ -1,6 +1,6 @@
 // FORK.md "MCP profiles": one project's MCP profile, a row of the fork Settings pane's project
 // list. Empty means the launch default. Stored by project path in `forkMcpProjectProfiles`.
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import type { Repo } from '../../../../shared/repository/repo-types'
 import { forkMcpProfileConfigOf } from '../../../../shared/fork/mcp-profiles'
 import { SettingsRow } from '../../components/settings/form-controls/SettingsFormControls'

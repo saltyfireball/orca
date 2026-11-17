@@ -1,7 +1,7 @@
 // SLRM-2270 (FORK.md): the APFS clone settings card. Main reads both settings on every worktree
 // create, so a change applies to the next new worktree with no restart. macOS only.
 import React, { useId, useState } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   forkApfsCloneCheckoutEnabled,
   forkApfsCloneFolders,

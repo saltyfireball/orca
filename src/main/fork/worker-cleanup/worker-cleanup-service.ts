@@ -4,7 +4,10 @@
 import { gitExecFileAsync } from '../../git/command-runner/git-exec-file'
 import { ghExecFileAsync } from '../../git/command-runner/hosted-cli/gh-exec-file'
 import { isFolderRepo } from '../../../shared/repository/repo-kind'
-import { getRepoExecutionHostId, LOCAL_EXECUTION_HOST_ID } from '../../../shared/execution-host'
+import {
+  getRepoExecutionHostId,
+  LOCAL_EXECUTION_HOST_ID
+} from '../../../shared/execution-host/execution-host'
 import { splitWorktreeId } from '../../../shared/worktree/id'
 import type { Repo } from '../../../shared/repository/repo-types'
 import type { ForkGlobalSettings } from '../../../shared/fork/fork-global-settings'
@@ -21,7 +24,7 @@ import {
   requireRunningStructuredWorker,
   resolveStructuredWorkerIdentity
 } from '../../runtime/orchestration/terminal-authority/structured-sessions/structured-worker-authority'
-import { closeStructuredAgentSessionChild } from '../../runtime/agent-session/structured-agent-session-close'
+import { closeStructuredAgentSessionChild } from '../../runtime/agent-session/lifecycle/structured-agent-session-close'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import type { LostWorkGit } from '../lost-work/lost-work-git'
 import { startForkBackoffTimer } from '../fork-backoff-timer'

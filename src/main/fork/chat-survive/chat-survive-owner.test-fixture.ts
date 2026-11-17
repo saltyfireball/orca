@@ -7,7 +7,7 @@ import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { spawnProcess } from '@orca/process-host'
-import { createProviderSpawnSpec } from '../../provider-process/provider-process-supervisor'
+import { supervisedPosixLaunch } from '../../provider-process/provider-process-supervisor'
 import { chatSurviveSocketDir, planChatSurviveBrokerSpawn } from './chat-survive-launch'
 
 const provider = process.env.FIXTURE_PROVIDER ?? ''
@@ -15,28 +15,27 @@ const orphanTimeoutMs = Number(process.env.FIXTURE_ORPHAN_TIMEOUT_MS ?? '60000')
 const socketBase = process.env.FIXTURE_SOCKET_BASE
 const tsxLoader = pathToFileURL(createRequire(import.meta.url).resolve('tsx')).href
 
-const supervisor = createProviderSpawnSpec(
+// Upstream's Node supervisor, as `spawnProviderProcess` builds it for a chat-survive spawn. This
+// process has no app environment, so it cannot ask that function for the spec (SLRM-2316).
+const launch = supervisedPosixLaunch(
   { command: process.execPath, args: ['-e', provider] },
-  process.env,
-  process.platform
+  process.env
 )
+const supervisor = {
+  program: launch.command,
+  args: launch.args,
+  env: launch.env,
+  cwd: process.cwd(),
+  detached: true
+}
 // Plans and spawns the broker once its socket folder is made, as the app's launch check does.
 async function main(): Promise<void> {
   const socketDir = await chatSurviveSocketDir(socketBase)
-  const plan = planChatSurviveBrokerSpawn(
-    {
-      program: supervisor.program,
-      args: supervisor.args,
-      env: supervisor.env,
-      cwd: supervisor.cwd,
-      detached: supervisor.detached
-    },
-    {
-      entryPath: join(import.meta.dirname, 'chat-survive-broker-entry.ts'),
-      socketDir,
-      orphanTimeoutMs
-    }
-  )
+  const plan = planChatSurviveBrokerSpawn(supervisor, {
+    entryPath: join(import.meta.dirname, 'chat-survive-broker-entry.ts'),
+    socketDir,
+    orphanTimeoutMs
+  })
   if (!plan) {
     process.stderr.write('{"error":"no plan"}\n')
     process.exit(2)

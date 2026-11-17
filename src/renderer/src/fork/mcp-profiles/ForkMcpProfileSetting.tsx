@@ -2,7 +2,7 @@
 // each kind of launch starts with. Everything is "all" until set, so chats load every server as
 // stock does. The per-project override is ForkMcpProjectProfileRow, in the pane's one project list.
 import { useEffect, useState } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   FORK_MCP_PROFILE_ALL,
   FORK_MCP_PROFILE_NONE,

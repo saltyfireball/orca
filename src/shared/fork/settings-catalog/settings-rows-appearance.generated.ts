@@ -73,6 +73,8 @@ export const FORK_SETTINGS_ROWS_APPEARANCE = {
   themeBeforePlugin:
     '{"t":{"k":"enum","values":["dark","light","system"],"nullable":true},"d":"Legacy companion of `pluginAppTheme`; cleared by the same migration.","o":true}',
   uiLanguage: '{"t":{"k":"string"},"d":"Language of the app interface."}',
+  uiLanguageBeforePlugin:
+    '{"t":{"k":"string","nullable":true},"d":"The built-in language in use before a plugin language was picked; switching back returns to it.","o":true}',
   uiLanguagePortugueseMigrationApplied:
     '{"t":{"k":"boolean"},"d":"One-time marker for the Portuguese language migration.","o":true}',
   windowBackgroundBlur:
