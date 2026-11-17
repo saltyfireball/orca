@@ -278,10 +278,18 @@ describe('boundary compaction sweep', () => {
   it('forgets what it knew when the mode goes off', async () => {
     const { service, sent, change, forgetTyped } = setup({ a: chat() })
     await service.sweep()
-    change({ forkBoundaryCompactMode: 'off' })
+    change({ forkBoundaryCompactMode: 'off', forkLimitResume: false })
     expect(await service.sweep()).toBe(false)
     expect(forgetTyped).toHaveBeenCalled()
     expect(service.lastOutcomes().size).toBe(0)
     expect(sent).toHaveLength(1)
+  })
+
+  it('keeps the message box report while limit resume reads it (SLRM-2309)', async () => {
+    const { service, change, forgetTyped } = setup({ a: chat() })
+    await service.sweep()
+    change({ forkBoundaryCompactMode: 'off' })
+    expect(await service.sweep()).toBe(false)
+    expect(forgetTyped).not.toHaveBeenCalled()
   })
 })
