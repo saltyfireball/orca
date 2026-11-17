@@ -1,5 +1,5 @@
 // Fork launch defaults (FORK.md "Launch defaults"): `orca launch-defaults`.
-import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli-argument-boundary'
+import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli/cli-argument-boundary'
 import type { CommandSpec } from '../discovery/command-spec'
 
 export const FORK_LAUNCH_DEFAULTS_COMMAND_SPECS: CommandSpec[] = [

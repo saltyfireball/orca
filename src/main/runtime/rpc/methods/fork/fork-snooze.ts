@@ -15,7 +15,10 @@ import {
   type ForkSnoozeSetResult,
   type ForkSnoozeWakeResult
 } from '../../../../../shared/fork/snooze-wire'
-import { LOCAL_EXECUTION_HOST_ID, parseExecutionHostId } from '../../../../../shared/execution-host'
+import {
+  LOCAL_EXECUTION_HOST_ID,
+  parseExecutionHostId
+} from '../../../../../shared/execution-host/execution-host'
 import { sleeperSourcesFromPs } from '../../../../../shared/fork/sleepers-ps-sources'
 import { forkSleeperChatFacts } from '../../../../fork/sleepers/sleepers-host'
 import { forkSnoozeStore } from '../../../../fork/snooze/snooze-store'

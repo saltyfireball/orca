@@ -230,7 +230,12 @@ owner-gone signal, and fences decide who may write).
    `createClaudeCodeProcessSpawn` passes its `spawnImpl` through `forkChatSurviveSpawner`
    (`chat-survive-spawn.ts`): with the setting on, darwin or linux, a provider supervisor spawn,
    a private socket folder and the broker entry on disk, it spawns the broker plan; anything else
-   spawns as today. The spawn hook is synchronous, so it reads the socket folder from a readiness
+   spawns as today. Since upstream 1.4.262 a supervised provider starts through a native launcher
+   (`orca-provider-exec`) with the Node supervisor kept as the fallback, so the hook marks its
+   spawner when a broker can run (or a surviving provider is held for the chat) and
+   `spawnProviderProcess` then builds the Node supervisor spawn for it
+   (`chat-survive-legacy-launch.ts`, SLRM-2316). Upstream wraps the spawned child, and the
+   wrapper keeps the child's stdin, so the registry is keyed by that stdin. The spawn hook is synchronous, so it reads the socket folder from a readiness
    answer (`chat-survive-launch-ready.ts`) checked when the setting is turned on, at install and
    after each spawn, and still stats the broker entry itself. Start-up awaits the install's first
    check before any session is restored; a chat started within the few milliseconds after the

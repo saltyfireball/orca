@@ -14,6 +14,8 @@ export const FORK_SETTINGS_ROWS_EDITOR = {
   editorAutoSave: '{"t":{"k":"boolean"},"d":"Save edited files without asking."}',
   editorAutoSaveDelayMs:
     '{"t":{"k":"number"},"d":"Milliseconds after the last edit before auto save writes the file."}',
+  editorEndOfLine:
+    '{"t":{"k":"enum","values":["auto","crlf","lf"]},"d":"Line ending for files with no line breaks yet; absent means auto.","o":true}',
   editorFontFamily:
     '{"t":{"k":"string"},"d":"Opt-in code-editor font; empty (the default) keeps following `terminalFontFamily`.","o":true}',
   editorFontSize:
@@ -21,6 +23,8 @@ export const FORK_SETTINGS_ROWS_EDITOR = {
   editorFontWeight:
     '{"t":{"k":"number"},"d":"Opt-in code-editor weight (100-900); unset keeps Monaco\'s regular weight.","o":true}',
   editorFormatOnSave: '{"t":{"k":"boolean"},"d":"Format a file when it is saved.","o":true}',
+  editorInlineBlame:
+    '{"t":{"k":"boolean"},"d":"Inline git blame after the cursor line; the status-bar item is separate."}',
   editorInsertFinalNewline: '{"t":{"k":"boolean"},"d":"End saved files with a newline.","o":true}',
   editorLigatures:
     '{"t":{"k":"enum","values":["auto","off","on"]},"d":"Same semantics as `terminalLigatures`, judged against the editor font; unset is off.","o":true}',

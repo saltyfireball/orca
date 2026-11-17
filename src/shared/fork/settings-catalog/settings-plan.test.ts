@@ -1,6 +1,6 @@
 // Settings from the CLI (FORK.md): what a requested change would write, and what is refused.
 import { describe, expect, it } from 'vitest'
-import { getDefaultSettings } from '../../constants'
+import { getDefaultSettings } from '../../orca-profiles/constants'
 import { parseForkSettingsFile, renderForkSettingsFile } from './settings-jsonc'
 import {
   FORK_SECRET_SET_TEXT,

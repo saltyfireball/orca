@@ -1,6 +1,6 @@
 // Chat sleep (FORK.md) settings. Ships off; main reads them on every idle sweep tick.
 import React, { useId } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   FORK_CHAT_SLEEP_MINUTE_CHOICES,
   forkChatSleepEnabled,

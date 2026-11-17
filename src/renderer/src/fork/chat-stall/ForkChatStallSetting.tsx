@@ -1,7 +1,7 @@
 // Chat stall (FORK.md) settings. Marking is on at 30 minutes; auto release ships off. Main reads
 // both on every idle sweep tick.
 import React, { useId } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   FORK_CHAT_STALL_MINUTE_CHOICES,
   forkChatStallAutoRelease,

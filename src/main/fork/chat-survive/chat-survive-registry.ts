@@ -36,7 +36,14 @@ export type ChatSurviveEntry = {
 }
 
 const bySession = new Map<string, ChatSurviveEntry>()
-const byChild = new WeakMap<ChildProcessWithoutNullStreams, ChatSurviveEntry>()
+/**
+ * By the broker's stdin, not the child: upstream wraps the spawned child (SLRM-2316) and the
+ * wrapper keeps that same stdin, so the spawn hook's child and the app's both find the entry.
+ */
+const byStdin = new WeakMap<object, ChatSurviveEntry>()
+
+/** Anything that carries a broker's stdin: the spawned child or upstream's wrapper of it. */
+type BrokerChild = { readonly stdin: object }
 
 // Every change to one record file runs after the one before it, in call order, so the spawn's
 // first write, the quit hook's rewrite and the exit's removal can never land out of order.
@@ -166,7 +173,7 @@ export function registerChatSurviveBroker(input: {
     }
   })
   bySession.set(entry.sessionId, entry)
-  byChild.set(child, entry)
+  byStdin.set(child.stdin, entry)
   return entry
 }
 
@@ -181,10 +188,8 @@ export function chatSurviveEntryForSession(sessionId: string): ChatSurviveEntry 
   return bySession.get(sessionId) ?? null
 }
 
-export function chatSurviveEntryForChild(
-  child: ChildProcessWithoutNullStreams
-): ChatSurviveEntry | null {
-  return byChild.get(child) ?? null
+export function chatSurviveEntryForChild(child: BrokerChild): ChatSurviveEntry | null {
+  return byStdin.get(child.stdin) ?? null
 }
 
 /** A provider message as the app's reader hands it on; only its `uuid` matters here. */
@@ -195,11 +200,11 @@ type ConsumedMessage = { readonly uuid?: unknown }
  * past it. Called for every Claude message; a child without a broker costs one map lookup.
  */
 export function forkChatSurviveConsumed(
-  child: ChildProcessWithoutNullStreams | null | undefined,
+  child: BrokerChild | null | undefined,
   message: ConsumedMessage
 ): void {
   const { uuid } = message
   if (child && typeof uuid === 'string') {
-    byChild.get(child)?.tracker.consumed(uuid)
+    byStdin.get(child.stdin)?.tracker.consumed(uuid)
   }
 }

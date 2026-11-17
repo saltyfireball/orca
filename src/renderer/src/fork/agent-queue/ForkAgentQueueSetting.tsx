@@ -1,7 +1,7 @@
 // SLRM-2098 (FORK.md "Agent launch queue"): the agent limit. Ships off; the main process reads
 // it on every launch.
 import { useState } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   FORK_AGENT_QUEUE_DEFAULT_MAX_LIVE,
   forkAgentQueueConfigOf,

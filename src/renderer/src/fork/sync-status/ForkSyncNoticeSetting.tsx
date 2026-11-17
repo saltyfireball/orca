@@ -1,6 +1,6 @@
 // Fork sync status (FORK.md "Sync status") settings: the notice ships on, stale after 3 days.
 import React, { useId } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   FORK_SYNC_NOTICE_STALE_DAY_CHOICES,
   forkSyncNoticeEnabled,

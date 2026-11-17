@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getDefaultSettings } from '../../../../shared/constants'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import { getDefaultSettings } from '../../../../shared/orca-profiles/constants'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import { isSettingsNavigationTarget } from '@/components/settings/navigation/settings-navigation-types'
 import {
   buildForkSettingsNavSections,

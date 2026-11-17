@@ -1,6 +1,6 @@
 // Unattended resume (FORK.md, SLRM-2268): its settings card. On by default; the main process
 // reads it once at start-up, in the desktop app and in the headless server alike.
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   readUnattendedResumeSettings,
   UNATTENDED_RESUME_DEFAULT_MAX_TRIES,

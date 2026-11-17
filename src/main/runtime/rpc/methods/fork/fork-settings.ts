@@ -4,7 +4,7 @@
 // with no desktop app (`orca serve`) writes its own settings store instead.
 import { homedir } from 'node:os'
 import { defineMethod, type RpcContext } from '../../core'
-import { getDefaultSettings } from '../../../../../shared/constants'
+import { getDefaultSettings } from '../../../../../shared/orca-profiles/constants'
 import {
   ForkSettingsGetParams,
   ForkSettingsUpdateParams

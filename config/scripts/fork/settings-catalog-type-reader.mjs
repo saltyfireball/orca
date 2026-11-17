@@ -11,7 +11,7 @@ const MAX_DEPTH = 4
 /** A key set this large is described as a record instead of one field per key. */
 const MAX_FIELDS = 40
 
-const SETTINGS_FILE = path.join('src', 'shared', 'global-settings-types.ts')
+const SETTINGS_FILE = path.join('src', 'shared', 'settings', 'global-settings-types.ts')
 
 function toAscii(text) {
   return text

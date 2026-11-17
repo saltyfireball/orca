@@ -1,7 +1,7 @@
 // Settings from the CLI (FORK.md): one entry for every key of the app's global settings
 // object. The rows are generated from the `GlobalSettings` type; this file reads them and
 // proves, in the type check, that they name exactly the keys of that type.
-import type { GlobalSettings } from '../../global-settings-types'
+import type { GlobalSettings } from '../../settings/global-settings-types'
 import { FORK_SETTINGS_AREA_ROWS } from './settings-catalog-rows.generated'
 import { forkSettingReadOnlyReason, isForkSettingSecret } from './settings-access'
 import { describeForkSettingShape, type ForkSettingShape } from './settings-shape'
