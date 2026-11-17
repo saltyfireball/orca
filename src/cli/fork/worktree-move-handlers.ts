@@ -12,7 +12,10 @@ import {
 } from '../workspace-selection/workspace-selector'
 import { findEnvironmentByName } from '../hosts/host-selector-alternatives'
 import { isLocalEnvironmentSelector } from '../hosts/local-environment-selector'
-import { LOCAL_EXECUTION_HOST_ID, parseExecutionHostId } from '../../shared/execution-host'
+import {
+  LOCAL_EXECUTION_HOST_ID,
+  parseExecutionHostId
+} from '../../shared/execution-host/execution-host'
 import { resolveWorktreeMoveSettings } from '../../shared/fork/worktree-move/worktree-move-settings'
 import {
   runWorktreeMove,

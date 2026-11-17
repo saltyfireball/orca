@@ -1,7 +1,7 @@
 // Settings from the CLI (FORK.md): which settings `orca settings` may not write and which it
 // may not show. Every key here is typed against `GlobalSettings`, so a renamed or removed
 // setting fails the type check instead of silently losing its guard.
-import type { GlobalSettings } from '../../global-settings-types'
+import type { GlobalSettings } from '../../settings/global-settings-types'
 
 type SettingsKey = keyof GlobalSettings
 

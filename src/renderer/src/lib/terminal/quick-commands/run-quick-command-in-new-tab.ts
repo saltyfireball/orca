@@ -9,7 +9,7 @@ import {
   supportsTerminalAgentQuickCommand
 } from '../../../../../shared/terminal/quick-commands/terminal-quick-commands'
 import type { TerminalQuickCommand } from '../../../../../shared/terminal/quick-commands/terminal-quick-command-types'
-import type { ExecutionHostId } from '../../../../../shared/execution-host'
+import type { ExecutionHostId } from '../../../../../shared/execution-host/execution-host'
 
 export type RunQuickCommandInNewTabArgs = {
   command: TerminalQuickCommand

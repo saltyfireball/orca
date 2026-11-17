@@ -3,7 +3,7 @@
 // webhook address, comes to exist. With the mode switched on from the CLI and none of those set
 // in the Settings screen, a sweep starts no process and calls no address.
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getDefaultSettings } from '../../../shared/constants'
+import { getDefaultSettings } from '../../../shared/orca-profiles/constants'
 import { updateForkSettings, type ForkSettingsCliDeps } from '../settings-cli/settings-cli-apply'
 import { listIdleRecoveryCandidatesWith } from './idle-recovery-candidates'
 import { clearIdleRecoveryEndingCache, readIdleRecoveryEndingWith } from './idle-recovery-ending'

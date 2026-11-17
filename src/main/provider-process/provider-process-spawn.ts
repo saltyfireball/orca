@@ -12,6 +12,7 @@ import {
   type HostedCwdReporter,
   type ProviderHostRoute
 } from './hosted-provider-launch'
+import { forkLegacyProviderLaunch } from '../fork/chat-survive/chat-survive-legacy-launch'
 
 export type ProviderProcessSpawner = (spec: ProcessSpec) => ChildProcess
 
@@ -31,7 +32,9 @@ export function spawnProviderProcess(
   spawnImpl: ProviderProcessSpawner = spawnProcess,
   allowHost = true
 ): ProviderChild {
-  const bootId = spec.supervised ? providerOwnershipBootId() : null
+  // Fork (SLRM-2316): a chat-survive broker runs the Node supervisor, never the native launcher.
+  const bootId =
+    spec.supervised && !forkLegacyProviderLaunch(spawnImpl) ? providerOwnershipBootId() : null
   if (bootId !== null) {
     const spawnOwner = (): ChildProcess =>
       spawnImpl({

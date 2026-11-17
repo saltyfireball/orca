@@ -1,7 +1,7 @@
 // Boundary compaction (FORK.md): what the renderer knows. Main decides when a chat compacts; the
 // renderer only reports which native chats hold text in their message box, because a draft lives
 // in the window and main cannot read it.
-import type { Tab } from '../../../../shared/tab-types'
+import type { Tab } from '../../../../shared/workspace-layout/tab-groups/tab-types'
 
 /**
  * The session ids of every native chat tab in every workspace, sorted, so equal sets compare

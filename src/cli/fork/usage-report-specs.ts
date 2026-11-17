@@ -1,5 +1,5 @@
 // SLRM-2104 (FORK.md "Usage and cost report"): `orca usage-report`.
-import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli-argument-boundary'
+import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli/cli-argument-boundary'
 import type { CommandSpec } from '../discovery/command-spec'
 
 export const FORK_USAGE_REPORT_COMMAND_SPECS: CommandSpec[] = [

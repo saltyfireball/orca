@@ -2,7 +2,7 @@
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { getDefaultSettings } from '../../constants'
+import { getDefaultSettings } from '../../orca-profiles/constants'
 import {
   FORK_SETTINGS_READ_ONLY_KEYS,
   FORK_SETTINGS_SECRET_KEYS,
