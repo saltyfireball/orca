@@ -48,6 +48,7 @@ import {
 } from '../fork/idle-recovery-wire'
 import { ForkLostWorkScanParams } from '../fork/lost-work'
 import { ForkMcpChatParams, ForkMcpChatSetParams, ForkMcpListParams } from '../fork/mcp-profiles'
+import { ForkServerHealthListParams } from '../fork/server-health'
 import {
   ForkServerUpdateApplyParams,
   ForkServerUpdateRollbackParams,
@@ -1229,6 +1230,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.mcpProfiles.set': ForkMcpChatSetParams,
   'fork.placement.load': ForkPlacementLoadParams,
   'fork.placement.pick': ForkPlacementPickParams,
+  'fork.serverHealth.list': ForkServerHealthListParams,
   'fork.serverUpdate.apply': ForkServerUpdateApplyParams,
   'fork.serverUpdate.rollback': ForkServerUpdateRollbackParams,
   'fork.serverUpdate.status': ForkServerUpdateStatusParams,

@@ -9,6 +9,7 @@ import type { ForkAutoPlacementSettings } from './auto-placement'
 import type { ForkWorktreeMoveSettings } from './worktree-move/worktree-move-settings'
 import type { ForkApfsCloneSettings } from './apfs-clone'
 import type { ForkWebhookSettings } from './webhooks'
+import type { ForkServerHealthSettings } from './server-health'
 import type { ForkServerUpdateSettings } from './server-update'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
@@ -21,6 +22,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkAutoPlacementSettings &
   /** Fork (SLRM-2270): APFS clones for new worktrees on macOS. */
   ForkApfsCloneSettings &
+  /** Fork (SLRM-2311): paired server health alerts and this host's heartbeat. */
+  ForkServerHealthSettings &
   /** Fork (SLRM-2310): update paired servers from this desktop, and take updates as a server. */
   ForkServerUpdateSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */

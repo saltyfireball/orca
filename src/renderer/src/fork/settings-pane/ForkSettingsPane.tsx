@@ -32,6 +32,8 @@ import { ForkApfsCloneSetting } from '../apfs-clone/ForkApfsCloneSetting'
 import { ForkSnoozeSetting } from '../snooze/ForkSnoozeSetting'
 import { ForkDeviceApprovalSetting } from '../device-approval/ForkDeviceApprovalSetting'
 import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
+import { ForkServerHealthSetting } from '../server-health/ForkServerHealthSetting'
+import { ForkServerHeartbeatSetting } from '../server-health/ForkServerHeartbeatSetting'
 import { ForkServerUpdateSetting } from '../server-update/ForkServerUpdateSetting'
 import { ForkProjectSettingsList } from './ForkProjectSettingsList'
 import { ForkSettingsSectionLinks } from './ForkSettingsSectionLinks'
@@ -82,6 +84,8 @@ const SECTION_CARDS: Record<
   ],
   remote: [
     ['endpoint-failover', ForkEndpointFailoverSetting],
+    ['server-health', ForkServerHealthSetting],
+    ['server-heartbeat', ForkServerHeartbeatSetting],
     ['device-approval', ForkDeviceApprovalSetting],
     ['webhooks', ForkWebhooksSetting],
     ['server-update', ForkServerUpdateSetting]
