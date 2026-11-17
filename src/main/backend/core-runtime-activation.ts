@@ -31,7 +31,7 @@ import { ORCA_LAYOUT_OWNER_IS_MAIN } from '../../shared/workspace-layout/layout-
 import { restoreOrcadTerminalAuthority } from '../orcad/host-runtime/orcad-restored-terminal-authority'
 import { installOrcadFeatureReadiness } from '../runtime/rpc/startup/orcad-readiness'
 import { isAgentStatusHooksEnabled } from '../../shared/agent-hook-listener/configuration/agent-status-hooks-setting'
-import { startForkRuntimeHooks } from '../fork/fork-runtime-start'
+import { startForkRuntimeSettleServices } from '../fork/runtime-settle-hooks'
 import { installForkHeadlessHost } from '../fork/headless-host'
 
 export async function activateBackendRuntime(
@@ -301,8 +301,8 @@ export async function activateBackendRuntime(
   registerCleanup(() => rpc.stop())
   await timed('rpc', () => rpc.start())
   worktreeRemovalLifetime.resume(() => runtime.finishInterruptedWorktreeRemovals())
-  // Fork (SLRM-2268, SLRM-2310): unattended resume and server updates; desktop and serve call it too.
-  startForkRuntimeHooks(runtime)
+  // Fork (SLRM-2268, SLRM-2309): unattended and limit resume; the desktop and serve call it at settle.
+  startForkRuntimeSettleServices(runtime)
   startOrcadSchedulers(runtime, profileStore, registerCleanup)
   startOrcadDesktopPushService(runtime, rpc)
   console.error(`[orcad] ${describeOrcadBindExposure(bindHost)}`)

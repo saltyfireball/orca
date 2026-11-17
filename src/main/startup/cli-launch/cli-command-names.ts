@@ -49,6 +49,7 @@ export const CLI_COMMAND_NAMES = [
   'keypress',
   'jira',
   'launch-defaults',
+  'limits',
   'linear',
   'lost-work',
   'mcp-profile',
