@@ -1,13 +1,13 @@
 // Idle recovery (FORK.md) settings: the chats idle recovery leaves alone. A chat is paused from
 // its Decision inbox row; here each one, or all of them, can be let back in.
 import React from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   readIdleRecoverySettings,
   withIdleRecoveryPaused
 } from '../../../../shared/fork/idle-recovery-settings'
 import { parsePaneKey } from '../../../../shared/workspace-layout/stable-pane-id'
-import type { Tab } from '../../../../shared/tab-types'
+import type { Tab } from '../../../../shared/workspace-layout/tab-groups/tab-types'
 import { SettingsRow } from '../../components/settings/form-controls/SettingsFormControls'
 import { Button } from '@/components/ui/button'
 import { useTranslate } from '@/i18n/use-translate'

@@ -5,7 +5,7 @@ import { useAppStore } from '@/store'
 import type { AppState } from '@/store/types'
 import { callRuntimeRpc } from '@/runtime/rpc/calls/runtime-rpc-call'
 import { createNonSecureContextUuid } from '../../../../shared/identifiers/non-secure-context-uuid'
-import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host'
+import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host/execution-host'
 import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 import { resolveWorktreeMoveSettings } from '../../../../shared/fork/worktree-move/worktree-move-settings'
 import {

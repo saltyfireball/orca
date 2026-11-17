@@ -1,4 +1,4 @@
-import type { ExecutionHostId } from '../../../../../shared/execution-host'
+import type { ExecutionHostId } from '../../../../../shared/execution-host/execution-host'
 import { selectKnownWorktreeById } from '@/store/workspaces/selection/known-worktree-selection'
 import { resolveOwner } from '@/lib/workspace/ownership/resolve-owner'
 import { hostRouteForAuthority } from '@/runtime/rpc/targets/runtime-client-target'

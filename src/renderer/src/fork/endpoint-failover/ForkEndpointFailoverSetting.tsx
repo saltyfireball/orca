@@ -1,7 +1,7 @@
 // Endpoint failover (SLRM-2267, FORK.md) settings. On by default; main reads them on every check,
 // so a change takes effect within seconds, with no restart.
 import React, { useId } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   FORK_ENDPOINT_RETRY_SECOND_CHOICES,
   forkEndpointFailoverEnabled,

@@ -2,7 +2,7 @@
 // so a row and its tab strip tab read as one. The color is the tab's own `color`, the exact
 // field SortableTab paints as the dot after the title, so the two always agree and clear together.
 import type { CSSProperties } from 'react'
-import type { Tab } from '../../../../shared/tab-types'
+import type { Tab } from '../../../../shared/workspace-layout/tab-groups/tab-types'
 import type { TerminalTab } from '../../../../shared/workspace-layout/terminal-tab-types'
 import { structuredAgentSessionPaneKey } from '../../../../shared/agent-session/view/structured-agent-session-projection'
 import { parsePaneKey } from '../../../../shared/workspace-layout/stable-pane-id'

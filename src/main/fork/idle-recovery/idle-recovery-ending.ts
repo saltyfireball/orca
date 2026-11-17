@@ -5,11 +5,11 @@
 // A native chat is read from its journal in memory, and only while its conversation is loaded.
 // A terminal agent is read from the tail of its transcript file, else from the status row Orca
 // keeps for its pane. One ending is read once: a chat that stays idle costs a map lookup.
-import { agentSessionCurrentContextRows } from '../../../shared/agent-session/agent-session-context-clear'
-import { readAgentMessageSource } from '../../../shared/agent-session/agent-session-message-source'
+import { agentSessionCurrentContextRows } from '../../../shared/agent-session/conversation-context/agent-session-context-clear'
+import { readAgentMessageSource } from '../../../shared/agent-session/journal/agent-session-message-source'
 import { isRootAgentJournalItem } from '../../../shared/agent-session/journal/agent-session-journal-producer'
 import type { AgentJournalRenderItem } from '../../../shared/agent-session/journal/agent-session-journal-types'
-import { isStructuredAgentSessionCommandEntry } from '../../../shared/agent-session/structured-agent-session-command-entry'
+import { isStructuredAgentSessionCommandEntry } from '../../../shared/agent-session/requests/structured-agent-session-command-entry'
 import {
   IDLE_RECOVERY_MESSAGE_TAIL_CHARS,
   tailForIdleRecoveryClassifier

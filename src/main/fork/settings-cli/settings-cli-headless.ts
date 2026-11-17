@@ -3,7 +3,7 @@
 // store, with the stored-value rules of that handler that need no window. The store's change
 // listeners (agent hooks, the fork's services) hear the write as they hear any other. A setting
 // only the desktop app can act on is refused by name. Keep electron out of this file.
-import type { GlobalSettings } from '../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../shared/settings/global-settings-types'
 import { resolveAiVaultSearchSettings } from '../../../shared/ai-vault/search/ai-vault-search-settings'
 import {
   normalizeMobilePairingCustomAddress,
@@ -12,8 +12,8 @@ import {
 import { normalizeTerminalCustomThemes } from '../../../shared/terminal-themes/terminal-custom-themes'
 import { normalizeTerminalLineHeight } from '../../../shared/terminal/appearance/terminal-line-height-settings'
 import { normalizeDesktopTerminalScrollbackRows } from '../../../shared/terminal/replay/terminal-scrollback-policy'
-import { sanitizeNetworkSettings } from '../../ipc/network-settings-sanitization'
-import { sanitizeRendererSettingsUpdate } from '../../ipc/renderer-settings-update'
+import { sanitizeNetworkSettings } from '../../ipc/settings/network-settings-sanitization'
+import { sanitizeRendererSettingsUpdate } from '../../ipc/settings/renderer-settings-update'
 
 type SettingsKey = keyof GlobalSettings
 

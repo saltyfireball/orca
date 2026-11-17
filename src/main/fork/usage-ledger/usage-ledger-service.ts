@@ -1,7 +1,7 @@
 // SLRM-2103 (FORK.md "Usage ledger and cache-cold cue"): the main process's one ledger. A hook in
 // Claude's structured event delivery feeds it live frames (transcript imports never pass there,
 // so nothing is counted twice); the cache cue and the usage report read it.
-import type { ClaudeStructuredSessionEvent } from '../../claude/structured/claude-structured-session-event'
+import type { ClaudeStructuredSessionEvent } from '../../claude/structured/lifecycle/claude-structured-session-event'
 import { longContextTurnTokens } from '../../claude-usage/claude-model-pricing'
 import {
   forkUsageRetentionDays,
