@@ -86,6 +86,22 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"record","of":{"k":"enum","values":["less","manual","normal","prefer"]}},"d":"Auto placement: per machine (\'local\' or \'runtime:<environment id>\'), how willingly it takes automatically placed work; unset machines are \'normal\'.","o":true}',
   forkPlacementAutoWhenUnnamed:
     '{"t":{"k":"boolean"},"d":"Auto placement: when no machine is named and more than one could take the work, pick one as `auto` would. Off unless true.","o":true}',
+  forkServerUpdateAccept:
+    '{"t":{"k":"boolean"},"d":"Server updates: this host takes update and rollback requests from paired desktops (host-admin); unset is on.","o":true}',
+  forkServerUpdateAuto:
+    '{"t":{"k":"boolean"},"d":"Server updates: when this desktop starts on a new version, update every paired server to it. Off unless true.","o":true}',
+  forkServerUpdateAutoRollback:
+    '{"t":{"k":"boolean"},"d":"Server updates: put the old version back when the new one does not come up; unset is on.","o":true}',
+  forkServerUpdateMacCertSha1:
+    '{"t":{"k":"string"},"d":"Server updates: SHA-1 of the certificate a macOS app must be signed with before it is installed; unset is the fork\'s. Set it in the Settings file.","o":true}',
+  forkServerUpdateMacTeamId:
+    '{"t":{"k":"string"},"d":"Server updates: an Apple Team ID the macOS app must be signed by instead of the certificate pin; unset is none. Set it in the Settings file.","o":true}',
+  forkServerUpdateReadySeconds:
+    '{"t":{"k":"number"},"d":"Server updates: seconds a restarted server has to come up before the old version is put back; unset is 180.","o":true}',
+  forkServerUpdateReleasesUrl:
+    '{"t":{"k":"string"},"d":"Server updates: where this host downloads releases from (https); unset is the fork\'s GitHub releases. Set it in the Settings file.","o":true}',
+  forkServerUpdateTurnWaitMinutes:
+    '{"t":{"k":"number"},"d":"Server updates: minutes a server waits for its running turns to finish before it gives up; unset is 30.","o":true}',
   forkShowAccountChip:
     '{"t":{"k":"boolean"},"d":"Show which Claude account each session runs on; unset is on.","o":true}',
   forkShowChildTally:

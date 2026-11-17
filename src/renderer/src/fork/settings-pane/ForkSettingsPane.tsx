@@ -32,6 +32,7 @@ import { ForkApfsCloneSetting } from '../apfs-clone/ForkApfsCloneSetting'
 import { ForkSnoozeSetting } from '../snooze/ForkSnoozeSetting'
 import { ForkDeviceApprovalSetting } from '../device-approval/ForkDeviceApprovalSetting'
 import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
+import { ForkServerUpdateSetting } from '../server-update/ForkServerUpdateSetting'
 import { ForkProjectSettingsList } from './ForkProjectSettingsList'
 import { ForkSettingsSectionLinks } from './ForkSettingsSectionLinks'
 import { getForkSettingsSections, type ForkSettingsSectionId } from './fork-settings-pane-catalog'
@@ -82,7 +83,8 @@ const SECTION_CARDS: Record<
   remote: [
     ['endpoint-failover', ForkEndpointFailoverSetting],
     ['device-approval', ForkDeviceApprovalSetting],
-    ['webhooks', ForkWebhooksSetting]
+    ['webhooks', ForkWebhooksSetting],
+    ['server-update', ForkServerUpdateSetting]
   ],
   sync: [['sync-notice', ForkSyncNoticeSetting]]
 }
