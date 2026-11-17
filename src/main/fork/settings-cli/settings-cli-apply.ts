@@ -2,7 +2,7 @@
 // Settings screen itself uses (`settings:set`), so every guard, normalization and side effect
 // of that path runs and every open window hears `settings:changed`.
 import type { IpcMainInvokeEvent } from 'electron'
-import type { GlobalSettings } from '../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../shared/settings/global-settings-types'
 import {
   forkSettingShown,
   planForkSettingsUpdate,

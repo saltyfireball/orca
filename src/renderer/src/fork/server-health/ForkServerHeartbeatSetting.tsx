@@ -2,7 +2,7 @@
 // outside monitor sees it is alive. Off until an address is set. For a server, set it there with
 // `orca settings set forkServerHeartbeatUrl <url> --environment <name>`.
 import React, { useId } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   FORK_SERVER_HEARTBEAT_SECOND_CHOICES,
   readForkServerHeartbeatConfig,

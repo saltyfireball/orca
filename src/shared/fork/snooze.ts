@@ -4,7 +4,7 @@
 // the snoozes are kept there (in the fork's own JSON file), for local and paired-server workspaces
 // alike. This file is the pure part: the shapes, the settings, the presets, the wake labels and
 // the wake decision, shared by the desktop, the main process and `orca snooze`.
-import { LOCAL_EXECUTION_HOST_ID } from '../execution-host'
+import { LOCAL_EXECUTION_HOST_ID } from '../execution-host/execution-host'
 
 export type ForkSnoozeTarget =
   | { kind: 'workspace'; worktreeId: string; hostId: string }

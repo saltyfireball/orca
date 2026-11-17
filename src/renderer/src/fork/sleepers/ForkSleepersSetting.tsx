@@ -1,7 +1,7 @@
 // Sleepers (SLRM-2136): Settings > Blackfish, whether the sidebar toolbar shows the Sleepers
 // button. Shown by default; the command palette opens the dialog either way.
 import React from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import { forkSleepersButtonShown } from '../../../../shared/fork/sleepers'
 import {
   SettingsSubsectionHeader,

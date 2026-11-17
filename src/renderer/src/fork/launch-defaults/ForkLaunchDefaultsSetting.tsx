@@ -1,7 +1,7 @@
 // Fork launch defaults (FORK.md "Launch defaults"): Settings > Blackfish > Launch defaults. A model
 // and effort per kind of launch for one agent at a time. Empty everywhere ships, which is stock.
 import React, { useId, useState } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import type { TuiAgent } from '../../../../shared/agent-launch/catalog/tui-agent'
 import { tuiAgentDisplayName } from '../../../../shared/agent-launch/catalog/tui-agent-display-names'
 import {

@@ -1,7 +1,7 @@
 // A text setting for fork commands and addresses: edits freely, commits the trimmed text on blur
 // or Enter. Used by idle recovery's notify targets and the server health cards (SLRM-2311).
 import React, { useState } from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import { SettingsRow } from '../../components/settings/form-controls/SettingsFormControls'
 import { Input } from '@/components/ui/input'
 

@@ -1,6 +1,6 @@
 // SLRM-2103 (FORK.md "Usage ledger and cache-cold cue"): the cue's settings. On by default; it
 // only ever shows a hint and never holds a message back.
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   FORK_CACHE_COLD_DEFAULT_THRESHOLD,
   FORK_CACHE_WINDOW_DEFAULT_MINUTES,

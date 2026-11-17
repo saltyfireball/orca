@@ -8,9 +8,9 @@ import {
   sanitizeDirectoryMock,
   store,
   type SettingsChangedListener
-} from '../../ipc/settings-ipc-test-fixture'
-import { registerSettingsHandlers } from '../../ipc/settings'
-import { getDefaultSettings } from '../../../shared/constants'
+} from '../../ipc/settings/testing/settings-ipc-test-fixture'
+import { registerSettingsHandlers } from '../../ipc/settings/settings'
+import { getDefaultSettings } from '../../../shared/orca-profiles/constants'
 import { forkApplyThroughSettingsSet, updateForkSettings } from './settings-cli-apply'
 
 const defaults: Record<string, unknown> = { ...getDefaultSettings('/home/someone') }
