@@ -86,6 +86,24 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"record","of":{"k":"enum","values":["less","manual","normal","prefer"]}},"d":"Auto placement: per machine (\'local\' or \'runtime:<environment id>\'), how willingly it takes automatically placed work; unset machines are \'normal\'.","o":true}',
   forkPlacementAutoWhenUnnamed:
     '{"t":{"k":"boolean"},"d":"Auto placement: when no machine is named and more than one could take the work, pick one as `auto` would. Off unless true.","o":true}',
+  forkServerHealth:
+    '{"t":{"k":"boolean"},"d":"Watch the paired remote servers this desktop is connected to and alert when one stops answering; unset is on.","o":true}',
+  forkServerHealthAlertCommand:
+    '{"t":{"k":"boolean"},"d":"Server health: give the alert as JSON on stdin to the notification command (forkInboxNotifyCommand); unset is on when that command is set. Set it in the Settings screen.","o":true}',
+  forkServerHealthAlertDesktop:
+    '{"t":{"k":"boolean"},"d":"Server health: desktop notification on offline and back; unset follows forkInboxNotifyDesktop.","o":true}',
+  forkServerHealthAlertWebhook:
+    '{"t":{"k":"boolean"},"d":"Server health: POST the alert as JSON to the notification webhook (forkInboxNotifyWebhookUrl); unset is on when that address is set.","o":true}',
+  forkServerHealthOfflineMinutes:
+    '{"t":{"k":"number"},"d":"Server health: minutes a server must stay unreachable before the offline alert; unset is 5.","o":true}',
+  forkServerHealthRecoverySeconds:
+    '{"t":{"k":"number"},"d":"Server health: seconds a server must answer again before it counts as back (no alerts while it flaps); unset is 60.","o":true}',
+  forkServerHeartbeatMethod:
+    '{"t":{"k":"enum","values":["GET","POST"]},"d":"Server heartbeat: \'GET\' or \'POST\' (with an empty body); unset is \'GET\'.","o":true}',
+  forkServerHeartbeatSeconds:
+    '{"t":{"k":"number"},"d":"Server heartbeat: seconds between two calls of the heartbeat address; unset is 60.","o":true}',
+  forkServerHeartbeatUrl:
+    '{"t":{"k":"string"},"d":"Server heartbeat (SLRM-2311): an http(s) address this host calls every few seconds so an outside monitor sees it is alive; unset is none.","o":true}',
   forkShowAccountChip:
     '{"t":{"k":"boolean"},"d":"Show which Claude account each session runs on; unset is on.","o":true}',
   forkShowChildTally:
