@@ -1,6 +1,6 @@
 // Idle recovery (FORK.md) settings. Ships off. The classifier command, the notification command
 // and the webhook address can be set only here: `orca settings` refuses to write them.
-import React, { useId, useState } from 'react'
+import React, { useId } from 'react'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import {
   readIdleRecoverySettings,
@@ -18,20 +18,15 @@ import {
   SelectTrigger,
   SelectValue
 } from '../../components/ui/select'
-import { Input } from '@/components/ui/input'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { ForkNumberInput } from '../cache-cold/ForkNumberInput'
 import { ForkIdleRecoveryPausedList } from './ForkIdleRecoveryPausedList'
+import { ForkTextSetting as TextSetting } from './ForkTextSetting'
 
 type Props = {
   settings: GlobalSettings
   updateSettings: (updates: Partial<GlobalSettings>) => void
 }
-
-type TextKey =
-  | 'forkIdleSweepClassifierCommand'
-  | 'forkInboxNotifyCommand'
-  | 'forkInboxNotifyWebhookUrl'
 
 const MODES: readonly IdleRecoveryMode[] = ['off', 'inbox', 'wake']
 
@@ -43,51 +38,6 @@ function modeLabel(mode: IdleRecoveryMode, t: Translate): string {
     return t('fork.idleRecovery.modeWake', 'List them and wake stalled chats')
   }
   return t('fork.idleRecovery.modeOff', 'Off')
-}
-
-function TextSetting({
-  settings,
-  updateSettings,
-  settingKey,
-  label,
-  description,
-  disabled
-}: Props & {
-  settingKey: TextKey
-  label: string
-  description: string
-  disabled: boolean
-}): React.JSX.Element {
-  const saved = settings[settingKey] ?? ''
-  const [draft, setDraft] = useState<string | null>(null)
-  const commit = (): void => {
-    if (draft !== null && draft.trim() !== saved) {
-      updateSettings({ [settingKey]: draft.trim() })
-    }
-    setDraft(null)
-  }
-  return (
-    <SettingsRow
-      label={label}
-      description={description}
-      control={
-        <Input
-          variant="code"
-          className="w-56"
-          aria-label={label}
-          disabled={disabled}
-          value={draft ?? saved}
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={commit}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              commit()
-            }
-          }}
-        />
-      }
-    />
-  )
 }
 
 export function ForkIdleRecoverySetting({ settings, updateSettings }: Props): React.JSX.Element {

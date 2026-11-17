@@ -62,6 +62,8 @@ const RUNS_COMMAND: SettingsKey[] = [
   'forkInboxNotifyWebhookUrl',
   // SLRM-2269: the snooze settle cleanup command.
   'forkSnoozeSettleCommand',
+  // SLRM-2311: whether server health alerts run the notification command.
+  'forkServerHealthAlertCommand',
   // SLRM-2310: where a server downloads new code from, and whose signature it accepts.
   'forkServerUpdateReleasesUrl',
   'forkServerUpdateMacCertSha1',
@@ -117,7 +119,9 @@ const SECRETS: SettingsKey[] = [
   'opencodeSessionCookie',
   'httpProxyUrl',
   'agentDefaultEnv',
-  'forkInboxNotifyWebhookUrl'
+  'forkInboxNotifyWebhookUrl',
+  // SLRM-2311: a heartbeat address usually carries the monitor's check token.
+  'forkServerHeartbeatUrl'
 ]
 const SECRET_SET: ReadonlySet<string> = new Set(SECRETS)
 
