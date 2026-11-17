@@ -34,7 +34,7 @@ export function forkCaptureSettingsSet<T extends SettingsSetHandler>(handler: T)
 export async function forkApplyThroughSettingsSet(update: Record<string, unknown>): Promise<void> {
   if (!settingsSetHandler) {
     throw new Error(
-      'This host has no settings handler to apply the change through. Run it against the desktop app.'
+      'The desktop app has not finished starting, so there is no settings handler to apply the change through yet. Try again once its window is open.'
     )
   }
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the handler reads only `sender.id` from its event.
@@ -46,6 +46,8 @@ export type ForkSettingsCliDeps = {
   getSettings: () => Record<string, unknown>
   getDefaults: () => Record<string, unknown>
   apply: (update: Record<string, unknown>) => Promise<void>
+  /** Why this host cannot apply a change to `key`, or null. Asked only for keys that would change. */
+  refuse?: (key: string) => string | null
 }
 
 export function readForkSettings(deps: ForkSettingsCliDeps): ForkSettingsGetResult {
@@ -69,6 +71,12 @@ export async function updateForkSettings(
     set: params.set,
     reset: params.reset
   })
+  for (const key of Object.keys(plan.update)) {
+    const reason = deps.refuse?.(key)
+    if (reason) {
+      plan.rejected.push({ key, reason })
+    }
+  }
   if (dryRun || plan.rejected.length > 0 || plan.changes.length === 0) {
     return { applied: false, dryRun, changes: plan.changes, rejected: plan.rejected }
   }

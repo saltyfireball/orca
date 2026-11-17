@@ -32,6 +32,7 @@ import { restoreOrcadTerminalAuthority } from '../orcad/host-runtime/orcad-resto
 import { installOrcadFeatureReadiness } from '../runtime/rpc/startup/orcad-readiness'
 import { isAgentStatusHooksEnabled } from '../../shared/agent-hook-listener/configuration/agent-status-hooks-setting'
 import { startForkUnattendedResume } from '../fork/unattended-resume/unattended-resume-service'
+import { installForkHeadlessHost } from '../fork/headless-host'
 
 export async function activateBackendRuntime(
   host: BackendCoreHost,
@@ -289,6 +290,8 @@ export async function activateBackendRuntime(
     console.error('[orcad-migration] installing pending shell history failed:', error)
   })
 
+  // Fork (SLRM-2307): `orca settings` writes this host's store, and boundary compaction runs here.
+  registerCleanup(installForkHeadlessHost(profileStore))
   const bindHost = resolveOrcadBindHost(options.bind)
   bindOrcadStopTerminalAdmission(runtime.terminalUpdateAdmission)
   const rpc = createOrcadRuntimeRpcServer(runtime, runtimeUserDataPath, options, bindHost)
