@@ -17,9 +17,25 @@ export type ForkFetch = (url: string, init: { signal?: AbortSignal }) => Promise
 export const FORK_MANIFEST_MAX_BYTES = 1024 * 1024
 export const FORK_RELEASE_MAX_BYTES = 1024 * 1024 * 1024
 
+const MAX_REDIRECTS = 5
+
+/** Follows redirects itself, so a hop to anything but https is refused before it is fetched. */
 export const defaultForkFetch: ForkFetch = async (url, init) => {
-  const response = await fetch(url, { redirect: 'follow', signal: init.signal })
-  return { ok: response.ok, status: response.status, url: response.url, body: response.body }
+  let current = url
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
+    const response = await fetch(current, { redirect: 'manual', signal: init.signal })
+    const location = response.headers.get('location')
+    if (response.status < 300 || response.status >= 400 || !location) {
+      return { ok: response.ok, status: response.status, url: current, body: response.body }
+    }
+    await response.body?.cancel()
+    const next = new URL(location, current)
+    if (next.protocol !== 'https:') {
+      throw new Error(`refusing a redirect from ${url} to a non-https address`)
+    }
+    current = next.toString()
+  }
+  throw new Error(`${url} redirected more than ${MAX_REDIRECTS} times`)
 }
 
 async function request(
