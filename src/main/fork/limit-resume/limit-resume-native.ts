@@ -10,7 +10,7 @@ import {
   type LimitResumeSettingsSource
 } from '../../../shared/fork/limit-resume'
 import type { AgentSessionStatusSummary } from '../../../shared/agent-session/agent-session-wire'
-import { NATIVE_CHAT_USAGE_LIMIT_CONTINUE_MESSAGE } from '../../../shared/native-chat/native-chat-usage-limit-cut'
+import { NATIVE_CHAT_USAGE_LIMIT_CONTINUE_MESSAGE } from '../../../shared/native-chat/transcript/continuation/native-chat-usage-limit-cut'
 import { USAGE_LIMIT_CONTINUE_CHAIN_LIMIT } from '../../native-chat/agent-session-wire/recovery/structured-agent-session-usage-limit-chain'
 import { forkBoundaryCompactionTyped } from '../boundary-compaction/boundary-compaction-typed'
 import type { IdleRecoveryChatPort } from '../idle-recovery/idle-recovery-ports'

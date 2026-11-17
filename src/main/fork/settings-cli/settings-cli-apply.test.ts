@@ -1,8 +1,8 @@
 // Settings from the CLI (FORK.md): the host side of `orca settings`, on a fake settings store.
 import type { IpcMainInvokeEvent } from 'electron'
 import { describe, expect, it, vi } from 'vitest'
-import { getDefaultSettings } from '../../../shared/constants'
-import type { GlobalSettings } from '../../../shared/global-settings-types'
+import { getDefaultSettings } from '../../../shared/orca-profiles/constants'
+import type { GlobalSettings } from '../../../shared/settings/global-settings-types'
 import {
   forkApplyThroughSettingsSet,
   forkCaptureSettingsSet,

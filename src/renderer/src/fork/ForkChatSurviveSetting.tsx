@@ -1,5 +1,5 @@
 // SLRM-1394: the switch for chat survive. Ships off; the main process reads it on every spawn.
-import type { GlobalSettings } from '../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../shared/settings/global-settings-types'
 import {
   SettingsSubsectionHeader,
   SettingsSwitchRow

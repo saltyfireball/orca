@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useTranslate } from '@/i18n/use-translate'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   FORK_USAGE_RETENTION_DEFAULT_DAYS,
   FORK_USAGE_RETENTION_MAX_DAYS,

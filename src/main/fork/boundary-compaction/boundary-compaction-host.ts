@@ -2,9 +2,9 @@
 // of state the host already holds in memory, and only of chats whose agent runs here, so nothing
 // is loaded or started. The one write is the host's own conversation command, the same call the
 // composer's /compact makes. Tests pass a fake; `liveBoundaryCompactionHost` is the real one.
-import { agentSessionConversationCommandFields } from '../../../shared/agent-session/agent-session-conversation-command'
-import { agentSessionCurrentContextRows } from '../../../shared/agent-session/agent-session-context-clear'
-import { contextTokensFromUsage } from '../../../shared/agent-session/agent-session-context-usage'
+import { agentSessionConversationCommandFields } from '../../../shared/agent-session/conversation-context/agent-session-conversation-command'
+import { agentSessionCurrentContextRows } from '../../../shared/agent-session/conversation-context/agent-session-context-clear'
+import { contextTokensFromUsage } from '../../../shared/agent-session/conversation-context/agent-session-context-usage'
 import { isRootAgentJournalItem } from '../../../shared/agent-session/journal/agent-session-journal-producer'
 import type {
   AgentJournalRenderItem,
@@ -12,8 +12,8 @@ import type {
 } from '../../../shared/agent-session/journal/agent-session-journal-types'
 import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session/lifecycle/operations/agent-session-mutation-envelope'
 import { isQueuedAgentJournalSubmission } from '../../../shared/agent-session/requests/agent-session-queued-submission'
-import { isStructuredAgentSessionCommandEntry } from '../../../shared/agent-session/structured-agent-session-command-entry'
-import { latestStructuredAgentContextFacts } from '../../../shared/agent-session/structured-agent-session-context-usage'
+import { isStructuredAgentSessionCommandEntry } from '../../../shared/agent-session/requests/structured-agent-session-command-entry'
+import { latestStructuredAgentContextFacts } from '../../../shared/agent-session/conversation-context/structured-agent-session-context-usage'
 import type { BoundaryCompactionJournalFacts } from '../../../shared/fork/boundary-compaction'
 import type { StructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-host'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'

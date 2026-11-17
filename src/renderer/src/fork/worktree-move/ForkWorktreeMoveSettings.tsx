@@ -1,7 +1,7 @@
 // SLRM-2265 (FORK.md "Worktree move"): the fork's Settings pane, Projects > Move to host. What a
 // workspace move does; the move itself runs from the workspace menu or `orca worktree move`.
 import React from 'react'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   SettingsRow,
   SettingsSegmentedControl,

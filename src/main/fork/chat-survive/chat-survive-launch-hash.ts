@@ -11,7 +11,7 @@
 // nothing here.
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import type { PipedProcessSpec } from '@orca/process-host/process-spec'
+import type { ProcessSpec } from '@orca/process-host/process-spec'
 import { ORCA_AGENT_SESSION_SPAWN_TOKEN_ENV } from '../../../shared/agent-session/lifecycle/launch/agent-session-caller-env'
 import { AGENT_HOOK_RUNTIME_ENV_KEYS } from '../../ipc/pty/host-env/spawn-env-keys'
 import { isProviderSupervisorSpawn } from './chat-survive-launch'
@@ -125,7 +125,7 @@ function launchArgs(args: readonly string[]): LaunchArgs {
 }
 
 function launchParts(
-  spec: PipedProcessSpec,
+  spec: ProcessSpec,
   env: Record<string, string | undefined>,
   readFile: (path: string) => string | null
 ): Record<string, string> | null {
@@ -165,7 +165,7 @@ function launchParts(
  * supervisor's `--`), its cwd and its provider env. Null for any other spawn.
  */
 export function chatSurviveLaunchPrint(
-  spec: PipedProcessSpec,
+  spec: ProcessSpec,
   env: Record<string, string | undefined>,
   readFile: (path: string) => string | null = readLaunchFile
 ): ChatSurviveLaunchPrint | null {

@@ -1,6 +1,6 @@
 // Snooze (FORK.md, SLRM-2269): `orca snooze`. `list` and `wake` come first, so their words are
 // never read as the bare command's target.
-import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli-argument-boundary'
+import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli/cli-argument-boundary'
 import type { CommandSpec } from '../discovery/command-spec'
 
 const STATE_NOTE =

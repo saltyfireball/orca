@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { Tab } from '../../../../shared/tab-types'
+import type { Tab } from '../../../../shared/workspace-layout/tab-groups/tab-types'
 import { structuredAgentSessionPaneKey } from '../../../../shared/agent-session/view/structured-agent-session-projection'
 import { chatSessionIdForRow } from './cache-cold-view'
 import { FORK_COMPACT_COMMAND, forkCompactThenSend } from './ForkCacheColdCue'

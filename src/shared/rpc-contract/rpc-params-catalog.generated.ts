@@ -26,7 +26,6 @@ import {
   DesktopBrowserBridgeAttachParams,
   DesktopBrowserBridgeResultParams
 } from '../browser/client-hosting/desktop-browser-bridge-protocol'
-import { DelegatedMobileDeviceSyncParamsSchema } from '../delegated-mobile-device-contract'
 import {
   ForkAgentQueueListParams,
   ForkAgentQueueStatusParams,

@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SpawnOptions as SdkSpawnOptions } from '@anthropic-ai/claude-agent-sdk'
 import { spawnProcess } from '@orca/process-host'
-import type { ChildProcessWithoutNullStreams } from 'node:child_process'
+import type { ProviderChild } from '../../provider-process/provider-child'
 import { createClaudeCodeProcessSpawn } from '../../claude/child-process/claude-agent-sdk-process-spawn'
 import { chatSurviveRedeliveryFilter, chatSurviveReplayFilter } from './chat-survive-adopted-child'
 import { forkChatSurviveAdopt } from './chat-survive-adopt'
@@ -70,7 +70,7 @@ function tempDir(): string {
 }
 
 /** What the app's reader does with each message: hands it on, which moves the replay mark. */
-function consume(child: ChildProcessWithoutNullStreams, out: string): void {
+function consume(child: ProviderChild, out: string): void {
   const lines = out.split('\n')
   for (const line of lines) {
     const uuid = /"uuid":"([^"]+)"/.exec(line)?.[1]

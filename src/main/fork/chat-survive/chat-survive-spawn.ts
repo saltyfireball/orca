@@ -3,8 +3,9 @@
 // private socket folder, no broker entry on disk, a spawn that throws) spawns exactly as today,
 // so there is never a second writer and never a provider without its supervisor.
 import { join } from 'node:path'
-import type { ChildProcessWithoutNullStreams } from 'node:child_process'
-import type { PipedProcessSpawner, PipedProcessSpec } from '@orca/process-host/process-spec'
+import type { ChildProcess, ChildProcessWithoutNullStreams } from 'node:child_process'
+import type { ProcessSpec } from '@orca/process-host/process-spec'
+import type { ProviderProcessSpawner } from '../../provider-process/provider-process-spawn'
 import { ORCA_AGENT_SESSION_ID_ENV } from '../../../shared/agent-session/lifecycle/launch/agent-session-caller-env'
 import { chatSurviveAdoptedChild } from './chat-survive-adopted-child'
 import {
@@ -20,6 +21,7 @@ import {
 } from './chat-survive-launch-hash'
 import { isProviderSupervisorSpawn, planChatSurviveBrokerSpawn } from './chat-survive-launch'
 import { chatSurviveReadySocketDir } from './chat-survive-launch-ready'
+import { markForkLegacyProviderLaunch } from './chat-survive-legacy-launch'
 import {
   dropChatSurviveBroker,
   registerChatSurviveBroker,
@@ -90,7 +92,7 @@ const MAX_LOGGED_PARTS = 40
  */
 function launchRefusal(
   saved: ChatSurviveLaunchPrint | undefined,
-  spec: PipedProcessSpec,
+  spec: ProcessSpec,
   env: Record<string, string | undefined>
 ): string | null {
   const now = chatSurviveLaunchPrint(spec, env)
@@ -132,7 +134,7 @@ function saveRecord(
  * is taken even if the setting went off since, because its provider is running either way.
  */
 function adoptedChild(
-  spec: PipedProcessSpec,
+  spec: ProcessSpec,
   env: Record<string, string | undefined>
 ): ChildProcessWithoutNullStreams | null {
   const sessionId = env[ORCA_AGENT_SESSION_ID_ENV]
@@ -184,36 +186,50 @@ function adoptedChild(
   return child
 }
 
+function piped(child: ChildProcess): child is ChildProcessWithoutNullStreams {
+  return child.stdin !== null && child.stdout !== null && child.stderr !== null
+}
+
+/** A surviving provider is held, or still stopping, for this chat: its start must reach the hook. */
+function heldForAdoption(env: Record<string, string | undefined>): boolean {
+  const sessionId = env[ORCA_AGENT_SESSION_ID_ENV]
+  return (
+    sessionId !== undefined &&
+    (hasChatSurviveClaim(sessionId) || chatSurviveClaimStopping(sessionId))
+  )
+}
+
 /**
- * Wraps the spawner given to the managed provider process. Spawns of anything but the POSIX
- * provider supervisor pass through untouched.
+ * Wraps the spawner given to the managed provider process, once per provider spawn. A spawn that
+ * can run under a broker (the setting is on and the broker entry and socket folder are ready),
+ * or whose chat has a surviving provider held, asks upstream for its Node supervisor
+ * (chat-survive-legacy-launch.ts); spawns of anything but that supervisor pass through untouched.
  */
 export function forkChatSurviveSpawner(
-  base: PipedProcessSpawner,
+  base: ProviderProcessSpawner,
   platform: NodeJS.Platform,
   env: Record<string, string | undefined>,
   /** The private socket folder, or null when it or the broker entry is not ready. */
   readySocketDir: (entryPath: string) => string | null = chatSurviveReadySocketDir
-): PipedProcessSpawner {
-  return (spec) => {
+): ProviderProcessSpawner {
+  const config = platform === 'darwin' || platform === 'linux' ? chatSurviveConfig() : null
+  const socketDir = config ? readySocketDir(config.entryPath) : null
+  const spawner: ProviderProcessSpawner = (spec) => {
     const adopted = adoptedChild(spec, env)
     if (adopted) {
       return adopted
     }
-    const config = platform === 'darwin' || platform === 'linux' ? chatSurviveConfig() : null
     if (!config) {
       return base(spec)
     }
-    const plan = planChatSurviveBrokerSpawn(spec, {
-      entryPath: config.entryPath,
-      socketDir: readySocketDir(config.entryPath)
-    })
+    const plan = planChatSurviveBrokerSpawn(spec, { entryPath: config.entryPath, socketDir })
     if (!plan) {
       return base(spec)
     }
     const child = base(plan.spawn)
     const brokerPid = child.pid
-    if (brokerPid === undefined) {
+    // Without its pid or its pipes the broker cannot be watched; it stops at quit as today.
+    if (brokerPid === undefined || !piped(child)) {
       return child
     }
     const sessionId = env[ORCA_AGENT_SESSION_ID_ENV] ?? null
@@ -234,4 +250,8 @@ export function forkChatSurviveSpawner(
     saveRecord(child, recordPath, record, entry, { privateDir: true })
     return child
   }
+  if (socketDir !== null || heldForAdoption(env)) {
+    markForkLegacyProviderLaunch(spawner)
+  }
+  return spawner
 }
