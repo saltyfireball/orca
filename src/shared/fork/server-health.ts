@@ -2,7 +2,7 @@
 // says once when one has stopped answering for a while, and once when it is back, with how long it
 // was down. A server can also ping a heartbeat address of the user's choosing, so an outside
 // monitor notices when nobody's desktop is awake. Shared by main, the CLI and the Settings card.
-import { z } from 'zod'
+import * as z from 'zod'
 
 export type ForkServerHealthSettings = {
   /** Fork (SLRM-2311): watch the paired remote servers this desktop is connected to and alert when one stops answering; unset is on. */

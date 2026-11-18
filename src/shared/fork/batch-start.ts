@@ -1,7 +1,7 @@
 // Batch start (FORK.md, SLRM-2395): a prompt box in the new-workspace composer (desktop and
 // mobile) that turns each prompt into one worktree plus agent per chosen model, placed on the
 // machine auto placement picks and started through the launch queue. Shared by main and clients.
-import { z } from 'zod'
+import * as z from 'zod'
 import { isTuiAgent } from '../agent-launch/catalog/tui-agent-config'
 import type { TuiAgent } from '../agent-launch/catalog/tui-agent'
 import {
