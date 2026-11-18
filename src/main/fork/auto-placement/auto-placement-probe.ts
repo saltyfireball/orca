@@ -89,25 +89,30 @@ export type ForkPlacementRequest = {
   repo?: string
   project?: string
   unnamed?: boolean
+  setupMissing?: boolean
 }
 
-type ProbeStatus = ForkPlacementProbe['status']
+type ProbeAnswer = Pick<ForkPlacementProbe, 'status' | 'needsSetup'>
 
 /** Folds the repo and project answers into a status for a machine whose probe answered. */
 function answeredStatus(
   request: ForkPlacementRequest,
   answer: unknown,
   knownReady: boolean
-): ProbeStatus {
+): ProbeAnswer {
   const fields = typeof answer === 'object' && answer !== null ? answer : {}
   if (request.repo && 'repoFound' in fields && fields.repoFound === false) {
-    return 'no-repo'
+    return { status: 'no-repo' }
   }
   const projectReady = 'projectReady' in fields && fields.projectReady === true
   if (request.project && !knownReady && !projectReady) {
-    return 'no-setup'
+    // SLRM-2312: only a machine that says it can clone counts; older ones stay skipped.
+    const canSetUp = 'canSetUp' in fields && fields.canSetUp === true
+    return request.setupMissing && canSetUp
+      ? { status: 'ok', needsSetup: true }
+      : { status: 'no-setup' }
   }
-  return 'ok'
+  return { status: 'ok' }
 }
 
 const LOCAL_NAME = 'this machine'
@@ -122,14 +127,16 @@ async function probeEnvironment(
   environmentId: string,
   request: ForkPlacementRequest,
   knownReady: boolean
-): Promise<Pick<ForkPlacementProbe, 'load' | 'status'>> {
+): Promise<Pick<ForkPlacementProbe, 'load' | 'status' | 'needsSetup'>> {
   try {
+    const askProject = request.project && !knownReady
     const answer = await deps.callEnvironment(
       environmentId,
       'fork.placement.load',
       {
         ...(request.repo ? { repo: request.repo } : {}),
-        ...(request.project && !knownReady ? { project: request.project } : {})
+        ...(askProject ? { project: request.project } : {}),
+        ...(askProject && request.setupMissing ? { setupMissing: true } : {})
       },
       FORK_PLACEMENT_PROBE_TIMEOUT_MS
     )
@@ -137,7 +144,7 @@ async function probeEnvironment(
     if (!load) {
       return { load: null, status: 'unreachable' }
     }
-    return { load, status: answeredStatus(request, answer, knownReady) }
+    return { load, ...answeredStatus(request, answer, knownReady) }
   } catch (error) {
     return {
       load: null,
@@ -183,7 +190,8 @@ export async function pickForkPlacementOnHosts(
       try {
         const ready = knownReady.has(hostKey)
         const answer = await deps.localLoad(request.repo, ready ? undefined : request.project)
-        const status = answeredStatus(request, answer, ready)
+        // This machine is never cloned onto by a pick: only paired servers are set up on demand.
+        const { status } = answeredStatus({ ...request, setupMissing: false }, answer, ready)
         return { hostKey, name, preference, load: answer.load, status } satisfies ForkPlacementProbe
       } catch {
         return {
