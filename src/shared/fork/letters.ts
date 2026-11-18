@@ -65,6 +65,8 @@ export const FORK_LETTER_KEEP_MAX = 500
 export const FORK_BOARD_KEEP_MAX = 300
 /** Letters one recipient may hold undelivered. */
 export const FORK_LETTER_QUEUE_PER_CHAT = 20
+/** A chat id as hosts exchange and print it: session ids and pane keys, never spaces or quotes. */
+export const FORK_LETTER_CHAT_ID = /^[A-Za-z0-9._:@/-]{1,512}$/
 
 /** Where a party lives, seen from the host that keeps the record. null is this host. */
 export type ForkLetterHost =
