@@ -9,7 +9,7 @@ import type { ProviderRateLimits } from '../../../../../shared/agent-usage/rate-
 import type { UsagePercentageDisplay } from '../../../../../shared/agent-usage/display/usage-percentage-display'
 import { ProviderIcon } from './provider-usage-panel'
 import { getProviderDisplayName } from '../../../../../shared/agent-usage/display/usage-provider-windows'
-import { formatPlanLabel } from './usage-roster-formatting'
+import { ForkPooledLimitsRoster, formatPlanLabel } from '@/fork/pooled-limits/usage-roster-hooks'
 import { getUsageRosterRowState, type UsageRosterRowState } from './usage-roster-row-state'
 import type { StatusBarUsageMode } from '../../../../../shared/status-bar/status-bar-usage-mode'
 import {
@@ -395,6 +395,7 @@ export function UsageRosterPanel({
           </DropdownMenuItem>
         )
       })}
+      <ForkPooledLimitsRoster display={display} />
       <div className="border-t border-border/70" />
       <DropdownMenuItem
         onSelect={onUsageDetails}
