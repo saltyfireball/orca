@@ -134,6 +134,10 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"The workspace\'s pull request and its check state on agent rows; unset is on.","o":true}',
   forkRowSpend:
     '{"t":{"k":"boolean"},"d":"A native Claude chat\'s estimated spend on its agent rows; unset is on.","o":true}',
+  forkPooledLimits:
+    '{"t":{"k":"boolean"},"d":"Pooled usage limits in the usage popover, /usage-limits and `orca limits usage`; this machine shares its numbers with paired desktops. Unset is on.","o":true}',
+  forkPooledLimitsServers:
+    '{"t":{"k":"boolean"},"d":"Pooled limits also ask every paired server; unset is on.","o":true}',
   forkServerHealth:
     '{"t":{"k":"boolean"},"d":"Watch the paired remote servers this desktop is connected to and alert when one stops answering; unset is on.","o":true}',
   forkServerHealthAlertCommand:
