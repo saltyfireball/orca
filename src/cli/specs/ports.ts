@@ -1,5 +1,6 @@
 import type { CommandSpec } from '../discovery/command-spec'
 import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli/cli-argument-boundary'
+import { FORK_PORTS_NOTES } from '../fork/worktree-ports-cli'
 
 export const PORTS_COMMAND_SPECS: CommandSpec[] = [
   {
@@ -11,7 +12,8 @@ export const PORTS_COMMAND_SPECS: CommandSpec[] = [
       'Defaults to the Orca workspace that contains the current directory.',
       'Scans the host the workspace runs on and lists the ports Orca tied to it, by process working directory (match=cwd) or command line (match=command).',
       '--all lists every listener found on that host, including other workspaces and processes Orca could not tie to one. A native folder workspace needs --all, because Orca does not tie ports to folders.',
-      'url is the address the dev server printed in an Orca terminal; it is missing when Orca did not see one.'
+      'url is the address the dev server printed in an Orca terminal; it is missing when Orca did not see one.',
+      ...FORK_PORTS_NOTES
     ],
     examples: [
       'orca ports',
