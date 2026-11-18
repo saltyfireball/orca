@@ -23,6 +23,7 @@ import {
 } from '../worker-cleanup/ForkWorkerCleanup'
 import { ForkCacheColdMark, ForkCacheColdRowMark } from '../cache-cold/ForkCacheColdCue'
 import { ForkLimitResumeRowMark, ForkLimitResumeTabMark } from '../limit-resume/ForkLimitResume'
+import { ForkBranchClashWorktreeChip } from '../branch-clashes/ForkBranchClashChip'
 
 type SlotProps = Pick<ForkClaudeAccountChipProps, 'className' | 'onOpenMenu' | 'menu'>
 
@@ -82,7 +83,13 @@ export function ForkClaudeAccountWorktreeChip({
 }: SlotProps & { worktreeId: string }): React.JSX.Element | null {
   const resolution = useClaudeAccountForWorktree(worktreeId)
   const menu = useWorktreeMoveMenu(worktreeId)
-  return <ForkClaudeAccountChip resolution={resolution} menu={menu} {...slot} />
+  return (
+    <>
+      {/* SLRM-2394: files this branch shares with other unmerged branches. */}
+      <ForkBranchClashWorktreeChip worktreeId={worktreeId} />
+      <ForkClaudeAccountChip resolution={resolution} menu={menu} {...slot} />
+    </>
+  )
 }
 
 /** An agent row in the dashboard or a worktree card, with chat sleep's moon and chat stall's mark. */

@@ -32,6 +32,7 @@ import { ForkEndpointFailoverSetting } from '../endpoint-failover/ForkEndpointFa
 import { ForkWorktreeMoveSettings } from '../worktree-move/ForkWorktreeMoveSettings'
 import { ForkApfsCloneSetting } from '../apfs-clone/ForkApfsCloneSetting'
 import { ForkSnoozeSetting } from '../snooze/ForkSnoozeSetting'
+import { ForkBranchClashesSetting } from '../branch-clashes/ForkBranchClashesSetting'
 import { ForkDeviceApprovalSetting } from '../device-approval/ForkDeviceApprovalSetting'
 import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
 import { ForkServerHealthSetting } from '../server-health/ForkServerHealthSetting'
@@ -84,6 +85,7 @@ const SECTION_CARDS: Record<
     ['worktree-move', ForkWorktreeMoveSettings],
     ['apfs-clone', ForkApfsCloneSetting],
     ['snooze', ForkSnoozeSetting],
+    ['branch-clashes', ForkBranchClashesSetting],
     ['project-settings-list', ForkProjectSettingsList]
   ],
   remote: [

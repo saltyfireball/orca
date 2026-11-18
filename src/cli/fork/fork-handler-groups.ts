@@ -90,6 +90,12 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     keys: ['webhooks list', 'webhooks add', 'webhooks rotate', 'webhooks remove'],
     load: async () => (await import('./webhooks-handlers.js')).FORK_WEBHOOK_HANDLERS
   },
+  // SLRM-2394: files parallel worktree branches share (FORK.md "Branch clashes").
+  {
+    name: 'fork-branch-clashes',
+    keys: ['clashes'],
+    load: async () => (await import('./branch-clashes-handlers.js')).FORK_BRANCH_CLASHES_HANDLERS
+  },
   // SLRM-2269: snooze workspaces and chats out of the sidebar (FORK.md "Snooze").
   {
     name: 'fork-snooze',
