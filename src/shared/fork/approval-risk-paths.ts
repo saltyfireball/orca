@@ -23,7 +23,22 @@ const SENSITIVE_SEGMENTS = new Set([
   'id_ecdsa',
   'id_dsa',
   'authorized_keys',
-  'known_hosts'
+  'known_hosts',
+  // Shell and tool startup files run code at the next login or command.
+  '.zshrc',
+  '.zshenv',
+  '.zprofile',
+  '.bashrc',
+  '.bash_profile',
+  '.profile',
+  '.gitconfig',
+  'launchagents',
+  'launchdaemons',
+  // Files that run code in the workspace on their own: direnv, git hook managers, editor tasks.
+  '.envrc',
+  '.husky',
+  '.githooks',
+  '.vscode'
 ])
 
 const SENSITIVE_NAME =
@@ -40,13 +55,19 @@ function sensitiveGitPath(segments: readonly string[]): boolean {
 }
 
 export function isSensitivePath(path: string): boolean {
-  const segments = path.split('/').filter(Boolean)
+  // Lowercase: the default macOS disk ignores case, so `.GIT/hooks` is the hooks folder.
+  const segments = path
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => segment.toLowerCase())
   if (sensitiveGitPath(segments)) {
     return true
   }
-  return segments.some(
-    (segment) => SENSITIVE_SEGMENTS.has(segment.toLowerCase()) || SENSITIVE_NAME.test(segment)
-  )
+  const github = segments.indexOf('.github')
+  if (github !== -1 && segments[github + 1] === 'workflows') {
+    return true
+  }
+  return segments.some((segment) => SENSITIVE_SEGMENTS.has(segment) || SENSITIVE_NAME.test(segment))
 }
 
 /** Resolve `.` and `..` lexically; null when `..` climbs past the root. */
