@@ -4,6 +4,7 @@ import { chatApprovalFromJournal } from '../../../../../shared/native-chat/input
 import { NativeChatApprovalCard } from './NativeChatApprovalCard'
 import { NativeChatStructuredQuestionCard } from './NativeChatStructuredQuestionCard'
 import type { useStructuredPromptResponseHold } from './use-structured-prompt-response-hold'
+import { forkSessionSends } from '@/fork/approval-triage/fork-approval-triage'
 
 type PromptResponse = ReturnType<typeof useStructuredPromptResponseHold>
 type PromptItem = Parameters<PromptResponse['holds']>[0]
@@ -30,6 +31,8 @@ export function NativeChatStructuredPromptCard({
         isSubmitting={promptResponse.holds(prompt)}
         onCancel={onCancel}
         shouldFocus={shouldFocus}
+        // SLRM-2397: fork hook (FORK.md "Approval triage")
+        forkTriage={{ cwd: promptResponse.forkCwd, sessionSends: forkSessionSends(prompt.body) }}
       />
     )
   }

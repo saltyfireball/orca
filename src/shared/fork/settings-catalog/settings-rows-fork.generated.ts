@@ -47,6 +47,12 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"enum","values":["archive","keep","remove"]},"d":"Best of N: what a pick does with the worktrees of the attempts that lost; unset is \'archive\'.","o":true}',
   forkBestOfPlacement:
     '{"t":{"k":"string"},"d":"Best of N: default machines of the attempts, auto, here or server names, comma separated and cycled; unset is auto.","o":true}',
+  forkApprovalBulkAllowLow:
+    '{"t":{"k":"boolean"},"d":"Approval triage (SLRM-2397): a coordinator chat offers to allow every low risk worker approval at once. Off unless true.","o":true}',
+  forkApprovalRisk:
+    '{"t":{"k":"boolean"},"d":"Approval triage (SLRM-2397): approval cards show a low, medium or high risk grade, and high risk cannot be allowed for the session. Off unless true.","o":true}',
+  forkArchiveOnMerge:
+    '{"t":{"k":"boolean"},"d":"Archive on merge (SLRM-2397): archive a workspace once its pull request merges, through the stock archive. Off unless true.","o":true}',
   forkBoundaryCompactIdleSeconds:
     '{"t":{"k":"number"},"d":"Boundary compaction: seconds a chat rests after its turn before it may be compacted; unset is 120.","o":true}',
   forkBoundaryCompactMaxWaitMinutes:
@@ -196,6 +202,12 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Pooled usage limits in the usage popover, /usage-limits and `orca limits usage`; this machine shares its numbers with paired desktops. Unset is on.","o":true}',
   forkPooledLimitsServers:
     '{"t":{"k":"boolean"},"d":"Pooled limits also ask every paired server; unset is on.","o":true}',
+  forkPromptStash:
+    '{"t":{"k":"boolean"},"d":"Prompt stash (SLRM-2397): Cmd+S (Ctrl+S) in a chat\'s message box sets the draft and its attachments aside, and brings the last one back when the box is empty; unset is on.","o":true}',
+  forkSavedPrompts:
+    '{"t":{"k":"array","of":{"k":"object","fields":{"label":{"k":"string"},"text":{"k":"string"}}}},"d":"Saved prompts: the saved prompts, each a label and its text; unset is none.","o":true}',
+  forkSavedPromptsEnabled:
+    '{"t":{"k":"boolean"},"d":"Saved prompts (SLRM-2397): a saved prompts menu on the chat message box; unset is on.","o":true}',
   forkServerHealth:
     '{"t":{"k":"boolean"},"d":"Watch the paired remote servers this desktop is connected to and alert when one stops answering; unset is on.","o":true}',
   forkServerHealthAlertCommand:
@@ -290,6 +302,12 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Worker cleanup: clean up once the worker reports done; unset is on.","o":true}',
   forkWorkerCleanupOnMerged:
     '{"t":{"k":"boolean"},"d":"Worker cleanup: clean up once the worker\'s branch is merged; unset is off.","o":true}',
+  forkWorkspaceTagFilter:
+    '{"t":{"k":"object","fields":{"tag":{"k":"string"},"mode":{"k":"enum","values":["hide","only"]}},"nullable":true},"d":"Workspace tags: the sidebar\'s tag filter, \'only\' shows that tag and \'hide\' hides it; unset is none.","o":true}',
+  forkWorkspaceTags:
+    '{"t":{"k":"record","of":{"k":"array","of":{"k":"string"}}},"d":"Workspace tags: each workspace\'s tags, keyed by workspace id and host; unset is none. Set them from the workspace menu.","o":true}',
+  forkWorkspaceTagsEnabled:
+    '{"t":{"k":"boolean"},"d":"Workspace tags (SLRM-2397): tag workspaces and filter the sidebar by a tag; unset is on.","o":true}',
   forkWorktreeMove:
     '{"t":{"k":"object","fields":{"menu":{"k":"boolean","optional":true},"whenBusy":{"k":"enum","values":["ask","refuse"],"optional":true},"uncommitted":{"k":"enum","values":["leave","patch","refuse"],"optional":true},"push":{"k":"boolean","optional":true},"chats":{"k":"boolean","optional":true},"rewriteHome":{"k":"boolean","optional":true},"markSource":{"k":"boolean","optional":true},"maxTotalMb":{"k":"number","optional":true}}},"d":"Moving a workspace and its chats to another host; unset keys take the defaults.","o":true}',
   forkWorktreePorts:

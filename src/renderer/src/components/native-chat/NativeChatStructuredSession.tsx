@@ -131,7 +131,7 @@ export function NativeChatStructuredSession(props: Omit<NativeChatStructuredView
   const hostHeld = hostSendGate.sendBlockedReason !== null
   const submits = useStructuredNativeChatSubmitReveal(controller, provisionalLaunch.retry, hostHeld)
   const workerApprovalParty = nativeChatWorkerApprovalParty(props)
-  const promptResponse = useStructuredPromptResponseHold(submits.respond)
+  const promptResponse = useStructuredPromptResponseHold(submits.respond, fileLinkContext)
   const needsFailureFacts =
     submits.queuedMessages.cards.some((card) => card.state === 'returned') ||
     controller.submissions.some(

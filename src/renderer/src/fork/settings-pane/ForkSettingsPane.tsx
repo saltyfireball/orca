@@ -50,6 +50,10 @@ import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
 import { ForkServerHealthSetting } from '../server-health/ForkServerHealthSetting'
 import { ForkServerHeartbeatSetting } from '../server-health/ForkServerHeartbeatSetting'
 import { ForkServerUpdateSetting } from '../server-update/ForkServerUpdateSetting'
+import { ForkApprovalTriageSetting } from '../approval-triage/ForkApprovalTriageSetting'
+import { ForkPromptStashSetting } from '../prompt-stash/ForkPromptStashSetting'
+import { ForkSavedPromptsSetting } from '../saved-prompts/ForkSavedPromptsSetting'
+import { ForkWorkspaceTagsSetting } from '../workspace-tags/ForkWorkspaceTagsSetting'
 import { ForkProjectSettingsList } from './ForkProjectSettingsList'
 import { ForkSettingsSectionLinks } from './ForkSettingsSectionLinks'
 import { getForkSettingsSections, type ForkSettingsSectionId } from './fork-settings-pane-catalog'
@@ -79,6 +83,9 @@ const SECTION_CARDS: Record<
     ['mcp-profile', ForkMcpProfileSetting],
     ['visual-fallback', ForkVisualFallbackSetting],
     ['letters', ForkLettersSetting]
+    ['approval-triage', ForkApprovalTriageSetting],
+    ['prompt-stash', ForkPromptStashSetting],
+    ['saved-prompts', ForkSavedPromptsSetting]
   ],
   agents: [
     ['child-tally', ForkChildTallySetting],
@@ -112,6 +119,7 @@ const SECTION_CARDS: Record<
     ['server-setup', ForkServerSetupSetting],
     ['branch-clashes', ForkBranchClashesSetting],
     ['review-guide', ForkReviewGuideSetting],
+    ['workspace-tags', ForkWorkspaceTagsSetting],
     ['project-settings-list', ForkProjectSettingsList]
   ],
   remote: [

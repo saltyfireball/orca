@@ -17,6 +17,7 @@ import { useNativeChatSteerChordPreview } from './controls/use-native-chat-steer
 import { useNativeChatComposerHandle } from './editor/use-native-chat-composer-handle'
 import { useNativeChatFileDrops } from '../attachments/intake/use-native-chat-file-drops'
 import { useNativeChatComposerKeyDown } from './editor/use-native-chat-composer-keydown'
+import { forkWithPromptStashKey } from '@/fork/prompt-stash/fork-prompt-stash'
 import { useNativeChatSendLifecycle } from '../session/terminal/send/use-native-chat-send-lifecycle'
 import { useNativeChatComposerSessionOptions } from './controls/use-native-chat-composer-session-options'
 import { useNativeChatDictation } from './editor/use-native-chat-dictation'
@@ -382,7 +383,8 @@ export const NativeChatComposerPane = forwardRef<ComposerHandle, C.NativeChatCom
           isDictationHoldMode={dictation.isDictationHoldMode}
           imeEnterGesture={imeEnterGesture}
           {...draftEvents}
-          onKeyDown={handleKeyDown}
+          // SLRM-2397: fork hook, Cmd+S stashes the draft (FORK.md "Prompt stash").
+          onKeyDown={forkWithPromptStashKey(handleKeyDown, draftScopeKey, !editSession)}
           onPaste={handlePasteEvent}
           pickerListboxId={picker.listboxId}
           onChoosePickerItem={goalMode.interceptPick(orcaCommands.interceptPick(completeItem))}
