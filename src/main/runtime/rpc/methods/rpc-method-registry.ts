@@ -100,6 +100,7 @@ import { FORK_AGENT_GUARDS_METHODS } from './fork/fork-agent-guards'
 import { FORK_BRANCH_CLASHES_METHODS } from './fork/fork-branch-clashes'
 import { FORK_BEST_OF_METHODS } from './fork/fork-best-of'
 import { FORK_REVIEW_GUIDE_METHODS } from './fork/fork-review-guide'
+import { FORK_CHAT_HANDOFF_METHODS } from './fork/fork-chat-handoff'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
 import { STRUCTURED_AGENT_SESSION_ATTACHMENT_METHODS } from './structured-sessions/attachments/structured-agent-session-attachments'
@@ -329,7 +330,9 @@ const SERVICE_RPC_METHODS = [
   // SLRM-2393: best-of runs behind `orca best-of` and the compare view (FORK.md).
   ...FORK_BEST_OF_METHODS,
   // SLRM-2396: pull request review guides behind `orca review-guide` and the phone (FORK.md).
-  ...FORK_REVIEW_GUIDE_METHODS
+  ...FORK_REVIEW_GUIDE_METHODS,
+  // SLRM-2391: hand a chat to the other agent, behind `orca chat handoff|history` (FORK.md).
+  ...FORK_CHAT_HANDOFF_METHODS
 ] as const
 
 type ConcatMethods<A extends readonly unknown[], B extends readonly unknown[]> = readonly [
