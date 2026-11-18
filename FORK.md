@@ -52,9 +52,12 @@ named Orca Fork until SLRM-1367. `main` is always
   launch the same provider: the launch is saved as a fingerprint of named parts (each arg flag,
   the cwd, each provider env key, the content of a config file a flag names), the app's own
   version is no part of it, so chats carry over an app update, and a refusal logs which parts
-  differ by name (SLRM-2263). An update that also bumps the Claude Agent SDK does not carry chats
-  over, and neither does the first start after updating from a release with the earlier
-  single-hash record. The design and the remaining phases (Codex next) are in
+  differ by name (SLRM-2263). An Orca env key (`ORCA_*`) that only one of the two launches has is
+  no difference: the provider never reads Orca's own env, and an update that starts exporting one
+  to chats (the worktree ports of SLRM-2383) refused every chat after 1.4.263001 (SLRM-2411). A
+  refused start's error names the differing parts, so the trace log shows why. An update that
+  also bumps the Claude Agent SDK does not carry chats over, and neither does the first start
+  after updating from a release with the earlier single-hash record. The design and the remaining phases (Codex next) are in
   `docs/fork/chat-survive.md`.
 - **Claude account chip (SLRM-1503).** Native chat tabs, terminal tabs running Claude, agent rows
   and sidebar worktree rows show a small dot and short label (`B`, or `B @ kif` on another host)
@@ -1900,6 +1903,7 @@ Apply these in this order. Each one is a single commit.
 119. `SLRM-2389 Letters and the board: chats message each other between turns, and agents file asks for the user`
 120. `SLRM-2406 Set up on a server from the phone and from batch start's Auto machine`
 121. `SLRM-2408 Follow upstream 1.4.263's moved modules in fork code`
+122. `SLRM-2411 Chat survive: an Orca env key only one launch has does not refuse adoption, say why in the start error`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
