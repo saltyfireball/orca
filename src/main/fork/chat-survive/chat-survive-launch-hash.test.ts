@@ -176,6 +176,25 @@ describe('chat-survive launch fingerprint', () => {
     expect(saved).not.toContain('haiku')
   })
 
+  it('is the same launch when an update starts or stops exporting an Orca env key', () => {
+    // 1.4.262003 to 1.4.263001: SLRM-2383 began exporting the workspace's ports to every chat,
+    // which refused every surviving chat after the update (SLRM-2411).
+    const ports = { ORCA_PORT: '41000', ORCA_PORT_0: '41000', ORCA_PORT_COUNT: '1' }
+    expect(diff([[], ENV], [[], { ...ENV, ...ports }])).toEqual([])
+    expect(diff([[], { ...ENV, ...ports }], [[], ENV])).toEqual([])
+    // A changed value of one is still another launch.
+    expect(
+      diff([[], { ...ENV, ...ports }], [[], { ...ENV, ...ports, ORCA_PORT: '42000' }])
+    ).toEqual(['env:ORCA_PORT'])
+    // Env the provider reads still counts when only one launch has it.
+    expect(diff([[], ENV], [[], { ...ENV, CLAUDE_CODE_ENABLE_CFC: '1' }])).toEqual([
+      'env:CLAUDE_CODE_ENABLE_CFC'
+    ])
+    expect(diff([[], { ...ENV, ANTHROPIC_API_KEY: 'k' }], [[], ENV])).toEqual([
+      'env:ANTHROPIC_API_KEY'
+    ])
+  })
+
   it('compares a config file a flag names by its content, not only its path', () => {
     const servers = (command: string): string => JSON.stringify({ mcpServers: { a: { command } } })
     const path = tempFile('chat.json', servers('one'))
