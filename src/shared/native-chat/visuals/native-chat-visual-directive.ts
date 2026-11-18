@@ -3,6 +3,10 @@
 // (no quote/backslash/control characters). file is required; title optional; reject duplicate keys, ignore unknown keys for newer agents.
 
 import { WEBHOOK_HOOK_ID_PATTERN } from '../../connector-webhook-contract'
+import {
+  forkIsVisualImageFileName,
+  forkUnquotedVisualAttribute
+} from '../../fork/visual-image-fallback'
 
 export const NATIVE_CHAT_VISUAL_DIRECTIVE_MARKER = '::orca-visual{'
 // ::orca-webhook{hook="wh_…"}: the webhook card. Only the hook id is in the line; the card reads the rest from the host.
@@ -42,7 +46,7 @@ export function isNativeChatVisualFileName(name: string): boolean {
   if (
     name.length === 0 ||
     name.length > NATIVE_CHAT_VISUAL_FILE_MAX_LENGTH ||
-    !FILE_NAME_PATTERN.test(name) ||
+    !(FILE_NAME_PATTERN.test(name) || forkIsVisualImageFileName(name)) ||
     name.includes('..')
   ) {
     return false
@@ -80,7 +84,7 @@ function parseAttributes(body: string): Map<string, string> | null {
   const attributes = new Map<string, string>()
   let rest = body.replace(LINE_SPACE, '')
   while (rest.length > 0) {
-    const match = ATTRIBUTE_PATTERN.exec(rest)
+    const match = ATTRIBUTE_PATTERN.exec(rest) ?? forkUnquotedVisualAttribute(rest)
     if (!match) {
       return null
     }

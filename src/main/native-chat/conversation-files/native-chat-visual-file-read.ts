@@ -14,6 +14,8 @@ import type {
 } from '../../../shared/rpc-contract/structured-agent-session/agent-session-visual-params'
 import { isENOENT } from '../../filesystem/local-file-io/filesystem-path-containment'
 import { readLocalFileBounded } from '../../filesystem/local-file-io/local-regular-file-read'
+import { forkVisualFileMaxBytes } from '../../../shared/fork/visual-image-fallback'
+import { forkVisualImageDocument } from '../../fork/visual-image/visual-image-document'
 
 // O_NOFOLLOW prevents final-component swaps; Windows relies on lstat and post-open identity checks.
 const VISUAL_OPEN_FLAGS =
@@ -162,26 +164,31 @@ async function readContained(
   if (dirname(candidate) !== folderReal) {
     refuse('outside_folder')
   }
+  const maxBytes = forkVisualFileMaxBytes(file, NATIVE_CHAT_VISUAL_MAX_BYTES)
   const handle = await openVisual(candidate)
   try {
     const stats = await handle.stat()
     if (!stats.isFile()) {
       refuse('not_a_file')
     }
-    if (stats.size > NATIVE_CHAT_VISUAL_MAX_BYTES) {
+    if (stats.size > maxBytes) {
       refuse('too_large')
     }
     await assertStillContained(folder, candidate, folderReal, file, stats)
     let buffer: Buffer
     try {
-      buffer = await readLocalFileBounded(handle, NATIVE_CHAT_VISUAL_MAX_BYTES, stats.size)
+      buffer = await readLocalFileBounded(handle, maxBytes, stats.size)
     } catch (error) {
       if (error instanceof Error && error.message.startsWith('File too large')) {
         refuse('too_large')
       }
       throw error
     }
-    const html = decodeVisualText(buffer)
+    const image = forkVisualImageDocument(file, buffer)
+    if (image && 'refusal' in image) {
+      refuse(image.refusal)
+    }
+    const html = image?.html ?? decodeVisualText(buffer)
     const revision = nativeChatVisualRevision(buffer)
     const sizeBytes = buffer.length
     // Keep the named folder path so the file-root selector matches exactly.

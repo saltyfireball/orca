@@ -174,6 +174,10 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"record","of":{"k":"object","fields":{"input":{"k":"number"},"output":{"k":"number"},"cacheRead":{"k":"number"},"cacheWrite":{"k":"number"},"cacheWrite1h":{"k":"number","optional":true}}}},"d":"User price table, USD per million tokens, by model; empty uses defaults.","o":true}',
   forkUsageRetentionDays:
     '{"t":{"k":"number"},"d":"Days of usage history the ledger keeps; unset is 90.","o":true}',
+  forkVisualFallback:
+    '{"t":{"k":"boolean"},"d":"::orca-visual also shows png, jpg, gif and webp files and takes unquoted values; unset is on.","o":true}',
+  forkVisualImageMaxMiB:
+    '{"t":{"k":"number"},"d":"Largest image file ::orca-visual shows, in MiB (1 to 5); unset is 4.","o":true}',
   forkWebhooks:
     '{"t":{"k":"object","fields":{"enabled":{"k":"boolean","optional":true},"bindHost":{"k":"string","optional":true},"port":{"k":"number","optional":true},"maxBodyKb":{"k":"number","optional":true},"perHookPerMinute":{"k":"number","optional":true},"payloadMaxChars":{"k":"number","optional":true}}},"d":"Signed webhooks that start automation runs; off unless enabled is true.","o":true}',
   forkWorkerCleanup:
