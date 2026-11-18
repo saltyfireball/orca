@@ -28,6 +28,11 @@ describe('parseNativeChatVisualDirectiveLine', () => {
     ['text before the marker', 'Chart: ::orca-visual{file="a.html"}'],
     ['wrong case', '::Orca-Visual{file="a.html"}'],
     ['single quotes', "::orca-visual{file='a.html'}"],
+    [
+      'unquoted value with a quote (fork SLRM-2349 takes plain ones)',
+      '::orca-visual{file=a.html"}'
+    ],
+    ['escaped quote', '::orca-visual{file="a.html" title="say \\"hi\\""}'],
     ['backslash', '::orca-visual{file="a.html" title="a\\b"}'],
     ['control character', '::orca-visual{file="a.html" title="a\u0007b"}'],
     ['attributes glued together', '::orca-visual{file="a.html"title="T"}'],

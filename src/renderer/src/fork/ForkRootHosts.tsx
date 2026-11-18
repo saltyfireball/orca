@@ -8,6 +8,7 @@ import { ForkWorkerCleanupReporter } from './worker-cleanup/ForkWorkerCleanup'
 import { ForkWorktreeMoveDialogHost } from './worktree-move/ForkWorktreeMoveDialog'
 import { ForkSnoozeCustomDialogHost } from './snooze/ForkSnoozeCustomDialog'
 import { ForkSnoozeWatcher } from './snooze/ForkSnoozeWatcher'
+import { ForkVisualFallbackReader } from './visual-image/ForkVisualFallbackSetting'
 
 /**
  * The fork's always-mounted hosts, behind one hook in `AppRootSurfaces.tsx` so that upstream
@@ -26,6 +27,7 @@ export function ForkRootHosts(): React.JSX.Element {
       <ForkWorktreeMoveDialogHost />
       <ForkSnoozeCustomDialogHost />
       <ForkSnoozeWatcher />
+      <ForkVisualFallbackReader />
     </>
   )
 }
