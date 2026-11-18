@@ -87,6 +87,7 @@ import { FORK_SERVER_HEALTH_METHODS } from './fork/fork-server-health'
 import { FORK_MAIN_SYNC_METHODS } from './fork/fork-main-sync'
 import { FORK_LIMIT_RESUME_METHODS } from './fork/fork-limit-resume'
 import { FORK_SERVER_UPDATE_METHODS } from './fork/fork-server-update'
+import { FORK_AGENT_GUARDS_METHODS } from './fork/fork-agent-guards'
 import { FORK_WORKTREE_PORTS_METHODS } from './fork/fork-worktree-ports'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
@@ -229,6 +230,8 @@ export const ALL_RPC_METHODS = [
   ...FORK_LIMIT_RESUME_METHODS,
   // SLRM-2310: update paired servers over their own RPC, behind `orca servers` (FORK.md).
   ...FORK_SERVER_UPDATE_METHODS,
+  // SLRM-2385: failure-loop and spend guards behind `orca guards` (FORK.md).
+  ...FORK_AGENT_GUARDS_METHODS,
   // SLRM-2383: the port block a workspace holds, behind `orca ports` (FORK.md).
   ...FORK_WORKTREE_PORTS_METHODS,
   // SLRM-2384: keep each project's default branch current, behind `orca main-sync` (FORK.md).

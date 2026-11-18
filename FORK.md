@@ -1263,6 +1263,57 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/worktree-ports*.ts`, `src/main/fork/worktree-ports/`,
     `src/main/runtime/rpc/methods/fork/fork-worktree-ports.ts` and
     `src/cli/fork/worktree-ports-cli.ts`.
+- **Agent guards (SLRM-2385).** Two guards for agents nobody is watching, on the desktop app and
+  on a headless server (`orca serve`) alike, each with its own settings (Settings > Blackfish >
+  Agents and workers, Agent guards; `orca settings set forkAgentGuardLoop false --environment
+  NAME` for a server). Ideas from the archived ccdeck's failure-loop and spend guards and Devin's
+  per-session limits; only the ideas are ported.
+  - **Failure-loop guard** (`forkAgentGuardLoop`, on). Every finished tool call of a native chat
+    (read from its journal every 15 s while it works) and of a terminal agent (from the agent's
+    after-tool hook post: Claude Code's PostToolUse and PostToolUseFailure, Codex's and other
+    agents') is sorted into a read or wait, a failure or progress. A failure's signature is its
+    tool, its input as sorted JSON and its error with colors, ids, hashes, numbers and spacing
+    taken out. The rule: failures with the same signature since the last progress are counted;
+    reads and waits (`Read`, `Grep`, `ls`, `rg`, `sed -n`, `git status`, `sleep`, `gh pr checks`
+    and the like, nothing with a redirect or a write flag) neither count nor clear; any other
+    call that works clears every count. When one count reaches `forkAgentGuardLoopRepeats` (6),
+    the agent is sent one fixed note to change approach, steered into a chat's running turn or
+    typed into a terminal like orchestration mail (never over a dialog or a draft); a note that
+    was not delivered is tried again at the next failure. If the same signature fails again in a
+    call that finished after the note (`forkAgentGuardLoopPause`, on), the agent is paused: a
+    chat's turn is stopped through its host's own cancel (the Stop button's path, which also
+    holds its queued messages as Stop does), a Claude Code or Codex terminal gets Esc (never on a
+    dialog; an agent it cannot interrupt is marked so). The note never quotes the tool, its input
+    or output. The watch is kept in memory: a restart starts a new episode and never replays
+    history.
+  - **Spend cap** (`forkAgentGuardSpendCapUsd`, 0 = off). The estimate is the usage ledger's
+    (SLRM-2103): the chat's tokens per model priced like the usage report (`forkUsagePrices`, else
+    the built-in Claude prices), subscription chats at the same per-token prices, a model with
+    no price adding nothing. At each turn end (and each 15 s sweep while it rests) a chat whose
+    spend since its cap began reached the cap is paused there, between turns. The default cap
+    covers orchestration workers (`forkAgentGuardSpendCapScope` `workers`) or every chat (`all`).
+    Per dispatch: `orca guards cap <session id> <usd>` gives one chat its own cap, counted from
+    then; 0 drops it. Native Claude chats only: Codex chats and terminal agents have no ledger.
+    The ledger now also runs on a headless server (its own `fork-usage-ledger.json`), so caps
+    work there and `orca usage-report --environment NAME` answers.
+  - **Paused.** A paused agent is held: idle recovery never wakes it, limit resume and unattended
+    resume skip it. A paused chat that starts a turn another agent asked for (orchestration mail)
+    is stopped at once; a turn a person starts lifts the pause. A terminal agent stays as the Esc
+    left it. Each pause is listed in the Decision inbox under "Paused by a guard", whatever
+    `forkIdleSweepMode` is (the inbox button shows while any is listed): an answer lifts the
+    pause and sends the text, Resume lifts it alone; a resumed chat's spend counts from then.
+    `forkAgentGuardNotify` (on) tells the inbox's notify targets once per pause, with
+    `event: agent-guard-paused` and the reason in the JSON, never tool output.
+  - **Shown.** "loop warned", "paused: failure loop" or "paused: spend cap" after the tab title
+    and on the sidebar agent row, in the row's muted text, with the reason on hover.
+  - **CLI.** `orca guards list [--json]`, `orca guards resume <id>`, `orca guards cap <id> <usd>`
+    (ids or a 4+ character prefix; `--environment` for a paired server), over `fork.guards.list`,
+    `.resume` and `.cap` (workspace permission). `orca inbox pause <id> --resume` on a guard's row
+    resumes it too.
+  - **State.** `fork-agent-guards.json` in the data folder (mode 0600): pauses, per-chat caps and
+    the spend a resume set aside; a record with nothing left is dropped, any after 30 days.
+  - Code is in `src/shared/fork/agent-guards*.ts`, `src/main/fork/agent-guards/`,
+    `src/cli/fork/guards-*` and `src/renderer/src/fork/agent-guards/`.
 - **Keep main current (SLRM-2384).** Off by default. Each host (the desktop app, `orca serve` and
   orcad on a headless server) fetches the default branch of each of its local git projects on a
   timer and fast-forwards it, so new worktrees start from current main.
@@ -1422,7 +1473,8 @@ Apply these in this order. Each one is a single commit.
 105. `SLRM-2384 Keep main current and server memory protection: fetch and fast-forward default branches, orca serve service protect`
 106. `SLRM-2392 Pooled limits: Claude and Codex usage limits pooled across every account and paired server`
 107. `SLRM-2390 Row status: spend, context, pull request checks and a fix button on agent rows`
-108. `SLRM-2395 Batch start: a prompt per worktree and model from the composer, placed with auto placement`
+108. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
+109. `SLRM-2395 Batch start: a prompt per worktree and model from the composer, placed with auto placement`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1952,6 +2004,25 @@ Upstream files only get short hooks, which keeps rebases small:
   - `mobile-native-chat-visual-read.ts` caps a reply's html at `forkVisualMaxDocumentChars`.
   - `installForkReady` and `installForkHeadlessHost` call `installForkVisualFallbackSettings`;
     `ForkRootHosts` mounts `ForkVisualFallbackReader`; the card is in the fork's Settings pane.
+
+- Agent guards (SLRM-2385), from `src/shared/fork/agent-guards*.ts`, `src/main/fork/agent-guards/`,
+  `src/cli/fork/guards-*` and `src/renderer/src/fork/agent-guards/`. The loop guard is on unless
+  `forkAgentGuardLoop` is false; the spend cap is off until `forkAgentGuardSpendCapUsd` is set:
+  - `server-status-hook-lifecycle.ts` (`respondToHook`) calls
+    `forkAgentGuardsObserveHook(source, body, accepted)` before the plugin hooks answer.
+  - `startForkRuntimeSettleServices` (`runtime-settle-hooks.ts`) also starts the guards, so they
+    run in the desktop app and on a headless server.
+  - `src/main/index.ts` calls `installForkAgentGuardsBridge()`, `src/preload/index.ts` adds
+    `forkAgentGuards` (`src/preload/fork/agent-guards-bridge.ts`) and `api-types.ts` types it.
+  - `rpc-method-registry.ts` spreads `FORK_AGENT_GUARDS_METHODS`, `src/cli/specs/index.ts` spreads
+    `FORK_GUARDS_COMMAND_SPECS` and `cli-command-names.ts` lists `guards`.
+  - Fork files only: the usage ledger tells turn starts and ends (`onForkUsageLedgerTurn`) and
+    its chat names moved to `usage-ledger-meta.ts`; `installForkHeadlessHost` starts the ledger
+    on a server; the Decision inbox lists, answers and resumes guard rows (idle recovery's
+    service is wrapped in `withForkAgentGuardInbox`, its item's `verdict` takes `guard`, and the
+    inbox shows while a guard holds an agent); idle recovery's candidates, limit resume (native and terminal) and unattended
+    resume skip held agents (`isForkAgentGuardHeld`); the marks render in `ForkTabTitle` and
+    `ForkClaudeAccountAgentRowChip`, and the card in the fork's Settings pane.
 
 - Device approval and webhook automations (SLRM-2271), from `src/shared/fork/device-approval.ts`,
   `src/shared/fork/webhooks.ts`, `src/main/fork/device-approval/`, `src/main/fork/webhooks/`,

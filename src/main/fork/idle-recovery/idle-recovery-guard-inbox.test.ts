@@ -1,0 +1,121 @@
+// SLRM-2385: agents an agent guard paused show in the Decision inbox whatever idle recovery's mode,
+// and the inbox's answer and Resume go to the guard. The guard service is a fake here.
+import { describe, expect, it, vi } from 'vitest'
+import type { AgentGuardEntry } from '../../../shared/fork/agent-guards'
+import type { ForkIdleRecoveryInboxItem } from '../../../shared/fork/idle-recovery-wire'
+
+const guard = vi.hoisted(() => ({
+  entries: new Array<AgentGuardEntry>(),
+  paused: new Set<string>(),
+  send: vi.fn(async () => 'sent' as const),
+  resume: vi.fn(async (id: string) => guard.paused.delete(id)),
+  listeners: new Array<() => void>()
+}))
+
+vi.mock('../agent-guards/agent-guards-service', () => ({
+  forkAgentGuardEntries: () => guard.entries.filter((entry) => guard.paused.has(entry.id)),
+  forkAgentGuardIsPaused: (id: string) => guard.paused.has(id),
+  forkAgentGuardResumeIfPaused: guard.resume,
+  onForkAgentGuardPausesChanged: (listener: () => void) => {
+    guard.listeners.push(listener)
+    return () => {}
+  }
+}))
+
+vi.mock('./idle-recovery-wake', () => ({ sendIdleRecoveryAnswer: guard.send }))
+
+const { createIdleRecoveryService } = await import('./idle-recovery-service')
+const { emptyIdleRecoveryState } = await import('./idle-recovery-state')
+
+const entry: AgentGuardEntry = {
+  id: 's1',
+  kind: 'chat',
+  sessionId: 's1',
+  agent: 'claude',
+  title: 'Worker',
+  worktreeId: null,
+  state: 'paused',
+  reason: 'loop',
+  since: 1,
+  repeats: 7,
+  tool: 'Bash'
+}
+
+const item: ForkIdleRecoveryInboxItem = {
+  chatId: 's1',
+  kind: 'chat',
+  agent: 'claude',
+  title: 'Worker',
+  workspace: '',
+  worktreeId: null,
+  verdict: 'guard',
+  question: '',
+  reason: 'Paused: the same tool call kept failing after a warning (7 times).',
+  since: 1,
+  wakes: 0,
+  wakeAt: null,
+  paused: false
+}
+
+function service() {
+  const sendAnswer = vi.fn(async () => 'sent' as const)
+  const created = createIdleRecoveryService({
+    now: () => 5,
+    loadState: async () => emptyIdleRecoveryState(),
+    saveState: async () => {},
+    sendAnswer,
+    useRuntime: () => {},
+    startTimer: () => () => {}
+  })
+  const changes = vi.fn()
+  created.onChanged(changes)
+  created.start(() => ({}), {})
+  return { created, sendAnswer, changes }
+}
+
+describe('Decision inbox rows of agent guards', () => {
+  it('lists them with idle recovery off, answers through the guard and resumes it', async () => {
+    guard.entries = [entry]
+    guard.paused = new Set(['s1'])
+    const { created, sendAnswer, changes } = service()
+    const listed = await created.listInbox()
+    expect(listed).toMatchObject({ now: 5, mode: 'off' })
+    expect(listed.items).toHaveLength(1)
+    expect(listed.items[0]).toMatchObject({ ...item, reason: expect.any(String) })
+    expect(await created.answer({ chatId: 's1', text: 'try the other script' })).toEqual({
+      chatId: 's1',
+      result: 'sent'
+    })
+    expect(guard.send).toHaveBeenCalledWith('s1', 'try the other script', {
+      kind: 'chat',
+      agent: 'claude'
+    })
+    expect(sendAnswer).not.toHaveBeenCalled()
+    guard.paused.add('s1')
+    const resumed = await created.setPaused({ chatId: 's1', paused: false })
+    expect(resumed).toMatchObject({ chatId: 's1', paused: false, saved: true })
+    expect(guard.resume).toHaveBeenCalledWith('s1')
+    // A pause starting or ending tells the inbox's readers.
+    guard.listeners.forEach((listener) => listener())
+    expect(changes).toHaveBeenCalled()
+  })
+
+  it('answers no other chat while idle recovery is off', async () => {
+    guard.entries = []
+    guard.paused = new Set()
+    const { created } = service()
+    expect(await created.answer({ chatId: 'other', text: 'x' })).toEqual({
+      chatId: 'other',
+      result: 'unavailable'
+    })
+  })
+})
+
+describe('withForkAgentGuardRows', () => {
+  it("drops idle recovery's own row of a guarded chat, never another source's", async () => {
+    const { withForkAgentGuardRows } = await import('../agent-guards/agent-guards-inbox')
+    const own = { ...item, verdict: 'stalled' as const }
+    const babysit = { ...own, source: 'babysit' as const }
+    expect(withForkAgentGuardRows([item], [own, babysit])).toEqual([item, babysit])
+  })
+})
