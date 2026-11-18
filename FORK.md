@@ -581,6 +581,53 @@ named Orca Fork until SLRM-1367. `main` is always
     `orca settings` cannot write the classifier command, the notification command or the
     webhook address.
 
+- **PR babysitter (SLRM-2386).** Off by default. Stock Orca's PR watcher already reads the checks
+  of a pull request a chat opened or pushed to and writes "CI failing" or "CI green" into that
+  chat. The babysitter acts on that line, so it adds no GitHub polling of its own.
+  - **Which pull requests.** Those of the repositories in `forkPrBabysitRepos` (`owner/repo`,
+    `host/owner/repo` or `*`; empty by default), plus any named with `orca babysit <pr>`.
+    `orca babysit stop <pr>` turns one off, also against the repo list.
+  - **CI failed.** The chat gets one fix request: a first line `[pr-babysitter: automatic fix
+    request]`, then stock Orca's fix-checks prompt (the one the checks panel's fix action sends)
+    built from the failing checks and their failed-step log tails. Check names, links and log text
+    come from GitHub and CI: they are stripped of control, bidi and invisible characters, every `<`
+    is escaped, logs keep their last 6000 characters, they sit only inside the prompt's JSON data
+    in a `<ci-report data-trust="untrusted">` block, and the lines around it say that text is data,
+    never instructions, and that the agent must not merge, use admin or bypass options, or change
+    CI settings. The send is idle recovery's chat send: the app's normal send, queued behind a
+    running turn, never typed over a draft. A chat that is asleep or refuses it stops the
+    babysitter.
+  - **Rounds.** At most `forkPrBabysitMaxRounds` (3, 1 to 10) fix requests in a row; a green
+    result starts the count over. The next failing result after the cap stops it. With no new CI
+    result `forkPrBabysitWaitMinutes` (120) after a fix request, it stops too. Each CI line is
+    acted on once, however many chats own the pull request.
+  - **Green.** With `forkPrBabysitAutoMerge` (off) it merges, but only when `gh pr view` says the
+    pull request is open, not a draft, still at the commit that went green, has no change
+    requested and no review still required, every check (required or not) finished green, and
+    GitHub calls the merge `MERGEABLE` and `CLEAN` (or `HAS_HOOKS`). The merge is a plain
+    `gh pr merge <n> --repo <owner/repo> --<method> --match-head-commit <sha>`, never `--admin`
+    or `--auto`, so branch protection and rulesets still apply. The method is
+    `forkPrBabysitMergeMethod`: `repo` (default, the repository's default method among those it
+    allows) or `squash`, `merge`, `rebase`. Branch protection is what makes a merge reviewed:
+    without a required review on the base branch, an agent's push that goes green is merged
+    unreviewed. A merge held by a review or a block is tried again
+    when Orca next reads the pull request (at most every 5 minutes), or at once by
+    `orca babysit <pr>`. A failed merge stops it with GitHub's words.
+  - **Stopped.** The pull request joins the Decision inbox as a stalled row "PR owner/repo#12",
+    and the inbox's notification targets are told once. The inbox shows while idle recovery is on
+    or while the repo list is set. An answer goes to the chat as your message and babysits it again
+    with fresh rounds; Stop babysitting turns it off. `orca inbox list` and `orca inbox answer`
+    show and answer these rows too.
+  - **Shown.** A line under the pull request in the workspace card's linked items ("Babysitter:
+    fix 1 of 3 sent, waiting for CI", "checks green", "merged", "stopped: ..."), in the row's own
+    muted text.
+  - **Servers.** It runs in the process that runs the chat: the desktop app and `orca serve` /
+    orcad alike, each with its own settings and `fork-pr-babysit.json` (mode 0600) in its data
+    folder. `orca babysit` and `orca babysit list` take `--environment` for a paired server. The
+    status line shows the babysitter of this desktop only.
+  - **Limits.** Native chats only (the stock watcher writes no CI line into terminal agents). A
+    pull request is watched for 14 days after its chat's last PR action, as in stock. GitHub only.
+
 - **Boundary compaction (SLRM-2257).** Off by default (`forkBoundaryCompactMode` `off`,
   Settings > Blackfish > Chats). An agent compacts on its own when its context fills, nearly
   always in the middle of a turn. With the mode on, a sweep in the main process asks a native
@@ -1127,6 +1174,41 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/main/runtime/rpc/methods/fork/fork-snooze.ts`, `src/preload/fork/snooze-bridge.ts`,
     `src/renderer/src/fork/snooze/` and `src/cli/fork/snooze-*`.
 
+- **Worktree ports (SLRM-2383).** Each workspace holds a block of ports on the host that runs it,
+  so many workers on one machine stop fighting over dev-server ports (Conductor gives each
+  workspace 10 ports the same way). Stock Orca only finds ports once something listens on them.
+  - The block is reserved the first time a workspace's terminal, native chat or setup script
+    starts (a new worktree's setup and first terminal do that during its create), and when the
+    create is reported. It is exported as `ORCA_PORT` (the first port), `ORCA_PORT_0` to
+    `ORCA_PORT_<n-1>` and `ORCA_PORT_COUNT` to its terminals (so to terminal agents), native
+    chats and setup and archive scripts; setup scripts also get `CONDUCTOR_PORT`, the name
+    imported Conductor scripts read. WSL terminals and hooks get the same names through
+    `WSLENV`. A terminal with no workspace gets none, and stale names a copied env carried are
+    dropped.
+  - Each host keeps its own reservations in `fork-worktree-ports.json` in its userData
+    (owner-only), so they survive restarts: the desktop app for its local and direct SSH
+    workspaces, and orcad on a headless server for the workspaces it runs. A block is released
+    when the workspace is removed (desktop or server, worktree or folder workspace), and at
+    start for a workspace whose project is gone or whose folder on this machine is gone while
+    the project folder itself is still there. Nothing is released for what cannot be proven gone.
+  - Free ports: once the runtime settles, and after each reserve, a background pass binds every
+    port of the next candidate block on `127.0.0.1`, `0.0.0.0` and `::` and keeps the first block
+    found free as the spare, which the next reserve takes. Without a spare (several creates at
+    once, or a block size change) a reserve takes the first block clear of every reservation and
+    of the ports earlier passes found in use. Direct SSH workspaces are checked on this machine,
+    not on the SSH host; a server running orcad checks its own ports.
+  - Settings (no Settings pane card; `orca settings` edits them): `forkWorktreePorts` (unset is
+    on), `forkWorktreePortsCount` (10, from 1 to 100; a change applies to new blocks),
+    `forkWorktreePortsFrom` and `forkWorktreePortsTo` (20000 to 29999, below the Linux and macOS
+    ephemeral ranges; give two Orca hosts on one machine different ranges). Off, nothing is
+    exported or reserved and the blocks already held stay held.
+  - CLI: `orca ports` adds a `reserved=20000-20009 (ORCA_PORT=20000, ORCA_PORT_0..9)` line under
+    its scan and `--json` adds `reservedPorts` (`enabled`, `start`, `count`, `ports`). It asks
+    the host the scan went to over `fork.worktreePorts.get`, which only reads; a host without
+    the method leaves the output as stock prints it.
+  - Code is in `src/shared/fork/worktree-ports*.ts`, `src/main/fork/worktree-ports/`,
+    `src/main/runtime/rpc/methods/fork/fork-worktree-ports.ts` and
+    `src/cli/fork/worktree-ports-cli.ts`.
 - **Agents on the iPhone Lock Screen (SLRM-2387).** The iOS app shows running agents from every
   paired server as one Live Activity (Lock Screen and Dynamic Island, ActivityKit) and in an
   Agents widget (WidgetKit: small, medium and large on the Home Screen; circular, rectangular and
@@ -1283,7 +1365,9 @@ Apply these in this order. Each one is a single commit.
 100. `SLRM-2310 Server updates: update every paired server from the desktop over its own RPC, with a rollback`
 101. `SLRM-2316 Follow upstream 1.4.262's moved modules and native provider launch in fork code`
 102. `SLRM-2349 Chat visuals: show image files and take unquoted values, and servers --wait takes a separate value`
-103. `SLRM-2387 Agents on the iPhone Lock Screen: a Live Activity and an Agents widget`
+103. `SLRM-2383 Worktree ports: a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1`
+104. `SLRM-2386 PR babysitter: send a pull request's chat fix requests when CI fails, merge on green when allowed`
+105. `SLRM-2387 Agents on the iPhone Lock Screen: a Live Activity and an Agents widget`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1931,6 +2015,43 @@ Upstream files only get short hooks, which keeps rebases small:
   - `ForkRootHosts.tsx` mounts `ForkSnoozeCustomDialogHost` and `ForkSnoozeWatcher`; the card is
     in the fork's Settings pane and `forkSnoozeSettleCommand` is a runs-command key in
     `settings-access.ts`.
+
+- Worktree ports (SLRM-2383), from `src/shared/fork/worktree-ports*.ts`,
+  `src/main/fork/worktree-ports/` and `src/cli/fork/worktree-ports-cli.ts`:
+  - `spawn-pane-env.ts` (`stampPtySpawnPaneEnv`, every desktop IPC and runtime terminal
+    spawn) calls `applyForkWorktreePortEnv(env, pane?.worktreeId)`.
+  - `setup-hook-env-vars.ts` (`getSetupEnvVars`) spreads
+    `forkWorktreePortSetupEnvFor(identity?.worktreeId)`.
+  - `structured-agent-launch-composition.ts` keeps `admittedRecord(...)` as `record` and passes
+    `withForkWorktreePortEnv(env, record.location.workspaceId)` to the child seal.
+  - `wsl-orca-env.ts` spreads `forkWorktreePortWslenvEntries(env)` into both WSLENV lists.
+  - `main-process-pty-startup.ts` (`emitPluginWorktreeLifecycle`, which hears desktop IPC and
+    runtime creates and removals) calls `forkWorktreePortsLifecycle(event)` first.
+  - `installForkReady` and `installForkHeadlessHost` call `installForkWorktreePorts`;
+    `startForkRuntimeSettleServices` calls `startForkWorktreePorts(runtime)`.
+  - `rpc-method-registry.ts` spreads `FORK_WORKTREE_PORTS_METHODS`
+    (`fork.worktreePorts.get`); `rpc-params-catalog.generated.ts` is regenerated with it.
+  - `src/cli/workspace-ports/ports.ts` passes the scan through `withForkReservedPorts` and its
+    text through `withForkReservedPortsText`; `src/cli/specs/ports.ts` adds `FORK_PORTS_NOTES`.
+  - The four settings are in `fork-global-settings.ts` and `settings-rows-fork.generated.ts` is
+    regenerated.
+  - `config/main-sync-fs-baseline.txt` allows `worktree-port-registry.ts` its one synchronous
+    read of the file, at first use (terminal env is built synchronously); writes are async.
+
+- PR babysitter (SLRM-2386), from `src/shared/fork/pr-babysit*.ts`, `src/main/fork/pr-babysit/`,
+  `src/main/fork/idle-recovery/idle-recovery-sources.ts`, `src/cli/fork/babysit-*` and
+  `src/renderer/src/fork/pr-babysit/`:
+  - `pr-watch-runtime.ts` passes the watcher's deps through `forkPrBabysitAttach(...)`, which
+    returns them unchanged and keeps `chatWorkspace` (the call wraps the object literal).
+  - `pr-event-delivery.ts` calls `forkPrBabysitLineDelivered(sessionId, delivery)` after each CI
+    line it appends. Both hooks are in `pr-babysit-slot.ts`, which loads no fork code at run time.
+  - `WorktreeCardReferenceRow.tsx` renders `ForkPrBabysitLine` under a pull request row.
+  - `cli-command-names.ts` lists `babysit`. The RPC methods (`fork.prBabysit.*`) are spread into
+    `FORK_IDLE_RECOVERY_RPC_METHODS` and the specs into `FORK_INBOX_COMMAND_SPECS`, so the upstream
+    registry and spec list need no line; `rpc-params-catalog.generated.ts` is regenerated.
+  - `installForkReady` and `installForkHeadlessHost` call `installForkPrBabysit(store)`. The
+    Decision inbox (fork code) gains other sources' rows and a `babysit` call on its bridge; the
+    five settings are in `src/shared/fork/pr-babysit.ts`, joined to `fork-global-settings.ts`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
