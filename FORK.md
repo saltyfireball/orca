@@ -1384,8 +1384,9 @@ named Orca Fork until SLRM-1367. `main` is always
     resume skip it. A paused chat that starts a turn another agent asked for (orchestration mail)
     is stopped at once; a turn a person starts lifts the pause. A terminal agent stays as the Esc
     left it. Each pause is listed in the Decision inbox under "Paused by a guard", whatever
-    `forkIdleSweepMode` is (the inbox button shows while any is listed): an answer lifts the
-    pause and sends the text, Resume lifts it alone; a resumed chat's spend counts from then.
+    `forkIdleSweepMode` is (the inbox button shows while any is listed): an answer sends the
+    text and lifts the pause only once the send is taken (a refused send keeps it paused and the
+    inbox shows why), Resume lifts it alone; a resumed chat's spend counts from then.
     `forkAgentGuardNotify` (on) tells the inbox's notify targets once per pause, with
     `event: agent-guard-paused` and the reason in the JSON, never tool output.
   - **Shown.** "loop warned", "paused: failure loop" or "paused: spend cap" after the tab title
@@ -1548,6 +1549,12 @@ Apply these in this order. Each one is a single commit.
 103. `SLRM-2392 Pooled limits: Claude and Codex usage limits pooled across every account and paired server`
 103. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
 103. `SLRM-2394 Branch clashes: warn when parallel worktree branches change the same files, across paired servers`
+104. `SLRM-2386 PR babysitter: send a pull request's chat fix requests when CI fails, merge on green when allowed`
+105. `SLRM-2384 Keep main current and server memory protection: fetch and fast-forward default branches, orca serve service protect`
+106. `SLRM-2392 Pooled limits: Claude and Codex usage limits pooled across every account and paired server`
+107. `SLRM-2390 Row status: spend, context, pull request checks and a fix button on agent rows`
+108. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
+     Follow-up: an inbox answer to a guard-paused agent lifts the pause only once the send is taken.
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
