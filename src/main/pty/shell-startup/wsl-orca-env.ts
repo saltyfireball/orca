@@ -14,6 +14,7 @@ import {
   SETUP_AGENT_SEQUENCE_STARTUP_SCRIPT_ENV
 } from '../../../shared/agent-launch/startup/setup-agent-sequencing'
 import { SETUP_RUNNER_PATH_ENV_KEYS } from '../../workspace-hooks/setup-hook-env-vars'
+import { forkWorktreePortWslenvEntries } from '../../../shared/fork/worktree-ports'
 import { getShellReadyWrapperRoot } from '../../providers/local-pty/local-pty-shell-ready-wrapper-root'
 import { ORCA_IMAGE_PROTOCOL_ENV } from '../../../shared/terminal/images/terminal-image-protocol'
 import {
@@ -65,7 +66,9 @@ function worktreeSetupWslenvEntries(env: Record<string, string | undefined>): st
     ),
     // Display names, never paths.
     'ORCA_WORKSPACE_NAME/u',
-    'CONDUCTOR_WORKSPACE_NAME/u'
+    'CONDUCTOR_WORKSPACE_NAME/u',
+    // Fork (SLRM-2383): the workspace's port block (FORK.md).
+    ...forkWorktreePortWslenvEntries(env)
   ]
 }
 
@@ -94,6 +97,8 @@ export function addOrcaWslInteropEnv(env: Record<string, string>): void {
     `${ORCA_SCRUB_SAFE_PANE_ENV}/u`,
     'ORCA_TAB_ID/u',
     'ORCA_WORKTREE_ID/u',
+    // Fork (SLRM-2383): the workspace's port block (FORK.md).
+    ...forkWorktreePortWslenvEntries(env),
     // Workspace identity must remain untranslated.
     'ORCA_WORKSPACE_ID/u',
     'ORCA_AGENT_LAUNCH_TOKEN/u',

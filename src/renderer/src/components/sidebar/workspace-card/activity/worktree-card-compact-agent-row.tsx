@@ -31,6 +31,7 @@ import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { ForkAgentRowTabTint } from '@/fork/agent-row-tab-tint/ForkAgentRowTabTint'
 import { ForkAgentRowChildTally } from '@/fork/agent-child-tally/ForkAgentChildTallyBadge'
 import { forkAgentRowTitle } from '@/fork/launch-defaults/fork-agent-row-launch'
+import { ForkAgentRowStatus } from '@/fork/row-status/ForkAgentRowStatus'
 
 function getCompactAgentPrimary(
   agent: DashboardAgentRowData,
@@ -280,6 +281,7 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
         </span>
       )}
       <ForkAgentRowChildTally agent={agent} highlighted={highlighted} />
+      <ForkAgentRowStatus agent={agent} highlighted={highlighted} />
       {hasChildDisclosure && !childAgentsExpanded && (
         <span
           className={cn(
