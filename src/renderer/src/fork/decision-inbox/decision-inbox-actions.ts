@@ -18,8 +18,14 @@ function describe(failure: unknown): string {
   return failure instanceof Error ? failure.message : String(failure)
 }
 
+/** What a jump needs of a row: the Decision inbox's chats and the board's asks (SLRM-2389). */
+export type DecisionInboxJumpTarget = Pick<
+  ForkIdleRecoveryInboxItem,
+  'kind' | 'chatId' | 'worktreeId'
+>
+
 /** Where a listed chat lives in this window: its worktree and pane key, or null if not open here. */
-function locate(item: ForkIdleRecoveryInboxItem): { worktreeId: string; paneKey: string } | null {
+function locate(item: DecisionInboxJumpTarget): { worktreeId: string; paneKey: string } | null {
   const state = useAppStore.getState()
   if (item.kind === 'terminal') {
     const worktreeId = item.worktreeId ?? state.agentStatusByPaneKey?.get(item.chatId)?.worktreeId
@@ -37,7 +43,7 @@ function locate(item: ForkIdleRecoveryInboxItem): { worktreeId: string; paneKey:
 }
 
 /** Open the chat's pane. False, with a toast, when this window has no tab for it. */
-export function jumpToDecisionInboxChat(item: ForkIdleRecoveryInboxItem): boolean {
+export function jumpToDecisionInboxChat(item: DecisionInboxJumpTarget): boolean {
   const place = locate(item)
   const parsed = place ? parsePaneKey(place.paneKey) : null
   if (!place || !parsed) {
