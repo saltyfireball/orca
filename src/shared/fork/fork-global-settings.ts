@@ -34,6 +34,10 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkDeviceApproval?: boolean
     /** Fork (SLRM-2271): signed webhooks that start automation runs; off unless enabled is true. */
     forkWebhooks?: ForkWebhookSettings
+    /** Fork (SLRM-2349): ::orca-visual also shows png, jpg, gif and webp files and takes unquoted values; unset is on. */
+    forkVisualFallback?: boolean
+    /** Fork (SLRM-2349): largest image file ::orca-visual shows, in MiB (1 to 5); unset is 4. */
+    forkVisualImageMaxMiB?: number
     /** Fork (SLRM-1394): Claude chats keep running through an app restart. Off unless true. */
     forkChatSurvive?: boolean
     /** Fork (SLRM-2268): workers and automation runs a restart cut carry on by themselves; unset is on. */
