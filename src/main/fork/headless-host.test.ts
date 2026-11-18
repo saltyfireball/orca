@@ -28,8 +28,9 @@ describe('installForkHeadlessHost', () => {
 
     expect(forkIsHeadlessSettingsHost()).toBe(true)
     expect(listeners).toHaveLength(1)
-    // The compaction sweep and the heartbeat (SLRM-2311), which reads its settings when it fires.
-    expect(vi.getTimerCount()).toBe(2)
+    // The compaction sweep, the heartbeat (SLRM-2311), which reads its settings when it fires, and
+    // the PR babysitter's wait check (SLRM-2386), which reads nothing before a PR is babysat.
+    expect(vi.getTimerCount()).toBe(3)
     // Nothing is read until the first sweep or heartbeat is due.
     expect(getSettings).not.toHaveBeenCalled()
     stop()

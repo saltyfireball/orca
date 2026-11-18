@@ -9,6 +9,9 @@ import { ForkWorktreeMoveDialogHost } from './worktree-move/ForkWorktreeMoveDial
 import { ForkSnoozeCustomDialogHost } from './snooze/ForkSnoozeCustomDialog'
 import { ForkSnoozeWatcher } from './snooze/ForkSnoozeWatcher'
 import { ForkVisualFallbackReader } from './visual-image/ForkVisualFallbackSetting'
+import { ForkPooledLimitsDialogHost } from './pooled-limits/ForkPooledLimitsDialog'
+import { ForkBestOfHost } from './best-of/ForkBestOfDialog'
+import { ForkChatHandoffLimitOffer } from './chat-handoff/ForkChatHandoffLimitOffer'
 
 /**
  * The fork's always-mounted hosts, behind one hook in `AppRootSurfaces.tsx` so that upstream
@@ -28,6 +31,9 @@ export function ForkRootHosts(): React.JSX.Element {
       <ForkSnoozeCustomDialogHost />
       <ForkSnoozeWatcher />
       <ForkVisualFallbackReader />
+      <ForkPooledLimitsDialogHost />
+      <ForkBestOfHost />
+      <ForkChatHandoffLimitOffer />
     </>
   )
 }

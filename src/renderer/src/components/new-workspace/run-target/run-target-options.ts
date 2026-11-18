@@ -8,6 +8,10 @@ import {
 import { translate } from '@/i18n/i18n'
 import type { Translate } from '@/i18n/use-translate'
 import { boundHostList } from '@/components/host-picker/bounded-host-list'
+import {
+  forkServerSetupRows,
+  type ForkServerSetupRowModel
+} from '@/fork/server-setup/server-setup-rows'
 
 export type EphemeralVmRecipeOption = NonNullable<OrcaHooks['environmentRecipes']>[number]
 
@@ -20,6 +24,7 @@ export type RunTargetRowModel =
   | { key: string; kind: 'needs-setup'; option: NeedsSetupProjectHostOption }
   | { key: typeof RUN_TARGET_RECIPES_KEY; kind: 'recipes' }
   | { key: typeof RUN_TARGET_ADD_HOST_KEY; kind: 'add-host' }
+  | ForkServerSetupRowModel
 
 export function getEphemeralVmLabel(t: Translate = translate): string {
   return t('auto.components.NewWorkspaceComposerCard.ephemeralVm', 'Per-Workspace Environment')
@@ -128,12 +133,15 @@ export function buildRunTargetRows(
     hostOptions,
     recipes,
     query,
-    hasAddHost
+    hasAddHost,
+    forkServerSetup
   }: {
     hostOptions: readonly ProjectHostSetupOption[]
     recipes: readonly EphemeralVmRecipeOption[]
     query: string
     hasAddHost: boolean
+    /** Fork (SLRM-2312): add "Set up on SERVER..." rows. */
+    forkServerSetup?: boolean
   },
   t?: Translate
 ): {
@@ -147,6 +155,7 @@ export function buildRunTargetRows(
   const hostRows = buildHostRows(hostOptions, trimmed)
   const rows: RunTargetRowModel[] = [
     ...hostRows.rows,
+    ...(forkServerSetup ? forkServerSetupRows(hostRows.rows) : []),
     ...buildSubmenuRows(matchedRecipes.length > 0, hasAddHost)
   ]
   return { rows, matchedRecipes, hiddenHostCount: hostRows.hiddenHostCount }

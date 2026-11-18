@@ -231,4 +231,82 @@ describe('forkResolveAutoPlacement', () => {
     // The setting check, then the pick that asks the paired servers about their own setups.
     expect(call.mock.calls.filter(([method]) => method === 'fork.placement.pick')).toHaveLength(2)
   })
+
+  it('sets the project up on a picked server that needs it, then routes there (SLRM-2312)', async () => {
+    const chosen = { ...candidate('runtime:env-a'), needsSetup: true }
+    const call = vi.fn(async (method: string) => {
+      if (method === 'projectHostSetup.list') {
+        return { result: { setups: [] } }
+      }
+      if (method === 'fork.serverSetup.run') {
+        return {
+          result: {
+            hostKey: 'runtime:env-a',
+            serverName: 'alpha',
+            cloned: true,
+            clonePath: '/home/a/development/r',
+            readiness: { missing: ['pnpm'], notes: [] }
+          }
+        }
+      }
+      return { result: { picked: chosen, ranked: [chosen] } }
+    })
+    const client = { call } as unknown as RuntimeClient
+    const parsed = flags({ project: 'github:o/r', host: 'auto', 'setup-missing': true })
+    await forkResolveAutoPlacement(
+      { commandPath: ['worktree', 'create'], flags: parsed },
+      () => client
+    )
+    expect(parsed.get('host')).toBe('runtime:env-a')
+    expect(parsed.has('setup-missing')).toBe(false)
+    expect(call).toHaveBeenCalledWith(
+      'fork.placement.pick',
+      { hosts: [], project: 'github:o/r', setupMissing: true },
+      { timeoutMs: 20_000 }
+    )
+    expect(call).toHaveBeenCalledWith(
+      'fork.serverSetup.run',
+      { environmentId: 'env-a', project: 'github:o/r' },
+      { timeoutMs: 690_000 }
+    )
+    const stderr = vi
+      .mocked(process.stderr.write)
+      .mock.calls.map((entry) => String(entry[0]))
+      .join('')
+    expect(stderr).toContain('project will be set up here first')
+    expect(stderr).toContain('Missing: pnpm')
+  })
+
+  it('sets a named paired server up with --setup-missing, and refuses other hosts', async () => {
+    const call = vi.fn(async () => ({
+      result: {
+        hostKey: 'runtime:env-b',
+        serverName: 'b',
+        cloned: false,
+        clonePath: null,
+        readiness: null
+      }
+    }))
+    const client = { call } as unknown as RuntimeClient
+    const parsed = flags({ project: 'web', host: 'runtime:env-b', 'setup-missing': true })
+    await forkResolveAutoPlacement(
+      { commandPath: ['worktree', 'create'], flags: parsed },
+      () => client
+    )
+    expect(parsed.get('host')).toBe('runtime:env-b')
+    expect(call).toHaveBeenCalledWith(
+      'fork.serverSetup.run',
+      { environmentId: 'env-b', project: 'web' },
+      expect.anything()
+    )
+    await expect(
+      forkResolveAutoPlacement(
+        {
+          commandPath: ['worktree', 'create'],
+          flags: flags({ project: 'web', host: 'local', 'setup-missing': true })
+        },
+        () => client
+      )
+    ).rejects.toMatchObject({ code: 'invalid_argument' })
+  })
 })

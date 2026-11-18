@@ -64,15 +64,20 @@ export function pickInboxItem(
   )
 }
 
-/** Reads the inbox and resolves the id; an off mode is an error that says how to turn it on. */
-async function resolveChatId(ctx: HandlerContext, id: string): Promise<string> {
+/** Reads the inbox and resolves the id; an empty inbox with idle recovery off says how to turn it on. */
+async function resolveChatId(
+  ctx: HandlerContext,
+  id: string
+): Promise<{ chatId: string; source?: 'babysit' }> {
   const { result } = await ctx.client
     .call<ForkIdleRecoveryInboxResult>(METHODS.inbox, {})
     .catch(incompatible)
-  if (result.mode === 'off') {
+  if (result.mode === 'off' && result.items.length === 0) {
     throw new RuntimeClientError('invalid_argument', INBOX_OFF_MESSAGE)
   }
-  return pickInboxItem(result.items, id).chatId
+  const item = pickInboxItem(result.items, id)
+  // A PR babysitter row (SLRM-2386) is answered and stopped through its own source.
+  return item.source ? { chatId: item.chatId, source: item.source } : { chatId: item.chatId }
 }
 
 export const FORK_INBOX_HANDLERS: Record<string, CommandHandler> = {
@@ -85,18 +90,18 @@ export const FORK_INBOX_HANDLERS: Record<string, CommandHandler> = {
   'inbox answer': async (ctx) => {
     const id = requireFlag(ctx, 'id', 'Name a chat: orca inbox list shows ids.')
     const text = requireFlag(ctx, 'text', 'Give the answer: orca inbox answer <id> <text>.')
-    const chatId = await resolveChatId(ctx, id)
+    const target = await resolveChatId(ctx, id)
     const reply = await ctx.client
-      .call<ForkIdleRecoveryAnswerResult>(METHODS.answer, { chatId, text })
+      .call<ForkIdleRecoveryAnswerResult>(METHODS.answer, { ...target, text })
       .catch(incompatible)
     printResult(reply, ctx.json, formatInboxAnswer)
   },
   'inbox pause': async (ctx) => {
     const id = requireFlag(ctx, 'id', 'Name a chat: orca inbox list shows ids.')
     const paused = ctx.flags.get('resume') !== true
-    const chatId = await resolveChatId(ctx, id)
+    const target = await resolveChatId(ctx, id)
     const reply = await ctx.client
-      .call<ForkIdleRecoveryPauseResult>(METHODS.pause, { chatId, paused })
+      .call<ForkIdleRecoveryPauseResult>(METHODS.pause, { ...target, paused })
       .catch(incompatible)
     printResult(reply, ctx.json, formatInboxPause)
   }
