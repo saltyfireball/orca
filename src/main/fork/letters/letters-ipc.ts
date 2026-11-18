@@ -17,9 +17,14 @@ export function installForkLettersApp(): void {
   const deps = liveForkLetters()
   const fromMainWindow = (event: Electron.IpcMainInvokeEvent): boolean =>
     event.sender === mainWindowContents()
-  ipcMain.handle(CHANNELS.board, () => forkBoardView(deps))
-  ipcMain.handle(CHANNELS.history, (_event, chatId: unknown) =>
-    forkLettersHistory(deps, typeof chatId === 'string' && chatId ? chatId.slice(0, 512) : null)
+  const refused = { now: Date.now(), unreachable: [] }
+  ipcMain.handle(CHANNELS.board, (event) =>
+    fromMainWindow(event) ? forkBoardView(deps) : { ...refused, asks: [] }
+  )
+  ipcMain.handle(CHANNELS.history, (event, chatId: unknown) =>
+    fromMainWindow(event)
+      ? forkLettersHistory(deps, typeof chatId === 'string' && chatId ? chatId.slice(0, 512) : null)
+      : { ...refused, letters: [] }
   )
   ipcMain.handle(CHANNELS.boardClose, async (event, request: unknown) => {
     const value = (request ?? {}) as Record<string, unknown>

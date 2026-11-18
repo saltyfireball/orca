@@ -47,6 +47,11 @@ export async function addForkBoardAsk(
     throw new Error('An ask needs a title.')
   }
   const body = cleanForkLetterText(request.body ?? '', FORK_BOARD_BODY_MAX_CHARS)
+  // A thrown-back ask quotes its title to the author, so it may not hold the frame's markers.
+  const forged = forkLetterBodyRefusal(title) ?? forkLetterBodyRefusal(body)
+  if (forged) {
+    throw new Error(`The ask was not filed: ${forged}`)
+  }
   const ask = await deps.store.update((state) => {
     const config = deps.settings()
     const now = deps.now()
