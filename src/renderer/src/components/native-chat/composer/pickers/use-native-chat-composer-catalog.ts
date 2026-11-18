@@ -10,6 +10,7 @@ import { structuredSessionSlashCommands } from '../../../../../../shared/agent-s
 import { withNativeChatResumeCommand } from '@/components/native-chat/composer/pickers/use-native-chat-resume-command'
 import { withNativeChatSideChatRows } from '@/components/native-chat/composer/pickers/use-native-chat-side-chat-command'
 import type { NativeChatStructuredComposerTransport } from '@/components/native-chat/composer/submit/native-chat-structured-composer-transport'
+import { useForkUsageLimitsCatalog } from '@/fork/pooled-limits/use-fork-usage-limits-command'
 
 export type NativeChatComposerCatalog = {
   agentCommands: readonly SlashCommandSuggestion[]
@@ -63,5 +64,6 @@ export function useNativeChatComposerCatalog(
     mcpPanel
   ])
   const sessionSkills = useMemo(() => nativeChatSessionSkills(agent, reported), [agent, reported])
-  return { agentCommands, sessionSkills }
+  // Fork (SLRM-2392): Blackfish's /usage-limits row.
+  return { agentCommands: useForkUsageLimitsCatalog(agentCommands, structured), sessionSkills }
 }
