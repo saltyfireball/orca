@@ -674,7 +674,7 @@ named Orca Fork until SLRM-1367. `main` is always
   chat host runs: the desktop app and the headless server (`orca serve`, orcad).
   - **Never on a person's turn.** A turn that was waiting on an approval or a question, or whose
     stop-time activity was not captured, is left for a person. Interactive chats keep the stock
-    offer.
+    offer unless the interactive setting below is on.
   - **Try cap.** At most `forkUnattendedResumeMaxTries` (3) automatic continuations of one chat
     in a row. The count is kept in `fork-unattended-resume.json` in the data folder and goes up
     before the continuation is sent, so a crash loop stops at the cap; it is dropped once a start
@@ -682,6 +682,20 @@ named Orca Fork until SLRM-1367. `main` is always
     resumed.
   - **Heuristic.** A person who goes on typing in an automation's chat after its run failed is
     taken for the automation until a new run settles.
+  - **Interactive chats (SLRM-2411).** With `forkUnattendedResumeInteractive` on (Settings >
+    Blackfish > Chats, "Continue my chats too"; unset follows `forkChatSurvive`, so it is on
+    exactly when chat survive is), a person's own native chat whose turn the restart cut is
+    continued the same way, under the same try cap. This covers the chats chat survive could not
+    pick back up. Only a turn whose lead agent was working: never one waiting on an approval, a
+    question or the person (`waiting`, `blocked`, or a settled lead with cut helpers). It answers
+    the restart offer for the person, so `orca settings` cannot write it (kind `agent-limit`).
+    While it is unset, `forkChatSurvive` is the person's switch for it; chat survive stays
+    writable as before.
+  - **Holds (SLRM-2411).** Before any chat is continued (workers and automation runs too), its
+    saved conversation is read the way stock reads an unopened chat's limit cut: a person's Stop
+    still in force (pressed on the cut turn, nothing sent since) and a newest turn that ended on
+    a usage limit (limit resume's wait) both leave it for the person; a read that fails holds it
+    too. A chat an agent guard paused (SLRM-2385) is skipped before any of this.
 
 - **Limit resume (SLRM-2309).** On by default (`forkLimitResume`, Settings > Blackfish > Chats).
   A Claude or Codex chat or terminal agent that stops on its 5-hour or weekly usage limit waits
@@ -1904,6 +1918,7 @@ Apply these in this order. Each one is a single commit.
 120. `SLRM-2406 Set up on a server from the phone and from batch start's Auto machine`
 121. `SLRM-2408 Follow upstream 1.4.263's moved modules in fork code`
 122. `SLRM-2411 Chat survive: an Orca env key only one launch has does not refuse adoption, say why in the start error`
+123. `SLRM-2411 Unattended resume: continue interactive chats a restart cut, unless stopped, asking, guarded or waiting on a limit`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2356,8 +2371,12 @@ Upstream files only get short hooks, which keeps rebases small:
     `startOrcadSchedulers`) call `startForkUnattendedResume(...)`; the pass runs once per process.
   - The Chats section's search entries moved to `fork-settings-pane-catalog-chats.ts` for the
     catalog's line budget.
-  - The card is in the fork's Settings pane. The two settings are in
-    `src/shared/fork/fork-global-settings.ts`.
+  - The card is in the fork's Settings pane. The settings are in
+    `src/shared/fork/fork-global-settings.ts`; SLRM-2411 adds `forkUnattendedResumeInteractive`
+    there, regenerates `settings-rows-fork-more.generated.ts` and lists it as an `agent-limit`
+    key in `settings-access.ts`. The holds read the journal
+    through `journalSqlReads(...)` and the host's `deps.journalDatabase`
+    (`src/main/fork/unattended-resume/unattended-resume-holds.ts`), no upstream file changed.
 
 - Limit resume (SLRM-2309), from `src/shared/fork/limit-resume*.ts`, `src/main/fork/limit-resume/`
   and `src/renderer/src/fork/limit-resume/`. On unless `forkLimitResume` is false:
