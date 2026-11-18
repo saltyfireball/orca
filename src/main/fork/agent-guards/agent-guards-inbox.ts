@@ -40,13 +40,23 @@ export function forkAgentGuardInboxItems(): ForkIdleRecoveryInboxItem[] {
     }))
 }
 
-/** The inbox's answer to a paused agent: lift the pause, then send the person's text. */
+/** The inbox's answer to a paused agent: send the person's text, and lift the pause only once
+ *  the send was taken. A send that was refused leaves the agent paused and returns why, so the
+ *  inbox shows it and the answer is never lost. The hold does not block it: the text goes in as
+ *  a person's message, which the engine never stops. */
 async function answerPaused(chatId: string, text: string): Promise<ForkIdleRecoveryAnswerOutcome> {
   const entry = forkAgentGuardEntries().find((item) => item.id === chatId)
-  if (!entry || !(await forkAgentGuardResumeIfPaused(chatId))) {
+  if (!entry) {
     return 'not-found'
   }
-  return sendIdleRecoveryAnswer(chatId, text, { kind: entry.kind, agent: entry.agent })
+  const result = await sendIdleRecoveryAnswer(chatId, text, {
+    kind: entry.kind,
+    agent: entry.agent
+  })
+  if (result === 'sent') {
+    await forkAgentGuardResumeIfPaused(chatId)
+  }
+  return result
 }
 
 /** The guard rows first; a chat idle recovery also lists shows once, as the guard's. Rows of

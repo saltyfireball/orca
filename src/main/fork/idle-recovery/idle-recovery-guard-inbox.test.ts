@@ -2,12 +2,15 @@
 // and the inbox's answer and Resume go to the guard. The guard service is a fake here.
 import { describe, expect, it, vi } from 'vitest'
 import type { AgentGuardEntry } from '../../../shared/fork/agent-guards'
-import type { ForkIdleRecoveryInboxItem } from '../../../shared/fork/idle-recovery-wire'
+import type {
+  ForkIdleRecoveryAnswerOutcome,
+  ForkIdleRecoveryInboxItem
+} from '../../../shared/fork/idle-recovery-wire'
 
 const guard = vi.hoisted(() => ({
   entries: new Array<AgentGuardEntry>(),
   paused: new Set<string>(),
-  send: vi.fn(async () => 'sent' as const),
+  send: vi.fn(async (): Promise<ForkIdleRecoveryAnswerOutcome> => 'sent'),
   resume: vi.fn(async (id: string) => guard.paused.delete(id)),
   listeners: new Array<() => void>()
 }))
@@ -98,6 +101,20 @@ describe('Decision inbox rows of agent guards', () => {
     // A pause starting or ending tells the inbox's readers.
     guard.listeners.forEach((listener) => listener())
     expect(changes).toHaveBeenCalled()
+  })
+
+  it('a refused answer keeps the agent paused and returns why, so it is never lost', async () => {
+    guard.entries = [entry]
+    guard.paused = new Set(['s1'])
+    guard.resume.mockClear()
+    guard.send.mockResolvedValueOnce('not-waiting')
+    const { created } = service()
+    expect(await created.answer({ chatId: 's1', text: 'try again later' })).toEqual({
+      chatId: 's1',
+      result: 'not-waiting'
+    })
+    expect(guard.resume).not.toHaveBeenCalled()
+    expect(guard.paused.has('s1')).toBe(true)
   })
 
   it('answers no other chat while idle recovery is off', async () => {

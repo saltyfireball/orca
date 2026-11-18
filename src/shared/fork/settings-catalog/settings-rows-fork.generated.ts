@@ -27,6 +27,12 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"On macOS, fill a new worktree by cloning a cached checkout of the project with APFS copy-on-write instead of writing every file; off unless true.","o":true}',
   forkApfsCloneFolders:
     '{"t":{"k":"array","of":{"k":"string"}},"d":"On macOS, git-ignored folders (paths relative to the project) cloned from the project\'s own checkout into each new worktree with APFS copy-on-write; unset is node_modules, empty is none.","o":true}',
+  forkBatchStart:
+    '{"t":{"k":"boolean"},"d":"A Batch switch in the new-workspace composer for rapid prompts; unset is on.","o":true}',
+  forkBatchStartAutoHost:
+    '{"t":{"k":"boolean"},"d":"The batch box starts with Auto machine on; unset is on.","o":true}',
+  forkBatchStartKeepOpen:
+    '{"t":{"k":"boolean"},"d":"The batch box starts with Keep open on; unset is on.","o":true}',
   forkBestOf:
     '{"t":{"k":"boolean"},"d":"Best of N (SLRM-2393): `orca best-of` and the compare view; unset is on.","o":true}',
   forkBestOfAgents:

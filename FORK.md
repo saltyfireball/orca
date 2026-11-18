@@ -1140,6 +1140,33 @@ named Orca Fork until SLRM-1367. `main` is always
   - The pick happens in the CLI before stock routing: it rewrites `--on` or `--host` and prints
     the pick and the skipped machines on stderr. Stock worker-start and host resolution are not
     edited.
+- **Batch start (SLRM-2395).** Send prompt after prompt from the new-workspace composer, on the
+  desktop and the phone; each prompt becomes one worktree plus agent per chosen model. Ideas from
+  Conductor's "create more" switch and T3 Code's start-in-the-background and multi-model pick.
+  - A Batch switch under the composer's title (desktop) or under Project and Run target (phone)
+    swaps the single-workspace form for the batch box: project, prompt, models (multi-select, at
+    most 6, one task each), Auto machine and Keep open. The composer's own project and run target
+    are reused; switching Batch off brings the stock form back as it was.
+  - Each prompt goes to `fork.batchStart.start`. With Auto machine on, the desktop (or the phone's
+    paired desktop) ranks itself and its paired servers as `--host auto` does (SLRM-2266) and runs
+    the batch there; a picked server gets the batch forwarded and resolves the project against its
+    own setups. Off, the composer's run target takes it (a paired server over its own RPC). Every
+    model starts through `agent.launch` with a new worktree, so the agent launch queue (SLRM-2098)
+    gates it like any launch.
+  - A prompt is acknowledged before the box clears: the answer names the machine and each
+    worktree, with its queue place when it waits. Anything that failed stays in the box with the
+    failed models still picked, so sending again starts no duplicates. Started prompts are listed
+    under the box.
+  - Start follows Keep open (clear for the next prompt, or close the composer once acknowledged);
+    Cmd+Enter (Ctrl+Enter elsewhere) always starts in the background and leaves a fresh draft.
+  - Worktree names are the prompt's first words, the agent and a random tail; the display name is
+    the prompt's first line. Folder (non-git) projects and folder workspaces are not offered.
+  - Settings > Blackfish > Agents and workers, Batch start: `forkBatchStart` (show the switch, on),
+    `forkBatchStartKeepOpen` (on) and `forkBatchStartAutoHost` (on). The phone reads its paired
+    host's values.
+  - Not covered: a picked server running stock Orca or an older Blackfish refuses (turn Auto
+    machine off to use the run target); the stock form's linked items, base branch, setup choice
+    and attachments do not apply to batch prompts.
 - **Fast new worktrees on macOS (SLRM-2270).** APFS copy-on-write clones for new local worktrees
   (Settings > Blackfish > Projects, "Fast new worktrees (macOS)"). Idea from T3 Code's "Fast
   worktree checkout" (MIT). Other systems, WSL and other volumes create worktrees as before.
@@ -1317,8 +1344,9 @@ named Orca Fork until SLRM-1367. `main` is always
     resume skip it. A paused chat that starts a turn another agent asked for (orchestration mail)
     is stopped at once; a turn a person starts lifts the pause. A terminal agent stays as the Esc
     left it. Each pause is listed in the Decision inbox under "Paused by a guard", whatever
-    `forkIdleSweepMode` is (the inbox button shows while any is listed): an answer lifts the
-    pause and sends the text, Resume lifts it alone; a resumed chat's spend counts from then.
+    `forkIdleSweepMode` is (the inbox button shows while any is listed): an answer sends the
+    text and lifts the pause only once the send is taken (a refused send keeps it paused and the
+    inbox shows why), Resume lifts it alone; a resumed chat's spend counts from then.
     `forkAgentGuardNotify` (on) tells the inbox's notify targets once per pause, with
     `event: agent-guard-paused` and the reason in the JSON, never tool output.
   - **Shown.** "loop warned", "paused: failure loop" or "paused: spend cap" after the tab title
@@ -1525,8 +1553,10 @@ Apply these in this order. Each one is a single commit.
 106. `SLRM-2392 Pooled limits: Claude and Codex usage limits pooled across every account and paired server`
 107. `SLRM-2390 Row status: spend, context, pull request checks and a fix button on agent rows`
 108. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
+     Follow-up: an inbox answer to a guard-paused agent lifts the pause only once the send is taken.
 109. `SLRM-2394 Branch clashes: warn when parallel worktree branches change the same files, across paired servers`
-110. `SLRM-2393 Best of N: one task to 2 to 4 agents in their own worktrees, compared and picked`
+110. `SLRM-2395 Batch start: a prompt per worktree and model from the composer, placed with auto placement`
+111. `SLRM-2393 Best of N: one task to 2 to 4 agents in their own worktrees, compared and picked`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2283,6 +2313,19 @@ Upstream files only get short hooks, which keeps rebases small:
     process.
   - The settings are in `fork-global-settings.ts` and `settings-rows-fork.generated.ts` is
     regenerated; the card is in the fork's Settings pane and its search entry in the pane catalog.
+- Batch start (SLRM-2395), from `src/shared/fork/batch-start.ts`,
+  `src/shared/fork/use-fork-batch-start.ts`, `src/main/fork/batch-start/`,
+  `src/renderer/src/fork/batch-start/` and `mobile/src/components/fork/batch-start/`:
+  - `rpc-method-registry.ts` spreads `FORK_BATCH_START_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-batch-start.ts`); `rpc-params-catalog.generated.ts` is
+    regenerated with it. `fork-auto-placement.ts` exports `forkPlacementDeps` for its pick.
+  - `NewWorkspaceComposerModal.tsx` calls `useForkBatchStartMode`, renders
+    `ForkBatchStartModeSwitch` under the title and `ForkBatchStartBox` while it is on (the stock
+    card stays mounted, hidden), and skips its Cmd+Enter handler then.
+  - Mobile: `NewWorktreeModal.tsx` calls `useMobileForkBatchStart`; `NewWorktreeFormSheet.tsx`
+    takes `forkBatchToggle` and `forkBatchBody` and shows the body in place of the form.
+  - The settings are in `src/shared/fork/fork-global-settings.ts` and
+    `settings-rows-fork.generated.ts` is regenerated; the card is in the fork's Settings pane.
 - Best of N (SLRM-2393), from `src/shared/fork/best-of/`, `src/main/fork/best-of/`,
   `src/cli/fork/best-of-*.ts` and `src/renderer/src/fork/best-of/`:
   - `rpc-method-registry.ts` spreads `FORK_BEST_OF_METHODS`

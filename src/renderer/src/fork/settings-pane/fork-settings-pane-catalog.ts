@@ -9,6 +9,7 @@ import { translate } from '@/i18n/i18n'
 import type { Translate } from '@/i18n/use-translate'
 import { getForkChatsSearchEntries } from './fork-settings-pane-catalog-chats'
 import { forkAutoPlacementSearchEntry } from '../auto-placement/auto-placement-search-entry'
+import { forkBatchStartSearchEntry } from '../batch-start/batch-start-search-entry'
 import { bestOfSearchEntry } from '../best-of/best-of-search-entry'
 import type { ForkSettingsSection, ForkSettingsSectionId } from './fork-settings-pane-types'
 import { getForkRemoteSettingsSectionParts } from '../endpoint-failover/endpoint-failover-search'
@@ -144,6 +145,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
           ),
           keywords: words('loop', 'failure', 'spend', 'cap', 'budget', 'forkAgentGuardLoop')
         },
+        forkBatchStartSearchEntry(t),
         bestOfSearchEntry(t)
       ]
     ),
