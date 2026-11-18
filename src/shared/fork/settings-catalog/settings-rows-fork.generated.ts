@@ -37,6 +37,16 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Boundary compaction: wait until the chat\'s prompt cache has expired; unset is on.","o":true}',
   forkBoundaryCompactThresholdTokens:
     '{"t":{"k":"number"},"d":"Boundary compaction: context size, in tokens, from which a chat is compacted; unset is 120000.","o":true}',
+  forkBranchClashes:
+    '{"t":{"k":"boolean"},"d":"Branch clashes (SLRM-2394): warn when parallel worktree branches change the same files; unset is on.","o":true}',
+  forkBranchClashesBehindThreshold:
+    '{"t":{"k":"number"},"d":"Branch clashes: commits behind the default branch before a branch is flagged; unset is 20.","o":true}',
+  forkBranchClashesIntervalMinutes:
+    '{"t":{"k":"number"},"d":"Branch clashes: minutes between checks; unset is 5.","o":true}',
+  forkBranchClashesPairedServers:
+    '{"t":{"k":"boolean"},"d":"Branch clashes: ask paired servers for their branches too; unset is on.","o":true}',
+  forkBranchClashesUncommitted:
+    '{"t":{"k":"boolean"},"d":"Branch clashes: count uncommitted changes in each worktree too; unset is on.","o":true}',
   forkChildTallyCountFinished:
     '{"t":{"k":"boolean"},"d":"Finished children count toward that total; unset is on.","o":true}',
   forkChildTallyCountTasks:
