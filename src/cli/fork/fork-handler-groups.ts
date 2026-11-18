@@ -111,5 +111,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-limits',
     keys: ['limits list', 'limits resume-now', 'limits cancel'],
     load: async () => (await import('./limits-handlers.js')).FORK_LIMITS_HANDLERS
+  },
+  // SLRM-2391: hand a chat to the other agent and read a chat's history (FORK.md "Chat handoff").
+  {
+    name: 'fork-chat-handoff',
+    keys: ['chat handoff', 'chat history'],
+    load: async () => (await import('./chat-handoff-handlers.js')).FORK_CHAT_HANDOFF_HANDLERS
   }
 ]

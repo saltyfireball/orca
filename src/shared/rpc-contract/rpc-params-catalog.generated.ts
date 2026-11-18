@@ -32,6 +32,7 @@ import {
   ForkAgentQueueTicketParams
 } from '../fork/agent-queue'
 import { ForkPlacementLoadParams, ForkPlacementPickParams } from '../fork/auto-placement-wire'
+import { ForkChatHandoffStartParams, ForkChatHistoryParams } from '../fork/chat-handoff-wire'
 import {
   ForkClaudeAccountCancelParams,
   ForkClaudeAccountMoveParams,
@@ -1211,6 +1212,8 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.agentQueue.list': ForkAgentQueueListParams,
   'fork.agentQueue.start': ForkAgentQueueTicketParams,
   'fork.agentQueue.status': ForkAgentQueueStatusParams,
+  'fork.chatHandoff.history': ForkChatHistoryParams,
+  'fork.chatHandoff.start': ForkChatHandoffStartParams,
   'fork.claudeAccount.cancel': ForkClaudeAccountCancelParams,
   'fork.claudeAccount.move': ForkClaudeAccountMoveParams,
   'fork.claudeAccount.which': ForkClaudeAccountWhichParams,
