@@ -30,6 +30,9 @@ function detailLine(item: ForkIdleRecoveryInboxItem, now: number, t: Translate):
     item.agent,
     item.workspace
   ]
+  if (item.verdict === 'guard') {
+    parts.push(t('fork.decisionInbox.guardPaused', 'paused by an agent guard'))
+  }
   if (item.paused) {
     // The Paused section mixes both kinds, and a paused row no longer changes: say what it was.
     parts.push(
@@ -70,6 +73,7 @@ export function ForkDecisionInboxRow({
   const [sending, setSending] = useState(false)
   const [pausing, setPausing] = useState(false)
   const waiting = item.verdict === 'waiting_user'
+  const guarded = item.verdict === 'guard'
   const body = (waiting ? item.question : item.reason).trim()
   const text = draft.trim()
 
@@ -89,7 +93,8 @@ export function ForkDecisionInboxRow({
   }
   const togglePause = (): void => {
     setPausing(true)
-    void actions.pause(item, !item.paused).finally(() => setPausing(false))
+    // A guard's row has only Resume: it lifts the guard's pause (SLRM-2385).
+    void actions.pause(item, guarded ? false : !item.paused).finally(() => setPausing(false))
   }
   const answerLabel = t('fork.decisionInbox.answerLabel', 'Answer to {{title}}', {
     title: item.title
@@ -130,10 +135,15 @@ export function ForkDecisionInboxRow({
                 'fork.decisionInbox.answerPlaceholder',
                 'Your answer. Enter sends, Shift+Enter adds a line.'
               )
-            : t(
-                'fork.decisionInbox.stalledPlaceholder',
-                'Tell the agent how to go on. Enter sends, Shift+Enter adds a line.'
-              )
+            : guarded
+              ? t(
+                  'fork.decisionInbox.guardPlaceholder',
+                  'Tell the agent how to go on; sending lifts the pause. Enter sends, Shift+Enter adds a line.'
+                )
+              : t(
+                  'fork.decisionInbox.stalledPlaceholder',
+                  'Tell the agent how to go on. Enter sends, Shift+Enter adds a line.'
+                )
         }
         maxLength={FORK_IDLE_RECOVERY_MAX_ANSWER_CHARS}
         disabled={sending}
@@ -148,11 +158,13 @@ export function ForkDecisionInboxRow({
       />
       <div className="flex flex-wrap justify-end gap-1">
         <Button size="sm" variant="ghost" disabled={pausing} onClick={togglePause}>
-          {item.source === 'babysit'
-            ? t('fork.decisionInbox.stopBabysit', 'Stop babysitting')
-            : item.paused
-              ? t('fork.decisionInbox.resume', 'Resume recovery')
-              : t('fork.decisionInbox.pause', 'Pause recovery')}
+          {guarded
+            ? t('fork.decisionInbox.guardResume', 'Resume')
+            : item.source === 'babysit'
+              ? t('fork.decisionInbox.stopBabysit', 'Stop babysitting')
+              : item.paused
+                ? t('fork.decisionInbox.resume', 'Resume recovery')
+                : t('fork.decisionInbox.pause', 'Pause recovery')}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => actions.jump(item)}>
           {t('fork.decisionInbox.jump', 'Go to chat')}

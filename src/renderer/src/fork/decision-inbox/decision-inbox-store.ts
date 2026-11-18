@@ -8,6 +8,10 @@ import {
   readIdleRecoverySettings,
   type IdleRecoveryMode
 } from '../../../../shared/fork/idle-recovery-settings'
+import {
+  forkAgentGuardPausedCount,
+  useForkAgentGuardPausedCount
+} from '../agent-guards/agent-guards-store'
 import { readPrBabysitSettings } from '../../../../shared/fork/pr-babysit'
 import type {
   ForkIdleRecoveryApi,
@@ -55,14 +59,17 @@ export function forkDecisionInboxOn(settings: InboxSettings): boolean {
   )
 }
 
+/** On as above, or while an agent guard holds an agent paused (SLRM-2385). */
 export function useForkDecisionInboxOn(): boolean {
-  return useAppStore((s) => forkDecisionInboxOn(s.settings as InboxSettings))
+  const on = useAppStore((s) => forkDecisionInboxOn(s.settings as InboxSettings))
+  return useForkAgentGuardPausedCount() > 0 || on
 }
 
 /** True when the inbox can be shown: it is on and this build has the bridge. */
 export function forkDecisionInboxAvailable(): boolean {
   return (
-    forkDecisionInboxOn(useAppStore.getState().settings as InboxSettings) &&
+    (forkDecisionInboxOn(useAppStore.getState().settings as InboxSettings) ||
+      forkAgentGuardPausedCount() > 0) &&
     forkIdleRecoveryBridge() !== null
   )
 }

@@ -23,6 +23,7 @@ import type {
 } from '../../../shared/fork/idle-recovery-wire'
 import type { OrcaRuntimeService } from '../../runtime/orca-runtime'
 import { startForkBackoffTimer } from '../fork-backoff-timer'
+import { withForkAgentGuardInbox } from '../agent-guards/agent-guards-inbox'
 import { setIdleRecoveryRuntime } from './idle-recovery-host'
 import { notifyIdleRecoveryWaiting } from './idle-recovery-notify'
 import { setIdleRecoveryTerminalRuntime } from './idle-recovery-ports'
@@ -185,7 +186,7 @@ export function createIdleRecoveryService(overrides: Partial<IdleRecoveryService
     return true
   }
 
-  return {
+  const recovery = {
     /** Idempotent: a second call swaps the readers and keeps the timer. */
     start(reader: () => IdleRecoverySettingsSource, hooks: IdleRecoveryHooks = {}): void {
       readSettings = reader
@@ -309,6 +310,8 @@ export function createIdleRecoveryService(overrides: Partial<IdleRecoveryService
       }
     }
   }
+  // SLRM-2385: agents a guard paused are listed, answered and resumed whatever the mode.
+  return withForkAgentGuardInbox(recovery, () => settingsNow().paused.length)
 }
 
 const service = createIdleRecoveryService()

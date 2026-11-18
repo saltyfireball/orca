@@ -18,7 +18,8 @@ function Counted(): React.JSX.Element {
   const t = useTranslate()
   const { result } = useForkDecisionInbox(true)
   const sections = decisionInboxSections(result?.items)
-  const waiting = sections.waiting.length
+  // Agents a guard paused wait on the user too (SLRM-2385).
+  const waiting = sections.waiting.length + sections.guarded.length
   const stalled = sections.stalled.length
   const label =
     waiting === 0 && stalled === 0
