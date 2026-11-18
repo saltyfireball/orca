@@ -326,6 +326,45 @@ describe('chat-survive launch check', () => {
     }
   })
 
+  it('takes the claim over an update that starts exporting Orca env to chats (SLRM-2411)', () => {
+    // 1.4.262003 gave the chat no worktree ports; 1.4.263001 (SLRM-2383) exports a block of them.
+    const { stop } = held('ports', launch([...MODEL, '--session-id=abc']), appEnv('1.4.0', 'ports'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const base = recordingSpawner()
+    try {
+      const child = forkChatSurviveSpawner(base.spawn, 'darwin', {
+        ...appEnv('1.5.0', 'ports'),
+        ORCA_PORT: '41000',
+        ORCA_PORT_0: '41000',
+        ORCA_PORT_1: '41001',
+        ORCA_PORT_COUNT: '2'
+      })(launch(['--resume=abc', ...MODEL]))
+      expect(child.pid).toBe(GONE_PID)
+      expect(base.specs).toEqual([])
+      expect(stop).not.toHaveBeenCalled()
+      expect(warn).not.toHaveBeenCalled()
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it('names what differs in the start error, which the trace log keeps', () => {
+    const claim = held('why', launch(MODEL), appEnv('1.4.0', 'why'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const spawn = forkChatSurviveSpawner(recordingSpawner().spawn, 'darwin', {
+      ...appEnv('1.5.0', 'why'),
+      CLAUDE_CODE_ENABLE_CFC: '1'
+    })
+    try {
+      expect(() => spawn(launch(MODEL))).toThrow(
+        'still stopping (launch differs in: env:CLAUDE_CODE_ENABLE_CFC)'
+      )
+      expect(claim.stop).toHaveBeenCalledTimes(1)
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
   it('refuses a provider configured otherwise, says in what, and removes its record', async () => {
     const mcp = join(tempDir(), 'chat.json')
     const withMcp = [...MODEL, '--strict-mcp-config', '--mcp-config', mcp]
