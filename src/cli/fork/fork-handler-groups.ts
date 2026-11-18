@@ -176,5 +176,10 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
       'board back'
     ],
     load: async () => (await import('./letters-handlers.js')).FORK_LETTERS_HANDLERS
+  // SLRM-2388: what finished, failed, merged and cost, and what waits on you (FORK.md "Digest").
+  {
+    name: 'fork-digest',
+    keys: ['digest'],
+    load: async () => (await import('./digest-handlers.js')).FORK_DIGEST_HANDLERS
   }
 ]
