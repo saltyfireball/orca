@@ -44,6 +44,7 @@ import {
   ForkBestOfSettleParams,
   ForkBestOfShowParams
 } from '../fork/best-of/best-of-wire'
+import { ForkClashesLocalParams, ForkClashesScanParams } from '../fork/branch-clashes-wire'
 import {
   ForkClaudeAccountCancelParams,
   ForkClaudeAccountMoveParams,
@@ -1236,6 +1237,8 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.bestOf.record': ForkBestOfRecordParams,
   'fork.bestOf.settle': ForkBestOfSettleParams,
   'fork.bestOf.show': ForkBestOfShowParams,
+  'fork.clashes.local': ForkClashesLocalParams,
+  'fork.clashes.scan': ForkClashesScanParams,
   'fork.claudeAccount.cancel': ForkClaudeAccountCancelParams,
   'fork.claudeAccount.move': ForkClaudeAccountMoveParams,
   'fork.claudeAccount.which': ForkClaudeAccountWhichParams,

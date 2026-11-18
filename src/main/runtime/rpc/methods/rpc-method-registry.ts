@@ -88,6 +88,7 @@ import { FORK_LIMIT_RESUME_METHODS } from './fork/fork-limit-resume'
 import { FORK_SERVER_UPDATE_METHODS } from './fork/fork-server-update'
 import { FORK_AGENT_GUARDS_METHODS } from './fork/fork-agent-guards'
 import { FORK_WORKTREE_PORTS_METHODS } from './fork/fork-worktree-ports'
+import { FORK_BRANCH_CLASHES_METHODS } from './fork/fork-branch-clashes'
 import { FORK_BEST_OF_METHODS } from './fork/fork-best-of'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
@@ -234,6 +235,8 @@ export const ALL_RPC_METHODS = [
   ...FORK_WORKTREE_PORTS_METHODS,
   // SLRM-2384: keep each project's default branch current, behind `orca main-sync` (FORK.md).
   ...FORK_MAIN_SYNC_METHODS,
+  // SLRM-2394: files parallel worktree branches share, behind `orca clashes` (FORK.md).
+  ...FORK_BRANCH_CLASHES_METHODS,
   // SLRM-2393: best-of runs behind `orca best-of` and the compare view (FORK.md).
   ...FORK_BEST_OF_METHODS
 ]
