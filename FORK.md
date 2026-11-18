@@ -730,6 +730,40 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/limit-resume*.ts`, `src/main/fork/limit-resume/` and
     `src/renderer/src/fork/limit-resume/`.
 
+- **Chat handoff (SLRM-2391).** On by default (`forkChatHandoff`, Settings > Blackfish > Chats).
+  A native chat moves from Claude to Codex or back. The design comes from T3 Code's portable
+  handoffs (MIT); only the ideas are ported.
+  - **New chat.** A chat of the other agent starts in the same workspace, named after its source
+    (`<name> (Codex)`), with the handoff as its first message: the source's name and Orca session
+    id, then a budgeted selection of its history, then the request (default: carry on). The
+    selection is not a summary: a short chat goes whole; a longer one keeps its original request
+    (at most a quarter of the budget) and as many of its newest entries as fit, each in full and
+    in order, with tool calls and file edits cut to one line. Only the chat's own agent counts,
+    and nothing before its latest `/clear`. Text is charged one token per UTF-8 byte against
+    `forkChatHandoffBudgetTokens` (16000, 1024 to 64000); the request is never shortened. A
+    newest entry larger than the budget goes cut, with the command that reads it whole.
+  - **Older history.** The new agent reads what was left out with `orca chat history <id>
+    [--before <n>] [--limit <n>]` (Orca exposes no MCP server to agents; its agent surface is the
+    CLI), over `fork.chatHandoff.history`. Entries are numbered by journal sequence, newest page
+    first, and a message the page reader shortened is read whole from the journal.
+  - **Handing back.** With `forkChatHandoffReuse` (on), handing a chat to the agent the work came
+    from continues that earlier chat: it gets only the entries since it last saw this chat,
+    queued behind its turn if it is busy. When its context has no room for that (its window, or
+    128k when unknown, less what it holds and a reserve of 16k or a quarter of the window), or
+    with `--fresh`, a new chat starts instead. Links live in `fork-chat-handoff.json` (mode 0600)
+    in the data folder.
+  - **The source.** It stays open. A chat mid-turn is refused unless the turn is stopped first
+    (the tab menu's toast offers Stop and hand off; `--stop`). Its own resume at a usage limit
+    reset (limit resume) is cancelled, so two agents do not take up the same work.
+  - **On a usage limit** (`forkChatHandoffOnLimit`): `offer` (default) shows a toast on this
+    desktop offering the handoff for each native chat limit resume parks; `auto` hands it off at
+    once on the host that runs it, desktop or headless; `off` does neither. Needs limit resume on.
+  - **Entry points.** "Hand off to Codex/Claude" in a native chat tab's right-click menu, and
+    `orca chat handoff [<id>] --to codex|claude [--message <text>] [--fresh] [--stop] [--focus]
+    [--dry-run] [--json]` over `fork.chatHandoff.start` (a paired host with `--environment`).
+  - Code is in `src/shared/fork/chat-handoff*.ts`, `src/main/fork/chat-handoff/`,
+    `src/cli/fork/chat-handoff-*.ts` and `src/renderer/src/fork/chat-handoff/`.
+
 - **Pooled limits (SLRM-2392).** On by default (`forkPooledLimits`, Settings > Blackfish > Usage
   and accounts). Every Claude and Codex account seen on this machine and its paired servers,
   pooled into one bar per provider and limit window (5-hour and weekly), with the next reset and
@@ -1557,6 +1591,7 @@ Apply these in this order. Each one is a single commit.
 109. `SLRM-2394 Branch clashes: warn when parallel worktree branches change the same files, across paired servers`
 110. `SLRM-2395 Batch start: a prompt per worktree and model from the composer, placed with auto placement`
 111. `SLRM-2393 Best of N: one task to 2 to 4 agents in their own worktrees, compared and picked`
+112. `SLRM-2391 Chat handoff: hand a chat from Claude to Codex or back with a budgeted history`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2353,6 +2388,24 @@ Upstream files only get short hooks, which keeps rebases small:
     `card-identity-parts.tsx`), so it adds no upstream line of its own. The settings are in
     `src/shared/fork/fork-global-settings.ts`, `settings-rows-fork.generated.ts` is regenerated,
     and the card is in the fork's Settings pane.
+
+- Chat handoff (SLRM-2391), from `src/shared/fork/chat-handoff*.ts`,
+  `src/main/fork/chat-handoff/`, `src/cli/fork/chat-handoff-*.ts` and
+  `src/renderer/src/fork/chat-handoff/`. On unless `forkChatHandoff` is false:
+  - `rpc-method-registry.ts` spreads `FORK_CHAT_HANDOFF_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-chat-handoff.ts`); `rpc-params-catalog.generated.ts`
+    is regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_CHAT_HANDOFF_COMMAND_SPECS` and `fork-handler-groups.ts`
+    adds the `fork-chat-handoff` group (`chat handoff`, `chat history`; `chat` is already listed
+    in `cli-command-names.ts`).
+  - `SortableTabContextMenu.tsx` renders `ForkChatHandoffTabMenuItems` after the account move
+    items. `ForkRootHosts.tsx` mounts `ForkChatHandoffLimitOffer`; the card is in the fork's
+    Settings pane.
+  - `runtime-settle-hooks.ts` (a fork file) calls `startForkChatHandoffOnLimit`, which listens to
+    limit resume's entries. A new chat goes through `createStructuredAgentSessionForWorktree`, the
+    create agent launches use, with the handoff as its first message.
+  - The settings are in `src/shared/fork/fork-global-settings.ts` and
+    `settings-rows-chat.generated.ts` is regenerated.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
