@@ -9,6 +9,7 @@ import type { CommandHandler, HandlerContext } from '../dispatch/dispatch'
 import { getOptionalStringFlag } from '../arguments/flags'
 import { printResult } from '../output/command-result-output'
 import { formatPortsScan } from './ports-format'
+import { withForkReservedPorts, withForkReservedPortsText } from '../fork/worktree-ports-cli'
 import { RuntimeClientError, RuntimeRpcFailureError } from '../runtime/connection/types'
 import type { RuntimeRpcSuccess } from '../../shared/remote-runtime/rpc/runtime-rpc-envelope'
 import {
@@ -169,9 +170,14 @@ export const PORTS_HANDLERS: Record<string, CommandHandler> = {
     const target = await resolvePortsTarget({ flags, cwd, client }, { needsWorktreePath: !all })
     const response = await scanPortsOnWorkspaceHost(client, target.selector)
     const worktreePath = all ? null : target.worktreePath
-    const result = selectWorkspacePorts(response.result, worktreePath)
+    // Fork (SLRM-2383): the workspace's reserved port block (FORK.md).
+    const result = await withForkReservedPorts(
+      client,
+      target.selector,
+      selectWorkspacePorts(response.result, worktreePath)
+    )
     printResult({ ...response, result }, json, (scan) =>
-      formatPortsScan(scan, { showOwner: worktreePath === null })
+      withForkReservedPortsText(scan, formatPortsScan(scan, { showOwner: worktreePath === null }))
     )
   }
 }

@@ -145,8 +145,11 @@ describe('approval risk: file and other tools', () => {
 
   it('a cut-off or missing detail is never low', () => {
     expect(
-      gradeForkApproval({ title: 'Allow Bash?', detail: '{"command": "ls", "x": "…', cwd: CWD })
-        .risk
+      gradeForkApproval({
+        title: 'Allow Bash?',
+        detail: '{"command": "ls", "x": "\u2026',
+        cwd: CWD
+      }).risk
     ).not.toBe('low')
     expect(gradeForkApproval({ title: 'Allow Read?', detail: null, cwd: CWD }).risk).toBe('medium')
   })
