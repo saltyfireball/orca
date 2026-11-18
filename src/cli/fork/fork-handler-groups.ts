@@ -151,5 +151,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-best-of',
     keys: ['best-of', 'best-of list', 'best-of show', 'best-of pick'],
     load: async () => (await import('./best-of-handlers.js')).FORK_BEST_OF_HANDLERS
+  },
+  // SLRM-2396: pull request review guides (FORK.md "Review guides").
+  {
+    name: 'fork-review-guide',
+    keys: ['review-guide', 'review-guide write', 'review-guide cancel'],
+    load: async () => (await import('./review-guide-handlers.js')).FORK_REVIEW_GUIDE_HANDLERS
   }
 ]
