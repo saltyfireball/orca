@@ -9,7 +9,7 @@ import {
   type ForkSyncNotice,
   type ForkSyncStatus
 } from '../../../../shared/fork/fork-sync-status'
-import { useNow } from '../../hooks/use-now'
+import { useNow } from '../../lib/window-activity/use-now'
 import { useAppStore } from '../../store/index'
 
 const HOUR_MS = 60 * 60 * 1000

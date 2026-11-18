@@ -1,6 +1,6 @@
 // Snooze (FORK.md, SLRM-2269): the wake label in the window's language, "until 6pm",
 // "until Mon 9am", "until merge", on the shared minute clock.
-import { useNow } from '@/hooks/use-now'
+import { useNow } from '@/lib/window-activity/use-now'
 import { useTranslate } from '@/i18n/use-translate'
 import { forkSnoozeTimeText, type ForkSnoozeUntil } from '../../../../shared/fork/snooze'
 

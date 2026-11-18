@@ -5,7 +5,7 @@
 import React from 'react'
 import { useAppStore } from '@/store/index'
 import { useTranslate } from '@/i18n/use-translate'
-import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
+import { useResetCountdownClock } from '@/components/status-bar/usage/useResetCountdownClock'
 import type { UsagePercentageDisplay } from '../../../../shared/agent-usage/display/usage-percentage-display'
 import type {
   ForkPooledLimitsResult,

@@ -44,18 +44,18 @@ const AGENT_LIMITS: SettingsKey[] = [
   'artifactSharingEnabled',
   'agentSkillSharingEnabled',
   'orchestrationCoordinatorApprovalsEnabled',
+  // SLRM-2397: approval triage's grade and bulk allow, archive on merge (removes checkouts), and
+  // the saved prompts a person sends: an agent must not set what answers or speaks for the person.
+  'forkApprovalRisk',
+  'forkApprovalBulkAllowLow',
+  'forkArchiveOnMerge',
+  'forkSavedPrompts',
   // SLRM-2389: the letter and board rate limits agents would otherwise raise for themselves.
   'forkLettersMaxPerWindow',
   'forkLettersWindowMinutes',
   'forkLettersLoopEach',
   'forkLettersFromPaired',
   'forkBoardMaxOpenPerChat'
-  // SLRM-2397: approval triage's grade and bulk allow, archive on merge (removes checkouts), and
-  // the saved prompts a person sends: an agent must not set what answers or speaks for the person.
-  'forkApprovalRisk',
-  'forkApprovalBulkAllowLow',
-  'forkArchiveOnMerge',
-  'forkSavedPrompts'
 ]
 
 const ACCOUNTS: SettingsKey[] = [
