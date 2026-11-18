@@ -129,5 +129,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-serve-protect',
     keys: ['serve service protect', 'serve service protect status', 'serve service unprotect'],
     load: async () => (await import('./serve-protect-handlers.js')).FORK_SERVE_PROTECT_HANDLERS
+    keys: ['limits list', 'limits resume-now', 'limits cancel', 'limits usage'],
+    load: async () => ({
+      ...(await import('./limits-handlers.js')).FORK_LIMITS_HANDLERS,
+      // SLRM-2392: pooled limits (FORK.md "Pooled limits").
+      ...(await import('./limits-usage-handler.js')).FORK_LIMITS_USAGE_HANDLERS
+    })
   }
 ]
