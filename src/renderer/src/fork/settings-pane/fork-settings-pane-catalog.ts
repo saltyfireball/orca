@@ -137,6 +137,14 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         },
         forkAutoPlacementSearchEntry(t),
         forkBatchStartSearchEntry(t)
+        {
+          title: t('fork.agentGuards.title', 'Agent guards'),
+          description: t(
+            'fork.settingsPane.search.agentGuards',
+            'Warn and pause agents stuck repeating a failing tool call, or past a spend cap.'
+          ),
+          keywords: words('loop', 'failure', 'spend', 'cap', 'budget', 'forkAgentGuardLoop')
+        }
       ]
     ),
     section(
