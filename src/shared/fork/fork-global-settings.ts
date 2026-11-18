@@ -21,6 +21,7 @@ import type { ForkMainSyncSettings } from './main-sync'
 import type { ForkAgentGuardSettings } from './agent-guards'
 import type { ForkBranchClashSettings } from './branch-clashes'
 import type { ForkReviewGuideSettings } from './review-guide'
+import type { ForkLettersSettings } from './letters'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -55,7 +56,9 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   /** Fork (SLRM-2394): warn when parallel worktree branches change the same files. */
   ForkBranchClashSettings &
   /** Fork (SLRM-2396): pull request review guides. */
-  ForkReviewGuideSettings & {
+  ForkReviewGuideSettings &
+  /** Fork (SLRM-2389): letters between chats and the board of asks for the user. */
+  ForkLettersSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */
     forkLostWork?: LostWorkSettings
     /** Fork (SLRM-2265): moving a workspace and its chats to another host; unset keys take the defaults. */

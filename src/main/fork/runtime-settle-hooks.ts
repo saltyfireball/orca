@@ -18,6 +18,8 @@ import { startForkMainSync, type ForkMainSyncRuntime } from './main-sync/main-sy
 import { startForkAgentGuards } from './agent-guards/agent-guards-service'
 import { startForkChatHandoffOnLimit } from './chat-handoff/chat-handoff-on-limit'
 import type { ChatHandoffRuntime } from './chat-handoff/chat-handoff-host'
+import { startForkLetters } from './letters/letters-runner'
+import type { ForkLettersRuntime } from './letters/letters-deps'
 
 export function startForkRuntimeSettleServices(
   runtime: UnattendedResumeRuntime &
@@ -25,7 +27,11 @@ export function startForkRuntimeSettleServices(
     ForkServersRuntime &
     ForkWorktreePortsRuntime
     ForkMainSyncRuntime,
-    ChatHandoffRuntime
+    ChatHandoffRuntime,
+    ForkWorktreePortsRuntime &
+    ForkMainSyncRuntime &
+    ChatHandoffRuntime &
+    ForkLettersRuntime
 ): void {
   // SLRM-2268: continue cut unattended work once per process.
   startForkUnattendedResume(runtime)
@@ -41,4 +47,6 @@ export function startForkRuntimeSettleServices(
   startForkAgentGuards(runtime)
   // SLRM-2391: hand a chat parked on a usage limit to the other agent, when set to 'auto'.
   startForkChatHandoffOnLimit(runtime)
+  // SLRM-2389: deliver letters a restart left queued, and collect answers from paired servers.
+  startForkLetters(runtime)
 }
