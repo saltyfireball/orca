@@ -26,7 +26,12 @@ describe('approval risk: shell commands', () => {
     `cd ${CWD}/src && ls`,
     'git branch --show-current',
     'wc -l src/a.ts src/b.ts',
-    'echo hello'
+    'echo hello',
+    'head -n 20 src/a.ts',
+    'git show HEAD:src/a.ts',
+    'find src -name a.ts -type f',
+    'rg --type=ts -C 2 foo src',
+    'sort -k 2 -n data.txt'
   ])('low: %s', (command) => {
     expect(bash(command)).toBe('low')
   })
@@ -55,6 +60,7 @@ describe('approval risk: shell commands', () => {
     'cat .env',
     `cat ${CWD}/.env.local`,
     'cat .git/config',
+    'grep -f ~/.ssh/id_rsa src',
     'echo hi; rm -rf /',
     'ls && git push',
     'xargs rm < list',
@@ -86,7 +92,43 @@ describe('approval risk: shell commands', () => {
     './script.sh',
     'FOO=1 ls',
     'ls *.ts',
-    'python3 x.py'
+    'python3 x.py',
+    'sort -oout.txt in.txt',
+    'fd -Hx cat',
+    'tree -o out.txt',
+    'rg --hostname-bin=x foo',
+    'grep -f /etc/passwd src',
+    'grep --file=/etc/passwd src',
+    'git reflog expire --all',
+    'wc --files0-from=/etc/hosts',
+    'git grep -Otouch foo',
+    'sort -o/tmp/out file',
+    'grep -f/etc/passwd src',
+    'jq -n env',
+    '/bin/../tmp/cat file',
+    'date -f /etc/hosts',
+    'date -r /etc/hosts',
+    'cd -P',
+    'cd --',
+    'cd -',
+    'sort --compress-prog=sh a',
+    'sort --out=x a',
+    'rg --regexp=x secrets.json',
+    'grep --regexp=x server.pem',
+    'grep -r . .',
+    'rg --hidden KEY',
+    'rg -uu KEY',
+    'git show HEAD:.env',
+    'file -C -m x',
+    'tail -f log.txt',
+    'diff -r a b',
+    'fd -l x',
+    'find . -delete',
+    'find . -execdir ls',
+    'stat -f /etc/hosts',
+    "rg -g '*' -e KEY",
+    'rg --iglob=x KEY',
+    'cat .GIT/config'
   ])('never low: %s', (command) => {
     expect(bash(command)).not.toBe('low')
   })
@@ -121,6 +163,15 @@ describe('approval risk: file and other tools', () => {
       'high'
     )
     expect(tool('Write', { file_path: `${CWD}/.git/hooks/pre-commit`, content: 'x' })).toBe('high')
+    expect(tool('Edit', { file_path: '/home/me/.zshrc', old_string: 'a' }, '/home/me')).toBe('high')
+    expect(tool('Write', { file_path: `${CWD}/.envrc`, content: 'x' })).toBe('high')
+    expect(tool('Write', { file_path: `${CWD}/.GIT/hooks/pre-commit`, content: 'x' })).toBe('high')
+    expect(tool('Write', { file_path: `${CWD}/.Github/Workflows/a.yml`, content: 'x' })).toBe(
+      'high'
+    )
+    expect(tool('Write', { file_path: `${CWD}/.github/workflows/ci.yml`, content: 'x' })).toBe(
+      'high'
+    )
   })
 
   it('an unknown workspace folder is never low', () => {

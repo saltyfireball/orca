@@ -1458,8 +1458,13 @@ named Orca Fork until SLRM-1367. `main` is always
     sandbox, an MCP tool whose name sends or changes something, and a command too long to read.
     Medium is everything else, including the network, running code (tests, builds, interpreters,
     package managers), reading outside the folder, and anything with expansion, redirection,
-    globs or characters it cannot read. An unknown folder makes every absolute path outside. A
-    plan review, a sign-in page and a startup dialog are not graded. On a high risk card Claude's
+    globs or characters it cannot read, any flag not on that program's allow-list
+    (`approval-risk-flags.ts`, exact names only, so `sort --out` and `grep -r` are medium), `cd`
+    with a flag, and a program named by a path outside the system bin folders. Any word naming a
+    credential, a flag's value or `HEAD:.env` too, is high. Paths are read as text: a symlink inside the folder that points
+    out of it still counts as inside, and git history (`git log -p`) counts as
+    the workspace's own files, so the grade is advice, not a sandbox. An unknown folder
+    makes every absolute path outside. A plan review, a sign-in page and a startup dialog are not graded. On a high risk card Claude's
     "Allow for this session" is disabled, so a rule never covers a high risk call.
   - Allow low risk (`forkApprovalBulkAllowLow`, off unless true, needs the grade on). Over a
     coordinator's pinned worker prompts, "N low risk approvals" with Allow low risk. The click

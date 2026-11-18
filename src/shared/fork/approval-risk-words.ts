@@ -1,6 +1,6 @@
 // Approval triage (FORK.md, SLRM-2397): the word lists the shell grade reads. A program on no
-// list is medium; adding one to SAFE_READERS makes it eligible for low, so keep that list to
-// programs that cannot write, run another program or reach the network.
+// list is medium; the read-only programs that can be low, and their flags, are in
+// approval-risk-flags.ts.
 
 /** Programs that are high wherever they appear, even as an argument word. */
 export const HIGH_PROGRAMS = new Set([
@@ -72,8 +72,7 @@ export const GIT_READ = new Set([
   'cat-file',
   'ls-tree',
   'merge-base',
-  'rev-list',
-  'reflog'
+  'rev-list'
 ])
 export const GIT_BRANCH_READ_FLAGS = new Set([
   '-a',
@@ -91,66 +90,8 @@ export const GIT_BRANCH_READ_FLAGS = new Set([
 ])
 export const GH_READ = new Set(['view', 'list', 'status', 'diff', 'checks'])
 
-/** Read-only programs whose words after the flags are files, except the ones listed as text. */
-export const SAFE_READERS = new Set([
-  'ls',
-  'cat',
-  'head',
-  'tail',
-  'wc',
-  'rg',
-  'grep',
-  'egrep',
-  'fgrep',
-  'find',
-  'fd',
-  'pwd',
-  'echo',
-  'printf',
-  'which',
-  'file',
-  'stat',
-  'du',
-  'df',
-  'tree',
-  'diff',
-  'cmp',
-  'sort',
-  'uniq',
-  'cut',
-  'tr',
-  'jq',
-  'basename',
-  'dirname',
-  'realpath',
-  'date',
-  'true',
-  'nl',
-  'git'
-])
 /** The first word after the flags is a pattern, not a file. */
-export const PATTERN_FIRST = new Set(['rg', 'grep', 'egrep', 'fgrep', 'jq'])
-/** Every word is text. */
-export const TEXT_ONLY = new Set([
-  'echo',
-  'printf',
-  'which',
-  'date',
-  'true',
-  'pwd',
-  'basename',
-  'dirname'
-])
-
-/** Per reader, the flags that make it write a file, run a program or read a command's output. */
-export const UNSAFE_FLAGS: Record<string, RegExp> = {
-  find: /^-(exec|execdir|ok|okdir|delete|fprint.*|fls)$/,
-  fd: /^(-x|-X|--exec|--exec-batch)$/,
-  rg: /^--pre(-glob)?$/,
-  sort: /^(-o|--output|--compress-program)$/,
-  git: /^(-O|--open-files-in-pager|--output|--ext-diff|--textconv|--exec)$/,
-  diff: /^--(to|from)-file$/
-}
+export const PATTERN_FIRST = new Set(['rg', 'grep', 'egrep', 'fgrep'])
 
 export const NETWORK = /^(curl|wget|http|https|aria2c|ftp)$/
 export const UPLOAD_FLAG =
