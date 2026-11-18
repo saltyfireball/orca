@@ -15,6 +15,7 @@ import {
   type PrepareNativeChatVisuals
 } from '../../../native-chat/conversation-files/native-chat-visuals-delivery'
 import { resolveAgentSessionLaunchDirectory } from './agent-session-launch-directory'
+import { withForkWorktreePortEnv } from '../../../fork/worktree-ports/worktree-ports-service'
 import type { AgentSessionRecordStore } from '../records/agent-session-record-store'
 import type { StructuredAgentAdapterContext } from '../installation/structured-agent-runtime-registration-types'
 import {
@@ -249,11 +250,12 @@ export function composeStructuredLaunch<L>(
   return async ({ identity, spawnToken, permissionMode }) => {
     const { launch, cwd, env, inheritedEnvToDelete, cliRuntimeCommand, commandEnv } =
       await composedPart(definition, sources, part, identity, permissionMode)
-    admittedRecord(definition, sources.store, identity.sessionId)
+    const record = admittedRecord(definition, sources.store, identity.sessionId)
     const child = sealStructuredSessionChild({
       sessionId: identity.sessionId,
       spawnToken,
-      env,
+      // Fork (SLRM-2383): the workspace's port block (FORK.md).
+      env: withForkWorktreePortEnv(env, record.location.workspaceId),
       inheritedEnvToDelete,
       ...(cliRuntimeCommand ? { cliRuntimeCommand } : {})
     })
