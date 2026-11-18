@@ -69,6 +69,11 @@ import {
   ForkPrBabysitStartParams,
   ForkPrBabysitStopParams
 } from '../fork/pr-babysit-wire'
+import {
+  ForkReviewGuideCancelParams,
+  ForkReviewGuideGetParams,
+  ForkReviewGuideWriteParams
+} from '../fork/review-guide-wire'
 import { ForkServerHealthListParams } from '../fork/server-health'
 import {
   ForkServerSetupPlanParams,
@@ -1278,6 +1283,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.prBabysit.list': ForkPrBabysitListParams,
   'fork.prBabysit.start': ForkPrBabysitStartParams,
   'fork.prBabysit.stop': ForkPrBabysitStopParams,
+  'fork.reviewGuide.cancel': ForkReviewGuideCancelParams,
+  'fork.reviewGuide.get': ForkReviewGuideGetParams,
+  'fork.reviewGuide.write': ForkReviewGuideWriteParams,
   'fork.serverHealth.list': ForkServerHealthListParams,
   'fork.serverSetup.plan': ForkServerSetupPlanParams,
   'fork.serverSetup.readiness': ForkServerSetupReadinessParams,
