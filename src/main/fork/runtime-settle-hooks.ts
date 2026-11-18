@@ -10,10 +10,17 @@ import {
   type LimitResumeServiceRuntime
 } from './limit-resume/limit-resume-service'
 import { startForkServerUpdate, type ForkServersRuntime } from './server-update/servers-live'
+import {
+  startForkWorktreePorts,
+  type ForkWorktreePortsRuntime
+} from './worktree-ports/worktree-ports-service'
 import { startForkAgentGuards } from './agent-guards/agent-guards-service'
 
 export function startForkRuntimeSettleServices(
-  runtime: UnattendedResumeRuntime & LimitResumeServiceRuntime & ForkServersRuntime
+  runtime: UnattendedResumeRuntime &
+    LimitResumeServiceRuntime &
+    ForkServersRuntime &
+    ForkWorktreePortsRuntime
 ): void {
   // SLRM-2268: continue cut unattended work once per process.
   startForkUnattendedResume(runtime)
@@ -21,6 +28,8 @@ export function startForkRuntimeSettleServices(
   startForkLimitResume(runtime)
   // SLRM-2310: settle this host's own update (the watchdog waits on it); auto-update servers.
   startForkServerUpdate(runtime)
+  // SLRM-2383: release port blocks of workspaces gone while closed, then follow removals.
+  void startForkWorktreePorts(runtime)
   // SLRM-2385: warn and pause agents stuck in a failure loop or past their spend cap.
   startForkAgentGuards(runtime)
 }
