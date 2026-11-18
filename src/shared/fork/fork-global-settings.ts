@@ -19,6 +19,7 @@ import type { ForkWorktreePortsSettings } from './worktree-ports'
 import type { ForkRowStatusSettings } from './row-status'
 import type { ForkMainSyncSettings } from './main-sync'
 import type { ForkAgentGuardSettings } from './agent-guards'
+import type { ForkBranchClashSettings } from './branch-clashes'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -49,7 +50,9 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   /** Fork (SLRM-2384): keep each local project's default branch current. */
   ForkMainSyncSettings &
   /** Fork (SLRM-2385): the failure-loop guard and the spend cap. */
-  ForkAgentGuardSettings & {
+  ForkAgentGuardSettings &
+  /** Fork (SLRM-2394): warn when parallel worktree branches change the same files. */
+  ForkBranchClashSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */
     forkLostWork?: LostWorkSettings
     /** Fork (SLRM-2265): moving a workspace and its chats to another host; unset keys take the defaults. */

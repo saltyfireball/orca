@@ -1016,7 +1016,7 @@ named Orca Fork until SLRM-1367. `main` is always
   - Seven sections, each feature in its own card: Chats (chat survive, chat sleep, Sleepers,
     stalled chats, cache-cold cue, boundary compaction, MCP profiles), Agents and workers (child count, state
     colors, finished worker cleanup, agent limit, launch defaults, memory), Idle recovery,
-    Usage and accounts (Claude account chip, usage report), Projects (Lost work, Move to host, Per project),
+    Usage and accounts (Claude account chip, usage report), Projects (Lost work, Move to host, Branch clashes, Per project),
     Remote servers (server routes, SLRM-2267; server health and heartbeat, SLRM-2311; device approval and webhooks, SLRM-2271; server updates, SLRM-2310) and Sync and updates (fork sync status). A row of section links stays at the top of the
     pane while it scrolls, and each link jumps to its section.
   - Projects are listed once. MCP profiles and Lost work each listed every project, so each
@@ -1398,6 +1398,40 @@ named Orca Fork until SLRM-1367. `main` is always
     the spend a resume set aside; a record with nothing left is dropped, any after 30 days.
   - Code is in `src/shared/fork/agent-guards*.ts`, `src/main/fork/agent-guards/`,
     `src/cli/fork/guards-*` and `src/renderer/src/fork/agent-guards/`.
+- **Branch clashes (SLRM-2394).** Warns when parallel worktree branches of one project change
+  the same files, and when a branch falls far behind the default branch. On by default; it only
+  reads git (no fetch, no checkout, no diff drivers or textconv, no file contents).
+  - Each host reads its own worktrees: for every unmerged worktree branch, the files it changes
+    since its merge base with the default branch that still differ from it (so a squash-merged
+    branch drops out), plus its uncommitted and untracked files, and how far it is ahead and
+    behind. The default branch is the one Lost work uses (its per-project override, else the
+    remote's `HEAD`, then `main`, `master`, `trunk` or `develop`).
+  - The desktop asks each paired server over `fork.clashes.local` (its own report, as auto
+    placement asks for load) and folds the answers: a project matches across hosts by its first
+    remote's address (`host/owner/repo`), a repo without a remote only matches itself. A server
+    without the method, switched off or not answering is named in the result, not guessed.
+  - A workspace row whose branch shares files gets a small chip in the account chip's style
+    (`2 shared`, a dot in the theme's modified color); a branch at least
+    `forkBranchClashesBehindThreshold` commits behind (unset is 20, the orchestrator's stale-base
+    flag) gets `N behind`. The hover lists the files and the other branches (`@ host` for another
+    machine). A shared file is a hint, not proof of a merge conflict.
+  - Cost: committed facts are cached by worktree path, head and base commit, so a check where
+    nothing moved runs `worktree list`, the base read and (when uncommitted changes count)
+    `status` per worktree; two repositories and four worktrees at a time, four servers at a time.
+    Lists are bounded (1000 files per branch, 200 shared files per project, 20 branches per
+    file) and a cut list says so.
+  - Settings (Settings > Blackfish > Projects > Branch clashes): `forkBranchClashes` (on),
+    `forkBranchClashesIntervalMinutes` (5, 1 to 240), `forkBranchClashesUncommitted` (on),
+    `forkBranchClashesBehindThreshold` (20) and `forkBranchClashesPairedServers` (on), and a
+    Check now button. Off stops the timer and clears the chips; a server with it off answers
+    `off`.
+  - CLI: `orca clashes [--project <name|id|owner/repo>] [--refresh] [--json]` over
+    `fork.clashes.scan` (workspace permission). It answers from the last check while that is
+    newer than the interval, unless `--refresh`.
+  - Code is in `src/shared/fork/branch-clashes*.ts`, `src/main/fork/branch-clashes/`,
+    `src/main/runtime/rpc/methods/fork/fork-branch-clashes.ts`,
+    `src/preload/fork/branch-clashes-bridge.ts`, `src/renderer/src/fork/branch-clashes/` and
+    `src/cli/fork/branch-clashes-*`.
 
 ## Patch list
 
@@ -1513,6 +1547,7 @@ Apply these in this order. Each one is a single commit.
 103. `SLRM-2390 Row status: spend, context, pull request checks and a fix button on agent rows`
 103. `SLRM-2392 Pooled limits: Claude and Codex usage limits pooled across every account and paired server`
 103. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
+103. `SLRM-2394 Branch clashes: warn when parallel worktree branches change the same files, across paired servers`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2286,6 +2321,20 @@ Upstream files only get short hooks, which keeps rebases small:
     takes `forkBatchToggle` and `forkBatchBody` and shows the body in place of the form.
   - The settings are in `src/shared/fork/fork-global-settings.ts` and
     `settings-rows-fork.generated.ts` is regenerated; the card is in the fork's Settings pane.
+- Branch clashes (SLRM-2394), from `src/shared/fork/branch-clashes*.ts`,
+  `src/main/fork/branch-clashes/`, `src/cli/fork/branch-clashes-*.ts` and
+  `src/renderer/src/fork/branch-clashes/`:
+  - `rpc-method-registry.ts` spreads `FORK_BRANCH_CLASHES_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-branch-clashes.ts`): `fork.clashes.local` and
+    `fork.clashes.scan`; `rpc-params-catalog.generated.ts` is regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_BRANCH_CLASHES_COMMAND_SPECS`, `fork-handler-groups.ts`
+    adds the `fork-branch-clashes` group and `cli-command-names.ts` lists `clashes`.
+  - `src/main/index.ts` calls `installForkBranchClashesApp`; `preload/index.ts` and
+    `api-types.ts` add `forkClashes` (`src/preload/fork/branch-clashes-bridge.ts`).
+  - The chip renders inside the fork's `ForkClaudeAccountWorktreeChip` (the worktree row hook in
+    `card-identity-parts.tsx`), so it adds no upstream line of its own. The settings are in
+    `src/shared/fork/fork-global-settings.ts`, `settings-rows-fork.generated.ts` is regenerated,
+    and the card is in the fork's Settings pane.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

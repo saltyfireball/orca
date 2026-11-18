@@ -51,6 +51,7 @@ import { FORK_DEVICE_APPROVAL_COMMAND_SPECS } from '../fork/device-approval-spec
 import { FORK_SERVER_HEALTH_COMMAND_SPECS } from '../fork/server-health-specs'
 import { FORK_WEBHOOK_COMMAND_SPECS } from '../fork/webhooks-specs'
 import { FORK_SNOOZE_COMMAND_SPECS } from '../fork/snooze-specs'
+import { FORK_BRANCH_CLASHES_COMMAND_SPECS } from '../fork/branch-clashes-specs'
 import { FORK_LIMITS_COMMAND_SPECS } from '../fork/limits-specs'
 import { FORK_SERVERS_COMMAND_SPECS } from '../fork/servers-specs'
 import { FORK_MAIN_SYNC_COMMAND_SPECS } from '../fork/main-sync-specs'
@@ -121,6 +122,7 @@ export const COMMAND_SPECS: CommandSpec[] = withForkAutoPlacementNotes(
     ...FORK_SERVERS_COMMAND_SPECS,
     ...FORK_MAIN_SYNC_COMMAND_SPECS,
     ...FORK_SERVE_PROTECT_COMMAND_SPECS,
-    ...FORK_GUARDS_COMMAND_SPECS
+    ...FORK_GUARDS_COMMAND_SPECS,
+    ...FORK_BRANCH_CLASHES_COMMAND_SPECS
   ])
 )
