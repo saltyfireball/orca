@@ -6,8 +6,8 @@ export const FORK_AUTO_PLACEMENT_COMMAND_SPECS: CommandSpec[] = [
   {
     path: ['placement'],
     summary: 'Rank this machine and its paired servers by spare CPU and memory for new work',
-    usage: 'orca placement [--repo <selector>] [--project <id-or-name>] [--json]',
-    allowedFlags: [...GLOBAL_FLAGS, 'repo', 'project'],
+    usage: 'orca placement [--repo <selector>] [--project <id-or-name> [--setup-missing]] [--json]',
+    allowedFlags: [...GLOBAL_FLAGS, 'repo', 'project', 'setup-missing'],
     notes: [
       'This is the ranking `--on auto` and `--host auto` use; the first eligible machine is the one they would pick now.',
       'Each machine has a placement setting in Settings > Blackfish > Auto placement: prefer, normal, less often or manual only. Manual only machines are never picked, only named.',
