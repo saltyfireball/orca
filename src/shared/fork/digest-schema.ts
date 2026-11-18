@@ -22,6 +22,15 @@ function rows<O>(row: z.ZodType<O>) {
     )
 }
 
+function isHttpsUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && Boolean(url.hostname) && !url.username && !url.password
+  } catch {
+    return false
+  }
+}
+
 const TaskSchema = z.object({
   id: text,
   title: text,
@@ -34,7 +43,7 @@ const PullRequestSchema = z.object({
   repo: text,
   number: z.number().int(),
   title: text,
-  url: text.refine((url) => url.startsWith('https://')),
+  url: text.refine(isHttpsUrl),
   state: z.enum(['merged', 'open']),
   draft: z.boolean(),
   at: time
