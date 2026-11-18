@@ -15,6 +15,10 @@ import { worktreeMoveSearchEntry } from '../worktree-move/worktree-move-search-e
 import { apfsCloneSearchEntry } from '../apfs-clone/apfs-clone-search-entry'
 import { snoozeSearchEntry } from '../snooze/snooze-search-entry'
 import { serverUpdateSearchEntry } from '../server-update/server-update-search-entry'
+import {
+  forkChatExtrasSearchEntries,
+  forkWorkspaceTagsSearchEntry
+} from './fork-settings-pane-catalog-extras'
 
 export const FORK_SETTINGS_PANE_ID = 'fork'
 
@@ -71,7 +75,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         'fork.settingsPane.chats.description',
         'How chats survive a restart, sleep, stall, compact and choose their MCP servers.'
       ),
-      getForkChatsSearchEntries(t)
+      [...getForkChatsSearchEntries(t), ...forkChatExtrasSearchEntries(t)]
     ),
     section(
       'agents',
@@ -202,6 +206,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         worktreeMoveSearchEntry(t),
         apfsCloneSearchEntry(t),
         snoozeSearchEntry(t),
+        forkWorkspaceTagsSearchEntry(t),
         {
           title: t('fork.settingsPane.projectList.title', 'Per project'),
           description: t(

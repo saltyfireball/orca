@@ -37,6 +37,10 @@ import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
 import { ForkServerHealthSetting } from '../server-health/ForkServerHealthSetting'
 import { ForkServerHeartbeatSetting } from '../server-health/ForkServerHeartbeatSetting'
 import { ForkServerUpdateSetting } from '../server-update/ForkServerUpdateSetting'
+import { ForkApprovalTriageSetting } from '../approval-triage/ForkApprovalTriageSetting'
+import { ForkPromptStashSetting } from '../prompt-stash/ForkPromptStashSetting'
+import { ForkSavedPromptsSetting } from '../saved-prompts/ForkSavedPromptsSetting'
+import { ForkWorkspaceTagsSetting } from '../workspace-tags/ForkWorkspaceTagsSetting'
 import { ForkProjectSettingsList } from './ForkProjectSettingsList'
 import { ForkSettingsSectionLinks } from './ForkSettingsSectionLinks'
 import { getForkSettingsSections, type ForkSettingsSectionId } from './fork-settings-pane-catalog'
@@ -63,7 +67,10 @@ const SECTION_CARDS: Record<
     ['cache-cold', ForkCacheColdSetting],
     ['boundary-compaction', ForkBoundaryCompactionSetting],
     ['mcp-profile', ForkMcpProfileSetting],
-    ['visual-fallback', ForkVisualFallbackSetting]
+    ['visual-fallback', ForkVisualFallbackSetting],
+    ['approval-triage', ForkApprovalTriageSetting],
+    ['prompt-stash', ForkPromptStashSetting],
+    ['saved-prompts', ForkSavedPromptsSetting]
   ],
   agents: [
     ['child-tally', ForkChildTallySetting],
@@ -84,6 +91,7 @@ const SECTION_CARDS: Record<
     ['worktree-move', ForkWorktreeMoveSettings],
     ['apfs-clone', ForkApfsCloneSetting],
     ['snooze', ForkSnoozeSetting],
+    ['workspace-tags', ForkWorkspaceTagsSetting],
     ['project-settings-list', ForkProjectSettingsList]
   ],
   remote: [

@@ -43,7 +43,13 @@ const AGENT_LIMITS: SettingsKey[] = [
   'nestedWorkerMaxDepth',
   'artifactSharingEnabled',
   'agentSkillSharingEnabled',
-  'orchestrationCoordinatorApprovalsEnabled'
+  'orchestrationCoordinatorApprovalsEnabled',
+  // SLRM-2397: approval triage's grade and bulk allow, archive on merge (removes checkouts), and
+  // the saved prompts a person sends: an agent must not set what answers or speaks for the person.
+  'forkApprovalRisk',
+  'forkApprovalBulkAllowLow',
+  'forkArchiveOnMerge',
+  'forkSavedPrompts'
 ]
 
 const ACCOUNTS: SettingsKey[] = [

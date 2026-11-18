@@ -19,6 +19,7 @@ import {
 import { NativeChatSessionOptionPickers } from '../../session/options/controls/NativeChatSessionOptionPickers'
 import { NativeChatComposerPermissionPicker } from '../../session/options/controls/NativeChatPermissionModePicker'
 import { NativeChatComposerGoalChip } from './NativeChatComposerGoalChip'
+import { ForkSavedPromptsMenu } from '@/fork/saved-prompts/ForkSavedPromptsMenu'
 import { NativeChatContextUsageRing } from '../../usage/NativeChatContextUsageRing'
 import type { NativeChatContextUsageSummary } from '../../../../../../shared/native-chat/native-chat-context-usage-summary'
 import type { NativeChatOptionPickerRequest } from '../../session/options/controls/native-chat-option-picker-request'
@@ -250,6 +251,10 @@ export const NativeChatComposerActions = memo(function NativeChatComposerActions
 
   const left: NativeChatComposerControl[] = [
     { id: 'attach', priority: 6, content: attach },
+    // SLRM-2397: fork hook (FORK.md "Saved prompts")
+    ...(editSession
+      ? []
+      : [{ id: 'fork-saved-prompts', priority: 1, content: <ForkSavedPromptsMenu /> }]),
     {
       id: 'permissions',
       priority: 5,

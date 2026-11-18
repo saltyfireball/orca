@@ -15,6 +15,12 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"On macOS, fill a new worktree by cloning a cached checkout of the project with APFS copy-on-write instead of writing every file; off unless true.","o":true}',
   forkApfsCloneFolders:
     '{"t":{"k":"array","of":{"k":"string"}},"d":"On macOS, git-ignored folders (paths relative to the project) cloned from the project\'s own checkout into each new worktree with APFS copy-on-write; unset is node_modules, empty is none.","o":true}',
+  forkApprovalBulkAllowLow:
+    '{"t":{"k":"boolean"},"d":"Approval triage (SLRM-2397): a coordinator chat offers to allow every low risk worker approval at once. Off unless true.","o":true}',
+  forkApprovalRisk:
+    '{"t":{"k":"boolean"},"d":"Approval triage (SLRM-2397): approval cards show a low, medium or high risk grade, and high risk cannot be allowed for the session. Off unless true.","o":true}',
+  forkArchiveOnMerge:
+    '{"t":{"k":"boolean"},"d":"Archive on merge (SLRM-2397): archive a workspace once its pull request merges, through the stock archive. Off unless true.","o":true}',
   forkBoundaryCompactIdleSeconds:
     '{"t":{"k":"number"},"d":"Boundary compaction: seconds a chat rests after its turn before it may be compacted; unset is 120.","o":true}',
   forkBoundaryCompactMaxWaitMinutes:
@@ -102,6 +108,12 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"record","of":{"k":"enum","values":["less","manual","normal","prefer"]}},"d":"Auto placement: per machine (\'local\' or \'runtime:<environment id>\'), how willingly it takes automatically placed work; unset machines are \'normal\'.","o":true}',
   forkPlacementAutoWhenUnnamed:
     '{"t":{"k":"boolean"},"d":"Auto placement: when no machine is named and more than one could take the work, pick one as `auto` would. Off unless true.","o":true}',
+  forkPromptStash:
+    '{"t":{"k":"boolean"},"d":"Prompt stash (SLRM-2397): Cmd+S (Ctrl+S) in a chat\'s message box sets the draft and its attachments aside, and brings the last one back when the box is empty; unset is on.","o":true}',
+  forkSavedPrompts:
+    '{"t":{"k":"array","of":{"k":"object","fields":{"label":{"k":"string"},"text":{"k":"string"}}}},"d":"Saved prompts: the saved prompts, each a label and its text; unset is none.","o":true}',
+  forkSavedPromptsEnabled:
+    '{"t":{"k":"boolean"},"d":"Saved prompts (SLRM-2397): a saved prompts menu on the chat message box; unset is on.","o":true}',
   forkServerHealth:
     '{"t":{"k":"boolean"},"d":"Watch the paired remote servers this desktop is connected to and alert when one stops answering; unset is on.","o":true}',
   forkServerHealthAlertCommand:
@@ -190,6 +202,12 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Worker cleanup: clean up once the worker reports done; unset is on.","o":true}',
   forkWorkerCleanupOnMerged:
     '{"t":{"k":"boolean"},"d":"Worker cleanup: clean up once the worker\'s branch is merged; unset is off.","o":true}',
+  forkWorkspaceTagFilter:
+    '{"t":{"k":"object","fields":{"tag":{"k":"string"},"mode":{"k":"enum","values":["hide","only"]}},"nullable":true},"d":"Workspace tags: the sidebar\'s tag filter, \'only\' shows that tag and \'hide\' hides it; unset is none.","o":true}',
+  forkWorkspaceTags:
+    '{"t":{"k":"record","of":{"k":"array","of":{"k":"string"}}},"d":"Workspace tags: each workspace\'s tags, keyed by workspace id and host; unset is none. Set them from the workspace menu.","o":true}',
+  forkWorkspaceTagsEnabled:
+    '{"t":{"k":"boolean"},"d":"Workspace tags (SLRM-2397): tag workspaces and filter the sidebar by a tag; unset is on.","o":true}',
   forkWorktreeMove:
     '{"t":{"k":"object","fields":{"menu":{"k":"boolean","optional":true},"whenBusy":{"k":"enum","values":["ask","refuse"],"optional":true},"uncommitted":{"k":"enum","values":["leave","patch","refuse"],"optional":true},"push":{"k":"boolean","optional":true},"chats":{"k":"boolean","optional":true},"rewriteHome":{"k":"boolean","optional":true},"markSource":{"k":"boolean","optional":true},"maxTotalMb":{"k":"number","optional":true}}},"d":"Moving a workspace and its chats to another host; unset keys take the defaults.","o":true}'
 }
