@@ -25,6 +25,7 @@ import {
   hasGitHubCheckHandle
 } from '../../../../shared/source-control/checks/pr-checks-fix-prompt'
 import { getRepoExecutionHostId } from '../../../../shared/execution-host/execution-host'
+import { resolveSourceControlAiEnabled } from '../../../../shared/source-control/ai/source-control-ai-operation-policy'
 
 export type ForkFixRow = { paneKey: string; tab: { worktreeId: string } }
 
@@ -161,8 +162,17 @@ async function fixPrompt(
   })
 }
 
+/** The stock switch that hides the Checks panel's AI actions, read now rather than at render. */
+function aiActionsOn(state: AppState, worktreeId: string): boolean {
+  const owner = findWorktreeReviewOwner(state, worktreeId)
+  return resolveSourceControlAiEnabled({ settings: state.settings, repo: owner?.repo ?? null })
+}
+
 /** Click handler: send the stock fix-checks prompt to the row's agent and say how it went. */
 export async function forkAskAgentToFixChecks(row: ForkFixRow): Promise<boolean> {
+  if (!aiActionsOn(useAppStore.getState(), row.tab.worktreeId)) {
+    return false
+  }
   const before = forkFixTarget(useAppStore.getState(), row)
   if ('refused' in before) {
     toast.error(before.refused)
@@ -175,7 +185,10 @@ export async function forkAskAgentToFixChecks(row: ForkFixRow): Promise<boolean>
     toast.error(prompt.refused)
     return false
   }
-  // The checks took a moment to load; the agent may have stopped meanwhile.
+  // The checks took a moment to load; the agent may have stopped, or the switch gone off.
+  if (!aiActionsOn(useAppStore.getState(), row.tab.worktreeId)) {
+    return false
+  }
   const target = forkFixTarget(useAppStore.getState(), row)
   if ('refused' in target) {
     toast.error(target.refused)
