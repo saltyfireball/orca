@@ -65,6 +65,7 @@ import {
   ForkClaudeAccountWhichParams
 } from '../fork/claude-account-move'
 import { ForkDeviceListParams, ForkDeviceTargetParams } from '../fork/device-approval'
+import { ForkDigestCollectParams, ForkDigestLocalParams } from '../fork/digest'
 import { ForkEndpointAddressesParams } from '../fork/endpoint-failover'
 import {
   ForkIdleRecoveryAnswerParams,
@@ -1631,6 +1632,8 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.devices.deny': ForkDeviceTargetParams,
   'fork.devices.list': ForkDeviceListParams,
   'fork.devices.revoke': ForkDeviceTargetParams,
+  'fork.digest.collect': ForkDigestCollectParams,
+  'fork.digest.local': ForkDigestLocalParams,
   'fork.endpoints.addresses': ForkEndpointAddressesParams,
   'fork.guards.cap': ForkGuardsCapParams,
   'fork.guards.list': ForkGuardsListParams,

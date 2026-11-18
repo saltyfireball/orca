@@ -31,6 +31,7 @@ import { ForkPrBabysitSetting } from '../pr-babysit/ForkPrBabysitSetting'
 import { ForkAccountChipSetting } from '../claude-account-chip/ForkAccountChipSetting'
 import { ForkUsageReportSettings } from '../usage-report/ForkUsageReportSettings'
 import { ForkPooledLimitsSetting } from '../pooled-limits/ForkPooledLimitsSetting'
+import { ForkDigestSetting } from '../digest/ForkDigestSetting'
 import { ForkLostWorkSettings } from '../lost-work/ForkLostWorkSettings'
 import { ForkSyncNoticeSetting } from '../sync-status/ForkSyncNoticeSetting'
 import { ForkAutoPlacementSetting } from '../auto-placement/ForkAutoPlacementSetting'
@@ -100,6 +101,7 @@ const SECTION_CARDS: Record<
     ['account-chip', ForkAccountChipSetting],
     ['usage-report', ForkUsageReportSettings],
     ['pooled-limits', ForkPooledLimitsSetting]
+    ['digest', ForkDigestSetting]
   ],
   projects: [
     ['lost-work', ForkLostWorkSettings],

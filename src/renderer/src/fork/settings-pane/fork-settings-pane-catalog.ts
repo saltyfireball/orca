@@ -19,6 +19,7 @@ import { snoozeSearchEntry } from '../snooze/snooze-search-entry'
 import { serverSetupSearchEntry } from '../server-setup/server-setup-search-entry'
 import { branchClashesSearchEntry } from '../branch-clashes/branch-clashes-search-entry'
 import { reviewGuideSearchEntry } from '../review-guide/review-guide-search-entry'
+import { digestSearchEntry } from '../digest/digest-search-entry'
 import { serverUpdateSearchEntry } from '../server-update/server-update-search-entry'
 import { prBabysitSearchEntry } from '../pr-babysit/pr-babysit-search-entry'
 import { rowStatusSearchEntry } from '../row-status/row-status-search-entry'
@@ -182,7 +183,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
       t('fork.settingsPane.usage.title', 'Usage and accounts'),
       t(
         'fork.settingsPane.usage.description',
-        'Which Claude account a chat runs on, and what your chats have used.'
+        'Which Claude account a chat runs on, what your chats have used, and the daily digest.'
       ),
       [
         {
@@ -217,6 +218,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
             'forkPooledLimits'
           )
         }
+        digestSearchEntry(t)
       ]
     ),
     section(
