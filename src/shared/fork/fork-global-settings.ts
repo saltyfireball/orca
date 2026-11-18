@@ -20,6 +20,7 @@ import type { ForkPrBabysitSettings } from './pr-babysit'
 import type { ForkMainSyncSettings } from './main-sync'
 import type { ForkRowStatusSettings } from './row-status'
 import type { ForkBranchClashSettings } from './branch-clashes'
+import type { ForkReviewGuideSettings } from './review-guide'
 import type { ForkDigestSettings } from './digest'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
@@ -54,6 +55,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkRowStatusSettings &
   /** Fork (SLRM-2394): warn when parallel worktree branches change the same files. */
   ForkBranchClashSettings &
+  /** Fork (SLRM-2396): pull request review guides. */
+  ForkReviewGuideSettings &
   /** Fork (SLRM-2388): the daily digest across this host and its paired servers. */
   ForkDigestSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */
@@ -90,6 +93,14 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkLimitResumeMessage?: string
     /** Fork (SLRM-2309): 'dismiss' presses Esc on Codex's "Approaching rate limits" menu (keeps the model); unset is 'dismiss'. */
     forkLimitResumeCodexSwitchPrompt?: 'dismiss' | 'leave'
+    /** Fork (SLRM-2391): hand a native chat from Claude to Codex or back, from its tab menu and `orca chat handoff`; unset is on. */
+    forkChatHandoff?: boolean
+    /** Fork (SLRM-2391): tokens of history a handoff carries, charged one per UTF-8 byte (1024 to 64000); unset is 16000. */
+    forkChatHandoffBudgetTokens?: number
+    /** Fork (SLRM-2391): handing back to the agent the work came from continues that chat while its context has room; unset is on. */
+    forkChatHandoffReuse?: boolean
+    /** Fork (SLRM-2391): when a chat stops on a usage limit: 'offer' a handoff in a toast, 'auto' hands it off at once, 'off' does neither; unset is 'offer'. */
+    forkChatHandoffOnLimit?: 'off' | 'offer' | 'auto'
     /** Fork (SLRM-1503): show which Claude account each session runs on; unset is on. */
     forkShowAccountChip?: boolean
     /** Fork (SLRM-2095): the running/total child count on sidebar agent rows; unset is on. */

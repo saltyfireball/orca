@@ -730,6 +730,40 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/limit-resume*.ts`, `src/main/fork/limit-resume/` and
     `src/renderer/src/fork/limit-resume/`.
 
+- **Chat handoff (SLRM-2391).** On by default (`forkChatHandoff`, Settings > Blackfish > Chats).
+  A native chat moves from Claude to Codex or back. The design comes from T3 Code's portable
+  handoffs (MIT); only the ideas are ported.
+  - **New chat.** A chat of the other agent starts in the same workspace, named after its source
+    (`<name> (Codex)`), with the handoff as its first message: the source's name and Orca session
+    id, then a budgeted selection of its history, then the request (default: carry on). The
+    selection is not a summary: a short chat goes whole; a longer one keeps its original request
+    (at most a quarter of the budget) and as many of its newest entries as fit, each in full and
+    in order, with tool calls and file edits cut to one line. Only the chat's own agent counts,
+    and nothing before its latest `/clear`. Text is charged one token per UTF-8 byte against
+    `forkChatHandoffBudgetTokens` (16000, 1024 to 64000); the request is never shortened. A
+    newest entry larger than the budget goes cut, with the command that reads it whole.
+  - **Older history.** The new agent reads what was left out with `orca chat history <id>
+    [--before <n>] [--limit <n>]` (Orca exposes no MCP server to agents; its agent surface is the
+    CLI), over `fork.chatHandoff.history`. Entries are numbered by journal sequence, newest page
+    first, and a message the page reader shortened is read whole from the journal.
+  - **Handing back.** With `forkChatHandoffReuse` (on), handing a chat to the agent the work came
+    from continues that earlier chat: it gets only the entries since it last saw this chat,
+    queued behind its turn if it is busy. When its context has no room for that (its window, or
+    128k when unknown, less what it holds and a reserve of 16k or a quarter of the window), or
+    with `--fresh`, a new chat starts instead. Links live in `fork-chat-handoff.json` (mode 0600)
+    in the data folder.
+  - **The source.** It stays open. A chat mid-turn is refused unless the turn is stopped first
+    (the tab menu's toast offers Stop and hand off; `--stop`). Its own resume at a usage limit
+    reset (limit resume) is cancelled, so two agents do not take up the same work.
+  - **On a usage limit** (`forkChatHandoffOnLimit`): `offer` (default) shows a toast on this
+    desktop offering the handoff for each native chat limit resume parks; `auto` hands it off at
+    once on the host that runs it, desktop or headless; `off` does neither. Needs limit resume on.
+  - **Entry points.** "Hand off to Codex/Claude" in a native chat tab's right-click menu, and
+    `orca chat handoff [<id>] --to codex|claude [--message <text>] [--fresh] [--stop] [--focus]
+    [--dry-run] [--json]` over `fork.chatHandoff.start` (a paired host with `--environment`).
+  - Code is in `src/shared/fork/chat-handoff*.ts`, `src/main/fork/chat-handoff/`,
+    `src/cli/fork/chat-handoff-*.ts` and `src/renderer/src/fork/chat-handoff/`.
+
 - **Pooled limits (SLRM-2392).** On by default (`forkPooledLimits`, Settings > Blackfish > Usage
   and accounts). Every Claude and Codex account seen on this machine and its paired servers,
   pooled into one bar per provider and limit window (5-hour and weekly), with the next reset and
@@ -1515,6 +1549,42 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/preload/fork/branch-clashes-bridge.ts`, `src/renderer/src/fork/branch-clashes/` and
     `src/cli/fork/branch-clashes-*`.
 
+- **Review guides (SLRM-2396).** A Guide tab on the pull request page: an agent writes a tour of
+  the change, with stops in reading order, "Look closely" marks where a maintainer has to make a
+  call, and mechanical changes (renames, formatting, lockfiles, generated files) grouped at the
+  end. Every changed file appears somewhere. Idea from T3 Code's review guides (MIT).
+  - A guide is written only on demand: Write guide in the tab, Write guide on the phone, or
+    `orca review-guide write <pr>`. `forkReviewGuideAutoWrite` (off) writes one when the Guide tab
+    of a pull request without one is opened. `forkReviewGuides` (on) shows the tab, the phone row
+    and the CLI.
+  - The writer is the source control "pull request" agent and model, run as a one-shot text task.
+    It reads the pull request (title, description, file list, patches) from GitHub through the
+    same gh execution and rate-limit budget as the Files tab. That text is untrusted: it goes in a
+    block fenced by a random marker, the answer must be one JSON object that matches a schema, and
+    every path is checked against the pull request's own file list (files the writer left out go
+    in an "Other changed files" group). Text is stripped of control and bidi characters. Claude
+    runs with no tools at all, under `forkReviewGuideTimeoutMinutes` (5); other agents take the
+    stock read-only text-task path and its 60 s limit. `forkReviewGuideMaxPatchKiB` (96) caps the
+    patch text; `forkReviewGuideInstructions` adds the user's own preferences.
+  - Back and Next walk the stops; each file shows its line ranges and the patch lines they cover.
+    A guide written for another head commit is marked stale, hides its excerpts and offers
+    Rewrite guide. At most two guides are written at once, one per pull request.
+  - Viewed: each file shows GitHub's own viewed mark, and Mark viewed (per file, or per stop)
+    sends the stock `markFileAsViewed` toggle. Nothing is marked unless the user clicks.
+  - Guides are kept per pull request in `fork-review-guides/` in userData (owner-only files, the
+    oldest past 300 removed), so the window, the phone and the CLI share them.
+  - CLI: `orca review-guide <pr>`, `orca review-guide write <pr> [--wait]` and
+    `orca review-guide cancel <pr>` (`<pr>` is a number, #number or the pull request URL;
+    `--worktree` or `--repo` pick the checkout, else the current folder's workspace), over
+    `fork.reviewGuide.get`, `.write` and `.cancel` (workspace permission). A workspace on an SSH
+    host is refused: a guide is written where the checkout is.
+  - Phone: a Review guide row on the pull request tab opens a drawer with Back and Next, over the
+    same RPC.
+  - Code is in `src/shared/fork/review-guide*.ts`, `src/main/fork/review-guide/`,
+    `src/main/runtime/rpc/methods/fork/fork-review-guide.ts`,
+    `src/preload/fork/review-guide-bridge.ts`, `src/renderer/src/fork/review-guide/`,
+    `src/cli/fork/review-guide-*` and `mobile/src/components/fork/review-guide/`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -1632,7 +1702,9 @@ Apply these in this order. Each one is a single commit.
 110. `SLRM-2395 Batch start: a prompt per worktree and model from the composer, placed with auto placement`
 111. `SLRM-2393 Best of N: one task to 2 to 4 agents in their own worktrees, compared and picked`
 112. `SLRM-2312 Set up on a server: clone a project onto a paired server that lacks it from the host picker or --setup-missing`
-113. `SLRM-2388 Digest: what finished, failed, merged and cost, and what waits on you, across this host and its paired servers`
+113. `SLRM-2391 Chat handoff: hand a chat from Claude to Codex or back with a budgeted history`
+114. `SLRM-2396 Review guides: an agent-written tour of a pull request in a Guide tab, on the phone and in orca review-guide`
+115. `SLRM-2388 Digest: what finished, failed, merged and cost, and what waits on you, across this host and its paired servers`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2446,6 +2518,42 @@ Upstream files only get short hooks, which keeps rebases small:
     `src/shared/fork/fork-global-settings.ts`, `settings-rows-fork.generated.ts` is regenerated,
     and the card is in the fork's Settings pane.
 
+- Chat handoff (SLRM-2391), from `src/shared/fork/chat-handoff*.ts`,
+  `src/main/fork/chat-handoff/`, `src/cli/fork/chat-handoff-*.ts` and
+  `src/renderer/src/fork/chat-handoff/`. On unless `forkChatHandoff` is false:
+  - `rpc-method-registry.ts` spreads `FORK_CHAT_HANDOFF_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-chat-handoff.ts`); `rpc-params-catalog.generated.ts`
+    is regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_CHAT_HANDOFF_COMMAND_SPECS` and `fork-handler-groups.ts`
+    adds the `fork-chat-handoff` group (`chat handoff`, `chat history`; `chat` is already listed
+    in `cli-command-names.ts`).
+  - `SortableTabContextMenu.tsx` renders `ForkChatHandoffTabMenuItems` after the account move
+    items. `ForkRootHosts.tsx` mounts `ForkChatHandoffLimitOffer`; the card is in the fork's
+    Settings pane.
+  - `runtime-settle-hooks.ts` (a fork file) calls `startForkChatHandoffOnLimit`, which listens to
+    limit resume's entries. A new chat goes through `createStructuredAgentSessionForWorktree`, the
+    create agent launches use, with the handoff as its first message.
+  - The settings are in `src/shared/fork/fork-global-settings.ts` and
+    `settings-rows-chat.generated.ts` is regenerated.
+
+- Review guides (SLRM-2396), from `src/shared/fork/review-guide*.ts`,
+  `src/main/fork/review-guide/`, `src/cli/fork/review-guide-*.ts`,
+  `src/renderer/src/fork/review-guide/` and `mobile/src/components/fork/review-guide/`:
+  - `rpc-method-registry.ts` spreads `FORK_REVIEW_GUIDE_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-review-guide.ts`); `rpc-params-catalog.generated.ts`
+    is regenerated with it. `runtime-rpc-mobile-method-routing.ts` spreads
+    `FORK_REVIEW_GUIDE_RPC_METHODS` into the execution-host methods so the phone may call them.
+  - `src/cli/specs/index.ts` adds `FORK_REVIEW_GUIDE_COMMAND_SPECS`, `fork-handler-groups.ts`
+    adds the `fork-review-guide` group and `cli-command-names.ts` lists `review-guide`.
+  - `projects-app-hooks.ts` calls `installForkReviewGuideApp`; `preload/index.ts` and
+    `api-types.ts` add `forkReviewGuide` (`src/preload/fork/review-guide-bridge.ts`).
+  - `pull-request-page/page/tabs-shell.tsx` renders `ForkReviewGuideTabTrigger` after the Files
+    trigger and `ForkReviewGuideTabContent` after the Files content.
+  - `MobilePRSidebar.tsx` renders `MobileReviewGuideRow` after the changes card.
+  - The settings are in `src/shared/fork/review-guide.ts`, intersected in
+    `fork-global-settings.ts`; `settings-rows-fork.generated.ts` is regenerated and the card is in
+    the fork's Settings pane.
+
 - Digest (SLRM-2388), from `src/shared/fork/digest*.ts`, `src/main/fork/digest/`,
   `src/cli/fork/digest-*.ts`, `src/renderer/src/fork/digest/` and
   `mobile/src/components/fork/digest/`. The daily send is off unless `forkDigest` is true:
@@ -2460,6 +2568,8 @@ Upstream files only get short hooks, which keeps rebases small:
   - Mobile: `app/h/[hostId]/digest.tsx` (the shell route) and `digest.web.tsx` (the page) are new
     route files with no strings; `host-stack-screens.ts` spreads `FORK_HOST_STACK_SCREENS` and
     `host-screen-header.tsx` adds `forkDigestHostAction(...)` to the host menu.
+  - `runtime-rpc-mobile-paired-desktop-methods.ts` spreads `FORK_DIGEST_RPC_METHODS`
+    (`fork.digest.collect`), so a paired phone may call it and the relaying desktop answers.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

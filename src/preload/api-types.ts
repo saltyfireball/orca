@@ -98,6 +98,7 @@ import type { ForkAgentGuardsApi } from '../shared/fork/agent-guards-wire'
 import type { ForkIdleRecoveryApi } from '../shared/fork/idle-recovery-wire'
 import type { ForkSnoozeApi } from '../shared/fork/snooze-wire'
 import type { ForkClashesApi } from '../shared/fork/branch-clashes-wire'
+import type { ForkReviewGuideApi } from '../shared/fork/review-guide-wire'
 import type { ForkSyncStatusApi } from '../shared/fork/fork-sync-status'
 import type { ForkWorkerCleanupApi } from '../shared/fork/worker-cleanup'
 import type { ForkMcpProfilesApi } from '../shared/fork/mcp-profiles'
@@ -193,6 +194,8 @@ export type PreloadApi = {
   forkSnooze?: ForkSnoozeApi
   /** Fork branch clashes (SLRM-2394); desktop only. */
   forkClashes?: ForkClashesApi
+  /** Fork review guides (SLRM-2396); desktop only. */
+  forkReviewGuide?: ForkReviewGuideApi
   notebook: FilesystemApi['notebook']
   docPreview: DocPreviewApi['docPreview']
   stats: StatsApi
