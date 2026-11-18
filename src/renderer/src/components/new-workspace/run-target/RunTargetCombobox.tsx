@@ -22,6 +22,7 @@ import { AddHostSubmenuRow } from './RunTargetSubmenus'
 import RunTargetRowList from './RunTargetRowList'
 import RunTargetField from './RunTargetField'
 import { HostListOverflowNote } from '@/components/host-picker/HostListOverflowNote'
+import { useForkServerSetup } from '@/fork/server-setup/use-fork-server-setup'
 
 type RunTargetComboboxProps = {
   hostOptions: readonly ProjectHostSetupOption[]
@@ -59,18 +60,26 @@ export default function RunTargetCombobox({
   const [connectingHostIds, setConnectingHostIds] = useState<ReadonlySet<string>>(() => new Set())
 
   const hasAddHost = Boolean(onAddSshHost || onAddRemoteServer)
+  // Fork (SLRM-2312): "Set up on SERVER..." rows clone the project there, then pick that server.
+  const forkSetup = useForkServerSetup(hostOptions, (key) => {
+    onHostChange?.(key)
+    onRecipeChange?.(null)
+  })
+  const forkServerSetup = forkSetup.offered && Boolean(onHostChange)
   const deriveRowKeys = useCallback(
     (query: string): string[] =>
-      buildRunTargetRows({ hostOptions, recipes, query, hasAddHost }).rows.map((row) => row.key),
-    [hasAddHost, hostOptions, recipes]
+      buildRunTargetRows({ hostOptions, recipes, query, hasAddHost, forkServerSetup }).rows.map(
+        (row) => row.key
+      ),
+    [forkServerSetup, hasAddHost, hostOptions, recipes]
   )
   const combobox = useTypeAheadCombobox(deriveRowKeys)
   const { query, setQuery, open, setOpen, armedKey, arm, moveArm, inputRef, listId, setListNode } =
     combobox
 
   const { rows, matchedRecipes, hiddenHostCount } = useMemo(
-    () => buildRunTargetRows({ hostOptions, recipes, query, hasAddHost }),
-    [hasAddHost, hostOptions, query, recipes]
+    () => buildRunTargetRows({ hostOptions, recipes, query, hasAddHost, forkServerSetup }),
+    [forkServerSetup, hasAddHost, hostOptions, query, recipes]
   )
   const readyHostOptions = useMemo(
     () => hostOptions.filter((option) => option.kind === 'ready'),
@@ -159,9 +168,13 @@ export default function RunTargetCombobox({
         setLocation(row.option)
         return
       }
+      if (row.kind === 'fork-setup') {
+        forkSetup.start(row.option)
+        return
+      }
       setSubmenu(row.kind === 'recipes' ? 'recipes' : 'add-host')
     },
-    [rows, selectHost, setLocation]
+    [forkSetup, rows, selectHost, setLocation]
   )
 
   const handleKeyDown = useCallback(
@@ -291,6 +304,7 @@ export default function RunTargetCombobox({
               onSelectRecipe={selectRecipe}
               onConnectHost={(option) => void connectHost(option)}
               onSetLocation={setLocation}
+              forkSetup={forkSetup}
             />
           </div>
           <HostListOverflowNote hiddenCount={hiddenHostCount} />

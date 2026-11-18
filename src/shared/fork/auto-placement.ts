@@ -104,6 +104,8 @@ export type ForkPlacementProbe = {
   /** Null when the probe did not answer (or a manual machine was not asked); `status` says why. */
   load: ForkMachineLoad | null
   status: Exclude<ForkPlacementStatus, 'eligible' | 'manual'> | 'ok'
+  /** Lacks the project but can set it up on demand (`--setup-missing`, SLRM-2312). */
+  needsSetup?: boolean
 }
 
 /** Load figures from untrusted JSON, or null when any is missing or not a sane number. */
@@ -136,6 +138,8 @@ export type ForkPlacementCandidate = {
   spareCores?: number
   /** Weighted share of the best spare CPU and memory among eligible machines, 0..1.5. */
   score?: number
+  /** Picking it first clones the project there (`--setup-missing`, SLRM-2312). */
+  needsSetup?: boolean
 }
 
 export type ForkPlacementPick = {
@@ -202,7 +206,7 @@ export function describeForkPlacementCandidate(candidate: ForkPlacementCandidate
     : null
   const status =
     candidate.status === 'eligible'
-      ? `score ${(candidate.score ?? 0).toFixed(2)}`
+      ? `score ${(candidate.score ?? 0).toFixed(2)}${candidate.needsSetup ? ', project will be set up here first' : ''}`
       : candidate.status === 'manual'
         ? 'manual only'
         : candidate.status === 'no-probe'

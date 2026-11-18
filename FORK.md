@@ -1066,6 +1066,41 @@ named Orca Fork until SLRM-1367. `main` is always
   - The pick happens in the CLI before stock routing: it rewrites `--on` or `--host` and prints
     the pick and the skipped machines on stderr. Stock worker-start and host resolution are not
     edited.
+- **Set up on a server (SLRM-2312).** New work can start on a paired server that lacks the
+  project: the server clones it from the project's git remote with its own git credentials,
+  registers it, and says what it lacks to build it.
+  - The desktop new-workspace host picker lists "Set up on SERVER..." after the host rows, one per
+    paired server shown as lacking the project and able to take a location now (connected, new
+    enough). It is offered when the project has a git remote that passes the URL check below.
+    Choosing it keeps the picker open: the row shows "Choosing a folder...", "Cloning into
+    PATH..." and "Checking what the project needs...", then the server is selected and a toast
+    lists what is missing. A failure stays on the row and in a toast; nothing is selected.
+  - The steps are stock calls plus two fork ones on the server: `fork.serverSetup.plan` expands
+    the folder setting there (`~` is the server's home), names the clone folder from the URL and
+    refuses a folder that already exists (Set project location picks an existing one); the store's
+    stock `setupProjectClone` runs `repo.clone` and `projectHostSetup.setupExistingFolder`; then
+    `fork.serverSetup.readiness` runs the stock environment doctor on the checkout (tools that
+    package.json, Cargo.toml, go.mod and similar files need) and reads its `.envrc`: direnv
+    missing, or a `use NAME` whose `use_NAME` function is in no direnvrc or `lib/*.sh` of the
+    server, is listed as missing; other `use` lines are listed as notes.
+  - Clone URLs: https, http, ssh, git and scp-like `user@host:path` only. Local paths, `file://`,
+    `<transport>::` remote helpers (`ext::`), a password in the URL, a leading dash, whitespace and
+    control characters are refused, by the desktop and again by the server. Stock `repo.clone`
+    passes the URL after `--`.
+  - CLI: `worktree create --project <p> --host auto --setup-missing` lets the pick include paired
+    servers that lack the project but can clone it (their load probe answers `canSetUp` when
+    asked); the ranking marks them "project will be set up here first", on the same footing as
+    the others. If one is picked, this machine's Orca sets it up (`fork.serverSetup.run`, the same
+    plan, clone, register and readiness calls over the paired-server link) before the create
+    goes there, and the result and readiness go to stderr. `--host runtime:<id> --setup-missing`
+    sets that server up first when it lacks the project. `orca placement --project <p>
+    --setup-missing` shows the ranking. This machine is never cloned onto by a pick.
+  - Settings > Blackfish > Projects, Set up on a server: offer the picker rows
+    (`forkServerSetupOffer`, on by default), the folder to clone into (`forkServerSetupParent`,
+    default `~/development`) and the readiness check (`forkServerSetupReadiness`, on by default).
+  - **Not covered yet:** the mobile new-workspace sheet (its run-target list shows only hosts that
+    already have the project, with no stock set-up rows to extend); a server too old to answer
+    `fork.serverSetup.plan` gets a message to update it or use Set project location.
 - **Fast new worktrees on macOS (SLRM-2270).** APFS copy-on-write clones for new local worktrees
   (Settings > Blackfish > Projects, "Fast new worktrees (macOS)"). Idea from T3 Code's "Fast
   worktree checkout" (MIT). Other systems, WSL and other volumes create worktrees as before.
@@ -1233,6 +1268,7 @@ Apply these in this order. Each one is a single commit.
 100. `SLRM-2310 Server updates: update every paired server from the desktop over its own RPC, with a rollback`
 101. `SLRM-2316 Follow upstream 1.4.262's moved modules and native provider launch in fork code`
 102. `SLRM-2349 Chat visuals: show image files and take unquoted values, and servers --wait takes a separate value`
+103. `SLRM-2312 Set up on a server: clone a project onto a paired server that lacks it from the host picker or --setup-missing`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1855,6 +1891,22 @@ Upstream files only get short hooks, which keeps rebases small:
     `withForkAutoPlacementNotes`; `fork-handler-groups.ts` adds the `fork-auto-placement` group
     and `cli-command-names.ts` lists `placement`.
   - The two settings are in `src/shared/fork/fork-global-settings.ts` and
+    `settings-rows-fork.generated.ts` is regenerated; the card is in the fork's Settings pane.
+
+- Set up on a server (SLRM-2312), from `src/shared/fork/server-setup*.ts`,
+  `src/main/fork/server-setup/`, `src/cli/fork/server-setup-cli.ts` and
+  `src/renderer/src/fork/server-setup/`:
+  - `rpc-method-registry.ts` spreads `FORK_SERVER_SETUP_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-server-setup.ts`): `fork.serverSetup.plan`,
+    `.readiness` and `.run`; `rpc-params-catalog.generated.ts` is regenerated with it.
+  - `run-target-options.ts` adds the `fork-setup` row kind to `RunTargetRowModel` and, with
+    `forkServerSetup`, appends `forkServerSetupRows`; `RunTargetCombobox.tsx` calls
+    `useForkServerSetup`, passes the flag and starts a `fork-setup` row on Enter;
+    `RunTargetRowList.tsx` renders `ForkServerSetupRow`.
+  - The auto placement files carry `--setup-missing`: `withForkAutoPlacementNotes` also adds the
+    flag to `worktree create`'s allowed flags, and `fork.placement.load` and `.pick` take
+    `setupMissing`.
+  - The three settings are in `src/shared/fork/fork-global-settings.ts` and
     `settings-rows-fork.generated.ts` is regenerated; the card is in the fork's Settings pane.
 
 - Snooze (SLRM-2269), from `src/shared/fork/snooze*.ts`, `src/main/fork/snooze/`,

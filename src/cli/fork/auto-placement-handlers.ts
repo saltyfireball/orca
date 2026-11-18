@@ -27,7 +27,12 @@ export const FORK_AUTO_PLACEMENT_HANDLERS: Record<string, CommandHandler> = {
   placement: async (ctx) => {
     const repo = getOptionalStringFlag(ctx.flags, 'repo')
     const project = getOptionalStringFlag(ctx.flags, 'project')
-    const params = { ...(repo ? { repo } : {}), ...(project ? { project } : {}) }
+    const setupMissing = project !== undefined && ctx.flags.has('setup-missing')
+    const params = {
+      ...(repo ? { repo } : {}),
+      ...(project ? { project } : {}),
+      ...(setupMissing ? { setupMissing: true } : {})
+    }
     const result = await ctx.client
       .call<ForkPlacementPickResult>('fork.placement.pick', params, { timeoutMs: 20_000 })
       .catch((error: unknown) => {
