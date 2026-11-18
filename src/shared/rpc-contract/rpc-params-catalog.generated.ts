@@ -45,6 +45,7 @@ import {
   ForkAgentQueueTicketParams
 } from '../fork/agent-queue'
 import { ForkPlacementLoadParams, ForkPlacementPickParams } from '../fork/auto-placement-wire'
+import { ForkBatchStartParams } from '../fork/batch-start'
 import {
   ForkClaudeAccountCancelParams,
   ForkClaudeAccountMoveParams,
@@ -1606,6 +1607,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.agentQueue.list': ForkAgentQueueListParams,
   'fork.agentQueue.start': ForkAgentQueueTicketParams,
   'fork.agentQueue.status': ForkAgentQueueStatusParams,
+  'fork.batchStart.start': ForkBatchStartParams,
   'fork.claudeAccount.cancel': ForkClaudeAccountCancelParams,
   'fork.claudeAccount.move': ForkClaudeAccountMoveParams,
   'fork.claudeAccount.which': ForkClaudeAccountWhichParams,
