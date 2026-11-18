@@ -102,6 +102,7 @@ import { forkAgentQueueApi } from './fork/agent-queue-bridge'
 import { forkSnoozeApi } from './fork/snooze-bridge'
 import { forkClashesApi } from './fork/branch-clashes-bridge'
 import { forkReviewGuideApi } from './fork/review-guide-bridge'
+import { forkLettersApi } from './fork/letters-bridge'
 import { forkChatStallApi } from './fork/chat-stall-bridge'
 import { forkLimitResumeApi } from './fork/limit-resume-bridge'
 import { forkAgentGuardsApi } from './fork/agent-guards-bridge'
@@ -208,6 +209,7 @@ const api = {
   forkSnooze: forkSnoozeApi,
   forkClashes: forkClashesApi,
   forkReviewGuide: forkReviewGuideApi,
+  forkLetters: forkLettersApi,
   docPreview: docPreviewApi,
   notebook: notebookApi,
   fs: fsApi,

@@ -17,7 +17,12 @@ export const AREAS = [
     match:
       /^(theme|appFont|appIcon|leftSidebar|rightSidebar|window|reduceVisual|uiLanguage|pluginAppTheme|pluginIconTheme|forkCustomAppTheme|forkAgentStateColors|show[A-Z]|compactWorktreeCards|minimizeToTray|confirmClose|ctrlTab|tabAuto|notifications$|localhostWorktreeLabels)/
   },
-  { id: 'chat', title: 'Native chat', match: /^(nativeChat|forkChat|forkCache|promptCache)/ },
+  // SLRM-2389: letters and the board are chat features (and keep the fork rows under max-lines).
+  {
+    id: 'chat',
+    title: 'Native chat',
+    match: /^(nativeChat|forkChat|forkCache|promptCache|forkLetters|forkBoard)/
+  },
   { id: 'fork', title: 'Fork features', match: /^fork/ },
   {
     id: 'agents',

@@ -18,6 +18,7 @@ import { ForkChatStallSetting } from '../chat-stall/ForkChatStallSetting'
 import { ForkCacheColdSetting } from '../cache-cold/ForkCacheColdSetting'
 import { ForkMcpProfileSetting } from '../mcp-profiles/ForkMcpProfileSetting'
 import { ForkVisualFallbackSetting } from '../visual-image/ForkVisualFallbackSetting'
+import { ForkLettersSetting } from '../letters/ForkLettersSetting'
 import { ForkChildTallySetting } from '../agent-child-tally/ForkChildTallySetting'
 import { ForkRowStatusSetting } from '../row-status/ForkRowStatusSetting'
 import { ForkAgentStateColorSetting } from '../agent-state-color/ForkAgentStateColorSetting'
@@ -75,7 +76,8 @@ const SECTION_CARDS: Record<
     ['cache-cold', ForkCacheColdSetting],
     ['boundary-compaction', ForkBoundaryCompactionSetting],
     ['mcp-profile', ForkMcpProfileSetting],
-    ['visual-fallback', ForkVisualFallbackSetting]
+    ['visual-fallback', ForkVisualFallbackSetting],
+    ['letters', ForkLettersSetting]
   ],
   agents: [
     ['child-tally', ForkChildTallySetting],
