@@ -17,7 +17,7 @@ type Props = {
   updateSettings: (updates: Partial<GlobalSettings>) => void
 }
 
-function CommandSetting({
+export function CommandSetting({
   saved,
   label,
   description,

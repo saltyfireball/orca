@@ -13,6 +13,8 @@ import { claudeUsageObservation } from './claude-usage-frames'
 import { LedgerFileWriter, readLedgerFile, writeLedgerFile } from './usage-ledger-file'
 import { UsageLedger, type UsageChatMeta } from './usage-ledger'
 import type { UsageLedgerData } from './usage-ledger-model'
+import { cleanUsagePrices, usagePricer } from './usage-report'
+import { chatSpend } from './row-spend'
 
 export type UsageLedgerServiceDeps = {
   filePath: string
@@ -35,6 +37,24 @@ let writer: LedgerFileWriter | null = null
 let pushTimer: ReturnType<typeof setTimeout> | null = null
 let stopPrune: (() => void) | null = null
 const changeListeners = new Set<() => void>()
+/** SLRM-2385: told when a counted chat starts or ends a turn (agent guards read spend there). */
+export type ForkUsageLedgerTurnListener = (sessionId: string, phase: 'start' | 'end') => void
+const turnListeners = new Set<ForkUsageLedgerTurnListener>()
+
+function notifyTurn(sessionId: string, phase: 'start' | 'end'): void {
+  for (const listener of turnListeners) {
+    try {
+      listener(sessionId, phase)
+    } catch (error) {
+      console.warn('[fork-usage-ledger] A turn listener failed:', error)
+    }
+  }
+}
+
+export function onForkUsageLedgerTurn(listener: ForkUsageLedgerTurnListener): () => void {
+  turnListeners.add(listener)
+  return () => turnListeners.delete(listener)
+}
 
 function notifyCacheChanged(): void {
   if (pushTimer) {
@@ -125,6 +145,7 @@ export function forkUsageLedgerObserveClaudeEvent(event: ClaudeStructuredSession
     if (event.startsTurn) {
       ledger.noteTurnStart(event.sessionId)
       notifyCacheChanged()
+      notifyTurn(event.sessionId, 'start')
     }
     const observation = claudeUsageObservation(event.message)
     if (!observation) {
@@ -139,17 +160,31 @@ export function forkUsageLedgerObserveClaudeEvent(event: ClaudeStructuredSession
     if (changed) {
       notifyCacheChanged()
     }
+    if (observation.kind === 'turn-end') {
+      notifyTurn(event.sessionId, 'end')
+    }
   } catch (error) {
     // Counting must never disturb the chat itself.
     console.warn('[fork-usage-ledger] Could not record usage:', error)
   }
 }
 
-/** The most recently used chats' prompt caches, newest first. */
+/** The most recently used chats' prompt caches, newest first, each with its spend (SLRM-2390). */
 export function forkUsageLedgerCacheStates(): ForkCacheState[] {
-  return (ledger?.cacheStates() ?? [])
+  const current = ledger
+  if (!current) {
+    return []
+  }
+  const chats = current.snapshot().chats
+  const pricer = usagePricer(cleanUsagePrices(service?.readSettings()?.forkUsagePrices))
+  return current
+    .cacheStates()
     .sort((left, right) => right.lastAt - left.lastAt)
     .slice(0, CACHE_STATES_SENT)
+    .map((state) => {
+      const chat = chats[state.sessionId]
+      return chat ? { ...state, ...chatSpend(chat, pricer) } : state
+    })
 }
 
 export function onForkUsageLedgerCacheChanged(listener: () => void): () => void {

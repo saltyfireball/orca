@@ -77,15 +77,23 @@ import { FORK_IDLE_RECOVERY_RPC_METHODS } from './fork/fork-idle-recovery'
 import { FORK_MCP_PROFILE_METHODS } from './fork/fork-mcp-profiles'
 import { FORK_USAGE_REPORT_METHODS } from './fork/fork-usage-report'
 import { FORK_AUTO_PLACEMENT_METHODS } from './fork/fork-auto-placement'
+import { FORK_SERVER_SETUP_METHODS } from './fork/fork-server-setup'
+import { FORK_BATCH_START_METHODS } from './fork/fork-batch-start'
 import { FORK_ENDPOINT_ADDRESSES_METHODS } from './fork/fork-endpoint-addresses'
 import { FORK_WORKTREE_MOVE_METHODS } from './fork/fork-worktree-move'
 import { FORK_DEVICE_APPROVAL_METHODS } from './fork/fork-device-approval'
 import { FORK_WEBHOOK_METHODS } from './fork/fork-webhooks'
 import { FORK_SNOOZE_METHODS } from './fork/fork-snooze'
 import { FORK_SERVER_HEALTH_METHODS } from './fork/fork-server-health'
+import { FORK_MAIN_SYNC_METHODS } from './fork/fork-main-sync'
 import { FORK_LIMIT_RESUME_METHODS } from './fork/fork-limit-resume'
 import { FORK_SERVER_UPDATE_METHODS } from './fork/fork-server-update'
+import { FORK_AGENT_GUARDS_METHODS } from './fork/fork-agent-guards'
 import { FORK_WORKTREE_PORTS_METHODS } from './fork/fork-worktree-ports'
+import { FORK_BRANCH_CLASHES_METHODS } from './fork/fork-branch-clashes'
+import { FORK_BEST_OF_METHODS } from './fork/fork-best-of'
+import { FORK_CHAT_HANDOFF_METHODS } from './fork/fork-chat-handoff'
+import { FORK_REVIEW_GUIDE_METHODS } from './fork/fork-review-guide'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
 import { STRUCTURED_AGENT_SESSION_ATTACHMENT_METHODS } from './structured-sessions/attachments/structured-agent-session-attachments'
@@ -211,6 +219,10 @@ export const ALL_RPC_METHODS = [
   ...FORK_SETTINGS_METHODS,
   // SLRM-2266: the load probe and pick behind --on auto and --host auto (FORK.md).
   ...FORK_AUTO_PLACEMENT_METHODS,
+  // SLRM-2312: set a project up on a paired server on demand (FORK.md).
+  ...FORK_SERVER_SETUP_METHODS,
+  // SLRM-2395: batch start, a prompt per worktree and model from the composer (FORK.md).
+  ...FORK_BATCH_START_METHODS,
   // SLRM-2265: each host's half of `orca worktree move` (FORK.md).
   ...FORK_WORKTREE_MOVE_METHODS,
   // SLRM-2271: list, approve, deny and revoke paired devices behind `orca devices` (FORK.md).
@@ -225,6 +237,18 @@ export const ALL_RPC_METHODS = [
   ...FORK_LIMIT_RESUME_METHODS,
   // SLRM-2310: update paired servers over their own RPC, behind `orca servers` (FORK.md).
   ...FORK_SERVER_UPDATE_METHODS,
+  // SLRM-2385: failure-loop and spend guards behind `orca guards` (FORK.md).
+  ...FORK_AGENT_GUARDS_METHODS,
   // SLRM-2383: the port block a workspace holds, behind `orca ports` (FORK.md).
-  ...FORK_WORKTREE_PORTS_METHODS
+  ...FORK_WORKTREE_PORTS_METHODS,
+  // SLRM-2384: keep each project's default branch current, behind `orca main-sync` (FORK.md).
+  ...FORK_MAIN_SYNC_METHODS,
+  // SLRM-2394: files parallel worktree branches share, behind `orca clashes` (FORK.md).
+  ...FORK_BRANCH_CLASHES_METHODS,
+  // SLRM-2393: best-of runs behind `orca best-of` and the compare view (FORK.md).
+  ...FORK_BEST_OF_METHODS,
+  // SLRM-2391: hand a chat to the other agent, behind `orca chat handoff|history` (FORK.md).
+  ...FORK_CHAT_HANDOFF_METHODS,
+  // SLRM-2396: pull request review guides behind `orca review-guide` and the phone (FORK.md).
+  ...FORK_REVIEW_GUIDE_METHODS
 ]

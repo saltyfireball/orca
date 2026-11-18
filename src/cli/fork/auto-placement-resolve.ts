@@ -14,6 +14,11 @@ import {
   type ForkPlacementPick
 } from '../../shared/fork/auto-placement'
 import type { ForkPlacementPickResult } from '../../shared/fork/auto-placement-wire'
+import {
+  forkSetUpNamedHost,
+  forkSetUpProjectOnServer,
+  takeForkSetupMissing
+} from './server-setup-cli'
 
 type Flags = Map<string, string | boolean>
 
@@ -40,7 +45,13 @@ function refuse(message: string, ranked?: ForkPlacementPick['ranked']): never {
 /** Asks the local Orca for a pick; null when it is off (unnamed) or this Orca has no picker. */
 async function pick(
   client: RuntimeClient,
-  params: { hosts?: string[]; repo?: string; project?: string; unnamed?: boolean },
+  params: {
+    hosts?: string[]
+    repo?: string
+    project?: string
+    unnamed?: boolean
+    setupMissing?: boolean
+  },
   explicit: boolean
 ): Promise<ForkPlacementPick | null> {
   let result: ForkPlacementPickResult
@@ -154,6 +165,15 @@ async function resolveWorkerStart(flags: Flags, client: () => RuntimeClient): Pr
 async function resolveWorktreeCreate(flags: Flags, client: () => RuntimeClient): Promise<void> {
   const explicit = text(flags, 'host') === FORK_AUTO_PLACEMENT_VALUE
   const project = text(flags, 'project')
+  // SLRM-2312: --setup-missing lets the pick (or a named server) clone the project first.
+  const setupMissing = takeForkSetupMissing(flags)
+  if (setupMissing && remoteSelected(flags)) {
+    refuse('--setup-missing works from this machine; drop --environment or the pairing code.')
+  }
+  if (setupMissing && !explicit) {
+    await forkSetUpNamedHost(flags, client())
+    return
+  }
   const unnamed =
     !explicit &&
     !flags.has('host') &&
@@ -190,10 +210,21 @@ async function resolveWorktreeCreate(flags: Flags, client: () => RuntimeClient):
   const hosts = [...new Set(ready.map(setupHostId))]
   const chosen = await pick(
     local,
-    { hosts, project, ...(unnamed ? { unnamed: true } : {}) },
+    {
+      hosts,
+      project,
+      ...(unnamed ? { unnamed: true } : {}),
+      ...(setupMissing ? { setupMissing: true } : {})
+    },
     explicit
   )
   if (!chosen?.picked) {
+    return
+  }
+  if (chosen.picked.needsSetup) {
+    note(chosen, '--host')
+    await forkSetUpProjectOnServer(local, chosen.picked.hostKey.slice('runtime:'.length), project)
+    flags.set('host', chosen.picked.hostKey)
     return
   }
   const eligible = chosen.ranked.filter((candidate) => candidate.status === 'eligible').length

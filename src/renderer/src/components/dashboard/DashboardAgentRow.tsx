@@ -49,6 +49,7 @@ import { translate } from '@/i18n/i18n'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { useUiLanguageRevision } from '@/i18n/use-ui-language-revision'
 import { ForkClaudeAccountAgentRowChip } from '@/fork/claude-account-chip/ForkClaudeAccountChips'
+import { ForkAgentRowStatus } from '@/fork/row-status/ForkAgentRowStatus'
 
 function formatTimeAgo(ts: number, now: number, t: Translate = translate): string {
   const delta = now - ts
@@ -362,6 +363,7 @@ const DashboardAgentRow = React.memo(function DashboardAgentRow({
             {model}
           </span>
         )}
+        <ForkAgentRowStatus agent={agent} highlighted={highlighted} />
         {/* Why: "+N" badge shows the hidden child count when collapsed; redundant once children are expanded below. */}
         {hasChildDisclosure && !childAgentsExpanded && (
           <span className="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-normal leading-none text-muted-foreground/70 tabular-nums">
