@@ -20,6 +20,12 @@ import type { ChatApproval } from '../../../../../shared/native-chat/input/nativ
 import { NativeChatPromptCollapseToggle } from './NativeChatPromptCollapse'
 import { useNativeChatPromptCardFocus } from './use-native-chat-prompt-card-focus'
 import { NativeChatUrlTarget, openUrlRequestPage } from './NativeChatUrlRequest'
+import { ForkApprovalRiskLine } from '@/fork/approval-triage/ForkApprovalRiskLine'
+import {
+  forkApprovalOptionHeld,
+  useForkApprovalRisk,
+  type ForkApprovalTriage
+} from '@/fork/approval-triage/fork-approval-triage'
 
 export type NativeChatApprovalCardProps = {
   approval: ChatApproval
@@ -44,6 +50,8 @@ export type NativeChatApprovalCardProps = {
   placement?: 'composer' | 'stacked'
   /** Read off a terminal screen (folder trust, startup menus): keeps the full card. */
   parsedFromTerminal?: boolean
+  /** SLRM-2397: fork hook, the risk grade's context (FORK.md "Approval triage"). */
+  forkTriage?: ForkApprovalTriage
 }
 
 /** PTY options are literal replies; structured options are journal ids. The first option is primary unless the options are neutral. */
@@ -59,7 +67,8 @@ export function NativeChatApprovalCard({
   worker,
   countdown,
   placement = 'composer',
-  parsedFromTerminal = false
+  parsedFromTerminal = false,
+  forkTriage
 }: NativeChatApprovalCardProps): React.JSX.Element {
   const t = useTranslate()
   const cardRef = useRef<HTMLDivElement>(null)
@@ -82,6 +91,7 @@ export function NativeChatApprovalCard({
           ? t('components.native-chat.urlRequest.decline', 'Decline')
           : option.label
   const stacked = placement === 'stacked'
+  const forkRisk = useForkApprovalRisk(approval, forkTriage)
   // A tool call's prompt reads as a quiet transcript row; plan reviews, sign-ins and prompts read
   // off a terminal screen keep the full card.
   const quiet = !parsedFromTerminal && url === null && !isPlanApprovalSubject(approval.subject)
@@ -180,6 +190,7 @@ export function NativeChatApprovalCard({
                   >
                     {title}
                   </p>
+                  <ForkApprovalRiskLine grade={forkRisk} />
                   {worker ? (
                     <p
                       className={cn(
@@ -330,7 +341,10 @@ export function NativeChatApprovalCard({
                       key={`${opt.label}-${i}`}
                       type="button"
                       disabled={
-                        newerSubject || isSubmitting || (opensUrl && readApprovalUrl(url) === null)
+                        newerSubject ||
+                        isSubmitting ||
+                        (opensUrl && readApprovalUrl(url) === null) ||
+                        forkApprovalOptionHeld(forkRisk, forkTriage, opt.send)
                       }
                       onClick={() => {
                         if (opensUrl) {
