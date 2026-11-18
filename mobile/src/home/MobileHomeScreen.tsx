@@ -30,6 +30,7 @@ import { useOpenMobileHostEdit } from '../host-screen/identity/use-open-mobile-h
 import { mobileConnectionPathLabel } from '../transport/connection/mobile-connection-path-label'
 import { newWorkspaceOverlayHref } from '../new-workspace/new-workspace-overlay-route'
 import { useMobileHomeData } from './use-mobile-home-data'
+import { useForkAgentLiveActivity } from '../components/fork/live-activity/use-fork-agent-live-activity'
 import { useHomeSparePage } from './use-home-spare-page'
 import { HOME_TABS, type HomeTabId } from './tabs/home-tabs'
 import { MobileHomeAgentsTab } from './tabs/MobileHomeAgentsTab'
@@ -50,6 +51,7 @@ export function MobileHomeScreen() {
   const t = useMobileTranslation()
   useMobileColorScheme()
   const data = useMobileHomeData()
+  useForkAgentLiveActivity(data.agentList, data.sortedHosts)
   useHomeSparePage(data.hostCatalogLoaded ? data.sortedHosts.map((host) => host.id) : [])
   const insets = useSafeAreaInsets()
   const openMobileHostEdit = useOpenMobileHostEdit()
