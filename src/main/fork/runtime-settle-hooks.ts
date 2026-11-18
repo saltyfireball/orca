@@ -16,13 +16,16 @@ import {
 } from './worktree-ports/worktree-ports-service'
 import { startForkMainSync, type ForkMainSyncRuntime } from './main-sync/main-sync-live'
 import { startForkAgentGuards } from './agent-guards/agent-guards-service'
+import { startForkChatHandoffOnLimit } from './chat-handoff/chat-handoff-on-limit'
+import type { ChatHandoffRuntime } from './chat-handoff/chat-handoff-host'
 
 export function startForkRuntimeSettleServices(
   runtime: UnattendedResumeRuntime &
     LimitResumeServiceRuntime &
     ForkServersRuntime &
     ForkWorktreePortsRuntime
-    ForkMainSyncRuntime
+    ForkMainSyncRuntime,
+    ChatHandoffRuntime
 ): void {
   // SLRM-2268: continue cut unattended work once per process.
   startForkUnattendedResume(runtime)
@@ -36,4 +39,6 @@ export function startForkRuntimeSettleServices(
   startForkMainSync(runtime)
   // SLRM-2385: warn and pause agents stuck in a failure loop or past their spend cap.
   startForkAgentGuards(runtime)
+  // SLRM-2391: hand a chat parked on a usage limit to the other agent, when set to 'auto'.
+  startForkChatHandoffOnLimit(runtime)
 }

@@ -59,6 +59,7 @@ import {
   ForkBestOfSettleParams,
   ForkBestOfShowParams
 } from '../fork/best-of/best-of-wire'
+import { ForkChatHandoffStartParams, ForkChatHistoryParams } from '../fork/chat-handoff-wire'
 import {
   ForkClaudeAccountCancelParams,
   ForkClaudeAccountMoveParams,
@@ -1635,6 +1636,8 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.bestOf.record': ForkBestOfRecordParams,
   'fork.bestOf.settle': ForkBestOfSettleParams,
   'fork.bestOf.show': ForkBestOfShowParams,
+  'fork.chatHandoff.history': ForkChatHistoryParams,
+  'fork.chatHandoff.start': ForkChatHandoffStartParams,
   'fork.claudeAccount.cancel': ForkClaudeAccountCancelParams,
   'fork.claudeAccount.move': ForkClaudeAccountMoveParams,
   'fork.claudeAccount.which': ForkClaudeAccountWhichParams,
