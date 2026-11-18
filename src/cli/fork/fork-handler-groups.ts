@@ -53,6 +53,12 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     keys: ['inbox list', 'inbox answer', 'inbox pause'],
     load: async () => (await import('./inbox-handlers.js')).FORK_INBOX_HANDLERS
   },
+  // SLRM-2386: the PR babysitter (FORK.md "PR babysitter").
+  {
+    name: 'fork-babysit',
+    keys: ['babysit', 'babysit list', 'babysit stop'],
+    load: async () => (await import('./babysit-handlers.js')).FORK_BABYSIT_HANDLERS
+  },
   // Fork: read and edit every app setting (FORK.md "Settings from the CLI").
   {
     name: 'fork-settings',

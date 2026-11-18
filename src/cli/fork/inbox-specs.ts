@@ -3,6 +3,7 @@
 // The command names are fixed here because the start-up command list names `inbox`.
 import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli/cli-argument-boundary'
 import type { CommandSpec } from '../discovery/command-spec'
+import { FORK_BABYSIT_COMMAND_SPECS } from './babysit-specs'
 
 const ID_NOTE =
   'An id is a chat session id or a terminal agent pane key, as `orca inbox list` prints it; a unique prefix is enough.'
@@ -45,5 +46,8 @@ export const FORK_INBOX_COMMAND_SPECS: CommandSpec[] = [
       ID_NOTE
     ],
     examples: ['orca inbox pause 3f2a', 'orca inbox pause 3f2a --resume']
-  }
+  },
+  // SLRM-2386: `orca babysit`, whose stuck pull requests join this inbox; listed here so the
+  // upstream spec list needs no line of its own.
+  ...FORK_BABYSIT_COMMAND_SPECS
 ]

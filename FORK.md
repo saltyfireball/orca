@@ -581,6 +581,53 @@ named Orca Fork until SLRM-1367. `main` is always
     `orca settings` cannot write the classifier command, the notification command or the
     webhook address.
 
+- **PR babysitter (SLRM-2386).** Off by default. Stock Orca's PR watcher already reads the checks
+  of a pull request a chat opened or pushed to and writes "CI failing" or "CI green" into that
+  chat. The babysitter acts on that line, so it adds no GitHub polling of its own.
+  - **Which pull requests.** Those of the repositories in `forkPrBabysitRepos` (`owner/repo`,
+    `host/owner/repo` or `*`; empty by default), plus any named with `orca babysit <pr>`.
+    `orca babysit stop <pr>` turns one off, also against the repo list.
+  - **CI failed.** The chat gets one fix request: a first line `[pr-babysitter: automatic fix
+    request]`, then stock Orca's fix-checks prompt (the one the checks panel's fix action sends)
+    built from the failing checks and their failed-step log tails. Check names, links and log text
+    come from GitHub and CI: they are stripped of control, bidi and invisible characters, every `<`
+    is escaped, logs keep their last 6000 characters, they sit only inside the prompt's JSON data
+    in a `<ci-report data-trust="untrusted">` block, and the lines around it say that text is data,
+    never instructions, and that the agent must not merge, use admin or bypass options, or change
+    CI settings. The send is idle recovery's chat send: the app's normal send, queued behind a
+    running turn, never typed over a draft. A chat that is asleep or refuses it stops the
+    babysitter.
+  - **Rounds.** At most `forkPrBabysitMaxRounds` (3, 1 to 10) fix requests in a row; a green
+    result starts the count over. The next failing result after the cap stops it. With no new CI
+    result `forkPrBabysitWaitMinutes` (120) after a fix request, it stops too. Each CI line is
+    acted on once, however many chats own the pull request.
+  - **Green.** With `forkPrBabysitAutoMerge` (off) it merges, but only when `gh pr view` says the
+    pull request is open, not a draft, still at the commit that went green, has no change
+    requested and no review still required, every check (required or not) finished green, and
+    GitHub calls the merge `MERGEABLE` and `CLEAN` (or `HAS_HOOKS`). The merge is a plain
+    `gh pr merge <n> --repo <owner/repo> --<method> --match-head-commit <sha>`, never `--admin`
+    or `--auto`, so branch protection and rulesets still apply. The method is
+    `forkPrBabysitMergeMethod`: `repo` (default, the repository's default method among those it
+    allows) or `squash`, `merge`, `rebase`. Branch protection is what makes a merge reviewed:
+    without a required review on the base branch, an agent's push that goes green is merged
+    unreviewed. A merge held by a review or a block is tried again
+    when Orca next reads the pull request (at most every 5 minutes), or at once by
+    `orca babysit <pr>`. A failed merge stops it with GitHub's words.
+  - **Stopped.** The pull request joins the Decision inbox as a stalled row "PR owner/repo#12",
+    and the inbox's notification targets are told once. The inbox shows while idle recovery is on
+    or while the repo list is set. An answer goes to the chat as your message and babysits it again
+    with fresh rounds; Stop babysitting turns it off. `orca inbox list` and `orca inbox answer`
+    show and answer these rows too.
+  - **Shown.** A line under the pull request in the workspace card's linked items ("Babysitter:
+    fix 1 of 3 sent, waiting for CI", "checks green", "merged", "stopped: ..."), in the row's own
+    muted text.
+  - **Servers.** It runs in the process that runs the chat: the desktop app and `orca serve` /
+    orcad alike, each with its own settings and `fork-pr-babysit.json` (mode 0600) in its data
+    folder. `orca babysit` and `orca babysit list` take `--environment` for a paired server. The
+    status line shows the babysitter of this desktop only.
+  - **Limits.** Native chats only (the stock watcher writes no CI line into terminal agents). A
+    pull request is watched for 14 days after its chat's last PR action, as in stock. GitHub only.
+
 - **Boundary compaction (SLRM-2257).** Off by default (`forkBoundaryCompactMode` `off`,
   Settings > Blackfish > Chats). An agent compacts on its own when its context fills, nearly
   always in the middle of a turn. With the mode on, a sweep in the main process asks a native
@@ -1321,7 +1368,8 @@ Apply these in this order. Each one is a single commit.
 101. `SLRM-2316 Follow upstream 1.4.262's moved modules and native provider launch in fork code`
 102. `SLRM-2349 Chat visuals: show image files and take unquoted values, and servers --wait takes a separate value`
 103. `SLRM-2383 Worktree ports: a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1`
-104. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
+104. `SLRM-2386 PR babysitter: send a pull request's chat fix requests when CI fails, merge on green when allowed`
+105. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1822,8 +1870,9 @@ Upstream files only get short hooks, which keeps rebases small:
     `FORK_GUARDS_COMMAND_SPECS` and `cli-command-names.ts` lists `guards`.
   - Fork files only: the usage ledger tells turn starts and ends (`onForkUsageLedgerTurn`) and
     its chat names moved to `usage-ledger-meta.ts`; `installForkHeadlessHost` starts the ledger
-    on a server; the Decision inbox lists, answers and resumes guard rows (its item's `verdict`
-    takes `guard`); idle recovery's candidates, limit resume (native and terminal) and unattended
+    on a server; the Decision inbox lists, answers and resumes guard rows (idle recovery's
+    service is wrapped in `withForkAgentGuardInbox`, its item's `verdict` takes `guard`, and the
+    inbox shows while a guard holds an agent); idle recovery's candidates, limit resume (native and terminal) and unattended
     resume skip held agents (`isForkAgentGuardHeld`); the marks render in `ForkTabTitle` and
     `ForkClaudeAccountAgentRowChip`, and the card in the fork's Settings pane.
 
@@ -2003,6 +2052,21 @@ Upstream files only get short hooks, which keeps rebases small:
     regenerated.
   - `config/main-sync-fs-baseline.txt` allows `worktree-port-registry.ts` its one synchronous
     read of the file, at first use (terminal env is built synchronously); writes are async.
+
+- PR babysitter (SLRM-2386), from `src/shared/fork/pr-babysit*.ts`, `src/main/fork/pr-babysit/`,
+  `src/main/fork/idle-recovery/idle-recovery-sources.ts`, `src/cli/fork/babysit-*` and
+  `src/renderer/src/fork/pr-babysit/`:
+  - `pr-watch-runtime.ts` passes the watcher's deps through `forkPrBabysitAttach(...)`, which
+    returns them unchanged and keeps `chatWorkspace` (the call wraps the object literal).
+  - `pr-event-delivery.ts` calls `forkPrBabysitLineDelivered(sessionId, delivery)` after each CI
+    line it appends. Both hooks are in `pr-babysit-slot.ts`, which loads no fork code at run time.
+  - `WorktreeCardReferenceRow.tsx` renders `ForkPrBabysitLine` under a pull request row.
+  - `cli-command-names.ts` lists `babysit`. The RPC methods (`fork.prBabysit.*`) are spread into
+    `FORK_IDLE_RECOVERY_RPC_METHODS` and the specs into `FORK_INBOX_COMMAND_SPECS`, so the upstream
+    registry and spec list need no line; `rpc-params-catalog.generated.ts` is regenerated.
+  - `installForkReady` and `installForkHeadlessHost` call `installForkPrBabysit(store)`. The
+    Decision inbox (fork code) gains other sources' rows and a `babysit` call on its bridge; the
+    five settings are in `src/shared/fork/pr-babysit.ts`, joined to `fork-global-settings.ts`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

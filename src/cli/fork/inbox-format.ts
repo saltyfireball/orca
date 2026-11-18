@@ -26,11 +26,13 @@ export function inboxShortId(item: Pick<ForkIdleRecoveryInboxItem, 'chatId' | 'k
 }
 
 function kindLabel(item: ForkIdleRecoveryInboxItem): string {
-  return item.verdict === 'waiting_user'
-    ? 'waiting'
-    : item.verdict === 'guard'
-      ? 'guard-paused'
-      : 'stalled'
+  if (item.source === 'babysit') {
+    return 'pr-babysit'
+  }
+  if (item.verdict === 'guard') {
+    return 'guard-paused'
+  }
+  return item.verdict === 'waiting_user' ? 'waiting' : 'stalled'
 }
 
 function itemLines(item: ForkIdleRecoveryInboxItem, now: number): string[] {

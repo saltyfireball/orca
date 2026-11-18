@@ -114,6 +114,16 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"record","of":{"k":"enum","values":["less","manual","normal","prefer"]}},"d":"Auto placement: per machine (\'local\' or \'runtime:<environment id>\'), how willingly it takes automatically placed work; unset machines are \'normal\'.","o":true}',
   forkPlacementAutoWhenUnnamed:
     '{"t":{"k":"boolean"},"d":"Auto placement: when no machine is named and more than one could take the work, pick one as `auto` would. Off unless true.","o":true}',
+  forkPrBabysitAutoMerge:
+    '{"t":{"k":"boolean"},"d":"PR babysitter: merge a babysat pull request once every check is green, no change is requested and GitHub reports it mergeable. Off unless true.","o":true}',
+  forkPrBabysitMaxRounds:
+    '{"t":{"k":"number"},"d":"PR babysitter: fix requests sent for one pull request before it stops and asks you (1 to 10); unset is 3.","o":true}',
+  forkPrBabysitMergeMethod:
+    '{"t":{"k":"enum","values":["merge","rebase","repo","squash"]},"d":"PR babysitter: \'repo\' uses the repository\'s default merge method; unset is \'repo\'.","o":true}',
+  forkPrBabysitRepos:
+    '{"t":{"k":"array","of":{"k":"string"}},"d":"PR babysitter (SLRM-2386): owner/repo names whose pull requests are babysat, \\"*\\" for every repo; unset is none (off).","o":true}',
+  forkPrBabysitWaitMinutes:
+    '{"t":{"k":"number"},"d":"PR babysitter: minutes to wait for a new CI result after a fix request before it stops and asks you; unset is 120.","o":true}',
   forkServerHealth:
     '{"t":{"k":"boolean"},"d":"Watch the paired remote servers this desktop is connected to and alert when one stops answering; unset is on.","o":true}',
   forkServerHealthAlertCommand:

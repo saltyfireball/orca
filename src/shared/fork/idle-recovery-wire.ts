@@ -4,6 +4,7 @@
 import { z } from 'zod'
 import type { IdleRecoveryChatKind, IdleRecoveryVerdictKind } from './idle-recovery'
 import type { IdleRecoveryMode } from './idle-recovery-settings'
+import type { ForkPrBabysitListResult } from './pr-babysit-wire'
 
 export const FORK_IDLE_RECOVERY_METHODS = {
   /** Chats waiting on the user or stalled, oldest first. */
@@ -22,6 +23,8 @@ export const FORK_IDLE_RECOVERY_CHANNELS = {
   answer: 'fork:idleRecovery:answer',
   pause: 'fork:idleRecovery:pause',
   status: 'fork:idleRecovery:status',
+  /** The PR babysitter's pull requests, for their status lines (SLRM-2386). */
+  babysit: 'fork:idleRecovery:babysit',
   /** main -> renderer: the inbox changed; read it again. */
   changed: 'fork:idleRecovery:changed'
 } as const
@@ -29,16 +32,20 @@ export const FORK_IDLE_RECOVERY_CHANNELS = {
 export const FORK_IDLE_RECOVERY_MAX_ANSWER_CHARS = 20_000
 
 const ChatId = z.string().min(1).max(512)
+/** Which list a row came from: absent is idle recovery's own; 'babysit' the PR babysitter's (SLRM-2386). */
+const Source = z.enum(['babysit']).optional()
 
 export const ForkIdleRecoveryInboxParams = z.object({})
 export const ForkIdleRecoveryStatusParams = z.object({})
 export const ForkIdleRecoveryAnswerParams = z.object({
   chatId: ChatId,
-  text: z.string().min(1).max(FORK_IDLE_RECOVERY_MAX_ANSWER_CHARS)
+  text: z.string().min(1).max(FORK_IDLE_RECOVERY_MAX_ANSWER_CHARS),
+  source: Source
 })
 export const ForkIdleRecoveryPauseParams = z.object({
   chatId: ChatId,
-  paused: z.boolean()
+  paused: z.boolean(),
+  source: Source
 })
 
 export type ForkIdleRecoveryAnswerRequest = z.infer<typeof ForkIdleRecoveryAnswerParams>
@@ -64,6 +71,10 @@ export type ForkIdleRecoveryInboxItem = {
   /** Epoch ms of the next wake, or null. */
   wakeAt: number | null
   paused: boolean
+  /** 'babysit': a pull request the PR babysitter stopped on (SLRM-2386); its Pause stops babysitting. */
+  source?: 'babysit'
+  /** The babysat pull request, `host/owner/repo#number`. */
+  prKey?: string
 }
 
 export type ForkIdleRecoveryInboxResult = {
@@ -111,5 +122,7 @@ export type ForkIdleRecoveryApi = {
   answer: (request: ForkIdleRecoveryAnswerRequest) => Promise<ForkIdleRecoveryAnswerResult>
   pause: (request: ForkIdleRecoveryPauseRequest) => Promise<ForkIdleRecoveryPauseResult>
   status: () => Promise<ForkIdleRecoveryStatusResult>
+  /** The PR babysitter's pull requests on this host (SLRM-2386); absent in older builds. */
+  babysit?: () => Promise<ForkPrBabysitListResult>
   onChanged: (listener: () => void) => () => void
 }

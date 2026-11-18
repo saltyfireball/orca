@@ -20,6 +20,9 @@ export type DecisionInboxRowActions = {
 }
 
 function detailLine(item: ForkIdleRecoveryInboxItem, now: number, t: Translate): string {
+  if (item.source === 'babysit') {
+    return t('fork.decisionInbox.babysitDetail', 'PR babysitter')
+  }
   const parts = [
     item.kind === 'chat'
       ? t('fork.decisionInbox.kind.chat', 'Chat')
@@ -157,9 +160,11 @@ export function ForkDecisionInboxRow({
         <Button size="sm" variant="ghost" disabled={pausing} onClick={togglePause}>
           {guarded
             ? t('fork.decisionInbox.guardResume', 'Resume')
-            : item.paused
-              ? t('fork.decisionInbox.resume', 'Resume recovery')
-              : t('fork.decisionInbox.pause', 'Pause recovery')}
+            : item.source === 'babysit'
+              ? t('fork.decisionInbox.stopBabysit', 'Stop babysitting')
+              : item.paused
+                ? t('fork.decisionInbox.resume', 'Resume recovery')
+                : t('fork.decisionInbox.pause', 'Pause recovery')}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => actions.jump(item)}>
           {t('fork.decisionInbox.jump', 'Go to chat')}

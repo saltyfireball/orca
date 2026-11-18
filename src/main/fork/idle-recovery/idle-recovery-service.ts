@@ -23,7 +23,7 @@ import type {
 } from '../../../shared/fork/idle-recovery-wire'
 import type { OrcaRuntimeService } from '../../runtime/orca-runtime'
 import { startForkBackoffTimer } from '../fork-backoff-timer'
-import * as guards from '../agent-guards/agent-guards-inbox'
+import { withForkAgentGuardInbox } from '../agent-guards/agent-guards-inbox'
 import { setIdleRecoveryRuntime } from './idle-recovery-host'
 import { notifyIdleRecoveryWaiting } from './idle-recovery-notify'
 import { setIdleRecoveryTerminalRuntime } from './idle-recovery-ports'
@@ -35,6 +35,11 @@ import {
 } from './idle-recovery-state'
 import { runIdleRecoverySweep } from './idle-recovery-sweep'
 import { sendIdleRecoveryAnswer } from './idle-recovery-wake'
+import {
+  answerFromInboxSource,
+  inboxSourceItems,
+  pauseFromInboxSource
+} from './idle-recovery-sources'
 
 export const FORK_IDLE_RECOVERY_SWEEP_MS = 15_000
 /** While the mode is off the timer backs off to this; without a store to tell of the change,
@@ -109,9 +114,6 @@ export function createIdleRecoveryService(overrides: Partial<IdleRecoveryService
     }
   }
 
-  // SLRM-2385: a guard's pause starting or ending changes the inbox too.
-  guards.onForkAgentGuardPausesChanged(emit)
-
   // One write at a time, each of the state as it is when its turn comes.
   const save = (state: IdleRecoveryStoredState): Promise<void> => {
     saving = saving
@@ -184,7 +186,7 @@ export function createIdleRecoveryService(overrides: Partial<IdleRecoveryService
     return true
   }
 
-  return {
+  const recovery = {
     /** Idempotent: a second call swaps the readers and keeps the timer. */
     start(reader: () => IdleRecoverySettingsSource, hooks: IdleRecoveryHooks = {}): void {
       readSettings = reader
@@ -213,10 +215,9 @@ export function createIdleRecoveryService(overrides: Partial<IdleRecoveryService
 
     async listInbox(): Promise<ForkIdleRecoveryInboxResult> {
       const settings = settingsNow()
-      // SLRM-2385: agents a guard paused are listed whatever the mode.
-      const guarded = guards.forkAgentGuardInboxItems()
+      const extra = await inboxSourceItems()
       if (settings.mode === 'off') {
-        return { now: deps.now(), mode: 'off', items: guarded }
+        return { now: deps.now(), mode: 'off', items: extra }
       }
       const paused = new Set(settings.paused)
       const items = listIdleRecoveryInboxItems(await loadedState())
@@ -224,17 +225,14 @@ export function createIdleRecoveryService(overrides: Partial<IdleRecoveryService
         now: deps.now(),
         mode: settings.mode,
         // The setting is the truth about a pause: a row learns of it only at the next sweep.
-        items: guards.withForkAgentGuardRows(
-          guarded,
-          items.map((item) => ({ ...item, paused: paused.has(item.chatId) }))
-        )
+        items: [...items.map((item) => ({ ...item, paused: paused.has(item.chatId) })), ...extra]
       }
     },
 
     async answer(request: ForkIdleRecoveryAnswerRequest): Promise<ForkIdleRecoveryAnswerResult> {
       const { chatId } = request
-      if (guards.forkAgentGuardPaused(chatId)) {
-        return { chatId, result: await guards.forkAgentGuardAnswer(chatId, request.text) }
+      if (request.source) {
+        return { chatId, result: await answerFromInboxSource(request.source, chatId, request.text) }
       }
       if (settingsNow().mode === 'off') {
         return { chatId, result: 'unavailable' }
@@ -266,11 +264,8 @@ export function createIdleRecoveryService(overrides: Partial<IdleRecoveryService
 
     async setPaused(request: ForkIdleRecoveryPauseRequest): Promise<ForkIdleRecoveryPauseResult> {
       const { chatId } = request
-      if (!request.paused && guards.forkAgentGuardPaused(chatId)) {
-        // SLRM-2385: Resume on a row a guard paused lifts that pause.
-        await guards.forkAgentGuardInboxResume(chatId)
-        const { paused } = readIdleRecoverySettings(readSettings())
-        return { chatId, paused: false, pausedCount: paused.length, saved: true }
+      if (request.source) {
+        return pauseFromInboxSource(request, readIdleRecoverySettings(readSettings()).paused.length)
       }
       const store = watchStore()
       let saved = false
@@ -315,6 +310,8 @@ export function createIdleRecoveryService(overrides: Partial<IdleRecoveryService
       }
     }
   }
+  // SLRM-2385: agents a guard paused are listed, answered and resumed whatever the mode.
+  return withForkAgentGuardInbox(recovery, () => settingsNow().paused.length)
 }
 
 const service = createIdleRecoveryService()

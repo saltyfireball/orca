@@ -10,10 +10,9 @@ import {
   forkIdleRecoveryBridge,
   openForkDecisionInbox,
   useForkDecisionInbox,
-  useForkIdleRecoveryMode
+  useForkDecisionInboxOn
 } from './decision-inbox-store'
 import { decisionInboxBadgeText, decisionInboxSections } from './decision-inbox-view'
-import { useForkAgentGuardPausedCount } from '../agent-guards/agent-guards-store'
 
 function Counted(): React.JSX.Element {
   const t = useTranslate()
@@ -72,9 +71,7 @@ function Counted(): React.JSX.Element {
 }
 
 export function ForkDecisionInboxButton(): React.JSX.Element | null {
-  const mode = useForkIdleRecoveryMode()
-  // SLRM-2385: an agent a guard paused shows the button even with idle recovery off.
-  const guardPaused = useForkAgentGuardPausedCount()
-  // The counts are read only inside `Counted`, so nothing is read while the mode is off.
-  return (mode === 'off' && guardPaused === 0) || !forkIdleRecoveryBridge() ? null : <Counted />
+  const on = useForkDecisionInboxOn()
+  // The counts are read only inside `Counted`, so nothing is read while the inbox is off.
+  return !on || !forkIdleRecoveryBridge() ? null : <Counted />
 }
