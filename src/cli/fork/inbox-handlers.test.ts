@@ -236,4 +236,17 @@ describe('inbox handlers', () => {
     } as unknown as HandlerContext
     await expect(FORK_INBOX_HANDLERS['inbox list'](ctx)).rejects.toThrow(/Update the desktop app/)
   })
+
+  it('a PR babysitter row is listed with idle recovery off and answered through its source', async () => {
+    const babysat = inbox(
+      [item({ chatId: 'bbbb-2222', verdict: 'stalled', source: 'babysit', prKey: 'x' })],
+      'off'
+    )
+    expect(formatInboxList(babysat)).toContain('pr-babysit')
+    await run('inbox answer', { id: 'bbbb', text: 'go on' }, babysat, {
+      chatId: 'bbbb-2222',
+      result: 'sent'
+    })
+    expect(calls[1].params).toEqual({ chatId: 'bbbb-2222', source: 'babysit', text: 'go on' })
+  })
 })

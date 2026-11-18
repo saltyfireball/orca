@@ -34,6 +34,11 @@ import {
 } from './idle-recovery-state'
 import { runIdleRecoverySweep } from './idle-recovery-sweep'
 import { sendIdleRecoveryAnswer } from './idle-recovery-wake'
+import {
+  answerFromInboxSource,
+  inboxSourceItems,
+  pauseFromInboxSource
+} from './idle-recovery-sources'
 
 export const FORK_IDLE_RECOVERY_SWEEP_MS = 15_000
 /** While the mode is off the timer backs off to this; without a store to tell of the change,
@@ -209,8 +214,9 @@ export function createIdleRecoveryService(overrides: Partial<IdleRecoveryService
 
     async listInbox(): Promise<ForkIdleRecoveryInboxResult> {
       const settings = settingsNow()
+      const extra = await inboxSourceItems()
       if (settings.mode === 'off') {
-        return { now: deps.now(), mode: 'off', items: [] }
+        return { now: deps.now(), mode: 'off', items: extra }
       }
       const paused = new Set(settings.paused)
       const items = listIdleRecoveryInboxItems(await loadedState())
@@ -218,12 +224,15 @@ export function createIdleRecoveryService(overrides: Partial<IdleRecoveryService
         now: deps.now(),
         mode: settings.mode,
         // The setting is the truth about a pause: a row learns of it only at the next sweep.
-        items: items.map((item) => ({ ...item, paused: paused.has(item.chatId) }))
+        items: [...items.map((item) => ({ ...item, paused: paused.has(item.chatId) })), ...extra]
       }
     },
 
     async answer(request: ForkIdleRecoveryAnswerRequest): Promise<ForkIdleRecoveryAnswerResult> {
       const { chatId } = request
+      if (request.source) {
+        return { chatId, result: await answerFromInboxSource(request.source, chatId, request.text) }
+      }
       if (settingsNow().mode === 'off') {
         return { chatId, result: 'unavailable' }
       }
@@ -254,6 +263,9 @@ export function createIdleRecoveryService(overrides: Partial<IdleRecoveryService
 
     async setPaused(request: ForkIdleRecoveryPauseRequest): Promise<ForkIdleRecoveryPauseResult> {
       const { chatId } = request
+      if (request.source) {
+        return pauseFromInboxSource(request, readIdleRecoverySettings(readSettings()).paused.length)
+      }
       const store = watchStore()
       let saved = false
       if (store?.updateSettings) {
