@@ -1127,6 +1127,42 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/main/runtime/rpc/methods/fork/fork-snooze.ts`, `src/preload/fork/snooze-bridge.ts`,
     `src/renderer/src/fork/snooze/` and `src/cli/fork/snooze-*`.
 
+- **Worktree ports (SLRM-2383).** Each workspace holds a block of ports on the host that runs it,
+  so many workers on one machine stop fighting over dev-server ports (Conductor gives each
+  workspace 10 ports the same way). Stock Orca only finds ports once something listens on them.
+  - The block is reserved the first time a workspace's terminal, native chat or setup script
+    starts (a new worktree's setup and first terminal do that during its create), and when the
+    create is reported. It is exported as `ORCA_PORT` (the first port), `ORCA_PORT_0` to
+    `ORCA_PORT_<n-1>` and `ORCA_PORT_COUNT` to its terminals (so to terminal agents), native
+    chats and setup and archive scripts; setup scripts also get `CONDUCTOR_PORT`, the name
+    imported Conductor scripts read. WSL terminals and hooks get the same names through
+    `WSLENV`. A terminal with no workspace gets none, and stale names a copied env carried are
+    dropped.
+  - Each host keeps its own reservations in `fork-worktree-ports.json` in its userData
+    (owner-only), so they survive restarts: the desktop app for its local and direct SSH
+    workspaces, and orcad on a headless server for the workspaces it runs. A block is released
+    when the workspace is removed (desktop or server, worktree or folder workspace), and at
+    start for a workspace whose project is gone or whose folder on this machine is gone while
+    the project folder itself is still there. Nothing is released for what cannot be proven gone.
+  - Free ports: once the runtime settles, and after each reserve, a background pass binds every
+    port of the next candidate block on `127.0.0.1`, `0.0.0.0` and `::` and keeps the first block
+    found free as the spare, which the next reserve takes. Without a spare (several creates at
+    once, or a block size change) a reserve takes the first block clear of every reservation and
+    of the ports earlier passes found in use. Direct SSH workspaces are checked on this machine,
+    not on the SSH host; a server running orcad checks its own ports.
+  - Settings (no Settings pane card; `orca settings` edits them): `forkWorktreePorts` (unset is
+    on), `forkWorktreePortsCount` (10, from 1 to 100; a change applies to new blocks),
+    `forkWorktreePortsFrom` and `forkWorktreePortsTo` (20000 to 29999, below the Linux and macOS
+    ephemeral ranges; give two Orca hosts on one machine different ranges). Off, nothing is
+    exported or reserved and the blocks already held stay held.
+  - CLI: `orca ports` adds a `reserved=20000-20009 (ORCA_PORT=20000, ORCA_PORT_0..9)` line under
+    its scan and `--json` adds `reservedPorts` (`enabled`, `start`, `count`, `ports`). It asks
+    the host the scan went to over `fork.worktreePorts.get`, which only reads; a host without
+    the method leaves the output as stock prints it.
+  - Code is in `src/shared/fork/worktree-ports*.ts`, `src/main/fork/worktree-ports/`,
+    `src/main/runtime/rpc/methods/fork/fork-worktree-ports.ts` and
+    `src/cli/fork/worktree-ports-cli.ts`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -1233,6 +1269,7 @@ Apply these in this order. Each one is a single commit.
 100. `SLRM-2310 Server updates: update every paired server from the desktop over its own RPC, with a rollback`
 101. `SLRM-2316 Follow upstream 1.4.262's moved modules and native provider launch in fork code`
 102. `SLRM-2349 Chat visuals: show image files and take unquoted values, and servers --wait takes a separate value`
+103. `SLRM-2383 Worktree ports: a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1874,6 +1911,28 @@ Upstream files only get short hooks, which keeps rebases small:
   - `ForkRootHosts.tsx` mounts `ForkSnoozeCustomDialogHost` and `ForkSnoozeWatcher`; the card is
     in the fork's Settings pane and `forkSnoozeSettleCommand` is a runs-command key in
     `settings-access.ts`.
+
+- Worktree ports (SLRM-2383), from `src/shared/fork/worktree-ports*.ts`,
+  `src/main/fork/worktree-ports/` and `src/cli/fork/worktree-ports-cli.ts`:
+  - `spawn-pane-env.ts` (`stampPtySpawnPaneEnv`, every desktop IPC and runtime terminal
+    spawn) calls `applyForkWorktreePortEnv(env, pane?.worktreeId)`.
+  - `setup-hook-env-vars.ts` (`getSetupEnvVars`) spreads
+    `forkWorktreePortSetupEnvFor(identity?.worktreeId)`.
+  - `structured-agent-launch-composition.ts` keeps `admittedRecord(...)` as `record` and passes
+    `withForkWorktreePortEnv(env, record.location.workspaceId)` to the child seal.
+  - `wsl-orca-env.ts` spreads `forkWorktreePortWslenvEntries(env)` into both WSLENV lists.
+  - `main-process-pty-startup.ts` (`emitPluginWorktreeLifecycle`, which hears desktop IPC and
+    runtime creates and removals) calls `forkWorktreePortsLifecycle(event)` first.
+  - `installForkReady` and `installForkHeadlessHost` call `installForkWorktreePorts`;
+    `startForkRuntimeSettleServices` calls `startForkWorktreePorts(runtime)`.
+  - `rpc-method-registry.ts` spreads `FORK_WORKTREE_PORTS_METHODS`
+    (`fork.worktreePorts.get`); `rpc-params-catalog.generated.ts` is regenerated with it.
+  - `src/cli/workspace-ports/ports.ts` passes the scan through `withForkReservedPorts` and its
+    text through `withForkReservedPortsText`; `src/cli/specs/ports.ts` adds `FORK_PORTS_NOTES`.
+  - The four settings are in `fork-global-settings.ts` and `settings-rows-fork.generated.ts` is
+    regenerated.
+  - `config/main-sync-fs-baseline.txt` allows `worktree-port-registry.ts` its one synchronous
+    read of the file, at first use (terminal env is built synchronously); writes are async.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

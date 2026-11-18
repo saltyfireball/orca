@@ -191,5 +191,13 @@ export const FORK_SETTINGS_ROWS_FORK = {
   forkWorkerCleanupOnMerged:
     '{"t":{"k":"boolean"},"d":"Worker cleanup: clean up once the worker\'s branch is merged; unset is off.","o":true}',
   forkWorktreeMove:
-    '{"t":{"k":"object","fields":{"menu":{"k":"boolean","optional":true},"whenBusy":{"k":"enum","values":["ask","refuse"],"optional":true},"uncommitted":{"k":"enum","values":["leave","patch","refuse"],"optional":true},"push":{"k":"boolean","optional":true},"chats":{"k":"boolean","optional":true},"rewriteHome":{"k":"boolean","optional":true},"markSource":{"k":"boolean","optional":true},"maxTotalMb":{"k":"number","optional":true}}},"d":"Moving a workspace and its chats to another host; unset keys take the defaults.","o":true}'
+    '{"t":{"k":"object","fields":{"menu":{"k":"boolean","optional":true},"whenBusy":{"k":"enum","values":["ask","refuse"],"optional":true},"uncommitted":{"k":"enum","values":["leave","patch","refuse"],"optional":true},"push":{"k":"boolean","optional":true},"chats":{"k":"boolean","optional":true},"rewriteHome":{"k":"boolean","optional":true},"markSource":{"k":"boolean","optional":true},"maxTotalMb":{"k":"number","optional":true}}},"d":"Moving a workspace and its chats to another host; unset keys take the defaults.","o":true}',
+  forkWorktreePorts:
+    '{"t":{"k":"boolean"},"d":"Each workspace gets a block of ports, exported as ORCA_PORT and ORCA_PORT_0..N-1 to its terminals, agents and setup scripts; unset is on.","o":true}',
+  forkWorktreePortsCount:
+    '{"t":{"k":"number"},"d":"Ports in each workspace\'s block (1 to 100); a change applies to new blocks; unset is 10.","o":true}',
+  forkWorktreePortsFrom:
+    '{"t":{"k":"number"},"d":"First port blocks are taken from (1024 to 65535); unset is 20000.","o":true}',
+  forkWorktreePortsTo:
+    '{"t":{"k":"number"},"d":"Last port blocks are taken from (1024 to 65535); unset is 29999.","o":true}'
 }
