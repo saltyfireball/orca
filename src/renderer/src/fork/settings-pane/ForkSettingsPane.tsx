@@ -36,6 +36,7 @@ import { ForkWorktreeMoveSettings } from '../worktree-move/ForkWorktreeMoveSetti
 import { ForkApfsCloneSetting } from '../apfs-clone/ForkApfsCloneSetting'
 import { ForkSnoozeSetting } from '../snooze/ForkSnoozeSetting'
 import { ForkServerSetupSetting } from '../server-setup/ForkServerSetupSetting'
+import { ForkMainSyncSetting } from '../main-sync/ForkMainSyncSetting'
 import { ForkDeviceApprovalSetting } from '../device-approval/ForkDeviceApprovalSetting'
 import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
 import { ForkServerHealthSetting } from '../server-health/ForkServerHealthSetting'
@@ -92,6 +93,7 @@ const SECTION_CARDS: Record<
     ['lost-work', ForkLostWorkSettings],
     ['worktree-move', ForkWorktreeMoveSettings],
     ['apfs-clone', ForkApfsCloneSetting],
+    ['main-sync', ForkMainSyncSetting],
     ['snooze', ForkSnoozeSetting],
     ['server-setup', ForkServerSetupSetting],
     ['project-settings-list', ForkProjectSettingsList]
