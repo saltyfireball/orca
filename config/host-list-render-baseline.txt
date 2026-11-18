@@ -13,3 +13,4 @@
 1 src/renderer/src/components/status-bar/resources/popover/resource-usage-popover-body.tsx
 1 src/renderer/src/components/tab-bar/quick-commands/TabBarQuickCommandAddActions.tsx
 2 src/renderer/src/components/terminal-pane/quick-commands/TerminalQuickCommandsSubmenu.tsx
+1 src/renderer/src/fork/digest/ForkDigestDialog.tsx # maps the digest's paired-server sections (a handful of saved servers), never the SSH config list (SLRM-2408)
