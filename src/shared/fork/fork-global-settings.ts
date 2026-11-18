@@ -6,12 +6,17 @@ import type { ForkAgentColorState } from './agent-state-color'
 import type { ForkMcpProfileSettings } from './mcp-profiles'
 import type { ForkUsageLedgerSettings } from './usage-ledger'
 import type { ForkAutoPlacementSettings } from './auto-placement'
+import type { ForkPooledLimitsSettings } from './pooled-limits'
 import type { ForkBatchStartSettings } from './batch-start'
 import type { ForkWorktreeMoveSettings } from './worktree-move/worktree-move-settings'
 import type { ForkApfsCloneSettings } from './apfs-clone'
 import type { ForkWebhookSettings } from './webhooks'
 import type { ForkServerHealthSettings } from './server-health'
 import type { ForkServerUpdateSettings } from './server-update'
+import type { ForkWorktreePortsSettings } from './worktree-ports'
+import type { ForkPrBabysitSettings } from './pr-babysit'
+import type { ForkMainSyncSettings } from './main-sync'
+import type { ForkRowStatusSettings } from './row-status'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -21,6 +26,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkUsageLedgerSettings &
   /** Fork (SLRM-2266): per-machine placement and auto placement when no machine is named. */
   ForkAutoPlacementSettings &
+  /** Fork (SLRM-2392): usage limits pooled across every account on this machine and its paired servers. */
+  ForkPooledLimitsSettings &
   /** Fork (SLRM-2395): batch start from the new-workspace composer. */
   ForkBatchStartSettings &
   /** Fork (SLRM-2270): APFS clones for new worktrees on macOS. */
@@ -28,7 +35,15 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   /** Fork (SLRM-2311): paired server health alerts and this host's heartbeat. */
   ForkServerHealthSettings &
   /** Fork (SLRM-2310): update paired servers from this desktop, and take updates as a server. */
-  ForkServerUpdateSettings & {
+  ForkServerUpdateSettings &
+  /** Fork (SLRM-2383): a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1. */
+  ForkWorktreePortsSettings &
+  /** Fork (SLRM-2386): the PR babysitter; off unless a repo is listed. */
+  ForkPrBabysitSettings &
+  /** Fork (SLRM-2384): keep each local project's default branch current. */
+  ForkMainSyncSettings &
+  /** Fork (SLRM-2390): spend, context, pull request and fix button on agent rows. */
+  ForkRowStatusSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */
     forkLostWork?: LostWorkSettings
     /** Fork (SLRM-2265): moving a workspace and its chats to another host; unset keys take the defaults. */

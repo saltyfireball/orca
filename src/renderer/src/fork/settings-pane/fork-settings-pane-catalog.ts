@@ -16,6 +16,9 @@ import { worktreeMoveSearchEntry } from '../worktree-move/worktree-move-search-e
 import { apfsCloneSearchEntry } from '../apfs-clone/apfs-clone-search-entry'
 import { snoozeSearchEntry } from '../snooze/snooze-search-entry'
 import { serverUpdateSearchEntry } from '../server-update/server-update-search-entry'
+import { prBabysitSearchEntry } from '../pr-babysit/pr-babysit-search-entry'
+import { mainSyncSearchEntry } from '../main-sync/main-sync-search-entry'
+import { rowStatusSearchEntry } from '../row-status/row-status-search-entry'
 
 export const FORK_SETTINGS_PANE_ID = 'fork'
 
@@ -90,6 +93,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
           ),
           keywords: words('badge', 'children', 'sub-agents', 'tally', 'forkShowChildTally')
         },
+        rowStatusSearchEntry(t),
         {
           title: t('fork.agentStateColors.title', 'Agent state colors'),
           description: t(
@@ -139,7 +143,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
       t('fork.settingsPane.idleRecovery.title', 'Idle recovery'),
       t(
         'fork.settingsPane.idleRecovery.description',
-        'Judge how an idle chat ended its turn, and list the ones waiting on you.'
+        'Judge how an idle chat ended its turn, list the ones waiting on you, and babysit pull requests.'
       ),
       [
         {
@@ -156,7 +160,8 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
             'notification',
             'forkIdleSweepMode'
           )
-        }
+        },
+        prBabysitSearchEntry(t)
       ]
     ),
     section(
@@ -182,6 +187,22 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
             'Tokens and estimated cost of native Claude chats.'
           ),
           keywords: words('tokens', 'cost', 'prices', 'card pattern', 'forkUsagePrices')
+        },
+        {
+          title: t('fork.pooledLimits.settingTitle', 'Pooled usage limits'),
+          description: t(
+            'fork.pooledLimits.settingDescription',
+            'One bar per Claude and Codex limit window across every account on this machine and its paired servers.'
+          ),
+          keywords: words(
+            'limits',
+            'usage limits',
+            'pooled',
+            'servers',
+            '5-hour',
+            'weekly',
+            'forkPooledLimits'
+          )
         }
       ]
     ),
@@ -203,6 +224,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         },
         worktreeMoveSearchEntry(t),
         apfsCloneSearchEntry(t),
+        mainSyncSearchEntry(t),
         snoozeSearchEntry(t),
         {
           title: t('fork.settingsPane.projectList.title', 'Per project'),

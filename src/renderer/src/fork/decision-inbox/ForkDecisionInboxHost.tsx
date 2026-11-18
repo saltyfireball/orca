@@ -21,6 +21,7 @@ import {
 import {
   closeForkDecisionInbox,
   useForkDecisionInbox,
+  useForkDecisionInboxOn,
   useForkDecisionInboxOpen,
   useForkIdleRecoveryMode
 } from './decision-inbox-store'
@@ -59,7 +60,12 @@ function Section({
       </h3>
       <ul>
         {items.map((item) => (
-          <ForkDecisionInboxRow key={item.chatId} item={item} now={now} actions={ACTIONS} />
+          <ForkDecisionInboxRow
+            key={`${item.source ?? 'idle'}:${item.chatId}:${item.prKey ?? ''}`}
+            item={item}
+            now={now}
+            actions={ACTIONS}
+          />
         ))}
       </ul>
     </section>
@@ -115,7 +121,7 @@ export function ForkDecisionInboxHost(): React.JSX.Element | null {
   const t = useTranslate()
   const mode = useForkIdleRecoveryMode()
   const isOpen = useForkDecisionInboxOpen()
-  const off = mode === 'off'
+  const off = !useForkDecisionInboxOn()
   useEffect(() => {
     // Switched off while open: close, so turning it on again does not pop the dialog back up.
     if (off && isOpen) {
@@ -143,10 +149,15 @@ export function ForkDecisionInboxHost(): React.JSX.Element | null {
                   'fork.decisionInbox.descriptionWake',
                   'Chats whose last turn ended on a question for you, and stalled chats idle recovery will wake. Answer here or go to the chat.'
                 )
-              : t(
-                  'fork.decisionInbox.descriptionInbox',
-                  'Chats whose last turn ended on a question for you, and chats that stalled on work they could do now. Answer here or go to the chat.'
-                )}
+              : mode === 'off'
+                ? t(
+                    'fork.decisionInbox.descriptionBabysit',
+                    'Pull requests the PR babysitter stopped on. Tell the agent how to go on, or go to the chat.'
+                  )
+                : t(
+                    'fork.decisionInbox.descriptionInbox',
+                    'Chats whose last turn ended on a question for you, and chats that stalled on work they could do now. Answer here or go to the chat.'
+                  )}
           </DialogDescription>
         </DialogHeader>
         <Body />
