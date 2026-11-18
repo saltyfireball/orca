@@ -9,6 +9,7 @@ import { useTranslate } from '@/i18n/use-translate'
 import { ForkChatSurviveSetting } from '../ForkChatSurviveSetting'
 import { ForkUnattendedResumeSetting } from '../unattended-resume/ForkUnattendedResumeSetting'
 import { ForkLimitResumeSetting } from '../limit-resume/ForkLimitResumeSetting'
+import { ForkAgentGuardsSetting } from '../agent-guards/ForkAgentGuardsSetting'
 import { ForkBoundaryCompactionSetting } from '../boundary-compaction/ForkBoundaryCompactionSetting'
 import { ForkChatSleepSetting } from '../chat-sleep/ForkChatSleepSetting'
 import { ForkSleepersSetting } from '../sleepers/ForkSleepersSetting'
@@ -85,6 +86,7 @@ const SECTION_CARDS: Record<
   'idle-recovery': [
     ['idle-recovery', ForkIdleRecoverySetting],
     ['pr-babysit', ForkPrBabysitSetting]
+    ['agent-guards', ForkAgentGuardsSetting]
   ],
   usage: [
     ['account-chip', ForkAccountChipSetting],

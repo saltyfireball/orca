@@ -88,6 +88,23 @@ export function usagePricer(overrides: Record<string, ForkUsagePrice>): UsagePri
   }
 }
 
+/**
+ * SLRM-2385: one chat's estimated USD at per-token prices, all days kept. A subscription chat is
+ * priced the same way (what the work would cost billed per token); a model with no price adds 0.
+ */
+export function estimateChatCostUsd(
+  chat: Pick<UsageChatRecord, 'days'> | undefined,
+  pricer: UsagePricer
+): number {
+  let total = 0
+  for (const models of Object.values(chat?.days ?? {})) {
+    for (const [model, cell] of Object.entries(models)) {
+      total += pricer(model, cell.tokens) ?? 0
+    }
+  }
+  return total
+}
+
 export type CardMatcher = { card: (name: string | undefined) => string | undefined; error?: string }
 
 /** Group 1 of the user's pattern, or the whole match, names the card. Empty matches nothing. */
