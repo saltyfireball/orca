@@ -1127,6 +1127,56 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/main/runtime/rpc/methods/fork/fork-snooze.ts`, `src/preload/fork/snooze-bridge.ts`,
     `src/renderer/src/fork/snooze/` and `src/cli/fork/snooze-*`.
 
+- **Agents on the iPhone Lock Screen (SLRM-2387).** The iOS app shows running agents from every
+  paired server as one Live Activity (Lock Screen and Dynamic Island, ActivityKit) and in an
+  Agents widget (WidgetKit: small, medium and large on the Home Screen; circular, rectangular and
+  inline on the Lock Screen). Android is not covered.
+  - **What shows.** Agents that need you (yellow), failed (red), are working (blue, with a
+    counting timer) or finished (green), in that order, with the server and workspace; idle
+    agents are left out. A finished agent stays for 15 minutes (5, 15, 30 or 60), counted from
+    when the phone saw it finish, then leaves: the widget's timeline has an entry at that time,
+    and the open app updates the Live Activity then (a backgrounded app cannot, so the Live
+    Activity drops it at the next update). Counts cover every agent; the Live Activity lists four,
+    the large widget eight. Tapping either opens the app's Home. When nothing is left, the Live
+    Activity ends.
+  - **Where the state comes from.** Home's own reads of every paired server (the Agents tab's
+    list, `AgentListInput`), folded by `foldLiveAgents`: a server read live replaces its rows, a
+    server not connected keeps what it last showed. Home stays mounted under other screens, so
+    this runs whenever the app is open. The rows are kept in AsyncStorage across launches, and
+    iOS gets a new state only when the content changed.
+  - **No push updates.** The app updates both surfaces while it runs; iOS can only start a Live
+    Activity while the app is in front. Push cannot update them: upstream's push gateway
+    (`cloud/apps/push`, run by Orca at push.onorca.dev for `com.stably.orca.mobile`) sends only
+    alert pushes (no `content-available`, so no background wake on an alert) and has no
+    ActivityKit push type. A Live Activity not updated for 30 minutes turns stale and says when
+    it was last updated. ActivityKit push would need a gateway that sends `liveactivity` pushes
+    with the app's APNs key and the activity's push token.
+  - **Dismissal.** A Live Activity the user swipes away stays away until an agent it did not
+    show starts or needs them.
+  - **Settings** (phone only, Settings > Notifications > Lock Screen, in AsyncStorage
+    `blackfish:agentLiveActivitySettings`): running agents on the Lock Screen (on), Agents
+    widget (on), keep finished agents (15 minutes). Turning one off ends the Live Activity or
+    empties the widget; with both off the stored rows are deleted too. They are not desktop
+    settings, so the fork settings catalog does not list them.
+  - **Privacy.** Like any Live Activity, it shows agent titles, server and workspace names on the
+    Lock Screen without unlocking; turn it off above to keep them off. The rectangular Lock
+    Screen widget marks titles `privacySensitive`, so iOS redacts them while the phone is
+    locked. Text from servers is cut to 60 characters before it reaches iOS.
+  - **Build.** `mobile/plugins/fork/ios-agent-live-activity.js` (listed in `app.json`) adds, at
+    `expo prebuild`, the `BlackfishWidgets` widget extension target (bundle id
+    `<app bundle id>.BlackfishWidgets`, iOS 16.4, signed with the app's team and signing style,
+    embedded through an "Embed Foundation Extensions" phase), `NSSupportsLiveActivities`, and an
+    App Group `group.<app bundle id>.blackfish` on both targets for the widget's snapshot. The
+    fork does not build or sign the iOS app in CI (upstream's `mobile-ios-release.yml` stays
+    off); a local build with automatic signing registers the extension and App Group on its own.
+    Upstream's Fastfile signs manually with one profile, so a release built that way needs a
+    second profile for the extension, or `BLACKFISH_IOS_WIDGETS=0` at prebuild, which leaves the
+    project as upstream builds it.
+  - Code is in `mobile/src/components/fork/live-activity/` (model, publisher, hook, settings),
+    `mobile/modules/fork-live-activity/` (the `BlackfishLiveActivity` Expo module; `ios/shared`
+    is compiled into the app and the extension, `widget/` only into the extension) and
+    `mobile/plugins/fork/`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -1233,6 +1283,7 @@ Apply these in this order. Each one is a single commit.
 100. `SLRM-2310 Server updates: update every paired server from the desktop over its own RPC, with a rollback`
 101. `SLRM-2316 Follow upstream 1.4.262's moved modules and native provider launch in fork code`
 102. `SLRM-2349 Chat visuals: show image files and take unquoted values, and servers --wait takes a separate value`
+103. `SLRM-2387 Agents on the iPhone Lock Screen: a Live Activity and an Agents widget`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1263,6 +1314,8 @@ Fork-only code lives in `fork/` folders:
 - `src/renderer/src/fork/`
 - `src/cli/fork/`
 - `mobile/src/components/fork/`
+- `mobile/modules/fork-live-activity/`
+- `mobile/plugins/fork/`
 - `config/scripts/fork/`
 - `native/computer-use-macos/Sources/OrcaComputerUseMacOSCore/fork/`
 - `native/computer-use-macos/Tests/OrcaComputerUseMacOSTests/fork/`
@@ -1319,6 +1372,10 @@ Upstream files only get short hooks, which keeps rebases small:
 - An optional `executionHostId` on `runQuickCommandInNewTab` and `createTab`, so a Run tab
   opens on the host captured at confirm.
 - One provider wrap in `MobileSessionRouteScreen.tsx`.
+- Agents on the Lock Screen (SLRM-2387): an import and one hook call in `MobileHomeScreen.tsx`
+  (`useForkAgentLiveActivity`), an import and one element in `mobile/app/notifications.tsx`
+  (`ForkLiveActivitySettings`), one plugin line in `mobile/app.json` and one extra source in
+  `mobile/fingerprint.config.js` (the widget Swift, so a change rebuilds the dev client).
 - One element and a `relative` class in `worktree-card-compact-agent-row.tsx` for the row
   tint, and an import, one element and a `relative` class on the strip icon in
   `worktree-card-compact-agents.tsx` for the icon ring (SLRM-1966). Since upstream 1.4.261 a
