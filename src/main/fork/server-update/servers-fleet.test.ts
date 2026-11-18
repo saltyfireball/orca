@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ForkServerUpdateStatus } from '../../../shared/fork/server-update-wire'
-import { runForkServers, type ForkServersDeps } from './servers-fleet'
+import { listForkServers, runForkServers, type ForkServersDeps } from './servers-fleet'
 
 function status(
   version: string,
@@ -29,6 +29,50 @@ function job(phase: 'downloading' | 'restarting' | 'done' | 'failed', message?: 
     ...(message ? { message } : {})
   }
 }
+
+describe('ssh-managed servers', () => {
+  // kif: an orca serve service. m2mac: desktop-deployed orcad over an SSH tunnel, no service.
+  function deps(calls: string[] = []): ForkServersDeps {
+    const sshStatus: ForkServerUpdateStatus = {
+      ...status('1.4.262001'),
+      buildVersion: '0.1.0+081afb112818',
+      install: null,
+      problem: 'no `orca serve` service runs this profile here'
+    }
+    return {
+      listEnvironments: async () => [
+        { id: 'kif', name: 'kif' },
+        { id: 'm2mac', name: 'm2mac', connectionDependency: 'ssh-tunnel' }
+      ],
+      call: async (id, method) => {
+        calls.push(`${id} ${method}`)
+        return id === 'kif' ? status('1.4.262001') : sshStatus
+      },
+      localVersion: () => '1.4.262001',
+      turnWaitMinutes: () => 30,
+      now: () => 0,
+      sleep: async () => undefined
+    }
+  }
+
+  it('lists them as ssh-managed rather than an error, and compares release versions', async () => {
+    const list = await listForkServers(deps())
+    expect(list.servers.map((row) => [row.name, row.versus, row.sshManaged ?? false])).toEqual([
+      ['kif', 0, false],
+      ['m2mac', 0, true]
+    ])
+  })
+
+  it('skips them in an update run without asking them to install', async () => {
+    const calls: string[] = []
+    const rows = await runForkServers(deps(calls), { kind: 'update', version: '1.4.263001' })
+    expect(rows.find((row) => row.name === 'm2mac')).toMatchObject({
+      outcome: 'skipped',
+      message: 'ssh-managed (use orca environment update)'
+    })
+    expect(calls).not.toContain('m2mac fork.serverUpdate.apply')
+  })
+})
 
 describe('runForkServers', () => {
   it('updates servers one at a time; one that fails or is down does not stop the rest', async () => {
