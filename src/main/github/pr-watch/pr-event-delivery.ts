@@ -9,6 +9,7 @@ import type { PRWatchStorage } from './pr-watch-storage'
 import type { AgentSessionJournal } from '../../native-chat/agent-session-journal/journal-store'
 import type { PRPendingDelivery } from './pr-check-event-tables'
 import type { JournalWriterCommit } from '../../native-chat/agent-session-journal/journal-writer-changes'
+import { forkPrBabysitLineDelivered } from '../../fork/pr-babysit/pr-babysit-slot'
 
 const PR_KEY = /^([^/]+)\/([^/]+)\/([^/#]+)#(\d+)$/u
 
@@ -121,6 +122,7 @@ async function drain(input: DeliveryInput): Promise<void> {
     if (!written) {
       return
     }
+    forkPrBabysitLineDelivered(sessionId, delivery)
   }
 }
 

@@ -23,6 +23,7 @@ import { ForkAgentQueueSetting } from '../agent-queue/ForkAgentQueueSetting'
 import { ForkLaunchDefaultsSetting } from '../launch-defaults/ForkLaunchDefaultsSetting'
 import { ForkMemorySettings } from '../memory-truth/ForkMemorySettings'
 import { ForkIdleRecoverySetting } from '../idle-recovery/ForkIdleRecoverySetting'
+import { ForkPrBabysitSetting } from '../pr-babysit/ForkPrBabysitSetting'
 import { ForkAccountChipSetting } from '../claude-account-chip/ForkAccountChipSetting'
 import { ForkUsageReportSettings } from '../usage-report/ForkUsageReportSettings'
 import { ForkLostWorkSettings } from '../lost-work/ForkLostWorkSettings'
@@ -74,7 +75,10 @@ const SECTION_CARDS: Record<
     ['memory', ForkMemorySettings],
     ['auto-placement', ForkAutoPlacementSetting]
   ],
-  'idle-recovery': [['idle-recovery', ForkIdleRecoverySetting]],
+  'idle-recovery': [
+    ['idle-recovery', ForkIdleRecoverySetting],
+    ['pr-babysit', ForkPrBabysitSetting]
+  ],
   usage: [
     ['account-chip', ForkAccountChipSetting],
     ['usage-report', ForkUsageReportSettings]
