@@ -17,6 +17,7 @@ import {
 import { getReviewLabel, ReviewIcon } from './worktree-review-presentation'
 import type { WorktreeCardPrDisplay } from './worktree-card-pr-display'
 import type { WorktreeTaskState } from './worktree-task-state'
+import { ForkPrBabysitLine } from '@/fork/pr-babysit/ForkPrBabysitLine'
 
 const PROVIDER_MARKS: Partial<
   Record<string, (props: { className?: string }) => React.JSX.Element>
@@ -175,6 +176,7 @@ export function WorktreeCardReferenceRow({
             </span>
           ) : null}
         </div>
+        {kind === 'pr' && url ? <ForkPrBabysitLine url={url} /> : null}
       </div>
     </div>
   )

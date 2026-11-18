@@ -10,6 +10,7 @@ import type { StructuredAgentSessionLogger } from '../../../native-chat/agent-se
 import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { openAgentSessionRecordStoreOnce } from '../records/agent-session-record-store-slot'
 import { isHostShuttingDown } from '../../../startup/quit/host-shutdown-state'
+import { forkPrBabysitAttach } from '../../../fork/pr-babysit/pr-babysit-slot'
 
 export type PRWatchRuntimeDeps = {
   stateDirectory: string
@@ -59,23 +60,25 @@ export function startPRWatchRuntime(
     if (startedIn !== generation) {
       return
     }
-    const service = new PRWatchService({
-      database: prWatchStorage(journalDatabase),
-      chatExists: (chatId) => store.getConversation(chatId) != null,
-      chatFence: (chatId) => store.getConversation(chatId)?.currentFence ?? null,
-      // Folder workspaces have no checkout to read a PR through, so their chats get no lines.
-      chatWorkspace: async (chatId) => {
-        const location = store.getConversation(chatId)?.location
-        if (!location) {
-          return null
-        }
-        return location.workspaceKind === 'git-worktree'
-          ? deps.resolveWorkspace(location.workspaceId).catch(() => null)
-          : 'not-git'
-      },
-      openJournal: openChatJournal,
-      logger: deps.logger
-    })
+    const service = new PRWatchService(
+      forkPrBabysitAttach({
+        database: prWatchStorage(journalDatabase),
+        chatExists: (chatId) => store.getConversation(chatId) != null,
+        chatFence: (chatId) => store.getConversation(chatId)?.currentFence ?? null,
+        // Folder workspaces have no checkout to read a PR through, so their chats get no lines.
+        chatWorkspace: async (chatId) => {
+          const location = store.getConversation(chatId)?.location
+          if (!location) {
+            return null
+          }
+          return location.workspaceKind === 'git-worktree'
+            ? deps.resolveWorkspace(location.workspaceId).catch(() => null)
+            : 'not-git'
+        },
+        openJournal: openChatJournal,
+        logger: deps.logger
+      })
+    )
     running = service
     try {
       await service.start()
