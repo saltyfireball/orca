@@ -7,7 +7,11 @@ const localNativePackageSources = ['android', 'ios', 'expo-module.config.json'].
 }))
 
 module.exports = {
-  extraSources: localNativePackageSources,
+  // Blackfish (SLRM-2387): the widget extension's Swift is copied in at prebuild, outside ios/.
+  extraSources: [
+    ...localNativePackageSources,
+    { type: 'dir', filePath: 'modules/fork-live-activity/widget', reasons: ['forkWidgetExtension'] }
+  ],
   // These never change native code but would force a dev-client rebuild: package.json scripts,
   // .gitignore, and the version/build numbers that release bump PRs and fastlane rewrite.
   sourceSkips: ['PackageJsonScriptsAll', 'GitIgnore', 'ExpoConfigVersions']
