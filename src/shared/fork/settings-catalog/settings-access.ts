@@ -69,7 +69,9 @@ const RUNS_COMMAND: SettingsKey[] = [
   // SLRM-2310: where a server downloads new code from, and whose signature it accepts.
   'forkServerUpdateReleasesUrl',
   'forkServerUpdateMacCertSha1',
-  'forkServerUpdateMacTeamId'
+  'forkServerUpdateMacTeamId',
+  // SLRM-2393: the text added to the prompt of every best-of attempt.
+  'forkBestOfAttemptNote'
 ]
 
 /** One-time migration and "already defaulted" markers. */

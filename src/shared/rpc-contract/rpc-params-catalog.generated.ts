@@ -52,6 +52,13 @@ import { ForkPlacementLoadParams, ForkPlacementPickParams } from '../fork/auto-p
 import { ForkBatchStartParams } from '../fork/batch-start'
 import { ForkClashesLocalParams, ForkClashesScanParams } from '../fork/branch-clashes-wire'
 import {
+  ForkBestOfForgetParams,
+  ForkBestOfListParams,
+  ForkBestOfRecordParams,
+  ForkBestOfSettleParams,
+  ForkBestOfShowParams
+} from '../fork/best-of/best-of-wire'
+import {
   ForkClaudeAccountCancelParams,
   ForkClaudeAccountMoveParams,
   ForkClaudeAccountWhichParams
@@ -1591,6 +1598,11 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.batchStart.start': ForkBatchStartParams,
   'fork.clashes.local': ForkClashesLocalParams,
   'fork.clashes.scan': ForkClashesScanParams,
+  'fork.bestOf.forget': ForkBestOfForgetParams,
+  'fork.bestOf.list': ForkBestOfListParams,
+  'fork.bestOf.record': ForkBestOfRecordParams,
+  'fork.bestOf.settle': ForkBestOfSettleParams,
+  'fork.bestOf.show': ForkBestOfShowParams,
   'fork.claudeAccount.cancel': ForkClaudeAccountCancelParams,
   'fork.claudeAccount.move': ForkClaudeAccountMoveParams,
   'fork.claudeAccount.which': ForkClaudeAccountWhichParams,
