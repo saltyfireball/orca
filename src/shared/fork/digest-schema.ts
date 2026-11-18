@@ -45,7 +45,8 @@ const WaitingSchema = z.object({
   title: text,
   workspace: text,
   question: text,
-  verdict: z.enum(['waiting_user', 'stalled']),
+  verdict: z.enum(['waiting_user', 'stalled', 'guard']),
+  source: z.literal('babysit').optional().catch(undefined),
   since: time
 })
 
