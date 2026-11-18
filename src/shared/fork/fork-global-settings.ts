@@ -15,6 +15,7 @@ import type { ForkServerHealthSettings } from './server-health'
 import type { ForkServerUpdateSettings } from './server-update'
 import type { ForkPrBabysitSettings } from './pr-babysit'
 import type { ForkWorktreePortsSettings } from './worktree-ports'
+import type { ForkRowStatusSettings } from './row-status'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -38,6 +39,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkPrBabysitSettings &
   /** Fork (SLRM-2383): a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1. */
   ForkWorktreePortsSettings & {
+  /** Fork (SLRM-2390): spend, context, pull request and fix button on agent rows. */
+  ForkRowStatusSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */
     forkLostWork?: LostWorkSettings
     /** Fork (SLRM-2265): moving a workspace and its chats to another host; unset keys take the defaults. */
