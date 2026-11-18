@@ -196,8 +196,8 @@ export async function receiveForkLetter(
   const from: ForkLetterParty = {
     chatId: request.from.chatId,
     kind: request.from.kind,
-    title: request.from.title,
-    agent: request.from.agent,
+    title: cleanForkLetterText(request.from.title.replace(/\s+/g, ' '), 200),
+    agent: cleanForkLetterText(request.from.agent.replace(/\s+/g, ' '), 100),
     worktreeId: null,
     host: {
       kind: 'device',
