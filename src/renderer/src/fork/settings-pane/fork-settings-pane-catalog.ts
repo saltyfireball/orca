@@ -19,6 +19,7 @@ import { serverSetupSearchEntry } from '../server-setup/server-setup-search-entr
 import { serverUpdateSearchEntry } from '../server-update/server-update-search-entry'
 import { prBabysitSearchEntry } from '../pr-babysit/pr-babysit-search-entry'
 import { rowStatusSearchEntry } from '../row-status/row-status-search-entry'
+import { mainSyncSearchEntry } from '../main-sync/main-sync-search-entry'
 
 export const FORK_SETTINGS_PANE_ID = 'fork'
 
@@ -208,6 +209,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         },
         worktreeMoveSearchEntry(t),
         apfsCloneSearchEntry(t),
+        mainSyncSearchEntry(t),
         snoozeSearchEntry(t),
         serverSetupSearchEntry(t),
         {
