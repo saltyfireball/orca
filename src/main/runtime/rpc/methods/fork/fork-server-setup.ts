@@ -23,7 +23,10 @@ import {
   planForkServerSetup,
   readForkServerSetupReadiness
 } from '../../../../fork/server-setup/server-setup-host'
-import { runForkServerSetupOnEnvironment } from '../../../../fork/server-setup/server-setup-run'
+import {
+  runForkServerSetupOnEnvironment,
+  type ForkServerSetupRunDeps
+} from '../../../../fork/server-setup/server-setup-run'
 
 function hostDeps() {
   const doctor = createHostEnvironmentDoctorDeps({ refreshShellPath: true })
@@ -39,6 +42,18 @@ function settings(ctx: RpcContext): ForkServerSetupSettings | null {
   } catch {
     // A host without a settings store uses the defaults.
     return null
+  }
+}
+
+/** This host's wiring for fork.serverSetup.run; batch start (SLRM-2406) sets servers up through it. */
+export function forkServerSetupRunDeps(ctx: RpcContext): ForkServerSetupRunDeps {
+  return {
+    settings: () => settings(ctx),
+    listEnvironments: () => listEnvironments(getAppEnvironment().getPath('userData')),
+    listProjects: () => ctx.runtime.listProjects(),
+    listRepos: () => ctx.runtime.listRepos(),
+    callEnvironment: (environmentId, method, callParams, timeoutMs) =>
+      ctx.runtime.callOrchestrationWorkerServer(environmentId, method, callParams, timeoutMs)
   }
 }
 
@@ -61,16 +76,6 @@ export const FORK_SERVER_SETUP_METHODS = [
     permission: 'workspace',
     params: ForkServerSetupRunParams,
     handler: async (params, ctx): Promise<ForkServerSetupRunResult> =>
-      runForkServerSetupOnEnvironment(
-        {
-          settings: () => settings(ctx),
-          listEnvironments: () => listEnvironments(getAppEnvironment().getPath('userData')),
-          listProjects: () => ctx.runtime.listProjects(),
-          listRepos: () => ctx.runtime.listRepos(),
-          callEnvironment: (environmentId, method, callParams, timeoutMs) =>
-            ctx.runtime.callOrchestrationWorkerServer(environmentId, method, callParams, timeoutMs)
-        },
-        params
-      )
+      runForkServerSetupOnEnvironment(forkServerSetupRunDeps(ctx), params)
   })
 ] as const
