@@ -1,6 +1,6 @@
 // Review guides (SLRM-2396, FORK.md): the fork.reviewGuide.* RPC contract (the CLI and the phone),
 // the desktop window's IPC bridge, and the reply schema the phone checks answers against.
-import { z } from 'zod'
+import * as z from 'zod'
 import type { ForkReviewGuide, ForkReviewGuideJob } from './review-guide'
 
 const PrRepo = z.object({

@@ -1,7 +1,7 @@
 // Digest (SLRM-2388, FORK.md): schemas for a digest read from another host. A paired server's part
 // and the whole digest a phone reads are checked here before anything shows them; a bad row is
 // dropped, never the whole digest.
-import { z } from 'zod'
+import * as z from 'zod'
 import type { ForkDigest, ForkDigestSection } from './digest'
 
 const MAX_TEXT = 2000
