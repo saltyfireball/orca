@@ -52,6 +52,14 @@ const SECTION: ForkDigestSection = {
       question: 'Ship it?',
       verdict: 'waiting_user',
       since: 9
+    },
+    {
+      chatId: 'chat:s1',
+      title: 'Looper',
+      workspace: '',
+      question: 'Failure loop',
+      verdict: 'guard',
+      since: 8
     }
   ],
   cost: {
@@ -162,7 +170,7 @@ describe('totals, text and payload', () => {
       failed: 2,
       merged: 1,
       open: 1,
-      waiting: 2,
+      waiting: 4,
       costUsd: 1.5,
       totalTokens: 1000
     })
@@ -178,9 +186,10 @@ describe('totals, text and payload', () => {
     }
     const text = formatForkDigestText(digest)
     expect(text).toContain('Digest 2026-11-17 08:00 to 2026-11-18 08:00 (UTC)')
-    expect(text).toContain('2 finished, 2 failed, 1 merged, 1 open, 2 waiting on you, $1.50 est.')
+    expect(text).toContain('2 finished, 2 failed, 1 merged, 1 open, 4 waiting on you, $1.50 est.')
     expect(text).toContain('Not answering: roberto since 2026-11-18 02:00')
-    expect(text).toContain('Waiting on you (1)')
+    expect(text).toContain('Waiting on you (2)')
+    expect(text).toContain('[guard] Looper: Failure loop')
     expect(text).toContain('== old (no digest here')
     expect(/^[\n -~]*$/.test(text)).toBe(true)
     const payload = JSON.parse(forkDigestPayload(digest))
