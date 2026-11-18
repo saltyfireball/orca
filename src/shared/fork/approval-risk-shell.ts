@@ -10,15 +10,13 @@ import {
   GIT_READ,
   GIT_BRANCH_READ_FLAGS,
   GH_READ,
-  SAFE_READERS,
   PATTERN_FIRST,
-  TEXT_ONLY,
-  UNSAFE_FLAGS,
   NETWORK,
   UPLOAD_FLAG,
   PACKAGE_MANAGERS,
   GIT_WRITE
 } from './approval-risk-words'
+import { readArgs } from './approval-risk-flags'
 
 export type ForkApprovalRisk = 'low' | 'medium' | 'high'
 export type ForkApprovalGrade = { risk: ForkApprovalRisk; reason: string }
@@ -187,7 +185,8 @@ function gradeSegment(
   const name = programName(words[0])
   if (
     words[0].includes('/') &&
-    !/^\/(usr\/)?(local\/)?s?bin\/|^\/opt\/homebrew\/bin\//.test(words[0])
+    // Only a program directly in a system folder: `/bin/../repo/cat` is the repo's file.
+    !/^\/(usr\/)?(local\/)?s?bin\/[^/]+$|^\/opt\/homebrew\/bin\/[^/]+$/.test(words[0])
   ) {
     return medium(`runs ${words[0]}, a program named by its path`)
   }
@@ -199,34 +198,43 @@ function gradeSegment(
   if (INTERPRETERS.has(name) || PACKAGE_MANAGERS.has(name) || name === 'make') {
     return medium(`${name} runs code`)
   }
-  if (!SAFE_READERS.has(name)) {
-    return medium(`${name} is not a known read`)
-  }
   const args = words.slice(1)
-  const unsafe = UNSAFE_FLAGS[name]
-  if (unsafe && args.some((w) => unsafe.test(w.split('=')[0]))) {
-    return medium(`${name} with a flag that writes or runs a program`)
-  }
   if (name === 'git') {
     const git = gradeGit(args)
     if (git) {
       return git
     }
   }
-  if (TEXT_ONLY.has(name)) {
+  // Any word naming a credential, a flag's value too (`-f~/.ssh/id_rsa`), is high before flags.
+  const secret = args.find((w) => {
+    const value = w.replace(/^--?[A-Za-z0-9-]*=?/, '')
+    return value !== '' && placePath(value, base, root) === 'sensitive'
+  })
+  if (secret) {
+    return high(`names ${secret}, a credential or configuration file`)
+  }
+  const read = readArgs(name, name === 'git' ? args.slice(1) : args)
+  if ('bad' in read) {
+    return medium(read.bad)
+  }
+  if (read.text) {
     return null
   }
-  let patternTaken = !PATTERN_FIRST.has(name)
-  const positional = name === 'git' ? args.slice(1) : args
-  if (name === 'uniq' && positional.filter((w) => !w.startsWith('-')).length > 1) {
+  if (name === 'uniq' && read.files.length > 1) {
     return medium('uniq with an output file')
   }
-  for (const word of positional) {
-    if (word.startsWith('-')) {
-      continue
-    }
+  let patternTaken = !PATTERN_FIRST.has(name) || read.patternGiven
+  for (const arg of read.files) {
     if (!patternTaken) {
       patternTaken = true
+      // A pattern that looks like a path (`-f /etc/x` puts a file where the pattern goes) is one.
+      if (!/[/~]|^\./.test(arg) && placePath(arg, base, root) !== 'sensitive') {
+        continue
+      }
+    }
+    // `git show HEAD:.env` reads the file after the colon.
+    const word = name === 'git' && arg.includes(':') ? arg.slice(arg.indexOf(':') + 1) : arg
+    if (word === '') {
       continue
     }
     const place = placePath(word, base, root)
@@ -264,7 +272,13 @@ export function gradeShellCommand(command: string, root: string | null): ForkApp
   for (const { words } of split.segments) {
     if (programName(words[0]) === 'cd') {
       const target = words[1] === undefined ? null : resolvePath(words[1], base)
-      if (words.length !== 2 || target === null || !isInside(target, root)) {
+      // `cd -`, `cd --` and `cd -P` go to OLDPWD or home, not a folder named so.
+      if (
+        words.length !== 2 ||
+        words[1].startsWith('-') ||
+        target === null ||
+        !isInside(target, root)
+      ) {
         return medium('moves outside the workspace')
       }
       base = target
