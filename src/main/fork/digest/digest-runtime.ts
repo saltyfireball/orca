@@ -100,8 +100,28 @@ function serversDown(): { name: string; downSince: number }[] {
   )
 }
 
-/** fork.digest.collect: this host and every paired server, since the time asked or the last digest. */
-export async function collectForkDigestOn(
+const inFlight = new Map<string, Promise<ForkDigest>>()
+
+/**
+ * fork.digest.collect: this host and every paired server, since the time asked or the last digest.
+ * Callers asking for the same window while one read runs share it, so a client that asks again
+ * and again never piles up gh processes and server calls.
+ */
+export function collectForkDigestOn(
+  runtime: ForkDigestRuntime,
+  params: ForkDigestCollectParams
+): Promise<ForkDigest> {
+  const key = params.since === undefined ? 'last' : String(params.since)
+  const running = inFlight.get(key)
+  if (running) {
+    return running
+  }
+  const read = readForkDigestOn(runtime, params).finally(() => inFlight.delete(key))
+  inFlight.set(key, read)
+  return read
+}
+
+async function readForkDigestOn(
   runtime: ForkDigestRuntime,
   params: ForkDigestCollectParams
 ): Promise<ForkDigest> {
