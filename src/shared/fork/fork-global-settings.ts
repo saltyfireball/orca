@@ -13,6 +13,7 @@ import type { ForkServerHealthSettings } from './server-health'
 import type { ForkServerUpdateSettings } from './server-update'
 import type { ForkWorktreePortsSettings } from './worktree-ports'
 import type { ForkPrBabysitSettings } from './pr-babysit'
+import type { ForkMainSyncSettings } from './main-sync'
 import type { ForkRowStatusSettings } from './row-status'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
@@ -33,6 +34,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkWorktreePortsSettings &
   /** Fork (SLRM-2386): the PR babysitter; off unless a repo is listed. */
   ForkPrBabysitSettings &
+  /** Fork (SLRM-2384): keep each local project's default branch current. */
+  ForkMainSyncSettings &
   /** Fork (SLRM-2390): spend, context, pull request and fix button on agent rows. */
   ForkRowStatusSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */
