@@ -21,6 +21,7 @@ import type { ForkMainSyncSettings } from './main-sync'
 import type { ForkRowStatusSettings } from './row-status'
 import type { ForkBranchClashSettings } from './branch-clashes'
 import type { ForkReviewGuideSettings } from './review-guide'
+import type { ForkDigestSettings } from './digest'
 import type { ForkLettersSettings } from './letters'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
@@ -57,6 +58,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkBranchClashSettings &
   /** Fork (SLRM-2396): pull request review guides. */
   ForkReviewGuideSettings &
+  /** Fork (SLRM-2388): the daily digest across this host and its paired servers. */
+  ForkDigestSettings &
   /** Fork (SLRM-2389): letters between chats and the board of asks for the user. */
   ForkLettersSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */

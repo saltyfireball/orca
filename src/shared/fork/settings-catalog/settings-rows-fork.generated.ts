@@ -71,6 +71,18 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Background shell tasks and monitors count as children; unset is on.","o":true}',
   forkDeviceApproval:
     '{"t":{"k":"boolean"},"d":"A newly paired device needs approval from an approved device or this host\'s owner. Off unless true.","o":true}',
+  forkDigest:
+    '{"t":{"k":"boolean"},"d":"Send a digest of finished, failed, merged, cost and waiting work once a day to the notification targets. Off unless true.","o":true}',
+  forkDigestCommand:
+    '{"t":{"k":"boolean"},"d":"Digest: give the digest as JSON on stdin to the notification command (forkInboxNotifyCommand); unset is on when that command is set. Set it in the Settings screen.","o":true}',
+  forkDigestDesktop:
+    '{"t":{"k":"boolean"},"d":"Digest: desktop notification with the digest; unset follows forkInboxNotifyDesktop.","o":true}',
+  forkDigestHour:
+    '{"t":{"k":"number"},"d":"Digest: local hour (0 to 23) the daily digest goes out; unset is 8.","o":true}',
+  forkDigestPullRequests:
+    '{"t":{"k":"boolean"},"d":"Digest: ask the GitHub CLI (gh) for your merged and open pull requests in each project; unset is on.","o":true}',
+  forkDigestWebhook:
+    '{"t":{"k":"boolean"},"d":"Digest: POST the digest as JSON to the notification webhook (forkInboxNotifyWebhookUrl); unset is on when that address is set.","o":true}',
   forkEndpointFailover:
     '{"t":{"k":"boolean"},"d":"Endpoint failover: try a saved server\'s other routes when one stops answering, and move back to a better one; unset is on.","o":true}',
   forkEndpointFailoverRetrySeconds:

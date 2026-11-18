@@ -27,6 +27,7 @@ export const CLI_COMMAND_NAMES = [
   'devices',
   'diagnostics',
   'dialog',
+  'digest',
   'download',
   'drag',
   'emulator',

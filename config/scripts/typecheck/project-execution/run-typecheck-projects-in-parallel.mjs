@@ -9,6 +9,7 @@ import {
   resolvePinnedBunExecutable
 } from '../../tool-invocation/pinned-bun-executable.mjs'
 import { resolveTsrsTypecheckCommand, supportsTsrs } from './tsrs-typecheck-compiler.mjs'
+import { forkTypecheckCheckers, forkTypecheckParallelism } from '../../fork/typecheck-jobs.mjs'
 
 const BYTES_PER_GIB = 1024 ** 3
 
@@ -203,7 +204,10 @@ export function resolveTypecheckCommand(
     const command = resolveTsrsTypecheckCommand(config, root)
     return {
       ...command,
-      args: [...command.args, ...checkerArgs(checkers ?? TSRS_DEFAULT_CHECKERS)]
+      args: [
+        ...command.args,
+        ...checkerArgs(checkers ?? forkTypecheckCheckers(TSRS_DEFAULT_CHECKERS))
+      ]
     }
   }
   const installedCompiler = resolveProjectCompilerInfo(config, root)
@@ -258,7 +262,7 @@ export async function runTypecheckProjects({
   projects = TYPECHECK_PROJECTS,
   spawnCompiler = spawnProcess,
   memoryBytes = totalmem(),
-  parallelism = availableParallelism()
+  parallelism = forkTypecheckParallelism(availableParallelism())
 } = {}) {
   const batches = typecheckBatches(projects, { compiler, bunConcurrency, memoryBytes, parallelism })
   if (compiler === 'bun' || compiler === 'tsrs') {

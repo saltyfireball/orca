@@ -95,6 +95,7 @@ import { FORK_BRANCH_CLASHES_METHODS } from './fork/fork-branch-clashes'
 import { FORK_BEST_OF_METHODS } from './fork/fork-best-of'
 import { FORK_CHAT_HANDOFF_METHODS } from './fork/fork-chat-handoff'
 import { FORK_REVIEW_GUIDE_METHODS } from './fork/fork-review-guide'
+import { FORK_DIGEST_METHODS } from './fork/fork-digest'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
 import { STRUCTURED_AGENT_SESSION_ATTACHMENT_METHODS } from './structured-sessions/attachments/structured-agent-session-attachments'
@@ -252,6 +253,8 @@ export const ALL_RPC_METHODS = [
   ...FORK_CHAT_HANDOFF_METHODS,
   // SLRM-2396: pull request review guides behind `orca review-guide` and the phone (FORK.md).
   ...FORK_REVIEW_GUIDE_METHODS,
+  // SLRM-2388: the digest across this host and its paired servers, behind `orca digest` (FORK.md).
+  ...FORK_DIGEST_METHODS,
   // SLRM-2389: letters between chats and the board of asks, behind `orca letter` and `orca board` (FORK.md).
   ...FORK_LETTERS_RPC_METHODS
 ]
