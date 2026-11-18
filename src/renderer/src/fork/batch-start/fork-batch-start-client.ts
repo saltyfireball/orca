@@ -5,6 +5,7 @@ import { callRuntimeRpc } from '@/runtime/rpc/calls/runtime-rpc-call'
 import type { TuiAgent } from '../../../../shared/agent-launch/catalog/tui-agent'
 import { parseExecutionHostId } from '../../../../shared/execution-host/execution-host'
 import {
+  FORK_BATCH_START_SETUP_TIMEOUT_MS,
   FORK_BATCH_START_TIMEOUT_MS,
   ForkBatchStartResultSchema,
   type ForkBatchStartRequest,
@@ -19,17 +20,25 @@ export type ForkBatchTarget = {
   hostId: string | null
 }
 
-/** Where the request goes and what it asks for. Exported for tests. */
+/** Where the request goes and what it asks for. `setupMissing` (SLRM-2406) applies to auto only.
+ *  Exported for tests. */
 export function forkBatchRoute(
   target: ForkBatchTarget,
   auto: boolean,
   prompt: string,
-  agents: TuiAgent[]
+  agents: TuiAgent[],
+  setupMissing = false
 ): { runtime: RuntimeClientTarget; request: ForkBatchStartRequest } {
   if (auto) {
     return {
       runtime: { kind: 'local' },
-      request: { project: target.project, prompt, agents, placement: 'auto' }
+      request: {
+        project: target.project,
+        prompt,
+        agents,
+        placement: 'auto',
+        ...(setupMissing ? { setupMissing: true } : {})
+      }
     }
   }
   const host = parseExecutionHostId(target.hostId)
@@ -66,15 +75,20 @@ export async function sendForkBatchStart(
   target: ForkBatchTarget,
   auto: boolean,
   prompt: string,
-  agents: TuiAgent[]
+  agents: TuiAgent[],
+  setupMissing = false
 ): Promise<ForkBatchStartResult> {
-  const route = forkBatchRoute(target, auto, prompt, agents)
+  const route = forkBatchRoute(target, auto, prompt, agents, setupMissing)
   try {
     const result = await callRuntimeRpc<unknown>(
       route.runtime,
       'fork.batchStart.start',
       route.request,
-      { timeoutMs: FORK_BATCH_START_TIMEOUT_MS }
+      {
+        timeoutMs: route.request.setupMissing
+          ? FORK_BATCH_START_SETUP_TIMEOUT_MS
+          : FORK_BATCH_START_TIMEOUT_MS
+      }
     )
     return ForkBatchStartResultSchema.parse(result)
   } catch (error) {

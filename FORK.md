@@ -1174,6 +1174,40 @@ named Orca Fork until SLRM-1367. `main` is always
   - The pick happens in the CLI before stock routing: it rewrites `--on` or `--host` and prints
     the pick and the skipped machines on stderr. Stock worker-start and host resolution are not
     edited.
+- **Batch start (SLRM-2395).** Send prompt after prompt from the new-workspace composer, on the
+  desktop and the phone; each prompt becomes one worktree plus agent per chosen model. Ideas from
+  Conductor's "create more" switch and T3 Code's start-in-the-background and multi-model pick.
+  - A Batch switch under the composer's title (desktop) or under Project and Run target (phone)
+    swaps the single-workspace form for the batch box: project, prompt, models (multi-select, at
+    most 6, one task each), Auto machine and Keep open. The composer's own project and run target
+    are reused; switching Batch off brings the stock form back as it was.
+  - Each prompt goes to `fork.batchStart.start`. With Auto machine on, the desktop (or the phone's
+    paired desktop) ranks itself and its paired servers as `--host auto` does (SLRM-2266) and runs
+    the batch there; a picked server gets the batch forwarded and resolves the project against its
+    own setups. Off, the composer's run target takes it (a paired server over its own RPC). Every
+    model starts through `agent.launch` with a new worktree, so the agent launch queue (SLRM-2098)
+    gates it like any launch.
+  - A prompt is acknowledged before the box clears: the answer names the machine and each
+    worktree, with its queue place when it waits. Anything that failed stays in the box with the
+    failed models still picked, so sending again starts no duplicates. Started prompts are listed
+    under the box.
+  - Start follows Keep open (clear for the next prompt, or close the composer once acknowledged);
+    Cmd+Enter (Ctrl+Enter elsewhere) always starts in the background and leaves a fresh draft.
+  - Worktree names are the prompt's first words, the agent and a random tail; the display name is
+    the prompt's first line. Folder (non-git) projects and folder workspaces are not offered.
+  - Settings > Blackfish > Agents and workers, Batch start: `forkBatchStart` (show the switch, on),
+    `forkBatchStartKeepOpen` (on), `forkBatchStartAutoHost` (on) and `forkBatchStartSetupMissing`
+    (off, SLRM-2406). The phone reads its paired host's values.
+  - With `forkBatchStartSetupMissing` on, Auto machine asks the pick with `setupMissing`, as
+    `--host auto --setup-missing` does (SLRM-2406): a paired server that lacks the project but can
+    clone it ranks with the others. When one is picked, the desktop sets it up first through
+    `fork.serverSetup.run` (clone, register, readiness), then forwards the batch; the answer's
+    `setupNote` leads the acknowledgement ("Set up on SERVER: cloned into PATH. Missing: ...").
+    A failed setup starts nothing. Clients wait the clone and readiness time on top of the batch
+    wait when they ask for it.
+  - Not covered: a picked server running stock Orca or an older Blackfish refuses (turn Auto
+    machine off to use the run target); the stock form's linked items, base branch, setup choice
+    and attachments do not apply to batch prompts.
 - **Set up on a server (SLRM-2312).** New work can start on a paired server that lacks the
   project: the server clones it from the project's git remote with its own git credentials,
   registers it, and says what it lacks to build it.
@@ -1236,6 +1270,20 @@ named Orca Fork until SLRM-1367. `main` is always
   - Not covered: a picked server running stock Orca or an older Blackfish refuses (turn Auto
     machine off to use the run target); the stock form's linked items, base branch, setup choice
     and attachments do not apply to batch prompts.
+  - Phone (SLRM-2406): the new-workspace sheet's Run on list adds "Set up on SERVER..." rows after
+    its run targets, one per paired server the phone reaches whose own repo list has answered
+    without the project, when the paired host's `forkServerSetupOffer` is on and the project's
+    remote passes the URL check. Picking one runs the same flow with typed mobile operations:
+    `fork.serverSetup.plan` on the server (through the desktop relay), `fork.serverSetup.run` on
+    the paired desktop with `skipReadiness` (it clones and registers over its own link), then
+    `fork.serverSetup.readiness` on the server when `forkServerSetupReadiness` is on. A "Set up on
+    a server" group under Project and Run on shows each stage, the outcome line and any failure in
+    red text (no Alert, which does nothing in the web session); once the server's list shows the
+    new repo, it is picked as the run target.
+  - Batch start's Auto machine can set a server up first too; see Batch start (SLRM-2406).
+  - **Not covered yet:** a server too old to answer `fork.serverSetup.plan` gets a message to
+    update it or use Set project location; a paired desktop too old for the phone's run call gets
+    a message to update it.
 - **Fast new worktrees on macOS (SLRM-2270).** APFS copy-on-write clones for new local worktrees
   (Settings > Blackfish > Projects, "Fast new worktrees (macOS)"). Idea from T3 Code's "Fast
   worktree checkout" (MIT). Other systems, WSL and other volumes create worktrees as before.
@@ -1676,6 +1724,10 @@ Apply these in this order. Each one is a single commit.
 112. `SLRM-2312 Set up on a server: clone a project onto a paired server that lacks it from the host picker or --setup-missing`
 113. `SLRM-2396 Review guides: an agent-written tour of a pull request in a Guide tab, on the phone and in orca review-guide`
 112. `SLRM-2391 Chat handoff: hand a chat from Claude to Codex or back with a budgeted history`
+113. `SLRM-2391 Chat handoff: hand a chat from Claude to Codex or back with a budgeted history`
+114. `SLRM-2396 Review guides: an agent-written tour of a pull request in a Guide tab, on the phone and in orca review-guide`
+115. `SLRM-2387 Agents on the iPhone Lock Screen: a Live Activity and an Agents widget`
+116. `SLRM-2406 Set up on a server from the phone and from batch start's Auto machine`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2380,6 +2432,12 @@ Upstream files only get short hooks, which keeps rebases small:
   - The auto placement files carry `--setup-missing`: `withForkAutoPlacementNotes` also adds the
     flag to `worktree create`'s allowed flags, and `fork.placement.load` and `.pick` take
     `setupMissing`.
+  - Phone (SLRM-2406), from `mobile/src/components/fork/server-setup/`: `NewWorktreeModal.tsx` calls
+    `useMobileForkServerRefresh` and `useMobileForkServerSetup`, appends its rows to the run-target
+    items and renders its status before the batch toggle in the `forkBatchToggle` slot;
+    `NewWorktreeModalDrawers.tsx` takes the rows in its run-target items and sends a picked one to
+    `onForkServerSetup`; `use-new-workspace-repositories.ts` takes `serverGeneration` (passed to
+    `useServerRepos`) and returns `serverRepos`.
   - The three settings are in `src/shared/fork/fork-global-settings.ts` and
     `settings-rows-fork.generated.ts` is regenerated; the card is in the fork's Settings pane.
 
@@ -2447,6 +2505,8 @@ Upstream files only get short hooks, which keeps rebases small:
     card stays mounted, hidden), and skips its Cmd+Enter handler then.
   - Mobile: `NewWorktreeModal.tsx` calls `useMobileForkBatchStart`; `NewWorktreeFormSheet.tsx`
     takes `forkBatchToggle` and `forkBatchBody` and shows the body in place of the form.
+  - SLRM-2406: `fork-batch-start.ts` sets a picked server up through `forkServerSetupRunDeps`
+    (exported from `fork-server-setup.ts`) and `runForkServerSetupOnEnvironment`.
   - The settings are in `src/shared/fork/fork-global-settings.ts` and
     `settings-rows-fork.generated.ts` is regenerated; the card is in the fork's Settings pane.
 - Branch clashes (SLRM-2394), from `src/shared/fork/branch-clashes*.ts`,

@@ -7,7 +7,9 @@ import {
   forkBatchLocalSetupRepo,
   forkBatchReadySetupHosts,
   forkBatchWorktreeName,
+  foldForkBatchAnswer,
   readForkBatchStartSettings,
+  readForkBatchStartSettingsFrom,
   settleForkBatchOutcome
 } from './batch-start'
 
@@ -134,8 +136,57 @@ describe('settings', () => {
     expect(readForkBatchStartSettings(undefined)).toEqual({
       enabled: true,
       keepOpen: true,
-      autoHost: true
+      autoHost: true,
+      setupMissing: false
     })
     expect(readForkBatchStartSettings({ forkBatchStart: false }).enabled).toBe(false)
+  })
+
+  it('sets servers up only when asked (SLRM-2406)', () => {
+    expect(readForkBatchStartSettings({ forkBatchStartSetupMissing: true }).setupMissing).toBe(true)
+    expect(readForkBatchStartSettingsFrom({ forkBatchStartSetupMissing: true }).setupMissing).toBe(
+      true
+    )
+    expect(readForkBatchStartSettingsFrom({ forkBatchStartSetupMissing: 'yes' }).setupMissing).toBe(
+      false
+    )
+  })
+})
+
+describe('setup note (SLRM-2406)', () => {
+  it('leads the acknowledgement, even when nothing started', () => {
+    const started = foldForkBatchAnswer(
+      {
+        hostKey: 'runtime:s1',
+        hostLabel: 'kif',
+        setupNote: 'Set up on kif: cloned into /x.',
+        tasks: [{ agent: 'claude', ok: true, worktreeId: 'w', name: 'n' }]
+      },
+      label
+    )
+    expect(started.lines).toEqual(['Set up on kif: cloned into /x.', 'CLAUDE on kif: n'])
+    const failed = foldForkBatchAnswer(
+      {
+        hostKey: 'runtime:s1',
+        hostLabel: 'kif',
+        setupNote: 'Set up on kif: cloned into /x.',
+        tasks: [{ agent: 'claude', ok: false, error: 'no' }]
+      },
+      label
+    )
+    expect(failed.lines).toEqual(['Set up on kif: cloned into /x.'])
+    expect(failed.error).toBe('CLAUDE: no')
+  })
+
+  it('takes setupMissing in the params', () => {
+    expect(
+      ForkBatchStartParams.parse({
+        project: { id: 'p' },
+        prompt: 'x',
+        agents: ['claude'],
+        placement: 'auto',
+        setupMissing: true
+      }).setupMissing
+    ).toBe(true)
   })
 })

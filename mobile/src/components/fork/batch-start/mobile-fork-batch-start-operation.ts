@@ -3,6 +3,7 @@
 import type { TuiAgent } from '../../../../../src/shared/agent-launch/catalog/tui-agent'
 import { parseExecutionHostId } from '../../../../../src/shared/execution-host/execution-host'
 import {
+  FORK_BATCH_START_SETUP_TIMEOUT_MS,
   FORK_BATCH_START_TIMEOUT_MS,
   ForkBatchStartResultSchema,
   type ForkBatchStartRequest,
@@ -29,15 +30,23 @@ export type MobileForkBatchTarget = {
   repoHostId: string | null
 }
 
-/** The request for one prompt. Exported for tests. */
+/** The request for one prompt; `setupMissing` (SLRM-2406) applies to auto only. Exported for
+ *  tests. */
 export function mobileForkBatchRequest(
   target: MobileForkBatchTarget,
   auto: boolean,
   prompt: string,
-  agents: TuiAgent[]
+  agents: TuiAgent[],
+  setupMissing = false
 ): ForkBatchStartRequest {
   if (auto) {
-    return { project: target.project, prompt, agents, placement: 'auto' }
+    return {
+      project: target.project,
+      prompt,
+      agents,
+      placement: 'auto',
+      ...(setupMissing ? { setupMissing: true } : {})
+    }
   }
   const host = parseExecutionHostId(target.repoHostId)
   return {
@@ -55,7 +64,9 @@ export async function sendMobileForkBatchStart(
 ): Promise<ForkBatchStartResult> {
   try {
     const response = await forkBatchStartRun.request(client, request, {
-      timeoutMs: FORK_BATCH_START_TIMEOUT_MS
+      timeoutMs: request.setupMissing
+        ? FORK_BATCH_START_SETUP_TIMEOUT_MS
+        : FORK_BATCH_START_TIMEOUT_MS
     })
     return forkBatchStartRun.interpret(response)
   } catch (error) {

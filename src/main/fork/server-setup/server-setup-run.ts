@@ -76,7 +76,7 @@ async function alreadyReady(
 
 export async function runForkServerSetupOnEnvironment(
   deps: ForkServerSetupRunDeps,
-  params: { environmentId: string; project: string }
+  params: { environmentId: string; project: string; skipReadiness?: boolean }
 ): Promise<ForkServerSetupRunResult> {
   const environment = (await deps.listEnvironments()).find(
     (entry) => entry.id === params.environmentId
@@ -121,7 +121,7 @@ export async function runForkServerSetupOnEnvironment(
         })
         return path
       },
-      ...(forkServerSetupReadinessOn(settings)
+      ...(forkServerSetupReadinessOn(settings) && !params.skipReadiness
         ? {
             readiness: async (path: string) =>
               (await call(
