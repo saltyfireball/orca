@@ -10,6 +10,7 @@ import type { AgentHookSource } from '../../../shared/agent-hook-listener/transp
 import type { AgentHookEventPayload } from '../../../shared/agent-hook-listener/listener-event'
 import { respondAfterAgentToolPluginHooks } from '../tool-events/agent-tool-plugin-hooks'
 import { ClaudePermissionHookHolds } from './claude-permission-hook-hold'
+import { forkAgentGuardsObserveHook } from '../../fork/agent-guards/agent-guards-service'
 
 export abstract class AgentHookServerStatusHookLifecycle extends AgentHookServerRuntimeEnv {
   readonly claudeAgentViews = new ClaudeAgentViewBridge()
@@ -28,6 +29,7 @@ export abstract class AgentHookServerStatusHookLifecycle extends AgentHookServer
     if (accepted && source === 'claude' && this.claudePermissionHooks.hold(req, res, accepted)) {
       return
     }
+    forkAgentGuardsObserveHook(source, body, accepted) // Fork (SLRM-2385): failure-loop guard.
     await respondAfterAgentToolPluginHooks(res, source, body, req.headers, accepted)
   }
 

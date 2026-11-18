@@ -47,6 +47,7 @@ export const CLI_COMMAND_NAMES = [
   'gmail',
   'google',
   'goto',
+  'guards',
   'highlight',
   'host',
   'inbox',
