@@ -90,6 +90,13 @@ describe('fork settings access', () => {
     expect(forkSettingReadOnlyReason('terminalFontSize')).toBeNull()
   })
 
+  it("keeps continuing a person's own chats out of reach of agents (SLRM-2411)", () => {
+    expect(forkSettingReadOnlyReason('forkUnattendedResumeInteractive')).toMatch(
+      /limits what agents/
+    )
+    expect(forkSettingReadOnlyReason('forkUnattendedResume')).toBeNull()
+  })
+
   it('treats every one-time marker as read-only', () => {
     // A new marker must join MARKERS in settings-access.ts.
     const markers = forkSettingEntries().filter((entry) =>

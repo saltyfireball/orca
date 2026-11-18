@@ -3,7 +3,9 @@
 // Work nobody is watching (an orchestration worker with an open dispatch, the chat of an
 // automation run) carries on by itself instead, a limited number of times in a row, and never
 // when the cut turn was waiting on a person (an approval or a question). Interactive chats keep
-// the stock offer. Idea from T3 Code's "Recovering interrupted threads" (MIT).
+// the stock offer unless `forkUnattendedResumeInteractive` is on (SLRM-2411; unset follows
+// `forkChatSurvive`), and then only a turn the agent was working on. Idea from T3 Code's
+// "Recovering interrupted threads" (MIT).
 import type { AgentSessionRestartActivity } from '../agent-session/lifecycle/stopping/agent-session-restart-activity'
 import type { ForkGlobalSettings } from './fork-global-settings'
 
@@ -14,17 +16,22 @@ export const UNATTENDED_RESUME_MAX_MAX_TRIES = 20
 export type UnattendedResumeSettings = {
   enabled: boolean
   maxTries: number
+  /** SLRM-2411: interactive chats a restart cut are continued too. */
+  interactive: boolean
 }
 
 type SettingKey = keyof Pick<
   ForkGlobalSettings,
-  'forkUnattendedResume' | 'forkUnattendedResumeMaxTries'
+  | 'forkUnattendedResume'
+  | 'forkUnattendedResumeMaxTries'
+  | 'forkUnattendedResumeInteractive'
+  | 'forkChatSurvive'
 >
 
 /** Any settings object; values are checked here, so a hand-edited file cannot break a reader. */
 export type UnattendedResumeSettingsSource = Partial<Record<SettingKey, unknown>> | null | undefined
 
-/** The two settings out of a whole settings object read off the store, which is typed narrower. */
+/** The settings it reads out of a whole settings object read off the store, which is typed narrower. */
 export function pickUnattendedResumeSettings(value: unknown): UnattendedResumeSettingsSource {
   if (typeof value !== 'object' || value === null) {
     return null
@@ -32,8 +39,19 @@ export function pickUnattendedResumeSettings(value: unknown): UnattendedResumeSe
   return {
     forkUnattendedResume: 'forkUnattendedResume' in value ? value.forkUnattendedResume : undefined,
     forkUnattendedResumeMaxTries:
-      'forkUnattendedResumeMaxTries' in value ? value.forkUnattendedResumeMaxTries : undefined
+      'forkUnattendedResumeMaxTries' in value ? value.forkUnattendedResumeMaxTries : undefined,
+    forkUnattendedResumeInteractive:
+      'forkUnattendedResumeInteractive' in value
+        ? value.forkUnattendedResumeInteractive
+        : undefined,
+    forkChatSurvive: 'forkChatSurvive' in value ? value.forkChatSurvive : undefined
   }
+}
+
+/** SLRM-2411: an explicit true or false wins; unset follows chat survive (on only when it is). */
+export function unattendedResumeInteractiveOn(settings: UnattendedResumeSettingsSource): boolean {
+  const own = settings?.forkUnattendedResumeInteractive
+  return typeof own === 'boolean' ? own : settings?.forkChatSurvive === true
 }
 
 export function readUnattendedResumeSettings(
@@ -48,7 +66,8 @@ export function readUnattendedResumeSettings(
       tries >= UNATTENDED_RESUME_MIN_MAX_TRIES &&
       tries <= UNATTENDED_RESUME_MAX_MAX_TRIES
         ? tries
-        : UNATTENDED_RESUME_DEFAULT_MAX_TRIES
+        : UNATTENDED_RESUME_DEFAULT_MAX_TRIES,
+    interactive: unattendedResumeInteractiveOn(settings)
   }
 }
 
@@ -61,6 +80,18 @@ export type UnattendedResumeSkipReason =
   | 'awaiting-person'
   | 'activity-unknown'
   | 'tries-used'
+  /** SLRM-2411: a person pressed Stop on the cut turn. */
+  | 'person-stopped'
+  /** SLRM-2411: the chat's newest turn ended on a usage limit; limit resume owns it. */
+  | 'limit-wait'
+  /** SLRM-2411: those two could not be read, so nothing proves the chat is free to go on. */
+  | 'hold-unknown'
+
+/** What the live pass reads from a cut chat's saved conversation before it continues it. */
+export type UnattendedResumeHold = Extract<
+  UnattendedResumeSkipReason,
+  'person-stopped' | 'limit-wait' | 'hold-unknown'
+>
 
 export type UnattendedResumeDecision =
   | { action: 'resume' }
@@ -84,7 +115,7 @@ export function decideUnattendedResume(facts: UnattendedResumeFacts): Unattended
   if (!facts.settings.enabled) {
     return { action: 'skip', reason: 'disabled' }
   }
-  if (facts.kind === null) {
+  if (facts.kind === null && !facts.settings.interactive) {
     return { action: 'skip', reason: 'interactive' }
   }
   // Without the stop-time capture nothing proves the turn was not waiting on an approval.
@@ -92,6 +123,11 @@ export function decideUnattendedResume(facts: UnattendedResumeFacts): Unattended
     return { action: 'skip', reason: 'activity-unknown' }
   }
   if (restartActivityAwaitsPerson(facts.activity)) {
+    return { action: 'skip', reason: 'awaiting-person' }
+  }
+  // A person's own chat goes on only from a turn its agent was working on: a waiting lead is
+  // waiting on the person, and a settled lead with cut helpers is the person's to restart.
+  if (facts.kind === null && facts.activity.state !== 'working') {
     return { action: 'skip', reason: 'awaiting-person' }
   }
   if (facts.triesUsed >= facts.settings.maxTries) {
