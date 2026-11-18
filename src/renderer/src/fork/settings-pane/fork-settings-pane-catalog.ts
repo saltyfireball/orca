@@ -16,6 +16,7 @@ import { apfsCloneSearchEntry } from '../apfs-clone/apfs-clone-search-entry'
 import { snoozeSearchEntry } from '../snooze/snooze-search-entry'
 import { serverUpdateSearchEntry } from '../server-update/server-update-search-entry'
 import { prBabysitSearchEntry } from '../pr-babysit/pr-babysit-search-entry'
+import { mainSyncSearchEntry } from '../main-sync/main-sync-search-entry'
 
 export const FORK_SETTINGS_PANE_ID = 'fork'
 
@@ -219,6 +220,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         },
         worktreeMoveSearchEntry(t),
         apfsCloneSearchEntry(t),
+        mainSyncSearchEntry(t),
         snoozeSearchEntry(t),
         {
           title: t('fork.settingsPane.projectList.title', 'Per project'),

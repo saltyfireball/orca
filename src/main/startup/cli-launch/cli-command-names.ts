@@ -53,6 +53,7 @@ export const CLI_COMMAND_NAMES = [
   'limits',
   'linear',
   'lost-work',
+  'main-sync',
   'mcp-profile',
   'mouse',
   'network',

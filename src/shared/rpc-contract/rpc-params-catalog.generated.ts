@@ -47,6 +47,7 @@ import {
 } from '../fork/idle-recovery-wire'
 import { ForkLimitsListParams, ForkLimitsTargetParams } from '../fork/limit-resume-wire'
 import { ForkLostWorkScanParams } from '../fork/lost-work'
+import { ForkMainSyncRunParams, ForkMainSyncStatusParams } from '../fork/main-sync'
 import { ForkMcpChatParams, ForkMcpChatSetParams, ForkMcpListParams } from '../fork/mcp-profiles'
 import { ForkMachineUsageParams, ForkPooledLimitsParams } from '../fork/pooled-limits'
 import {
@@ -1237,6 +1238,8 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.limits.resumeNow': ForkLimitsTargetParams,
   'fork.limits.usage': ForkPooledLimitsParams,
   'fork.lostWork.scan': ForkLostWorkScanParams,
+  'fork.mainSync.run': ForkMainSyncRunParams,
+  'fork.mainSync.status': ForkMainSyncStatusParams,
   'fork.mcpProfiles.chat': ForkMcpChatParams,
   'fork.mcpProfiles.list': ForkMcpListParams,
   'fork.mcpProfiles.set': ForkMcpChatSetParams,
