@@ -56,7 +56,9 @@ let deps: ForkReviewGuideDeps
 let finishAgent: (value: unknown) => void
 
 async function settle(): Promise<void> {
+  // ast-grep-ignore: test-no-polling-loop -- yields macrotasks so chained promise work in the service settles
   for (let i = 0; i < 20; i += 1) {
+    // ast-grep-ignore: test-no-real-time-wait -- a 1ms timer only yields to the event loop, nothing waits on the clock
     await new Promise((resolve) => setTimeout(resolve, 1))
   }
 }
