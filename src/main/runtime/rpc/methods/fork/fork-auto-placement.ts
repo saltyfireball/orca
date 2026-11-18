@@ -35,7 +35,8 @@ function projectReady(ctx: RpcContext, project: string): boolean {
 async function localLoad(
   ctx: RpcContext,
   repo: string | undefined,
-  project: string | undefined
+  project: string | undefined,
+  setupMissing = false
 ): Promise<ForkPlacementLoadResult> {
   const load = await readLocalMachineLoad()
   const result: ForkPlacementLoadResult = { load }
@@ -47,6 +48,10 @@ async function localLoad(
   }
   if (project) {
     result.projectReady = projectReady(ctx, project)
+    if (setupMissing && !result.projectReady) {
+      // SLRM-2312: this Orca answers fork.serverSetup.*, so git is all a clone still needs.
+      result.canSetUp = await ctx.runtime.isGitAvailable().catch(() => false)
+    }
   }
   return result
 }
@@ -66,7 +71,7 @@ export const FORK_AUTO_PLACEMENT_METHODS = [
     permission: 'workspace',
     params: ForkPlacementLoadParams,
     handler: async (params, ctx): Promise<ForkPlacementLoadResult> =>
-      localLoad(ctx, params.repo, params.project)
+      localLoad(ctx, params.repo, params.project, params.setupMissing === true)
   }),
   defineMethod({
     name: 'fork.placement.pick',

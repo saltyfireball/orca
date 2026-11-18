@@ -14,6 +14,7 @@ import { getForkRemoteSettingsSectionParts } from '../endpoint-failover/endpoint
 import { worktreeMoveSearchEntry } from '../worktree-move/worktree-move-search-entry'
 import { apfsCloneSearchEntry } from '../apfs-clone/apfs-clone-search-entry'
 import { snoozeSearchEntry } from '../snooze/snooze-search-entry'
+import { serverSetupSearchEntry } from '../server-setup/server-setup-search-entry'
 import { serverUpdateSearchEntry } from '../server-update/server-update-search-entry'
 import { prBabysitSearchEntry } from '../pr-babysit/pr-babysit-search-entry'
 
@@ -190,7 +191,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
       t('fork.settingsPane.projects.title', 'Projects'),
       t(
         'fork.settingsPane.projects.description',
-        'The Lost work scan, moving a workspace to another host, fast new worktrees, and what the fork sets for one project.'
+        'The Lost work scan, moving a workspace to another host, fast new worktrees, setting a project up on a server, and what the fork sets for one project.'
       ),
       [
         {
@@ -204,6 +205,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         worktreeMoveSearchEntry(t),
         apfsCloneSearchEntry(t),
         snoozeSearchEntry(t),
+        serverSetupSearchEntry(t),
         {
           title: t('fork.settingsPane.projectList.title', 'Per project'),
           description: t(

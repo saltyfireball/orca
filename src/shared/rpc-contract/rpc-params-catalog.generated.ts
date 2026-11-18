@@ -67,6 +67,11 @@ import {
 } from '../fork/pr-babysit-wire'
 import { ForkServerHealthListParams } from '../fork/server-health'
 import {
+  ForkServerSetupPlanParams,
+  ForkServerSetupReadinessParams,
+  ForkServerSetupRunParams
+} from '../fork/server-setup-wire'
+import {
   ForkServerUpdateApplyParams,
   ForkServerUpdateRollbackParams,
   ForkServerUpdateStatusParams,
@@ -1618,6 +1623,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.prBabysit.start': ForkPrBabysitStartParams,
   'fork.prBabysit.stop': ForkPrBabysitStopParams,
   'fork.serverHealth.list': ForkServerHealthListParams,
+  'fork.serverSetup.plan': ForkServerSetupPlanParams,
+  'fork.serverSetup.readiness': ForkServerSetupReadinessParams,
+  'fork.serverSetup.run': ForkServerSetupRunParams,
   'fork.serverUpdate.apply': ForkServerUpdateApplyParams,
   'fork.serverUpdate.rollback': ForkServerUpdateRollbackParams,
   'fork.serverUpdate.status': ForkServerUpdateStatusParams,
