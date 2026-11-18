@@ -111,5 +111,17 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-limits',
     keys: ['limits list', 'limits resume-now', 'limits cancel'],
     load: async () => (await import('./limits-handlers.js')).FORK_LIMITS_HANDLERS
+  },
+  // SLRM-2384: keep each project's default branch current (FORK.md "Keep main current").
+  {
+    name: 'fork-main-sync',
+    keys: ['main-sync', 'main-sync run'],
+    load: async () => (await import('./main-sync-handlers.js')).FORK_MAIN_SYNC_HANDLERS
+  },
+  // SLRM-2384: memory protection for the orca-serve systemd user unit (FORK.md).
+  {
+    name: 'fork-serve-protect',
+    keys: ['serve service protect', 'serve service protect status', 'serve service unprotect'],
+    load: async () => (await import('./serve-protect-handlers.js')).FORK_SERVE_PROTECT_HANDLERS
   }
 ]
