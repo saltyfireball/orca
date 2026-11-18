@@ -15,6 +15,18 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"On macOS, fill a new worktree by cloning a cached checkout of the project with APFS copy-on-write instead of writing every file; off unless true.","o":true}',
   forkApfsCloneFolders:
     '{"t":{"k":"array","of":{"k":"string"}},"d":"On macOS, git-ignored folders (paths relative to the project) cloned from the project\'s own checkout into each new worktree with APFS copy-on-write; unset is node_modules, empty is none.","o":true}',
+  forkBestOf:
+    '{"t":{"k":"boolean"},"d":"Best of N (SLRM-2393): `orca best-of` and the compare view; unset is on.","o":true}',
+  forkBestOfAgents:
+    '{"t":{"k":"string"},"d":"Best of N: default agents of the attempts, agent[:model[:effort]] comma separated and cycled; unset is claude.","o":true}',
+  forkBestOfAttemptNote:
+    '{"t":{"k":"string"},"d":"Best of N: the note added to every attempt\'s prompt, {{index}} and {{count}} filled in; unset is the built-in note. Set it in the Settings screen.","o":true}',
+  forkBestOfHistory:
+    '{"t":{"k":"number"},"d":"Best of N: how many runs the compare view keeps; unset is 20.","o":true}',
+  forkBestOfLoserAction:
+    '{"t":{"k":"enum","values":["archive","keep","remove"]},"d":"Best of N: what a pick does with the worktrees of the attempts that lost; unset is \'archive\'.","o":true}',
+  forkBestOfPlacement:
+    '{"t":{"k":"string"},"d":"Best of N: default machines of the attempts, auto, here or server names, comma separated and cycled; unset is auto.","o":true}',
   forkBoundaryCompactIdleSeconds:
     '{"t":{"k":"number"},"d":"Boundary compaction: seconds a chat rests after its turn before it may be compacted; unset is 120.","o":true}',
   forkBoundaryCompactMaxWaitMinutes:

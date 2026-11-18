@@ -111,5 +111,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-limits',
     keys: ['limits list', 'limits resume-now', 'limits cancel'],
     load: async () => (await import('./limits-handlers.js')).FORK_LIMITS_HANDLERS
+  },
+  // SLRM-2393: one task to 2 to 4 agents, compared and picked (FORK.md "Best of N").
+  {
+    name: 'fork-best-of',
+    keys: ['best-of', 'best-of list', 'best-of show', 'best-of pick'],
+    load: async () => (await import('./best-of-handlers.js')).FORK_BEST_OF_HANDLERS
   }
 ]

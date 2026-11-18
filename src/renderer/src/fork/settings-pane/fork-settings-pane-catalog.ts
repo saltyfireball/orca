@@ -9,6 +9,7 @@ import { translate } from '@/i18n/i18n'
 import type { Translate } from '@/i18n/use-translate'
 import { getForkChatsSearchEntries } from './fork-settings-pane-catalog-chats'
 import { forkAutoPlacementSearchEntry } from '../auto-placement/auto-placement-search-entry'
+import { bestOfSearchEntry } from '../best-of/best-of-search-entry'
 import type { ForkSettingsSection, ForkSettingsSectionId } from './fork-settings-pane-types'
 import { getForkRemoteSettingsSectionParts } from '../endpoint-failover/endpoint-failover-search'
 import { worktreeMoveSearchEntry } from '../worktree-move/worktree-move-search-entry'
@@ -129,7 +130,8 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
           ),
           keywords: words('pressure', 'swap', 'pause new agents', 'ram', 'forkMemoryWarnPressure')
         },
-        forkAutoPlacementSearchEntry(t)
+        forkAutoPlacementSearchEntry(t),
+        bestOfSearchEntry(t)
       ]
     ),
     section(

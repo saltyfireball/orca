@@ -33,6 +33,13 @@ import {
 } from '../fork/agent-queue'
 import { ForkPlacementLoadParams, ForkPlacementPickParams } from '../fork/auto-placement-wire'
 import {
+  ForkBestOfForgetParams,
+  ForkBestOfListParams,
+  ForkBestOfRecordParams,
+  ForkBestOfSettleParams,
+  ForkBestOfShowParams
+} from '../fork/best-of/best-of-wire'
+import {
   ForkClaudeAccountCancelParams,
   ForkClaudeAccountMoveParams,
   ForkClaudeAccountWhichParams
@@ -1211,6 +1218,11 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.agentQueue.list': ForkAgentQueueListParams,
   'fork.agentQueue.start': ForkAgentQueueTicketParams,
   'fork.agentQueue.status': ForkAgentQueueStatusParams,
+  'fork.bestOf.forget': ForkBestOfForgetParams,
+  'fork.bestOf.list': ForkBestOfListParams,
+  'fork.bestOf.record': ForkBestOfRecordParams,
+  'fork.bestOf.settle': ForkBestOfSettleParams,
+  'fork.bestOf.show': ForkBestOfShowParams,
   'fork.claudeAccount.cancel': ForkClaudeAccountCancelParams,
   'fork.claudeAccount.move': ForkClaudeAccountMoveParams,
   'fork.claudeAccount.which': ForkClaudeAccountWhichParams,

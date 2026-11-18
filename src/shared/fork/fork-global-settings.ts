@@ -173,6 +173,18 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkSnoozeIdleDays?: number
     /** Fork snooze: a command run once when a snooze settles (its pull request merged or its idle days passed); unset is none. Set it in the Settings screen. */
     forkSnoozeSettleCommand?: string
+    /** Fork best of N (SLRM-2393): `orca best-of` and the compare view; unset is on. */
+    forkBestOf?: boolean
+    /** Fork best of N: default agents of the attempts, agent[:model[:effort]] comma separated and cycled; unset is claude. */
+    forkBestOfAgents?: string
+    /** Fork best of N: default machines of the attempts, auto, here or server names, comma separated and cycled; unset is auto. */
+    forkBestOfPlacement?: string
+    /** Fork best of N: what a pick does with the worktrees of the attempts that lost; unset is 'archive'. */
+    forkBestOfLoserAction?: 'archive' | 'remove' | 'keep'
+    /** Fork best of N: how many runs the compare view keeps; unset is 20. */
+    forkBestOfHistory?: number
+    /** Fork best of N: the note added to every attempt's prompt, {{index}} and {{count}} filled in; unset is the built-in note. Set it in the Settings screen. */
+    forkBestOfAttemptNote?: string
   }
 
 /** Upstream's settings base plus the fork's settings; one hook in `global-settings-types.ts`. */
