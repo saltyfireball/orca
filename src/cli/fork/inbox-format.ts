@@ -26,6 +26,9 @@ export function inboxShortId(item: Pick<ForkIdleRecoveryInboxItem, 'chatId' | 'k
 }
 
 function kindLabel(item: ForkIdleRecoveryInboxItem): string {
+  if (item.source === 'babysit') {
+    return 'pr-babysit'
+  }
   return item.verdict === 'waiting_user' ? 'waiting' : 'stalled'
 }
 
@@ -45,7 +48,7 @@ function itemLines(item: ForkIdleRecoveryInboxItem, now: number): string[] {
 }
 
 export function formatInboxList(result: ForkIdleRecoveryInboxResult): string {
-  if (result.mode === 'off') {
+  if (result.mode === 'off' && result.items.length === 0) {
     return INBOX_OFF_MESSAGE
   }
   if (result.items.length === 0) {
