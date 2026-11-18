@@ -157,5 +157,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-chat-handoff',
     keys: ['chat handoff', 'chat history'],
     load: async () => (await import('./chat-handoff-handlers.js')).FORK_CHAT_HANDOFF_HANDLERS
+  },
+  // SLRM-2396: pull request review guides (FORK.md "Review guides").
+  {
+    name: 'fork-review-guide',
+    keys: ['review-guide', 'review-guide write', 'review-guide cancel'],
+    load: async () => (await import('./review-guide-handlers.js')).FORK_REVIEW_GUIDE_HANDLERS
   }
 ]

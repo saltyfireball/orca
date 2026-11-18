@@ -164,6 +164,16 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"array","of":{"k":"string"}},"d":"PR babysitter (SLRM-2386): owner/repo names whose pull requests are babysat, \\"*\\" for every repo; unset is none (off).","o":true}',
   forkPrBabysitWaitMinutes:
     '{"t":{"k":"number"},"d":"PR babysitter: minutes to wait for a new CI result after a fix request before it stops and asks you; unset is 120.","o":true}',
+  forkReviewGuideAutoWrite:
+    '{"t":{"k":"boolean"},"d":"Review guides: write a guide by itself when a pull request without one is opened (each guide costs agent usage); unset is off.","o":true}',
+  forkReviewGuideInstructions:
+    '{"t":{"k":"string"},"d":"Review guides: your own instructions for the guide writer, such as what to show first or what to skip; unset is none.","o":true}',
+  forkReviewGuideMaxPatchKiB:
+    '{"t":{"k":"number"},"d":"Review guides: KiB of patch text the writer reads (16 to 1024); files past it are listed without their patch; unset is 96.","o":true}',
+  forkReviewGuideTimeoutMinutes:
+    '{"t":{"k":"number"},"d":"Review guides: minutes the writer may take (1 to 15); unset is 5.","o":true}',
+  forkReviewGuides:
+    '{"t":{"k":"boolean"},"d":"The Guide tab on pull requests, its phone view and `orca review-guide`; unset is on.","o":true}',
   forkRowContext:
     '{"t":{"k":"boolean"},"d":"A native Claude chat\'s context size on its agent rows; unset is on.","o":true}',
   forkRowFixChecks:

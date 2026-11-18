@@ -1,5 +1,6 @@
 import { MOBILE_AGENT_SESSION_RPC_METHODS } from './runtime-rpc-mobile-agent-session-methods'
 import { PAIRED_DESKTOP_METHODS } from './runtime-rpc-mobile-paired-desktop-methods'
+import { FORK_REVIEW_GUIDE_RPC_METHODS } from '../../../../shared/fork/review-guide-wire'
 
 // Execution-host routes follow the configured target; paired-desktop routes stay with the relaying Mac. This table also defines mobile allowlisting.
 export type MobileRpcMethodRoute = 'execution-host' | 'paired-desktop'
@@ -255,7 +256,9 @@ export const EXECUTION_HOST_METHODS = [
   'worktree.runApprovedSetup',
   'worktree.set',
   'worktree.show',
-  'worktree.sleep'
+  'worktree.sleep',
+  // Fork (SLRM-2396): review guides are read and written where the workspace's checkout is.
+  ...FORK_REVIEW_GUIDE_RPC_METHODS
 ] as const
 
 export const MOBILE_RPC_METHOD_ROUTES: ReadonlyMap<string, MobileRpcMethodRoute> = new Map([

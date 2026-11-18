@@ -42,6 +42,7 @@ import { ForkSnoozeSetting } from '../snooze/ForkSnoozeSetting'
 import { ForkServerSetupSetting } from '../server-setup/ForkServerSetupSetting'
 import { ForkMainSyncSetting } from '../main-sync/ForkMainSyncSetting'
 import { ForkBranchClashesSetting } from '../branch-clashes/ForkBranchClashesSetting'
+import { ForkReviewGuideSetting } from '../review-guide/ForkReviewGuideSetting'
 import { ForkDeviceApprovalSetting } from '../device-approval/ForkDeviceApprovalSetting'
 import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
 import { ForkServerHealthSetting } from '../server-health/ForkServerHealthSetting'
@@ -106,6 +107,7 @@ const SECTION_CARDS: Record<
     ['snooze', ForkSnoozeSetting],
     ['server-setup', ForkServerSetupSetting],
     ['branch-clashes', ForkBranchClashesSetting],
+    ['review-guide', ForkReviewGuideSetting],
     ['project-settings-list', ForkProjectSettingsList]
   ],
   remote: [
