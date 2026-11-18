@@ -82,10 +82,10 @@ const SECTION_CARDS: Record<
     ['boundary-compaction', ForkBoundaryCompactionSetting],
     ['mcp-profile', ForkMcpProfileSetting],
     ['visual-fallback', ForkVisualFallbackSetting],
-    ['letters', ForkLettersSetting]
     ['approval-triage', ForkApprovalTriageSetting],
     ['prompt-stash', ForkPromptStashSetting],
-    ['saved-prompts', ForkSavedPromptsSetting]
+    ['saved-prompts', ForkSavedPromptsSetting],
+    ['letters', ForkLettersSetting]
   ],
   agents: [
     ['child-tally', ForkChildTallySetting],
@@ -96,18 +96,18 @@ const SECTION_CARDS: Record<
     ['launch-defaults', ForkLaunchDefaultsSetting],
     ['memory', ForkMemorySettings],
     ['auto-placement', ForkAutoPlacementSetting],
-    ['batch-start', ForkBatchStartSetting]
+    ['agent-guards', ForkAgentGuardsSetting],
+    ['batch-start', ForkBatchStartSetting],
+    ['best-of', ForkBestOfSetting]
   ],
   'idle-recovery': [
     ['idle-recovery', ForkIdleRecoverySetting],
     ['pr-babysit', ForkPrBabysitSetting]
-    ['agent-guards', ForkAgentGuardsSetting]
-    ['best-of', ForkBestOfSetting]
   ],
   usage: [
     ['account-chip', ForkAccountChipSetting],
     ['usage-report', ForkUsageReportSettings],
-    ['pooled-limits', ForkPooledLimitsSetting]
+    ['pooled-limits', ForkPooledLimitsSetting],
     ['digest', ForkDigestSetting]
   ],
   projects: [

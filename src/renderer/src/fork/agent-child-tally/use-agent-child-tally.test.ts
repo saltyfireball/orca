@@ -6,7 +6,7 @@ import {
   childTallyRootKey,
   selectAgentChildTally
 } from './use-agent-child-tally'
-import { acceptedAgentStatuses } from '@/store/slices/agent-status/accepted-agent-statuses'
+import { acceptedAgentStatuses } from '@/store/slices/agent-status/status-ownership/accepted-agent-statuses'
 
 function entry(paneKey: string, extra: Partial<AgentStatusEntry> = {}): AgentStatusEntry {
   return {
