@@ -35,6 +35,7 @@ import { installForkAgentQueueApp } from './fork/agent-queue/agent-queue-ipc'
 import { installForkSnoozeApp } from './fork/snooze/snooze-ipc'
 import { installForkChatStallBridge } from './fork/chat-stall/chat-stall-bridge'
 import { installForkLimitResumeBridge } from './fork/limit-resume/limit-resume-bridge'
+import { installForkAgentGuardsBridge } from './fork/agent-guards/agent-guards-bridge'
 import { installForkWorkerCleanupBridge } from './fork/worker-cleanup/worker-cleanup-bridge'
 import { installForkMcpProfilesApp } from './fork/mcp-profiles/mcp-profiles-ipc'
 import {
@@ -237,6 +238,7 @@ if (preflightReady) {
   installForkChatStallBridge()
   // Fork (SLRM-2309): the "resumes at" labels of chats parked on a usage limit (FORK.md).
   installForkLimitResumeBridge()
+  installForkAgentGuardsBridge() // Fork (SLRM-2385): the guard status line (FORK.md).
   installForkWorkerCleanupBridge()
   // Fork: MCP profiles; every chat loads every server until profiles are set.
   installForkMcpProfilesApp(() => state.store?.getSettings())

@@ -15,6 +15,7 @@ import {
   type ForkWorktreePortsRuntime
 } from './worktree-ports/worktree-ports-service'
 import { startForkMainSync, type ForkMainSyncRuntime } from './main-sync/main-sync-live'
+import { startForkAgentGuards } from './agent-guards/agent-guards-service'
 
 export function startForkRuntimeSettleServices(
   runtime: UnattendedResumeRuntime &
@@ -33,4 +34,6 @@ export function startForkRuntimeSettleServices(
   void startForkWorktreePorts(runtime)
   // SLRM-2384: fetch and fast-forward each local project's default branch, when on.
   startForkMainSync(runtime)
+  // SLRM-2385: warn and pause agents stuck in a failure loop or past their spend cap.
+  startForkAgentGuards(runtime)
 }

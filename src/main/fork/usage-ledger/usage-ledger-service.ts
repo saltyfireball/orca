@@ -37,6 +37,24 @@ let writer: LedgerFileWriter | null = null
 let pushTimer: ReturnType<typeof setTimeout> | null = null
 let stopPrune: (() => void) | null = null
 const changeListeners = new Set<() => void>()
+/** SLRM-2385: told when a counted chat starts or ends a turn (agent guards read spend there). */
+export type ForkUsageLedgerTurnListener = (sessionId: string, phase: 'start' | 'end') => void
+const turnListeners = new Set<ForkUsageLedgerTurnListener>()
+
+function notifyTurn(sessionId: string, phase: 'start' | 'end'): void {
+  for (const listener of turnListeners) {
+    try {
+      listener(sessionId, phase)
+    } catch (error) {
+      console.warn('[fork-usage-ledger] A turn listener failed:', error)
+    }
+  }
+}
+
+export function onForkUsageLedgerTurn(listener: ForkUsageLedgerTurnListener): () => void {
+  turnListeners.add(listener)
+  return () => turnListeners.delete(listener)
+}
 
 function notifyCacheChanged(): void {
   if (pushTimer) {
@@ -127,6 +145,7 @@ export function forkUsageLedgerObserveClaudeEvent(event: ClaudeStructuredSession
     if (event.startsTurn) {
       ledger.noteTurnStart(event.sessionId)
       notifyCacheChanged()
+      notifyTurn(event.sessionId, 'start')
     }
     const observation = claudeUsageObservation(event.message)
     if (!observation) {
@@ -140,6 +159,9 @@ export function forkUsageLedgerObserveClaudeEvent(event: ClaudeStructuredSession
     writer?.schedule()
     if (changed) {
       notifyCacheChanged()
+    }
+    if (observation.kind === 'turn-end') {
+      notifyTurn(event.sessionId, 'end')
     }
   } catch (error) {
     // Counting must never disturb the chat itself.

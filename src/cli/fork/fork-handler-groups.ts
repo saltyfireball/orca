@@ -135,5 +135,10 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
       // SLRM-2392: pooled limits (FORK.md "Pooled limits").
       ...(await import('./limits-usage-handler.js')).FORK_LIMITS_USAGE_HANDLERS
     })
+  // SLRM-2385: failure-loop and spend guards (FORK.md "Agent guards").
+  {
+    name: 'fork-guards',
+    keys: ['guards list', 'guards resume', 'guards cap'],
+    load: async () => (await import('./guards-handlers.js')).FORK_GUARDS_HANDLERS
   }
 ]
