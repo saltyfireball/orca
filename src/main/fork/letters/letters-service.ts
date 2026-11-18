@@ -94,8 +94,7 @@ export function admitForkLetter(
     const between =
       cited &&
       ((sameLetterParty(cited.from, letter.from) && sameLetterParty(cited.to, letter.to)) ||
-        (sameLetterParty(cited.from, letter.to) && sameLetterParty(cited.to, letter.from)) ||
-        (cited.to.chatId === letter.from.chatId && cited.from.chatId === letter.to.chatId))
+        (sameLetterParty(cited.from, letter.to) && sameLetterParty(cited.to, letter.from)))
     if (!between) {
       throw new Error(
         `Letter ${letter.cite} is not one between these two chats, so it cannot be cited.`
