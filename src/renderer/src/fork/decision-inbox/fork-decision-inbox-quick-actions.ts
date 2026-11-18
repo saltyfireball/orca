@@ -4,11 +4,12 @@
 // this list per language, so the entries are always built and report themselves unavailable
 // while the mode is off (the palette drops unavailable entries); returning an empty list here
 // would keep them hidden after the mode is switched on.
-import { Inbox, MessageCircleQuestion } from 'lucide-react'
+import { Inbox, Mail, MessageCircleQuestion } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
 import type { CmdJQuickAction } from '@/components/cmd-j/quick-actions'
 import { jumpToOldestWaitingChat } from './decision-inbox-actions'
 import { forkDecisionInboxAvailable, openForkDecisionInbox } from './decision-inbox-store'
+import { forkLettersAvailable, openForkLetters } from '../letters/board-store'
 
 function availability(): ReturnType<CmdJQuickAction['isAvailable']> {
   return forkDecisionInboxAvailable()
@@ -67,6 +68,32 @@ export function getForkDecisionInboxQuickActions(): CmdJQuickAction[] {
           return { status: 'unavailable', reason: 'client-action-unsupported' }
         }
         await jumpToOldestWaitingChat()
+        return { status: 'ok' }
+      }
+    },
+    // SLRM-2389: the letters history (FORK.md "Letters and the board").
+    {
+      id: 'fork-letters',
+      kind: 'action',
+      title: translate('fork.letters.palette', 'Letters between chats...'),
+      description: translate(
+        'fork.letters.paletteDescription',
+        'See the messages chats sent each other, per chat'
+      ),
+      icon: Mail,
+      verbKeywords: [
+        translate('fork.letters.keywordLetters', 'letters'),
+        translate('fork.letters.keywordMessages', 'messages between chats')
+      ],
+      isAvailable: () =>
+        forkLettersAvailable()
+          ? { available: true }
+          : { available: false, reason: 'client-action-unsupported' },
+      run: async () => {
+        if (!forkLettersAvailable()) {
+          return { status: 'unavailable', reason: 'client-action-unsupported' }
+        }
+        openForkLetters(null)
         return { status: 'ok' }
       }
     }
