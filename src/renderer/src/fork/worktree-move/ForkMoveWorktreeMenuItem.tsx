@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useTranslate } from '@/i18n/use-translate'
 import { useAppStore } from '@/store'
-import { translateLocalExecutionHostLabel } from '@/components/sidebar/execution-host-label'
+import { translateLocalExecutionHostLabel } from '@/runtime/hosts/display/execution-host-label'
 import { resolveWorktreeMoveSettings } from '../../../../shared/fork/worktree-move/worktree-move-settings'
 import { worktreeMoveHostChoices, worktreeMoveSourceHostId } from './worktree-move-client'
 import { openForkWorktreeMoveDialog } from './ForkWorktreeMoveDialog'

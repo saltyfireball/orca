@@ -38,7 +38,6 @@ import {
 } from '../fork/agent-queue'
 import { ForkPlacementLoadParams, ForkPlacementPickParams } from '../fork/auto-placement-wire'
 import { ForkBatchStartParams } from '../fork/batch-start'
-import { ForkClashesLocalParams, ForkClashesScanParams } from '../fork/branch-clashes-wire'
 import {
   ForkBestOfForgetParams,
   ForkBestOfListParams,
@@ -46,6 +45,7 @@ import {
   ForkBestOfSettleParams,
   ForkBestOfShowParams
 } from '../fork/best-of/best-of-wire'
+import { ForkClashesLocalParams, ForkClashesScanParams } from '../fork/branch-clashes-wire'
 import { ForkChatHandoffStartParams, ForkChatHistoryParams } from '../fork/chat-handoff-wire'
 import {
   ForkClaudeAccountCancelParams,
@@ -75,12 +75,12 @@ import { ForkLimitsListParams, ForkLimitsTargetParams } from '../fork/limit-resu
 import { ForkLostWorkScanParams } from '../fork/lost-work'
 import { ForkMainSyncRunParams, ForkMainSyncStatusParams } from '../fork/main-sync'
 import { ForkMcpChatParams, ForkMcpChatSetParams, ForkMcpListParams } from '../fork/mcp-profiles'
+import { ForkMachineUsageParams, ForkPooledLimitsParams } from '../fork/pooled-limits'
 import {
   ForkPrBabysitListParams,
   ForkPrBabysitStartParams,
   ForkPrBabysitStopParams
 } from '../fork/pr-babysit-wire'
-import { ForkMachineUsageParams, ForkPooledLimitsParams } from '../fork/pooled-limits'
 import {
   ForkReviewGuideCancelParams,
   ForkReviewGuideGetParams,
@@ -1257,8 +1257,6 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.agentQueue.start': ForkAgentQueueTicketParams,
   'fork.agentQueue.status': ForkAgentQueueStatusParams,
   'fork.batchStart.start': ForkBatchStartParams,
-  'fork.clashes.local': ForkClashesLocalParams,
-  'fork.clashes.scan': ForkClashesScanParams,
   'fork.bestOf.forget': ForkBestOfForgetParams,
   'fork.bestOf.list': ForkBestOfListParams,
   'fork.bestOf.record': ForkBestOfRecordParams,
@@ -1269,6 +1267,8 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.board.list': ForkBoardListParams,
   'fork.chatHandoff.history': ForkChatHistoryParams,
   'fork.chatHandoff.start': ForkChatHandoffStartParams,
+  'fork.clashes.local': ForkClashesLocalParams,
+  'fork.clashes.scan': ForkClashesScanParams,
   'fork.claudeAccount.cancel': ForkClaudeAccountCancelParams,
   'fork.claudeAccount.move': ForkClaudeAccountMoveParams,
   'fork.claudeAccount.which': ForkClaudeAccountWhichParams,

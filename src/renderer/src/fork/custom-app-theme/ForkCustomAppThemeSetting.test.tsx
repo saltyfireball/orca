@@ -7,7 +7,7 @@ import { CYBERDREAM_EXAMPLE_TEXT } from '../../../../shared/fork/custom-app-them
 import { importCustomAppTheme } from '../../../../shared/fork/custom-app-theme/custom-app-theme-import'
 import { ForkCustomAppThemeSetting } from './ForkCustomAppThemeSetting'
 
-vi.mock('@/hooks/use-document-dark-theme', () => ({ useSettingsDarkTheme: () => true }))
+vi.mock('@/hooks/theme/use-document-dark-theme', () => ({ useSettingsDarkTheme: () => true }))
 vi.mock('../../components/settings/section-layout/SearchableSetting', () => ({
   SearchableSetting: ({ children }: { children: React.ReactNode }) => children
 }))

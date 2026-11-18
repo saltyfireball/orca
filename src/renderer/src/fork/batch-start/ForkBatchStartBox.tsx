@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { ButtonKeyHint } from '@/components/ButtonKeyHint'
+import { ButtonKeyHint } from '@/components/ui/ButtonKeyHint'
 import { useTranslate } from '@/i18n/use-translate'
 import { useAppStore } from '@/store/index'
 import { getAgentCatalog } from '@/lib/agent-catalog/agent-catalog'

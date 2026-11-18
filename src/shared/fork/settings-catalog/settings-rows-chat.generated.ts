@@ -49,6 +49,8 @@ export const FORK_SETTINGS_ROWS_CHAT = {
     '{"t":{"k":"boolean"},"d":"Off keeps chats unnamed without running a naming agent. Absent means on.","o":true}',
   nativeChatCiResultLines:
     '{"t":{"k":"boolean"},"d":"Lines saying how CI went on a pull request the chat opened or pushed to. Absent means on.","o":true}',
+  nativeChatComposerSpellcheck:
+    '{"t":{"k":"boolean"},"d":"Spellcheck and autocorrect (system text replacement) in the chat composer; absent means on.","o":true}',
   nativeChatIdleStopMinutes:
     '{"t":{"k":"number"},"d":"Minutes a chat sits idle before Orca stops its agent process; 0 never stops it.","o":true}',
   nativeChatInheritShellEnvironment:
@@ -63,6 +65,8 @@ export const FORK_SETTINGS_ROWS_CHAT = {
     '{"t":{"k":"boolean"},"d":"A card under a chat turn that opened a pull request; absent means on.","o":true}',
   nativeChatPermissionMode:
     '{"t":{"k":"enum","values":["accept-edits","ask","auto","full-access"]},"d":"Legacy client permission control and host-support marker; kept valid for old peers.","o":true}',
+  nativeChatPromptSuggestions:
+    '{"t":{"k":"boolean"},"d":"The agent\'s suggested next prompt in an empty composer. Absent means on.","o":true}',
   nativeChatProviders:
     '{"t":{"k":"record","of":{"k":"boolean"}},"d":"Explicit per-agent overrides of the default surface.","o":true}',
   nativeChatQueueFollowUps:

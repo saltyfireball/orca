@@ -158,13 +158,13 @@ export function ForkDecisionInboxRow({
       />
       <div className="flex flex-wrap justify-end gap-1">
         <Button size="sm" variant="ghost" disabled={pausing} onClick={togglePause}>
-          {item.source === 'babysit'
-            ? t('fork.decisionInbox.stopBabysit', 'Stop babysitting')
           {guarded
             ? t('fork.decisionInbox.guardResume', 'Resume')
-            : item.paused
-              ? t('fork.decisionInbox.resume', 'Resume recovery')
-              : t('fork.decisionInbox.pause', 'Pause recovery')}
+            : item.source === 'babysit'
+              ? t('fork.decisionInbox.stopBabysit', 'Stop babysitting')
+              : item.paused
+                ? t('fork.decisionInbox.resume', 'Resume recovery')
+                : t('fork.decisionInbox.pause', 'Pause recovery')}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => actions.jump(item)}>
           {t('fork.decisionInbox.jump', 'Go to chat')}
