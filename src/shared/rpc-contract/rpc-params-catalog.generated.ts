@@ -46,6 +46,7 @@ import {
   ForkBestOfShowParams
 } from '../fork/best-of/best-of-wire'
 import { ForkClashesLocalParams, ForkClashesScanParams } from '../fork/branch-clashes-wire'
+import { ForkChatHandoffStartParams, ForkChatHistoryParams } from '../fork/chat-handoff-wire'
 import {
   ForkClaudeAccountCancelParams,
   ForkClaudeAccountMoveParams,
@@ -69,7 +70,17 @@ import {
   ForkPrBabysitStartParams,
   ForkPrBabysitStopParams
 } from '../fork/pr-babysit-wire'
+import {
+  ForkReviewGuideCancelParams,
+  ForkReviewGuideGetParams,
+  ForkReviewGuideWriteParams
+} from '../fork/review-guide-wire'
 import { ForkServerHealthListParams } from '../fork/server-health'
+import {
+  ForkServerSetupPlanParams,
+  ForkServerSetupReadinessParams,
+  ForkServerSetupRunParams
+} from '../fork/server-setup-wire'
 import {
   ForkServerUpdateApplyParams,
   ForkServerUpdateRollbackParams,
@@ -1239,6 +1250,8 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.bestOf.record': ForkBestOfRecordParams,
   'fork.bestOf.settle': ForkBestOfSettleParams,
   'fork.bestOf.show': ForkBestOfShowParams,
+  'fork.chatHandoff.history': ForkChatHistoryParams,
+  'fork.chatHandoff.start': ForkChatHandoffStartParams,
   'fork.clashes.local': ForkClashesLocalParams,
   'fork.clashes.scan': ForkClashesScanParams,
   'fork.claudeAccount.cancel': ForkClaudeAccountCancelParams,
@@ -1273,7 +1286,13 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.prBabysit.list': ForkPrBabysitListParams,
   'fork.prBabysit.start': ForkPrBabysitStartParams,
   'fork.prBabysit.stop': ForkPrBabysitStopParams,
+  'fork.reviewGuide.cancel': ForkReviewGuideCancelParams,
+  'fork.reviewGuide.get': ForkReviewGuideGetParams,
+  'fork.reviewGuide.write': ForkReviewGuideWriteParams,
   'fork.serverHealth.list': ForkServerHealthListParams,
+  'fork.serverSetup.plan': ForkServerSetupPlanParams,
+  'fork.serverSetup.readiness': ForkServerSetupReadinessParams,
+  'fork.serverSetup.run': ForkServerSetupRunParams,
   'fork.serverUpdate.apply': ForkServerUpdateApplyParams,
   'fork.serverUpdate.rollback': ForkServerUpdateRollbackParams,
   'fork.serverUpdate.status': ForkServerUpdateStatusParams,

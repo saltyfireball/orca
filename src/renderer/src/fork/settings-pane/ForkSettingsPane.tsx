@@ -10,6 +10,7 @@ import { ForkChatSurviveSetting } from '../ForkChatSurviveSetting'
 import { ForkUnattendedResumeSetting } from '../unattended-resume/ForkUnattendedResumeSetting'
 import { ForkLimitResumeSetting } from '../limit-resume/ForkLimitResumeSetting'
 import { ForkAgentGuardsSetting } from '../agent-guards/ForkAgentGuardsSetting'
+import { ForkChatHandoffSetting } from '../chat-handoff/ForkChatHandoffSetting'
 import { ForkBoundaryCompactionSetting } from '../boundary-compaction/ForkBoundaryCompactionSetting'
 import { ForkChatSleepSetting } from '../chat-sleep/ForkChatSleepSetting'
 import { ForkSleepersSetting } from '../sleepers/ForkSleepersSetting'
@@ -38,8 +39,10 @@ import { ForkEndpointFailoverSetting } from '../endpoint-failover/ForkEndpointFa
 import { ForkWorktreeMoveSettings } from '../worktree-move/ForkWorktreeMoveSettings'
 import { ForkApfsCloneSetting } from '../apfs-clone/ForkApfsCloneSetting'
 import { ForkSnoozeSetting } from '../snooze/ForkSnoozeSetting'
+import { ForkServerSetupSetting } from '../server-setup/ForkServerSetupSetting'
 import { ForkMainSyncSetting } from '../main-sync/ForkMainSyncSetting'
 import { ForkBranchClashesSetting } from '../branch-clashes/ForkBranchClashesSetting'
+import { ForkReviewGuideSetting } from '../review-guide/ForkReviewGuideSetting'
 import { ForkDeviceApprovalSetting } from '../device-approval/ForkDeviceApprovalSetting'
 import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
 import { ForkServerHealthSetting } from '../server-health/ForkServerHealthSetting'
@@ -65,6 +68,7 @@ const SECTION_CARDS: Record<
     ['chat-survive', ForkChatSurviveSetting],
     ['unattended-resume', ForkUnattendedResumeSetting],
     ['limit-resume', ForkLimitResumeSetting],
+    ['chat-handoff', ForkChatHandoffSetting],
     ['chat-sleep', ForkChatSleepSetting],
     ['sleepers', ForkSleepersSetting],
     ['chat-stall', ForkChatStallSetting],
@@ -101,7 +105,9 @@ const SECTION_CARDS: Record<
     ['apfs-clone', ForkApfsCloneSetting],
     ['main-sync', ForkMainSyncSetting],
     ['snooze', ForkSnoozeSetting],
+    ['server-setup', ForkServerSetupSetting],
     ['branch-clashes', ForkBranchClashesSetting],
+    ['review-guide', ForkReviewGuideSetting],
     ['project-settings-list', ForkProjectSettingsList]
   ],
   remote: [

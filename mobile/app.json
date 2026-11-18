@@ -124,6 +124,7 @@
       "./plugins/ios-pod-deployment-target-floor.js",
       "./plugins/ios-scene-lifecycle.js",
       "./plugins/ios-bundle-phase-quoted-script-path.js",
+      "./plugins/fork/ios-agent-live-activity.js",
       [
         "expo-splash-screen",
         {

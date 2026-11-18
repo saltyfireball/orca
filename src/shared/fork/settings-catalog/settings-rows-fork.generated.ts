@@ -164,6 +164,16 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"array","of":{"k":"string"}},"d":"PR babysitter (SLRM-2386): owner/repo names whose pull requests are babysat, \\"*\\" for every repo; unset is none (off).","o":true}',
   forkPrBabysitWaitMinutes:
     '{"t":{"k":"number"},"d":"PR babysitter: minutes to wait for a new CI result after a fix request before it stops and asks you; unset is 120.","o":true}',
+  forkReviewGuideAutoWrite:
+    '{"t":{"k":"boolean"},"d":"Review guides: write a guide by itself when a pull request without one is opened (each guide costs agent usage); unset is off.","o":true}',
+  forkReviewGuideInstructions:
+    '{"t":{"k":"string"},"d":"Review guides: your own instructions for the guide writer, such as what to show first or what to skip; unset is none.","o":true}',
+  forkReviewGuideMaxPatchKiB:
+    '{"t":{"k":"number"},"d":"Review guides: KiB of patch text the writer reads (16 to 1024); files past it are listed without their patch; unset is 96.","o":true}',
+  forkReviewGuideTimeoutMinutes:
+    '{"t":{"k":"number"},"d":"Review guides: minutes the writer may take (1 to 15); unset is 5.","o":true}',
+  forkReviewGuides:
+    '{"t":{"k":"boolean"},"d":"The Guide tab on pull requests, its phone view and `orca review-guide`; unset is on.","o":true}',
   forkRowContext:
     '{"t":{"k":"boolean"},"d":"A native Claude chat\'s context size on its agent rows; unset is on.","o":true}',
   forkRowFixChecks:
@@ -190,6 +200,12 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"number"},"d":"Server heartbeat: seconds between two calls of the heartbeat address; unset is 60.","o":true}',
   forkServerHeartbeatUrl:
     '{"t":{"k":"string"},"d":"Server heartbeat (SLRM-2311): an http(s) address this host calls every few seconds so an outside monitor sees it is alive; unset is none.","o":true}',
+  forkServerSetupOffer:
+    '{"t":{"k":"boolean"},"d":"Set up on a server: the new-workspace host picker offers \\"Set up on SERVER...\\" for a paired server that lacks the project; unset is on.","o":true}',
+  forkServerSetupParent:
+    '{"t":{"k":"string"},"d":"Set up on a server: folder on the server the project is cloned into, as NAME under it. `~` is that server\'s home; unset is ~/development.","o":true}',
+  forkServerSetupReadiness:
+    '{"t":{"k":"boolean"},"d":"Set up on a server: after the clone, list the tools and direnv functions the project needs that the server lacks; unset is on.","o":true}',
   forkServerUpdateAccept:
     '{"t":{"k":"boolean"},"d":"Server updates: this host takes update and rollback requests from paired desktops (host-admin); unset is on.","o":true}',
   forkServerUpdateAuto:
