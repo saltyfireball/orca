@@ -17,13 +17,17 @@ const Project = z.string().min(1).max(4096)
  *  `project`, whether that project has a ready setup on the machine itself. */
 export const ForkPlacementLoadParams = z.object({
   repo: Repo.optional(),
-  project: Project.optional()
+  project: Project.optional(),
+  /** With `project` (SLRM-2312): also say whether this machine could clone it (`canSetUp`). */
+  setupMissing: z.boolean().optional()
 })
 
 export type ForkPlacementLoadResult = {
   load: ForkMachineLoad
   repoFound?: boolean
   projectReady?: boolean
+  /** The project is not set up here, but this machine can set it up on demand (SLRM-2312). */
+  canSetUp?: boolean
 }
 
 export const ForkPlacementPickParams = z.object({
@@ -35,7 +39,10 @@ export const ForkPlacementPickParams = z.object({
    *  own setups; machines in `hosts` are already known to be set up (the caller's own list). */
   project: Project.optional(),
   /** Asked because no machine was named: answers `{ off: true }` unless the setting is on. */
-  unnamed: z.boolean().optional()
+  unnamed: z.boolean().optional(),
+  /** With `project` (SLRM-2312): a paired server that lacks the project but can clone it counts,
+   *  marked `needsSetup`. */
+  setupMissing: z.boolean().optional()
 })
 
 export type ForkPlacementPickResult = ({ off?: false } & ForkPlacementPick) | { off: true }
