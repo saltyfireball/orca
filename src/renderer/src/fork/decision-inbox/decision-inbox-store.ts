@@ -8,6 +8,7 @@ import {
   readIdleRecoverySettings,
   type IdleRecoveryMode
 } from '../../../../shared/fork/idle-recovery-settings'
+import { readPrBabysitSettings } from '../../../../shared/fork/pr-babysit'
 import type {
   ForkIdleRecoveryApi,
   ForkIdleRecoveryInboxResult
@@ -43,9 +44,27 @@ export function useForkIdleRecoveryMode(): IdleRecoveryMode {
   return useAppStore((s) => readIdleRecoverySettings(s.settings).mode)
 }
 
-/** True when the inbox can be shown: the mode is not off and this build has the bridge. */
+type InboxSettings = Parameters<typeof readIdleRecoverySettings>[0] &
+  Parameters<typeof readPrBabysitSettings>[0]
+
+/** The inbox is on while idle recovery is, or while the PR babysitter has a repo (SLRM-2386). */
+export function forkDecisionInboxOn(settings: InboxSettings): boolean {
+  return (
+    readIdleRecoverySettings(settings).mode !== 'off' ||
+    readPrBabysitSettings(settings).repos.length > 0
+  )
+}
+
+export function useForkDecisionInboxOn(): boolean {
+  return useAppStore((s) => forkDecisionInboxOn(s.settings as InboxSettings))
+}
+
+/** True when the inbox can be shown: it is on and this build has the bridge. */
 export function forkDecisionInboxAvailable(): boolean {
-  return forkIdleRecoveryMode() !== 'off' && forkIdleRecoveryBridge() !== null
+  return (
+    forkDecisionInboxOn(useAppStore.getState().settings as InboxSettings) &&
+    forkIdleRecoveryBridge() !== null
+  )
 }
 
 function publish(next: DecisionInboxSnapshot): void {
