@@ -1,4 +1,5 @@
 import { ORCA_SIDEBAR_INPUTS_IS_MAIN } from '../../../../shared/sidebar-list/feed/sidebar-inputs-switch'
+import { FORK_DIGEST_RPC_METHODS } from '../../../../shared/fork/digest'
 
 /** Phone methods the relaying Mac always answers itself, even when the call names a server. */
 export const PAIRED_DESKTOP_METHODS = [
@@ -75,6 +76,8 @@ export const PAIRED_DESKTOP_METHODS = [
   'settings.updateTerminalQuickCommands',
   'terminal.getAutoRestoreFit',
   'terminal.setAutoRestoreFit',
+  // Fork (SLRM-2388): the digest; the Mac reads itself and asks its paired servers.
+  ...FORK_DIGEST_RPC_METHODS,
   // Per-section collapse, sidebar feed and icons exist only with ORCA_SIDEBAR_INPUTS=main.
   ...(ORCA_SIDEBAR_INPUTS_IS_MAIN
     ? (['ui.setCollapsed', 'sidebarInputs.read', 'sidebarInputs.repoIcons'] as const)

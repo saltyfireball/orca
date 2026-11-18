@@ -8,7 +8,7 @@ import type { AppState } from '@/store/types'
 import { _resetChildTallyCacheForTest } from './agent-child-tally'
 import { _resetChildTallyStoreCacheForTest } from './use-agent-child-tally'
 import { ForkAgentRowChildTally, ForkAgentStripChildTally } from './ForkAgentChildTallyBadge'
-import { acceptedAgentStatuses } from '@/store/slices/agent-status/accepted-agent-statuses'
+import { acceptedAgentStatuses } from '@/store/slices/agent-status/status-ownership/accepted-agent-statuses'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 

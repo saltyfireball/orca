@@ -5,6 +5,7 @@ import { FORK_SETTINGS_ROWS_EDITOR } from './settings-rows-editor.generated'
 import { FORK_SETTINGS_ROWS_APPEARANCE } from './settings-rows-appearance.generated'
 import { FORK_SETTINGS_ROWS_CHAT } from './settings-rows-chat.generated'
 import { FORK_SETTINGS_ROWS_FORK } from './settings-rows-fork.generated'
+import { FORK_SETTINGS_ROWS_FORK_MORE } from './settings-rows-fork-more.generated'
 import { FORK_SETTINGS_ROWS_AGENTS } from './settings-rows-agents.generated'
 import { FORK_SETTINGS_ROWS_SOURCE_CONTROL } from './settings-rows-source-control.generated'
 import { FORK_SETTINGS_ROWS_WORKSPACES } from './settings-rows-workspaces.generated'
@@ -39,8 +40,13 @@ export const FORK_SETTINGS_AREA_ROWS = [
   },
   {
     id: 'fork',
-    title: 'Fork features',
+    title: 'Fork features (A to L)',
     rows: FORK_SETTINGS_ROWS_FORK
+  },
+  {
+    id: 'fork-more',
+    title: 'Fork features (M to Z)',
+    rows: FORK_SETTINGS_ROWS_FORK_MORE
   },
   {
     id: 'agents',

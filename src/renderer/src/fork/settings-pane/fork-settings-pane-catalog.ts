@@ -22,8 +22,8 @@ import { reviewGuideSearchEntry } from '../review-guide/review-guide-search-entr
 import { digestSearchEntry } from '../digest/digest-search-entry'
 import { serverUpdateSearchEntry } from '../server-update/server-update-search-entry'
 import { prBabysitSearchEntry } from '../pr-babysit/pr-babysit-search-entry'
-import { rowStatusSearchEntry } from '../row-status/row-status-search-entry'
 import { mainSyncSearchEntry } from '../main-sync/main-sync-search-entry'
+import { rowStatusSearchEntry } from '../row-status/row-status-search-entry'
 import {
   forkChatExtrasSearchEntries,
   forkWorkspaceTagsSearchEntry
@@ -144,7 +144,6 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
           keywords: words('pressure', 'swap', 'pause new agents', 'ram', 'forkMemoryWarnPressure')
         },
         forkAutoPlacementSearchEntry(t),
-        forkBatchStartSearchEntry(t)
         {
           title: t('fork.agentGuards.title', 'Agent guards'),
           description: t(
@@ -152,7 +151,8 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
             'Warn and pause agents stuck repeating a failing tool call, or past a spend cap.'
           ),
           keywords: words('loop', 'failure', 'spend', 'cap', 'budget', 'forkAgentGuardLoop')
-        }
+        },
+        forkBatchStartSearchEntry(t),
         bestOfSearchEntry(t)
       ]
     ),
@@ -221,7 +221,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
             'weekly',
             'forkPooledLimits'
           )
-        }
+        },
         digestSearchEntry(t)
       ]
     ),
@@ -230,8 +230,6 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
       t('fork.settingsPane.projects.title', 'Projects'),
       t(
         'fork.settingsPane.projects.description',
-        'The Lost work scan, moving a workspace to another host, fast new worktrees, setting a project up on a server, and what the fork sets for one project.'
-        'The Lost work scan, branch clashes, moving a workspace to another host, fast new worktrees, and what the fork sets for one project.'
         'The Lost work scan, branch clashes, moving a workspace to another host, fast new worktrees, setting a project up on a server, review guides, and what the fork sets for one project.'
       ),
       [

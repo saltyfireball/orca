@@ -17,13 +17,15 @@ export const AREAS = [
     match:
       /^(theme|appFont|appIcon|leftSidebar|rightSidebar|window|reduceVisual|uiLanguage|pluginAppTheme|pluginIconTheme|forkCustomAppTheme|forkAgentStateColors|show[A-Z]|compactWorktreeCards|minimizeToTray|confirmClose|ctrlTab|tabAuto|notifications$|localhostWorktreeLabels)/
   },
-  // SLRM-2389: letters and the board are chat features (and keep the fork rows under max-lines).
+  // SLRM-2389: letters and the board are chat features.
   {
     id: 'chat',
     title: 'Native chat',
     match: /^(nativeChat|forkChat|forkCache|promptCache|forkLetters|forkBoard)/
   },
-  { id: 'fork', title: 'Fork features', match: /^fork/ },
+  // Two files, so neither generated file passes the 300 line lint limit.
+  { id: 'fork', title: 'Fork features (A to L)', match: /^fork[A-L]/ },
+  { id: 'fork-more', title: 'Fork features (M to Z)', match: /^fork/ },
   {
     id: 'agents',
     title: 'Agents and accounts',

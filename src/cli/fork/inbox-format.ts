@@ -29,12 +29,10 @@ function kindLabel(item: ForkIdleRecoveryInboxItem): string {
   if (item.source === 'babysit') {
     return 'pr-babysit'
   }
+  if (item.verdict === 'guard') {
+    return 'guard-paused'
+  }
   return item.verdict === 'waiting_user' ? 'waiting' : 'stalled'
-  return item.verdict === 'waiting_user'
-    ? 'waiting'
-    : item.verdict === 'guard'
-      ? 'guard-paused'
-      : 'stalled'
 }
 
 function itemLines(item: ForkIdleRecoveryInboxItem, now: number): string[] {
