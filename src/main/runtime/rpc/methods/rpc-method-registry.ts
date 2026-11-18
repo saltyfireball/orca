@@ -85,6 +85,7 @@ import { FORK_SNOOZE_METHODS } from './fork/fork-snooze'
 import { FORK_SERVER_HEALTH_METHODS } from './fork/fork-server-health'
 import { FORK_LIMIT_RESUME_METHODS } from './fork/fork-limit-resume'
 import { FORK_SERVER_UPDATE_METHODS } from './fork/fork-server-update'
+import { FORK_DIGEST_METHODS } from './fork/fork-digest'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
 import { STRUCTURED_AGENT_SESSION_ATTACHMENT_METHODS } from './structured-sessions/attachments/structured-agent-session-attachments'
@@ -223,5 +224,7 @@ export const ALL_RPC_METHODS = [
   // SLRM-2309: chats and terminal agents parked on a usage limit, behind `orca limits` (FORK.md).
   ...FORK_LIMIT_RESUME_METHODS,
   // SLRM-2310: update paired servers over their own RPC, behind `orca servers` (FORK.md).
-  ...FORK_SERVER_UPDATE_METHODS
+  ...FORK_SERVER_UPDATE_METHODS,
+  // SLRM-2388: the digest across this host and its paired servers, behind `orca digest` (FORK.md).
+  ...FORK_DIGEST_METHODS
 ]

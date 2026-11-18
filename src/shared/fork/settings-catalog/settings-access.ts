@@ -64,6 +64,8 @@ const RUNS_COMMAND: SettingsKey[] = [
   'forkSnoozeSettleCommand',
   // SLRM-2311: whether server health alerts run the notification command.
   'forkServerHealthAlertCommand',
+  // SLRM-2388: whether the daily digest runs the notification command.
+  'forkDigestCommand',
   // SLRM-2309: the text typed into every terminal agent resumed after a usage limit.
   'forkLimitResumeMessage',
   // SLRM-2310: where a server downloads new code from, and whose signature it accepts.

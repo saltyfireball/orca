@@ -111,5 +111,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-limits',
     keys: ['limits list', 'limits resume-now', 'limits cancel'],
     load: async () => (await import('./limits-handlers.js')).FORK_LIMITS_HANDLERS
+  },
+  // SLRM-2388: what finished, failed, merged and cost, and what waits on you (FORK.md "Digest").
+  {
+    name: 'fork-digest',
+    keys: ['digest'],
+    load: async () => (await import('./digest-handlers.js')).FORK_DIGEST_HANDLERS
   }
 ]

@@ -10,9 +10,13 @@ import {
   type LimitResumeServiceRuntime
 } from './limit-resume/limit-resume-service'
 import { startForkServerUpdate, type ForkServersRuntime } from './server-update/servers-live'
+import { startForkDigest, type ForkDigestRuntime } from './digest/digest-runtime'
 
 export function startForkRuntimeSettleServices(
-  runtime: UnattendedResumeRuntime & LimitResumeServiceRuntime & ForkServersRuntime
+  runtime: UnattendedResumeRuntime &
+    LimitResumeServiceRuntime &
+    ForkServersRuntime &
+    ForkDigestRuntime
 ): void {
   // SLRM-2268: continue cut unattended work once per process.
   startForkUnattendedResume(runtime)
@@ -20,4 +24,6 @@ export function startForkRuntimeSettleServices(
   startForkLimitResume(runtime)
   // SLRM-2310: settle this host's own update (the watchdog waits on it); auto-update servers.
   startForkServerUpdate(runtime)
+  // SLRM-2388: send the daily digest when forkDigest is on.
+  startForkDigest(runtime)
 }

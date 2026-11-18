@@ -14,6 +14,7 @@ import { getForkRemoteSettingsSectionParts } from '../endpoint-failover/endpoint
 import { worktreeMoveSearchEntry } from '../worktree-move/worktree-move-search-entry'
 import { apfsCloneSearchEntry } from '../apfs-clone/apfs-clone-search-entry'
 import { snoozeSearchEntry } from '../snooze/snooze-search-entry'
+import { digestSearchEntry } from '../digest/digest-search-entry'
 import { serverUpdateSearchEntry } from '../server-update/server-update-search-entry'
 
 export const FORK_SETTINGS_PANE_ID = 'fork'
@@ -162,7 +163,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
       t('fork.settingsPane.usage.title', 'Usage and accounts'),
       t(
         'fork.settingsPane.usage.description',
-        'Which Claude account a chat runs on, and what your chats have used.'
+        'Which Claude account a chat runs on, what your chats have used, and the daily digest.'
       ),
       [
         {
@@ -180,7 +181,8 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
             'Tokens and estimated cost of native Claude chats.'
           ),
           keywords: words('tokens', 'cost', 'prices', 'card pattern', 'forkUsagePrices')
-        }
+        },
+        digestSearchEntry(t)
       ]
     ),
     section(

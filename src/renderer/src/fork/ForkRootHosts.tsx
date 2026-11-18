@@ -4,6 +4,7 @@ import { ForkDecisionInboxHost } from './decision-inbox/ForkDecisionInboxHost'
 import { ForkLostWorkHost } from './lost-work/ForkLostWorkHost'
 import { ForkSleepersDialogHost } from './sleepers/ForkSleepersDialog'
 import { ForkUsageReportHost } from './usage-report/ForkUsageReportDialog'
+import { ForkDigestHost } from './digest/ForkDigestDialog'
 import { ForkWorkerCleanupReporter } from './worker-cleanup/ForkWorkerCleanup'
 import { ForkWorktreeMoveDialogHost } from './worktree-move/ForkWorktreeMoveDialog'
 import { ForkSnoozeCustomDialogHost } from './snooze/ForkSnoozeCustomDialog'
@@ -22,6 +23,7 @@ export function ForkRootHosts(): React.JSX.Element {
       <ForkWorkerCleanupReporter />
       <ForkSleepersDialogHost />
       <ForkUsageReportHost />
+      <ForkDigestHost />
       <ForkLostWorkHost />
       <ForkDecisionInboxHost />
       <ForkWorktreeMoveDialogHost />
