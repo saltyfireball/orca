@@ -581,6 +581,53 @@ named Orca Fork until SLRM-1367. `main` is always
     `orca settings` cannot write the classifier command, the notification command or the
     webhook address.
 
+- **PR babysitter (SLRM-2386).** Off by default. Stock Orca's PR watcher already reads the checks
+  of a pull request a chat opened or pushed to and writes "CI failing" or "CI green" into that
+  chat. The babysitter acts on that line, so it adds no GitHub polling of its own.
+  - **Which pull requests.** Those of the repositories in `forkPrBabysitRepos` (`owner/repo`,
+    `host/owner/repo` or `*`; empty by default), plus any named with `orca babysit <pr>`.
+    `orca babysit stop <pr>` turns one off, also against the repo list.
+  - **CI failed.** The chat gets one fix request: a first line `[pr-babysitter: automatic fix
+    request]`, then stock Orca's fix-checks prompt (the one the checks panel's fix action sends)
+    built from the failing checks and their failed-step log tails. Check names, links and log text
+    come from GitHub and CI: they are stripped of control, bidi and invisible characters, every `<`
+    is escaped, logs keep their last 6000 characters, they sit only inside the prompt's JSON data
+    in a `<ci-report data-trust="untrusted">` block, and the lines around it say that text is data,
+    never instructions, and that the agent must not merge, use admin or bypass options, or change
+    CI settings. The send is idle recovery's chat send: the app's normal send, queued behind a
+    running turn, never typed over a draft. A chat that is asleep or refuses it stops the
+    babysitter.
+  - **Rounds.** At most `forkPrBabysitMaxRounds` (3, 1 to 10) fix requests in a row; a green
+    result starts the count over. The next failing result after the cap stops it. With no new CI
+    result `forkPrBabysitWaitMinutes` (120) after a fix request, it stops too. Each CI line is
+    acted on once, however many chats own the pull request.
+  - **Green.** With `forkPrBabysitAutoMerge` (off) it merges, but only when `gh pr view` says the
+    pull request is open, not a draft, still at the commit that went green, has no change
+    requested and no review still required, every check (required or not) finished green, and
+    GitHub calls the merge `MERGEABLE` and `CLEAN` (or `HAS_HOOKS`). The merge is a plain
+    `gh pr merge <n> --repo <owner/repo> --<method> --match-head-commit <sha>`, never `--admin`
+    or `--auto`, so branch protection and rulesets still apply. The method is
+    `forkPrBabysitMergeMethod`: `repo` (default, the repository's default method among those it
+    allows) or `squash`, `merge`, `rebase`. Branch protection is what makes a merge reviewed:
+    without a required review on the base branch, an agent's push that goes green is merged
+    unreviewed. A merge held by a review or a block is tried again
+    when Orca next reads the pull request (at most every 5 minutes), or at once by
+    `orca babysit <pr>`. A failed merge stops it with GitHub's words.
+  - **Stopped.** The pull request joins the Decision inbox as a stalled row "PR owner/repo#12",
+    and the inbox's notification targets are told once. The inbox shows while idle recovery is on
+    or while the repo list is set. An answer goes to the chat as your message and babysits it again
+    with fresh rounds; Stop babysitting turns it off. `orca inbox list` and `orca inbox answer`
+    show and answer these rows too.
+  - **Shown.** A line under the pull request in the workspace card's linked items ("Babysitter:
+    fix 1 of 3 sent, waiting for CI", "checks green", "merged", "stopped: ..."), in the row's own
+    muted text.
+  - **Servers.** It runs in the process that runs the chat: the desktop app and `orca serve` /
+    orcad alike, each with its own settings and `fork-pr-babysit.json` (mode 0600) in its data
+    folder. `orca babysit` and `orca babysit list` take `--environment` for a paired server. The
+    status line shows the babysitter of this desktop only.
+  - **Limits.** Native chats only (the stock watcher writes no CI line into terminal agents). A
+    pull request is watched for 14 days after its chat's last PR action, as in stock. GitHub only.
+
 - **Boundary compaction (SLRM-2257).** Off by default (`forkBoundaryCompactMode` `off`,
   Settings > Blackfish > Chats). An agent compacts on its own when its context fills, nearly
   always in the middle of a turn. With the mode on, a sweep in the main process asks a native
@@ -682,6 +729,33 @@ named Orca Fork until SLRM-1367. `main` is always
     message.
   - Code is in `src/shared/fork/limit-resume*.ts`, `src/main/fork/limit-resume/` and
     `src/renderer/src/fork/limit-resume/`.
+
+- **Pooled limits (SLRM-2392).** On by default (`forkPooledLimits`, Settings > Blackfish > Usage
+  and accounts). Every Claude and Codex account seen on this machine and its paired servers,
+  pooled into one bar per provider and limit window (5-hour and weekly), with the next reset and
+  how much of the pool it frees. The idea comes from T3 Code (MIT); only the idea is ported.
+  - **Pool.** Each account is an equal share: a window's bar is the mean of its accounts' used
+    percent. The next reset is the soonest one still ahead among accounts with usage in that
+    window, and it frees the used percent of every account resetting within a minute of it,
+    divided by the account count. A reading whose reset has passed counts as unused.
+  - **One account, many machines.** Accounts are matched by sign-in email and organization
+    (Claude) or ChatGPT account (Codex); a machine that does not know the organization matches by
+    email alone, as stock's own login match does. The freshest reading wins and the account lists
+    every machine it was seen on.
+  - **What crosses the wire.** Each machine answers `fork.limits.machineUsage` from the accounts
+    snapshot the usage roster shows: per account a hashed email and organization, the label (the
+    account's name or email, as `accounts.list` already shows), the plan and the two windows.
+    Never a token, credential or folder path. The desktop checks each answer field by field and
+    keeps at most 100 accounts per machine. A server with `forkPooledLimits` off shares nothing.
+  - **Servers** (`forkPooledLimitsServers`, on). `fork.limits.usage` asks every paired server
+    (4 at a time, 4 s each; 15 s with `--refresh`), as auto placement's probe does. A server that
+    does not answer, or runs stock Orca, is named and left out.
+  - **Shown.** In the usage popover under the provider rows, in the roster's own row style, for a
+    provider with two or more accounts. `/usage-limits` in a native chat opens a dialog with every
+    provider, each account and the machines. `orca limits usage [--refresh] [--local] [--json]`
+    prints the same.
+  - Code is in `src/shared/fork/pooled-limits.ts`, `src/main/fork/pooled-limits/`,
+    `src/cli/fork/limits-usage-handler.ts` and `src/renderer/src/fork/pooled-limits/`.
 
 - **Endpoint failover (SLRM-2267).** On by default (`forkEndpointFailover`, Settings >
   Blackfish > Remote servers > Server routes). A saved remote server can be reached on more
@@ -1171,6 +1245,140 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/main/runtime/rpc/methods/fork/fork-best-of.ts`, `src/renderer/src/fork/best-of/` and
     `src/cli/fork/best-of-*`.
 
+- **Worktree ports (SLRM-2383).** Each workspace holds a block of ports on the host that runs it,
+  so many workers on one machine stop fighting over dev-server ports (Conductor gives each
+  workspace 10 ports the same way). Stock Orca only finds ports once something listens on them.
+  - The block is reserved the first time a workspace's terminal, native chat or setup script
+    starts (a new worktree's setup and first terminal do that during its create), and when the
+    create is reported. It is exported as `ORCA_PORT` (the first port), `ORCA_PORT_0` to
+    `ORCA_PORT_<n-1>` and `ORCA_PORT_COUNT` to its terminals (so to terminal agents), native
+    chats and setup and archive scripts; setup scripts also get `CONDUCTOR_PORT`, the name
+    imported Conductor scripts read. WSL terminals and hooks get the same names through
+    `WSLENV`. A terminal with no workspace gets none, and stale names a copied env carried are
+    dropped.
+  - Each host keeps its own reservations in `fork-worktree-ports.json` in its userData
+    (owner-only), so they survive restarts: the desktop app for its local and direct SSH
+    workspaces, and orcad on a headless server for the workspaces it runs. A block is released
+    when the workspace is removed (desktop or server, worktree or folder workspace), and at
+    start for a workspace whose project is gone or whose folder on this machine is gone while
+    the project folder itself is still there. Nothing is released for what cannot be proven gone.
+  - Free ports: once the runtime settles, and after each reserve, a background pass binds every
+    port of the next candidate block on `127.0.0.1`, `0.0.0.0` and `::` and keeps the first block
+    found free as the spare, which the next reserve takes. Without a spare (several creates at
+    once, or a block size change) a reserve takes the first block clear of every reservation and
+    of the ports earlier passes found in use. Direct SSH workspaces are checked on this machine,
+    not on the SSH host; a server running orcad checks its own ports.
+  - Settings (no Settings pane card; `orca settings` edits them): `forkWorktreePorts` (unset is
+    on), `forkWorktreePortsCount` (10, from 1 to 100; a change applies to new blocks),
+    `forkWorktreePortsFrom` and `forkWorktreePortsTo` (20000 to 29999, below the Linux and macOS
+    ephemeral ranges; give two Orca hosts on one machine different ranges). Off, nothing is
+    exported or reserved and the blocks already held stay held.
+  - CLI: `orca ports` adds a `reserved=20000-20009 (ORCA_PORT=20000, ORCA_PORT_0..9)` line under
+    its scan and `--json` adds `reservedPorts` (`enabled`, `start`, `count`, `ports`). It asks
+    the host the scan went to over `fork.worktreePorts.get`, which only reads; a host without
+    the method leaves the output as stock prints it.
+  - Code is in `src/shared/fork/worktree-ports*.ts`, `src/main/fork/worktree-ports/`,
+    `src/main/runtime/rpc/methods/fork/fork-worktree-ports.ts` and
+    `src/cli/fork/worktree-ports-cli.ts`.
+- **Agent guards (SLRM-2385).** Two guards for agents nobody is watching, on the desktop app and
+  on a headless server (`orca serve`) alike, each with its own settings (Settings > Blackfish >
+  Agents and workers, Agent guards; `orca settings set forkAgentGuardLoop false --environment
+  NAME` for a server). Ideas from the archived ccdeck's failure-loop and spend guards and Devin's
+  per-session limits; only the ideas are ported.
+  - **Failure-loop guard** (`forkAgentGuardLoop`, on). Every finished tool call of a native chat
+    (read from its journal every 15 s while it works) and of a terminal agent (from the agent's
+    after-tool hook post: Claude Code's PostToolUse and PostToolUseFailure, Codex's and other
+    agents') is sorted into a read or wait, a failure or progress. A failure's signature is its
+    tool, its input as sorted JSON and its error with colors, ids, hashes, numbers and spacing
+    taken out. The rule: failures with the same signature since the last progress are counted;
+    reads and waits (`Read`, `Grep`, `ls`, `rg`, `sed -n`, `git status`, `sleep`, `gh pr checks`
+    and the like, nothing with a redirect or a write flag) neither count nor clear; any other
+    call that works clears every count. When one count reaches `forkAgentGuardLoopRepeats` (6),
+    the agent is sent one fixed note to change approach, steered into a chat's running turn or
+    typed into a terminal like orchestration mail (never over a dialog or a draft); a note that
+    was not delivered is tried again at the next failure. If the same signature fails again in a
+    call that finished after the note (`forkAgentGuardLoopPause`, on), the agent is paused: a
+    chat's turn is stopped through its host's own cancel (the Stop button's path, which also
+    holds its queued messages as Stop does), a Claude Code or Codex terminal gets Esc (never on a
+    dialog; an agent it cannot interrupt is marked so). The note never quotes the tool, its input
+    or output. The watch is kept in memory: a restart starts a new episode and never replays
+    history.
+  - **Spend cap** (`forkAgentGuardSpendCapUsd`, 0 = off). The estimate is the usage ledger's
+    (SLRM-2103): the chat's tokens per model priced like the usage report (`forkUsagePrices`, else
+    the built-in Claude prices), subscription chats at the same per-token prices, a model with
+    no price adding nothing. At each turn end (and each 15 s sweep while it rests) a chat whose
+    spend since its cap began reached the cap is paused there, between turns. The default cap
+    covers orchestration workers (`forkAgentGuardSpendCapScope` `workers`) or every chat (`all`).
+    Per dispatch: `orca guards cap <session id> <usd>` gives one chat its own cap, counted from
+    then; 0 drops it. Native Claude chats only: Codex chats and terminal agents have no ledger.
+    The ledger now also runs on a headless server (its own `fork-usage-ledger.json`), so caps
+    work there and `orca usage-report --environment NAME` answers.
+  - **Paused.** A paused agent is held: idle recovery never wakes it, limit resume and unattended
+    resume skip it. A paused chat that starts a turn another agent asked for (orchestration mail)
+    is stopped at once; a turn a person starts lifts the pause. A terminal agent stays as the Esc
+    left it. Each pause is listed in the Decision inbox under "Paused by a guard", whatever
+    `forkIdleSweepMode` is (the inbox button shows while any is listed): an answer lifts the
+    pause and sends the text, Resume lifts it alone; a resumed chat's spend counts from then.
+    `forkAgentGuardNotify` (on) tells the inbox's notify targets once per pause, with
+    `event: agent-guard-paused` and the reason in the JSON, never tool output.
+  - **Shown.** "loop warned", "paused: failure loop" or "paused: spend cap" after the tab title
+    and on the sidebar agent row, in the row's muted text, with the reason on hover.
+  - **CLI.** `orca guards list [--json]`, `orca guards resume <id>`, `orca guards cap <id> <usd>`
+    (ids or a 4+ character prefix; `--environment` for a paired server), over `fork.guards.list`,
+    `.resume` and `.cap` (workspace permission). `orca inbox pause <id> --resume` on a guard's row
+    resumes it too.
+  - **State.** `fork-agent-guards.json` in the data folder (mode 0600): pauses, per-chat caps and
+    the spend a resume set aside; a record with nothing left is dropped, any after 30 days.
+  - Code is in `src/shared/fork/agent-guards*.ts`, `src/main/fork/agent-guards/`,
+    `src/cli/fork/guards-*` and `src/renderer/src/fork/agent-guards/`.
+- **Keep main current (SLRM-2384).** Off by default. Each host (the desktop app, `orca serve` and
+  orcad on a headless server) fetches the default branch of each of its local git projects on a
+  timer and fast-forwards it, so new worktrees start from current main.
+  - The branch is the project's Lost work default branch override, else the remote's `HEAD`, else
+    `main`, `master`, `trunk` or `develop`; the remote and its branch are the branch's upstream,
+    else the remote `HEAD` came from. The fetch is `git fetch --no-tags --no-write-fetch-head
+    <remote> <branch>` through the app's own git runner, so credentials and SSH set up for git
+    apply and nothing prompts.
+  - It moves the branch only by a fast-forward: in the main checkout with `git merge --ff-only
+    --no-autostash` when the checkout is clean (untracked files aside), no merge, rebase,
+    cherry-pick, revert, bisect or index lock is under way, HEAD is still the branch at the commit
+    it read, and (unless `forkMainSyncSkipInUse` is false) no terminal or working agent is live in
+    it; checked out nowhere, with a compare-and-swap `git update-ref`. A branch checked out in a
+    linked worktree, a diverged branch and a branch with commits the remote lacks are never moved.
+  - Each move, and each new reason a project was left alone, is logged as `[fork-main-sync]`.
+  - Settings (Settings > Blackfish > Projects, or `orca settings`): `forkMainSync` (off),
+    `forkMainSyncMinutes` (15, from 5 to 1440), `forkMainSyncProjects` (names, ids or paths;
+    empty is every local git project), `forkMainSyncSkipInUse` (on). The settings are read
+    before every pass and a change to them brings the next pass forward, with no restart.
+  - CLI: `orca main-sync [--json]` prints the last result per project and `orca main-sync run
+    [--repo <name|id|path>]` runs a pass now (even while off), over `fork.mainSync.status` and
+    `fork.mainSync.run`; add `--environment` for a paired server.
+  - Code is in `src/shared/fork/main-sync.ts`, `src/main/fork/main-sync/`,
+    `src/main/runtime/rpc/methods/fork/fork-main-sync.ts`, `src/cli/fork/main-sync-*.ts` and
+    `src/renderer/src/fork/main-sync/`.
+- **Server memory protection (SLRM-2384).** `orca serve service protect` (Linux) keeps an always-on
+  server reachable when agents use up memory. It works on the orca-serve user unit that
+  `orca serve service install` or the dotfiles `orca-server` installer wrote (the same names).
+  - It writes `50-blackfish-protect.conf` drop-ins beside the unit (never the unit itself) and for
+    its slice: `MemoryMin` (256M) and `MemoryLow` (1G), applied at once with `systemctl --user
+    set-property --runtime`; `OOMScoreAdjust` (`auto`: the user manager's own score, the lowest
+    an unprivileged unit may take); and `ORCA_FORK_CHILD_OOM_SCORE_ADJ` (300). The terminal
+    daemon, which the server starts and which starts every agent, raises its own score to that
+    value at start, so the kernel kills agents before the server. The scores apply at the next
+    start of the service and of the daemon; protect restarts nothing.
+  - Root steps are printed, never run, and only the ones still needed: `systemctl set-property`
+    of the same memory values on `user.slice`, `user-<uid>.slice` and `user@<uid>.service`
+    (protection reaches a unit only through its parents), and an `OOMScoreAdjust` drop-in (-500)
+    plus a live write for `tailscaled`, `ssh` or `sshd`.
+  - `orca serve service protect status` shows the drop-in, the unit's values, the running
+    server's score, the user manager's floor and the system units' values;
+    `orca serve service unprotect` removes only the files protect wrote (they start with its
+    marker) and clears the memory values at once. Flags: `--memory-min`, `--memory-low`,
+    `--oom-score-adjust`, `--child-oom-score-adjust`, `--system-oom-score-adjust` (each takes
+    `off`), `--dry-run`. The drop-in itself holds the choice, per host.
+  - Code is in `src/shared/fork/serve-protect.ts`, `src/cli/fork/serve-protect*.ts` and
+    `src/main/fork/serve-protect/daemon-oom-score.ts`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -1277,7 +1485,13 @@ Apply these in this order. Each one is a single commit.
 100. `SLRM-2310 Server updates: update every paired server from the desktop over its own RPC, with a rollback`
 101. `SLRM-2316 Follow upstream 1.4.262's moved modules and native provider launch in fork code`
 102. `SLRM-2349 Chat visuals: show image files and take unquoted values, and servers --wait takes a separate value`
-103. `SLRM-2393 Best of N: one task to 2 to 4 agents in their own worktrees, compared and picked`
+103. `SLRM-2383 Worktree ports: a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1`
+104. `SLRM-2386 PR babysitter: send a pull request's chat fix requests when CI fails, merge on green when allowed`
+105. `SLRM-2384 Keep main current and server memory protection: fetch and fast-forward default branches, orca serve service protect`
+106. `SLRM-2392 Pooled limits: Claude and Codex usage limits pooled across every account and paired server`
+107. `SLRM-2390 Row status: spend, context, pull request checks and a fix button on agent rows`
+108. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
+109. `SLRM-2393 Best of N: one task to 2 to 4 agents in their own worktrees, compared and picked`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1357,6 +1571,34 @@ Fork-only code lives in `fork/` folders:
     (empty: built-in prices), `forkUsageRetentionDays` (90, shared with SLRM-2103).
   - **Not covered.** Only native Claude chats counted on this computer. `apiKeySource` `none`
     can also be a cloud provider account rather than a subscription.
+
+- **Row status: spend, context, pull request checks and a fix button on agent rows (SLRM-2390).**
+  Sidebar agent rows, compact and full, show small chips after the title, in the child count's
+  chip style. Sub-agent rows show none. Code is in `src/renderer/src/fork/row-status/`.
+  - **Spend.** A native Claude chat's estimated cost so far, priced like the usage report
+    (SLRM-2104, the same user price table). The ledger push that feeds the cache-cold cue now
+    carries each chat's `costUsd`, `unpriced` and `billing` (`src/main/fork/usage-ledger/row-spend.ts`),
+    so it updates live with no new channel. A subscription chat shows `~$1.23`, what its tokens
+    would cost per token; `+` means some models have no price. A compacted chat stays in that
+    push with context 0, so its spend does not drop off.
+  - **Context.** `ctx 142.3k`: the tokens the chat's last main-thread call read, from the same
+    push. Hidden at 0. Terminal agents and Codex have neither chip (the ledger counts native
+    Claude chats only).
+  - **Pull request.** The workspace's PR or MR number with the card's review glyph, colored by
+    its checks: pending, passing or failing (merged, closed and draft keep their state color).
+    It reads the same two cache entries as the workspace card, so it follows the stock PR
+    watcher and never polls.
+  - **Ask agent to fix.** While an open GitHub PR's checks fail, a Fix chip sends the stock
+    fix-checks prompt (`buildFixBrokenChecksPrompt`, with the failed jobs' log tails, as the
+    Checks panel's fix action builds it) to that row's own agent through the stock agent
+    message send, instead of starting a new agent. The checks are read at click time. It shows
+    only where the stock AI actions switch is on, and refuses with a toast when the agent is not
+    running or cannot take a message.
+  - **Settings** (Settings > Blackfish > Agents and workers > Agent row status), all on:
+    `forkRowSpend`, `forkRowContext`, `forkRowPrChip`, `forkRowFixChecks` (needs the PR chip).
+  - **Hooks.** One element and an import each in `worktree-card-compact-agent-row.tsx` (after
+    the child count) and `DashboardAgentRow.tsx` (after the model), and the ledger hook
+    `useCacheState` is now exported.
 
 Upstream files only get short hooks, which keeps rebases small:
 
@@ -1717,6 +1959,21 @@ Upstream files only get short hooks, which keeps rebases small:
     (and its list is kept) while limit resume holds for drafts. `forkLimitResumeMessage` is kind
     `runs-command` in `settings-access.ts`.
 
+- Pooled limits (SLRM-2392), from `src/shared/fork/pooled-limits.ts`,
+  `src/main/fork/pooled-limits/`, `src/cli/fork/limits-usage-handler.ts` and
+  `src/renderer/src/fork/pooled-limits/`. On unless `forkPooledLimits` is false:
+  - `FORK_LIMIT_RESUME_METHODS` (a fork file) spreads `FORK_POOLED_LIMITS_METHODS`
+    (`fork.limits.machineUsage`, `fork.limits.usage`); `rpc-params-catalog.generated.ts` is
+    regenerated with them. `limits-specs.ts` adds `limits usage` and the `fork-limits` handler
+    group loads `FORK_LIMITS_USAGE_HANDLERS`.
+  - `UsageRosterPanel.tsx` renders `ForkPooledLimitsRoster` after the provider rows.
+  - `use-native-chat-composer-catalog.ts` passes its commands through
+    `useForkUsageLimitsCatalog`, and `use-native-chat-composer-command-picker.ts` wraps its Orca
+    commands in `useForkUsageLimitsCommand`, so `/usage-limits` never reaches the agent.
+  - Fork files only: `ForkRootHosts` mounts `ForkPooledLimitsDialogHost`; the card is in the fork's
+    Settings pane; the two settings are in `fork-global-settings.ts` and
+    `settings-rows-fork.generated.ts` is regenerated.
+
 - Endpoint failover (SLRM-2267), from `src/shared/fork/endpoint-failover*.ts`,
   `src/main/fork/endpoint-failover/` and `src/renderer/src/fork/endpoint-failover/`. On unless
   `forkEndpointFailover` is false:
@@ -1764,6 +2021,25 @@ Upstream files only get short hooks, which keeps rebases small:
   - `mobile-native-chat-visual-read.ts` caps a reply's html at `forkVisualMaxDocumentChars`.
   - `installForkReady` and `installForkHeadlessHost` call `installForkVisualFallbackSettings`;
     `ForkRootHosts` mounts `ForkVisualFallbackReader`; the card is in the fork's Settings pane.
+
+- Agent guards (SLRM-2385), from `src/shared/fork/agent-guards*.ts`, `src/main/fork/agent-guards/`,
+  `src/cli/fork/guards-*` and `src/renderer/src/fork/agent-guards/`. The loop guard is on unless
+  `forkAgentGuardLoop` is false; the spend cap is off until `forkAgentGuardSpendCapUsd` is set:
+  - `server-status-hook-lifecycle.ts` (`respondToHook`) calls
+    `forkAgentGuardsObserveHook(source, body, accepted)` before the plugin hooks answer.
+  - `startForkRuntimeSettleServices` (`runtime-settle-hooks.ts`) also starts the guards, so they
+    run in the desktop app and on a headless server.
+  - `src/main/index.ts` calls `installForkAgentGuardsBridge()`, `src/preload/index.ts` adds
+    `forkAgentGuards` (`src/preload/fork/agent-guards-bridge.ts`) and `api-types.ts` types it.
+  - `rpc-method-registry.ts` spreads `FORK_AGENT_GUARDS_METHODS`, `src/cli/specs/index.ts` spreads
+    `FORK_GUARDS_COMMAND_SPECS` and `cli-command-names.ts` lists `guards`.
+  - Fork files only: the usage ledger tells turn starts and ends (`onForkUsageLedgerTurn`) and
+    its chat names moved to `usage-ledger-meta.ts`; `installForkHeadlessHost` starts the ledger
+    on a server; the Decision inbox lists, answers and resumes guard rows (idle recovery's
+    service is wrapped in `withForkAgentGuardInbox`, its item's `verdict` takes `guard`, and the
+    inbox shows while a guard holds an agent); idle recovery's candidates, limit resume (native and terminal) and unattended
+    resume skip held agents (`isForkAgentGuardHeld`); the marks render in `ForkTabTitle` and
+    `ForkClaudeAccountAgentRowChip`, and the card in the fork's Settings pane.
 
 - Device approval and webhook automations (SLRM-2271), from `src/shared/fork/device-approval.ts`,
   `src/shared/fork/webhooks.ts`, `src/main/fork/device-approval/`, `src/main/fork/webhooks/`,
@@ -1920,6 +2196,58 @@ Upstream files only get short hooks, which keeps rebases small:
     in the fork's Settings pane and `forkSnoozeSettleCommand` is a runs-command key in
     `settings-access.ts`.
 
+- Worktree ports (SLRM-2383), from `src/shared/fork/worktree-ports*.ts`,
+  `src/main/fork/worktree-ports/` and `src/cli/fork/worktree-ports-cli.ts`:
+  - `spawn-pane-env.ts` (`stampPtySpawnPaneEnv`, every desktop IPC and runtime terminal
+    spawn) calls `applyForkWorktreePortEnv(env, pane?.worktreeId)`.
+  - `setup-hook-env-vars.ts` (`getSetupEnvVars`) spreads
+    `forkWorktreePortSetupEnvFor(identity?.worktreeId)`.
+  - `structured-agent-launch-composition.ts` keeps `admittedRecord(...)` as `record` and passes
+    `withForkWorktreePortEnv(env, record.location.workspaceId)` to the child seal.
+  - `wsl-orca-env.ts` spreads `forkWorktreePortWslenvEntries(env)` into both WSLENV lists.
+  - `main-process-pty-startup.ts` (`emitPluginWorktreeLifecycle`, which hears desktop IPC and
+    runtime creates and removals) calls `forkWorktreePortsLifecycle(event)` first.
+  - `installForkReady` and `installForkHeadlessHost` call `installForkWorktreePorts`;
+    `startForkRuntimeSettleServices` calls `startForkWorktreePorts(runtime)`.
+  - `rpc-method-registry.ts` spreads `FORK_WORKTREE_PORTS_METHODS`
+    (`fork.worktreePorts.get`); `rpc-params-catalog.generated.ts` is regenerated with it.
+  - `src/cli/workspace-ports/ports.ts` passes the scan through `withForkReservedPorts` and its
+    text through `withForkReservedPortsText`; `src/cli/specs/ports.ts` adds `FORK_PORTS_NOTES`.
+  - The four settings are in `fork-global-settings.ts` and `settings-rows-fork.generated.ts` is
+    regenerated.
+  - `config/main-sync-fs-baseline.txt` allows `worktree-port-registry.ts` its one synchronous
+    read of the file, at first use (terminal env is built synchronously); writes are async.
+
+- PR babysitter (SLRM-2386), from `src/shared/fork/pr-babysit*.ts`, `src/main/fork/pr-babysit/`,
+  `src/main/fork/idle-recovery/idle-recovery-sources.ts`, `src/cli/fork/babysit-*` and
+  `src/renderer/src/fork/pr-babysit/`:
+  - `pr-watch-runtime.ts` passes the watcher's deps through `forkPrBabysitAttach(...)`, which
+    returns them unchanged and keeps `chatWorkspace` (the call wraps the object literal).
+  - `pr-event-delivery.ts` calls `forkPrBabysitLineDelivered(sessionId, delivery)` after each CI
+    line it appends. Both hooks are in `pr-babysit-slot.ts`, which loads no fork code at run time.
+  - `WorktreeCardReferenceRow.tsx` renders `ForkPrBabysitLine` under a pull request row.
+  - `cli-command-names.ts` lists `babysit`. The RPC methods (`fork.prBabysit.*`) are spread into
+    `FORK_IDLE_RECOVERY_RPC_METHODS` and the specs into `FORK_INBOX_COMMAND_SPECS`, so the upstream
+    registry and spec list need no line; `rpc-params-catalog.generated.ts` is regenerated.
+  - `installForkReady` and `installForkHeadlessHost` call `installForkPrBabysit(store)`. The
+    Decision inbox (fork code) gains other sources' rows and a `babysit` call on its bridge; the
+    five settings are in `src/shared/fork/pr-babysit.ts`, joined to `fork-global-settings.ts`.
+
+- Keep main current and server memory protection (SLRM-2384), from `src/shared/fork/main-sync.ts`,
+  `src/shared/fork/serve-protect.ts`, `src/main/fork/main-sync/`,
+  `src/main/fork/serve-protect/`, `src/cli/fork/main-sync-*.ts`, `src/cli/fork/serve-protect*.ts`
+  and `src/renderer/src/fork/main-sync/`:
+  - `startForkRuntimeSettleServices` calls `startForkMainSync(runtime)` (desktop, `orca serve`
+    and orcad).
+  - `rpc-method-registry.ts` spreads `FORK_MAIN_SYNC_METHODS`; `rpc-params-catalog.generated.ts`
+    is regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_MAIN_SYNC_COMMAND_SPECS` and
+    `FORK_SERVE_PROTECT_COMMAND_SPECS`; `fork-handler-groups.ts` adds the `fork-main-sync` and
+    `fork-serve-protect` groups; `cli-command-names.ts` lists `main-sync`.
+  - `src/main/daemon/daemon-entry.ts` awaits `forkRaiseDaemonOomScore()` right after naming the
+    process.
+  - The settings are in `fork-global-settings.ts` and `settings-rows-fork.generated.ts` is
+    regenerated; the card is in the fork's Settings pane and its search entry in the pane catalog.
 - Best of N (SLRM-2393), from `src/shared/fork/best-of/`, `src/main/fork/best-of/`,
   `src/cli/fork/best-of-*.ts` and `src/renderer/src/fork/best-of/`:
   - `rpc-method-registry.ts` spreads `FORK_BEST_OF_METHODS`

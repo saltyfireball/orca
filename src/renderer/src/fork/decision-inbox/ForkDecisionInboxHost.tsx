@@ -21,6 +21,7 @@ import {
 import {
   closeForkDecisionInbox,
   useForkDecisionInbox,
+  useForkDecisionInboxOn,
   useForkDecisionInboxOpen,
   useForkIdleRecoveryMode
 } from './decision-inbox-store'
@@ -59,7 +60,12 @@ function Section({
       </h3>
       <ul>
         {items.map((item) => (
-          <ForkDecisionInboxRow key={item.chatId} item={item} now={now} actions={ACTIONS} />
+          <ForkDecisionInboxRow
+            key={`${item.source ?? 'idle'}:${item.chatId}:${item.prKey ?? ''}`}
+            item={item}
+            now={now}
+            actions={ACTIONS}
+          />
         ))}
       </ul>
     </section>
@@ -87,7 +93,7 @@ function Body(): React.JSX.Element {
       </p>
     )
   }
-  const { waiting, stalled, paused } = decisionInboxSections(result.items)
+  const { guarded, waiting, stalled, paused } = decisionInboxSections(result.items)
   const now = decisionInboxNow(result, receivedAt, Math.max(localNow, receivedAt))
   return (
     <div
@@ -95,11 +101,19 @@ function Body(): React.JSX.Element {
       aria-live="polite"
     >
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      {waiting.length === 0 && stalled.length === 0 && paused.length === 0 ? (
+      {guarded.length === 0 &&
+      waiting.length === 0 &&
+      stalled.length === 0 &&
+      paused.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">
           {t('fork.decisionInbox.empty', 'Nothing is waiting on you.')}
         </p>
       ) : null}
+      <Section
+        title={t('fork.decisionInbox.guardedTitle', 'Paused by a guard')}
+        items={guarded}
+        now={now}
+      />
       <Section
         title={t('fork.decisionInbox.waitingTitle', 'Waiting on you')}
         items={waiting}
@@ -115,7 +129,7 @@ export function ForkDecisionInboxHost(): React.JSX.Element | null {
   const t = useTranslate()
   const mode = useForkIdleRecoveryMode()
   const isOpen = useForkDecisionInboxOpen()
-  const off = mode === 'off'
+  const off = !useForkDecisionInboxOn()
   useEffect(() => {
     // Switched off while open: close, so turning it on again does not pop the dialog back up.
     if (off && isOpen) {
@@ -143,10 +157,15 @@ export function ForkDecisionInboxHost(): React.JSX.Element | null {
                   'fork.decisionInbox.descriptionWake',
                   'Chats whose last turn ended on a question for you, and stalled chats idle recovery will wake. Answer here or go to the chat.'
                 )
-              : t(
-                  'fork.decisionInbox.descriptionInbox',
-                  'Chats whose last turn ended on a question for you, and chats that stalled on work they could do now. Answer here or go to the chat.'
-                )}
+              : mode === 'off'
+                ? t(
+                    'fork.decisionInbox.descriptionBabysit',
+                    'Pull requests the PR babysitter stopped on. Tell the agent how to go on, or go to the chat.'
+                  )
+                : t(
+                    'fork.decisionInbox.descriptionInbox',
+                    'Chats whose last turn ended on a question for you, and chats that stalled on work they could do now. Answer here or go to the chat.'
+                  )}
           </DialogDescription>
         </DialogHeader>
         <Body />

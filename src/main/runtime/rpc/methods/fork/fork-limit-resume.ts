@@ -13,6 +13,7 @@ import {
   forkLimitResumeEntries,
   forkLimitResumeNow
 } from '../../../../fork/limit-resume/limit-resume-service'
+import { FORK_POOLED_LIMITS_METHODS } from './fork-pooled-limits'
 
 export const FORK_LIMIT_RESUME_METHODS = [
   defineMethod({
@@ -35,5 +36,7 @@ export const FORK_LIMIT_RESUME_METHODS = [
     permission: 'workspace',
     params: ForkLimitsTargetParams,
     handler: (params): Promise<ForkLimitsActionResult> => forkLimitResumeCancel(params.id)
-  })
+  }),
+  // Pooled limits (SLRM-2392): `orca limits usage`, in the same fork.limits group.
+  ...FORK_POOLED_LIMITS_METHODS
 ] as const

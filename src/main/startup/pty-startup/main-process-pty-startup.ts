@@ -40,8 +40,11 @@ import { mainProcessState as state } from '../main-process-state'
 import { shortPluginBranchName } from '../../../shared/plugins/events/plugin-events'
 import { notifyWorkspaceCreatedPluginHook } from '../../plugins/hooks/workspace-create-plugin-hook'
 import { pluginListedWorkspaceId } from '../../plugins/workers/host-api/plugin-workspace-projection'
+import { forkWorktreePortsLifecycle } from '../../fork/worktree-ports/worktree-ports-service'
 
 export function emitPluginWorktreeLifecycle(event: RuntimeWorktreeLifecycleEvent): void {
+  // Fork (SLRM-2383): reserve and release the workspace's port block (FORK.md).
+  forkWorktreePortsLifecycle(event)
   const folder = parseWorkspaceKey(event.worktreeId)?.type === 'folder'
   if (event.kind === 'created') {
     notifyWorkspaceCreatedPluginHook({ ...event, folder })

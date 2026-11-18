@@ -27,6 +27,11 @@ import {
   DesktopBrowserBridgeResultParams
 } from '../browser/client-hosting/desktop-browser-bridge-protocol'
 import {
+  ForkGuardsCapParams,
+  ForkGuardsListParams,
+  ForkGuardsTargetParams
+} from '../fork/agent-guards-wire'
+import {
   ForkAgentQueueListParams,
   ForkAgentQueueStatusParams,
   ForkAgentQueueTicketParams
@@ -54,7 +59,14 @@ import {
 } from '../fork/idle-recovery-wire'
 import { ForkLimitsListParams, ForkLimitsTargetParams } from '../fork/limit-resume-wire'
 import { ForkLostWorkScanParams } from '../fork/lost-work'
+import { ForkMainSyncRunParams, ForkMainSyncStatusParams } from '../fork/main-sync'
 import { ForkMcpChatParams, ForkMcpChatSetParams, ForkMcpListParams } from '../fork/mcp-profiles'
+import { ForkMachineUsageParams, ForkPooledLimitsParams } from '../fork/pooled-limits'
+import {
+  ForkPrBabysitListParams,
+  ForkPrBabysitStartParams,
+  ForkPrBabysitStopParams
+} from '../fork/pr-babysit-wire'
 import { ForkServerHealthListParams } from '../fork/server-health'
 import {
   ForkServerUpdateApplyParams,
@@ -87,6 +99,7 @@ import {
   ForkWorktreeMoveImportParams,
   ForkWorktreeMoveInspectParams
 } from '../fork/worktree-move/worktree-move-wire'
+import { ForkWorktreePortsGetParams } from '../fork/worktree-ports-wire'
 import { MobileWebBundleChunkParamsSchema } from '../mobile-web-bundle/bundle-rpc-contract'
 import { MobileWebBundleLocaleCatalogParamsSchema } from '../mobile-web-bundle/locale-catalog-contract'
 import { OrcadMigrationBlobChunkRequestSchema } from '../orcad-migration/orcad-migration-blob-transfer'
@@ -1231,6 +1244,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.devices.list': ForkDeviceListParams,
   'fork.devices.revoke': ForkDeviceTargetParams,
   'fork.endpoints.addresses': ForkEndpointAddressesParams,
+  'fork.guards.cap': ForkGuardsCapParams,
+  'fork.guards.list': ForkGuardsListParams,
+  'fork.guards.resume': ForkGuardsTargetParams,
   'fork.idleRecovery.answer': ForkIdleRecoveryAnswerParams,
   'fork.idleRecovery.inbox': ForkIdleRecoveryInboxParams,
   'fork.idleRecovery.pause': ForkIdleRecoveryPauseParams,
@@ -1238,13 +1254,20 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.launchDefaults.show': null,
   'fork.limits.cancel': ForkLimitsTargetParams,
   'fork.limits.list': ForkLimitsListParams,
+  'fork.limits.machineUsage': ForkMachineUsageParams,
   'fork.limits.resumeNow': ForkLimitsTargetParams,
+  'fork.limits.usage': ForkPooledLimitsParams,
   'fork.lostWork.scan': ForkLostWorkScanParams,
+  'fork.mainSync.run': ForkMainSyncRunParams,
+  'fork.mainSync.status': ForkMainSyncStatusParams,
   'fork.mcpProfiles.chat': ForkMcpChatParams,
   'fork.mcpProfiles.list': ForkMcpListParams,
   'fork.mcpProfiles.set': ForkMcpChatSetParams,
   'fork.placement.load': ForkPlacementLoadParams,
   'fork.placement.pick': ForkPlacementPickParams,
+  'fork.prBabysit.list': ForkPrBabysitListParams,
+  'fork.prBabysit.start': ForkPrBabysitStartParams,
+  'fork.prBabysit.stop': ForkPrBabysitStopParams,
   'fork.serverHealth.list': ForkServerHealthListParams,
   'fork.serverUpdate.apply': ForkServerUpdateApplyParams,
   'fork.serverUpdate.rollback': ForkServerUpdateRollbackParams,
@@ -1269,6 +1292,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.worktreeMove.export': ForkWorktreeMoveExportParams,
   'fork.worktreeMove.import': ForkWorktreeMoveImportParams,
   'fork.worktreeMove.inspect': ForkWorktreeMoveInspectParams,
+  'fork.worktreePorts.get': ForkWorktreePortsGetParams,
   'git.abortMerge': WorktreeSelectorOfGitParams,
   'git.abortRebase': WorktreeSelectorOfGitParams,
   'git.atRiskLocalFiles': WorktreeSelectorOfGitParams,

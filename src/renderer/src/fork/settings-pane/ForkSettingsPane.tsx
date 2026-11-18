@@ -9,6 +9,7 @@ import { useTranslate } from '@/i18n/use-translate'
 import { ForkChatSurviveSetting } from '../ForkChatSurviveSetting'
 import { ForkUnattendedResumeSetting } from '../unattended-resume/ForkUnattendedResumeSetting'
 import { ForkLimitResumeSetting } from '../limit-resume/ForkLimitResumeSetting'
+import { ForkAgentGuardsSetting } from '../agent-guards/ForkAgentGuardsSetting'
 import { ForkBoundaryCompactionSetting } from '../boundary-compaction/ForkBoundaryCompactionSetting'
 import { ForkChatSleepSetting } from '../chat-sleep/ForkChatSleepSetting'
 import { ForkSleepersSetting } from '../sleepers/ForkSleepersSetting'
@@ -17,14 +18,17 @@ import { ForkCacheColdSetting } from '../cache-cold/ForkCacheColdSetting'
 import { ForkMcpProfileSetting } from '../mcp-profiles/ForkMcpProfileSetting'
 import { ForkVisualFallbackSetting } from '../visual-image/ForkVisualFallbackSetting'
 import { ForkChildTallySetting } from '../agent-child-tally/ForkChildTallySetting'
+import { ForkRowStatusSetting } from '../row-status/ForkRowStatusSetting'
 import { ForkAgentStateColorSetting } from '../agent-state-color/ForkAgentStateColorSetting'
 import { ForkWorkerCleanupSetting } from '../worker-cleanup/ForkWorkerCleanupSetting'
 import { ForkAgentQueueSetting } from '../agent-queue/ForkAgentQueueSetting'
 import { ForkLaunchDefaultsSetting } from '../launch-defaults/ForkLaunchDefaultsSetting'
 import { ForkMemorySettings } from '../memory-truth/ForkMemorySettings'
 import { ForkIdleRecoverySetting } from '../idle-recovery/ForkIdleRecoverySetting'
+import { ForkPrBabysitSetting } from '../pr-babysit/ForkPrBabysitSetting'
 import { ForkAccountChipSetting } from '../claude-account-chip/ForkAccountChipSetting'
 import { ForkUsageReportSettings } from '../usage-report/ForkUsageReportSettings'
+import { ForkPooledLimitsSetting } from '../pooled-limits/ForkPooledLimitsSetting'
 import { ForkLostWorkSettings } from '../lost-work/ForkLostWorkSettings'
 import { ForkSyncNoticeSetting } from '../sync-status/ForkSyncNoticeSetting'
 import { ForkAutoPlacementSetting } from '../auto-placement/ForkAutoPlacementSetting'
@@ -33,6 +37,7 @@ import { ForkEndpointFailoverSetting } from '../endpoint-failover/ForkEndpointFa
 import { ForkWorktreeMoveSettings } from '../worktree-move/ForkWorktreeMoveSettings'
 import { ForkApfsCloneSetting } from '../apfs-clone/ForkApfsCloneSetting'
 import { ForkSnoozeSetting } from '../snooze/ForkSnoozeSetting'
+import { ForkMainSyncSetting } from '../main-sync/ForkMainSyncSetting'
 import { ForkDeviceApprovalSetting } from '../device-approval/ForkDeviceApprovalSetting'
 import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
 import { ForkServerHealthSetting } from '../server-health/ForkServerHealthSetting'
@@ -68,23 +73,30 @@ const SECTION_CARDS: Record<
   ],
   agents: [
     ['child-tally', ForkChildTallySetting],
+    ['row-status', ForkRowStatusSetting],
     ['agent-state-color', ForkAgentStateColorSetting],
     ['worker-cleanup', ForkWorkerCleanupSetting],
     ['agent-queue', ForkAgentQueueSetting],
     ['launch-defaults', ForkLaunchDefaultsSetting],
     ['memory', ForkMemorySettings],
     ['auto-placement', ForkAutoPlacementSetting],
+    ['agent-guards', ForkAgentGuardsSetting],
     ['best-of', ForkBestOfSetting]
   ],
-  'idle-recovery': [['idle-recovery', ForkIdleRecoverySetting]],
+  'idle-recovery': [
+    ['idle-recovery', ForkIdleRecoverySetting],
+    ['pr-babysit', ForkPrBabysitSetting]
+  ],
   usage: [
     ['account-chip', ForkAccountChipSetting],
-    ['usage-report', ForkUsageReportSettings]
+    ['usage-report', ForkUsageReportSettings],
+    ['pooled-limits', ForkPooledLimitsSetting]
   ],
   projects: [
     ['lost-work', ForkLostWorkSettings],
     ['worktree-move', ForkWorktreeMoveSettings],
     ['apfs-clone', ForkApfsCloneSetting],
+    ['main-sync', ForkMainSyncSetting],
     ['snooze', ForkSnoozeSetting],
     ['project-settings-list', ForkProjectSettingsList]
   ],

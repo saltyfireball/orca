@@ -15,6 +15,7 @@ import {
   readIdleRecoveryStatus,
   setIdleRecoveryPaused
 } from '../../../../fork/idle-recovery/idle-recovery-service'
+import { FORK_PR_BABYSIT_RPC_METHODS } from './fork-pr-babysit'
 
 export const FORK_IDLE_RECOVERY_RPC_METHODS = [
   defineMethod({
@@ -40,5 +41,7 @@ export const FORK_IDLE_RECOVERY_RPC_METHODS = [
     permission: 'workspace',
     params: ForkIdleRecoveryStatusParams,
     handler: async () => readIdleRecoveryStatus()
-  })
+  }),
+  // SLRM-2386: the PR babysitter, whose stuck pull requests join this inbox (`orca babysit`).
+  ...FORK_PR_BABYSIT_RPC_METHODS
 ] as const

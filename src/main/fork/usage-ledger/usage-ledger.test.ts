@@ -120,7 +120,7 @@ describe('UsageLedger', () => {
     const { ledger, feed } = setup()
     feed('chat-a', assistantFrame({ id: 'msg_1', input: 80_000 }))
     feed('chat-a', COMPACT_FRAME)
-    expect(ledger.cacheStates()).toEqual([])
+    expect(ledger.cacheStates()).toMatchObject([{ sessionId: 'chat-a', contextTokens: 0 }])
     feed('chat-a', assistantFrame({ id: 'msg_2', input: 4000 }))
     expect(ledger.cacheStates()[0].contextTokens).toBe(4000)
   })
