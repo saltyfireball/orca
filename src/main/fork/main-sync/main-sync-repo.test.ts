@@ -40,6 +40,7 @@ async function head(path: string, ref = 'refs/heads/main'): Promise<string> {
   return sandbox.run(path, 'rev-parse', ref)
 }
 
+// Why: each case builds real git repos in a temp dir, which can pass 5s on a loaded CI runner.
 describe('syncMainSyncRepo', { timeout: 30_000 }, () => {
   it('fast-forwards a clean main checkout that is behind', async () => {
     const { repo, upstream } = await projectBehind()

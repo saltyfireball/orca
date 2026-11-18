@@ -248,9 +248,12 @@
 1 src/main/fork/chat-survive/chat-survive-launch-ready.ts
 8 src/main/fork/chat-survive/chat-survive-sweep.ts
 1 src/main/fork/claude-account-move/claude-session-account-pins.ts
+2 src/main/fork/device-approval/device-approval-store.ts # one cached read when the store or file is first opened; later reads and writes use the in-memory copy (SLRM-2408)
+2 src/main/fork/endpoint-failover/endpoint-routes-file.ts # one cached read when the store or file is first opened; later reads and writes use the in-memory copy (SLRM-2408)
 1 src/main/fork/fork-app-identity.ts
 11 src/main/fork/shared-stock-data.ts
 3 src/main/fork/usage-ledger/usage-ledger-file.ts
+1 src/main/fork/webhooks/webhook-store.ts # one cached read when the store or file is first opened; later reads and writes use the in-memory copy (SLRM-2408)
 1 src/main/fork/worktree-ports/worktree-port-registry.ts
 5 src/main/git/repositories/discovery/repo-detection.ts
 13 src/main/git/repositories/discovery/repo-git-marker-scan.ts

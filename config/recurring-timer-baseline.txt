@@ -24,6 +24,9 @@
 1 src/main/daemon/transport/stream/daemon-stream-backlog-probe.ts
 1 src/main/diagnostics/event-loop-delay-probe.ts
 1 src/main/diagnostics/main-thread-churn-probe.ts
+1 src/main/fork/branch-clashes/branch-clashes-app.ts # cadence is the feature: an unref'd watch loop that stops with its service; no push signal exists for it (SLRM-2408)
+1 src/main/fork/endpoint-failover/endpoint-failover-supervisor.ts # cadence is the feature: an unref'd watch loop that stops with its service; no push signal exists for it (SLRM-2408)
+1 src/main/fork/webhooks/webhook-service.ts # cadence is the feature: an unref'd watch loop that stops with its service; no push signal exists for it (SLRM-2408)
 1 src/main/git/refs/maintenance/pack-refs-lock-ownership.ts
 1 src/main/hang-watchdog/main-thread-hang-watchdog-entry.ts
 1 src/main/hang-watchdog/main-thread-hang-watchdog.ts
