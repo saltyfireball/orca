@@ -12,6 +12,7 @@ import {
   startForkServerHeartbeat,
   stopForkServerHeartbeat
 } from './server-health/server-health-service'
+import { installForkVisualFallbackSettings } from './visual-image/visual-image-settings'
 
 export type ForkHeadlessHostStore = {
   getSettings: () => NonNullable<ReturnType<BoundaryCompactionSettingsReader>>
@@ -22,6 +23,7 @@ export type ForkHeadlessHostStore = {
  * - `orca settings` writes this host's own settings store (FORK.md "Settings from the CLI").
  * - Boundary compaction sweeps the chats whose agent runs here; off unless its mode is on.
  * - The server heartbeat calls its outside address, when one is set (FORK.md "Server health").
+ * - `::orca-visual` image files and unquoted values follow this host's own setting (SLRM-2349).
  * Returns what to run at shutdown.
  */
 export function installForkHeadlessHost(store: ForkHeadlessHostStore): () => void {
@@ -31,6 +33,7 @@ export function installForkHeadlessHost(store: ForkHeadlessHostStore): () => voi
     windowless: () => true
   })
   startForkServerHeartbeat(() => store.getSettings())
+  installForkVisualFallbackSettings(store)
   return () => {
     stopForkBoundaryCompactionService()
     stopForkServerHeartbeat()

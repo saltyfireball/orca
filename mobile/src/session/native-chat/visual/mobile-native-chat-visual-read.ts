@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import * as z from 'zod'
 import { NATIVE_CHAT_VISUAL_MAX_BYTES } from '../../../../../src/shared/native-chat/visuals/native-chat-visual-directive'
+import { forkVisualMaxDocumentChars } from '../../../../../src/shared/fork/visual-image-fallback'
 import { bindDeferredRpcOperation, defineRpcOperation } from '../../../transport/rpc/rpc-operation'
 import { rpcResultVariant } from '../../../transport/rpc/rpc-operation-result-reader'
 import { isMobileMethodUnavailableError } from '../../../transport/rpc/mobile-method-unavailable'
@@ -32,7 +33,7 @@ const visualReadReplySchema = z.union([
   z.object({
     ok: z.literal(true),
     revision: Revision,
-    html: z.string().max(NATIVE_CHAT_VISUAL_MAX_BYTES)
+    html: z.string().max(forkVisualMaxDocumentChars(NATIVE_CHAT_VISUAL_MAX_BYTES))
   }),
   z.object({ ok: z.literal(true), revision: Revision, unchanged: z.literal(true) }),
   // A newer host's error code still reads as a refusal.
