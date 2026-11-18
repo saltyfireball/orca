@@ -10,12 +10,20 @@ import {
   type LimitResumeServiceRuntime
 } from './limit-resume/limit-resume-service'
 import { startForkServerUpdate, type ForkServersRuntime } from './server-update/servers-live'
+import {
+  startForkWorktreePorts,
+  type ForkWorktreePortsRuntime
+} from './worktree-ports/worktree-ports-service'
+import { startForkAgentGuards } from './agent-guards/agent-guards-service'
+import { startForkMainSync, type ForkMainSyncRuntime } from './main-sync/main-sync-live'
 import { startForkDigest, type ForkDigestRuntime } from './digest/digest-runtime'
 
 export function startForkRuntimeSettleServices(
   runtime: UnattendedResumeRuntime &
     LimitResumeServiceRuntime &
     ForkServersRuntime &
+    ForkWorktreePortsRuntime &
+    ForkMainSyncRuntime &
     ForkDigestRuntime
 ): void {
   // SLRM-2268: continue cut unattended work once per process.
@@ -24,6 +32,12 @@ export function startForkRuntimeSettleServices(
   startForkLimitResume(runtime)
   // SLRM-2310: settle this host's own update (the watchdog waits on it); auto-update servers.
   startForkServerUpdate(runtime)
+  // SLRM-2383: release port blocks of workspaces gone while closed, then follow removals.
+  void startForkWorktreePorts(runtime)
+  // SLRM-2385: warn and pause agents stuck in a failure loop or past their spend cap.
+  startForkAgentGuards(runtime)
+  // SLRM-2384: fetch and fast-forward each local project's default branch, when on.
+  startForkMainSync(runtime)
   // SLRM-2388: send the daily digest when forkDigest is on.
   startForkDigest(runtime)
 }

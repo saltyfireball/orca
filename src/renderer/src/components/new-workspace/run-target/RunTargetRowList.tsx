@@ -8,6 +8,8 @@ import { RunTargetRow } from './RunTargetComboboxRow'
 import { ConnectHostButton, NeedsSetupHostIcon, SetLocationButton } from './RunTargetRowActions'
 import { RecipesSubmenuRow } from './RunTargetSubmenus'
 import type { EphemeralVmRecipeOption, RunTargetRowModel } from './run-target-options'
+import { ForkServerSetupRow } from '@/fork/server-setup/ForkServerSetupRow'
+import type { ForkServerSetupState } from '@/fork/server-setup/use-fork-server-setup'
 
 /** The scrolling rows of the run-target picker; "Add host" is pinned outside this list. */
 export default function RunTargetRowList({
@@ -26,7 +28,8 @@ export default function RunTargetRowList({
   onSelectHost,
   onSelectRecipe,
   onConnectHost,
-  onSetLocation
+  onSetLocation,
+  forkSetup
 }: {
   rows: readonly RunTargetRowModel[]
   armedKey: string | null
@@ -46,6 +49,8 @@ export default function RunTargetRowList({
   onSelectRecipe: (recipeId: string) => void
   onConnectHost: (option: NeedsSetupProjectHostOption) => void
   onSetLocation: (option: NeedsSetupProjectHostOption) => void
+  /** Fork (SLRM-2312): state of the "Set up on SERVER..." rows. */
+  forkSetup?: ForkServerSetupState
 }): React.JSX.Element {
   return (
     <>
@@ -55,6 +60,18 @@ export default function RunTargetRowList({
         }
         const isArmed = armedKey === row.key
         const optionId = isArmed ? `${listId}-armed` : undefined
+        if (row.kind === 'fork-setup') {
+          return forkSetup ? (
+            <ForkServerSetupRow
+              key={row.key}
+              row={row}
+              setup={forkSetup}
+              armed={isArmed}
+              optionId={optionId}
+              onArm={() => onArm(row.key, null)}
+            />
+          ) : null
+        }
         if (row.kind === 'ready') {
           return (
             <RunTargetRow

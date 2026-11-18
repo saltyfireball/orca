@@ -16,7 +16,8 @@ import {
 } from '../../../../../shared/fork/auto-placement'
 import {
   pickForkPlacementOnHosts,
-  readLocalMachineLoad
+  readLocalMachineLoad,
+  type ForkPlacementDeps
 } from '../../../../fork/auto-placement/auto-placement-probe'
 
 function projectReady(ctx: RpcContext, project: string): boolean {
@@ -35,7 +36,8 @@ function projectReady(ctx: RpcContext, project: string): boolean {
 async function localLoad(
   ctx: RpcContext,
   repo: string | undefined,
-  project: string | undefined
+  project: string | undefined,
+  setupMissing = false
 ): Promise<ForkPlacementLoadResult> {
   const load = await readLocalMachineLoad()
   const result: ForkPlacementLoadResult = { load }
@@ -47,6 +49,10 @@ async function localLoad(
   }
   if (project) {
     result.projectReady = projectReady(ctx, project)
+    if (setupMissing && !result.projectReady) {
+      // SLRM-2312: this Orca answers fork.serverSetup.*, so git is all a clone still needs.
+      result.canSetUp = await ctx.runtime.isGitAvailable().catch(() => false)
+    }
   }
   return result
 }
@@ -60,28 +66,30 @@ function settings(ctx: RpcContext): ForkAutoPlacementSettings | null {
   }
 }
 
+/** This host's placement probe wiring; batch start (SLRM-2395) picks through it too. */
+export function forkPlacementDeps(ctx: RpcContext): ForkPlacementDeps {
+  return {
+    settings: () => settings(ctx),
+    listEnvironments: () => listEnvironments(getAppEnvironment().getPath('userData')),
+    localLoad: (repo, project) => localLoad(ctx, repo, project),
+    callEnvironment: (environmentId, method, params, timeoutMs) =>
+      ctx.runtime.callOrchestrationWorkerServer(environmentId, method, params, timeoutMs)
+  }
+}
+
 export const FORK_AUTO_PLACEMENT_METHODS = [
   defineMethod({
     name: 'fork.placement.load',
     permission: 'workspace',
     params: ForkPlacementLoadParams,
     handler: async (params, ctx): Promise<ForkPlacementLoadResult> =>
-      localLoad(ctx, params.repo, params.project)
+      localLoad(ctx, params.repo, params.project, params.setupMissing === true)
   }),
   defineMethod({
     name: 'fork.placement.pick',
     permission: 'workspace',
     params: ForkPlacementPickParams,
     handler: async (params, ctx): Promise<ForkPlacementPickResult> =>
-      pickForkPlacementOnHosts(
-        {
-          settings: () => settings(ctx),
-          listEnvironments: () => listEnvironments(getAppEnvironment().getPath('userData')),
-          localLoad: (repo, project) => localLoad(ctx, repo, project),
-          callEnvironment: (environmentId, method, params, timeoutMs) =>
-            ctx.runtime.callOrchestrationWorkerServer(environmentId, method, params, timeoutMs)
-        },
-        params
-      )
+      pickForkPlacementOnHosts(forkPlacementDeps(ctx), params)
   })
 ] as const

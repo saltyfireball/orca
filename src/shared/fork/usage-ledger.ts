@@ -39,6 +39,12 @@ export type ForkCacheState = {
   ttl?: ForkCacheTtl
   /** A turn is running, so the cache is warm by definition. */
   working: boolean
+  /** SLRM-2390: estimated USD of everything the chat used, at API prices; absent when no call has a price. */
+  costUsd?: number
+  /** SLRM-2390: some of its tokens have no price, so the cost is a floor. */
+  unpriced?: boolean
+  /** SLRM-2390: how the chat is billed; a subscription's cost is what the tokens would cost. */
+  billing?: ForkUsageBilling
 }
 
 export type ForkUsageLedgerSettings = {

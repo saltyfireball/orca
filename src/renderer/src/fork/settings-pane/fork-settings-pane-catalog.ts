@@ -9,13 +9,20 @@ import { translate } from '@/i18n/i18n'
 import type { Translate } from '@/i18n/use-translate'
 import { getForkChatsSearchEntries } from './fork-settings-pane-catalog-chats'
 import { forkAutoPlacementSearchEntry } from '../auto-placement/auto-placement-search-entry'
+import { forkBatchStartSearchEntry } from '../batch-start/batch-start-search-entry'
+import { bestOfSearchEntry } from '../best-of/best-of-search-entry'
 import type { ForkSettingsSection, ForkSettingsSectionId } from './fork-settings-pane-types'
 import { getForkRemoteSettingsSectionParts } from '../endpoint-failover/endpoint-failover-search'
 import { worktreeMoveSearchEntry } from '../worktree-move/worktree-move-search-entry'
 import { apfsCloneSearchEntry } from '../apfs-clone/apfs-clone-search-entry'
 import { snoozeSearchEntry } from '../snooze/snooze-search-entry'
+import { serverSetupSearchEntry } from '../server-setup/server-setup-search-entry'
+import { branchClashesSearchEntry } from '../branch-clashes/branch-clashes-search-entry'
 import { digestSearchEntry } from '../digest/digest-search-entry'
 import { serverUpdateSearchEntry } from '../server-update/server-update-search-entry'
+import { prBabysitSearchEntry } from '../pr-babysit/pr-babysit-search-entry'
+import { mainSyncSearchEntry } from '../main-sync/main-sync-search-entry'
+import { rowStatusSearchEntry } from '../row-status/row-status-search-entry'
 
 export const FORK_SETTINGS_PANE_ID = 'fork'
 
@@ -90,6 +97,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
           ),
           keywords: words('badge', 'children', 'sub-agents', 'tally', 'forkShowChildTally')
         },
+        rowStatusSearchEntry(t),
         {
           title: t('fork.agentStateColors.title', 'Agent state colors'),
           description: t(
@@ -130,7 +138,17 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
           ),
           keywords: words('pressure', 'swap', 'pause new agents', 'ram', 'forkMemoryWarnPressure')
         },
-        forkAutoPlacementSearchEntry(t)
+        forkAutoPlacementSearchEntry(t),
+        {
+          title: t('fork.agentGuards.title', 'Agent guards'),
+          description: t(
+            'fork.settingsPane.search.agentGuards',
+            'Warn and pause agents stuck repeating a failing tool call, or past a spend cap.'
+          ),
+          keywords: words('loop', 'failure', 'spend', 'cap', 'budget', 'forkAgentGuardLoop')
+        },
+        forkBatchStartSearchEntry(t),
+        bestOfSearchEntry(t)
       ]
     ),
     section(
@@ -138,7 +156,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
       t('fork.settingsPane.idleRecovery.title', 'Idle recovery'),
       t(
         'fork.settingsPane.idleRecovery.description',
-        'Judge how an idle chat ended its turn, and list the ones waiting on you.'
+        'Judge how an idle chat ended its turn, list the ones waiting on you, and babysit pull requests.'
       ),
       [
         {
@@ -155,7 +173,8 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
             'notification',
             'forkIdleSweepMode'
           )
-        }
+        },
+        prBabysitSearchEntry(t)
       ]
     ),
     section(
@@ -182,6 +201,22 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
           ),
           keywords: words('tokens', 'cost', 'prices', 'card pattern', 'forkUsagePrices')
         },
+        {
+          title: t('fork.pooledLimits.settingTitle', 'Pooled usage limits'),
+          description: t(
+            'fork.pooledLimits.settingDescription',
+            'One bar per Claude and Codex limit window across every account on this machine and its paired servers.'
+          ),
+          keywords: words(
+            'limits',
+            'usage limits',
+            'pooled',
+            'servers',
+            '5-hour',
+            'weekly',
+            'forkPooledLimits'
+          )
+        },
         digestSearchEntry(t)
       ]
     ),
@@ -190,7 +225,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
       t('fork.settingsPane.projects.title', 'Projects'),
       t(
         'fork.settingsPane.projects.description',
-        'The Lost work scan, moving a workspace to another host, fast new worktrees, and what the fork sets for one project.'
+        'The Lost work scan, branch clashes, moving a workspace to another host, fast new worktrees, setting a project up on a server, and what the fork sets for one project.'
       ),
       [
         {
@@ -203,7 +238,10 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         },
         worktreeMoveSearchEntry(t),
         apfsCloneSearchEntry(t),
+        mainSyncSearchEntry(t),
         snoozeSearchEntry(t),
+        serverSetupSearchEntry(t),
+        branchClashesSearchEntry(t),
         {
           title: t('fork.settingsPane.projectList.title', 'Per project'),
           description: t(
