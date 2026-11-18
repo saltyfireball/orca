@@ -11,6 +11,6 @@ export function forkBatchStartSearchEntry(t: Translate = translate): SettingsSea
       'fork.settingsPane.search.batchStart',
       'Send prompt after prompt from the new-workspace composer, one worktree and agent per model.'
     ),
-    keywords: ['batch', 'prompt', 'keep open', 'models', 'forkBatchStart']
+    keywords: ['batch', 'prompt', 'keep open', 'models', 'set up', 'clone', 'forkBatchStart']
   }
 }

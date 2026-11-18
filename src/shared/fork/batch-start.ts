@@ -11,6 +11,7 @@ import {
 } from '../execution-host/execution-host'
 import type { Project, ProjectHostSetup } from '../project/project-types'
 import { normalizeTypedName } from '../text/typed-name-normalization'
+import { FORK_SERVER_SETUP_RUN_TIMEOUT_MS } from './server-setup-wire'
 
 /** Most models one prompt may start: each is its own worktree and agent. */
 export const FORK_BATCH_START_MAX_AGENTS = 6
@@ -20,6 +21,10 @@ export const FORK_BATCH_START_MAX_PROMPT = 20_000
 
 /** How long a client waits for one batch to be created on its machine. */
 export const FORK_BATCH_START_TIMEOUT_MS = 180_000
+
+/** The same when Auto machine may set a server up first (SLRM-2406): the clone and readiness too. */
+export const FORK_BATCH_START_SETUP_TIMEOUT_MS =
+  FORK_BATCH_START_TIMEOUT_MS + FORK_SERVER_SETUP_RUN_TIMEOUT_MS
 
 const Selector = z.string().min(1).max(4096)
 
@@ -41,7 +46,10 @@ export const ForkBatchStartParams = z
       .refine((value) => value.trim().length > 0, 'Write a prompt first'),
     agents: z.array(Agent).min(1, 'Pick at least one model').max(FORK_BATCH_START_MAX_AGENTS),
     /** auto: the machine auto placement picks; here: the machine that answers. */
-    placement: z.enum(['auto', 'here'])
+    placement: z.enum(['auto', 'here']),
+    /** With auto (SLRM-2406): a paired server that lacks the project but can clone it counts, and
+     *  is set up first through fork.serverSetup.run when picked. */
+    setupMissing: z.boolean().optional()
   })
   .refine((value) => Boolean(value.project || value.repo), {
     message: 'Pass a project or a repo'
@@ -57,6 +65,8 @@ export const ForkBatchStartResultSchema = z.object({
   /** The machine that took the batch: 'local' on the answering machine, else `runtime:<id>`. */
   hostKey: z.string().max(512),
   hostLabel: z.string().max(512),
+  /** Set when the picked server was set up for the project first (SLRM-2406). */
+  setupNote: Text.optional(),
   tasks: z
     .array(
       z.discriminatedUnion('ok', [
@@ -86,9 +96,17 @@ export type ForkBatchStartSettings = {
   forkBatchStartKeepOpen?: boolean
   /** Fork (SLRM-2395): the batch box starts with Auto machine on; unset is on. */
   forkBatchStartAutoHost?: boolean
+  /** Fork (SLRM-2406): Auto machine also considers paired servers that lack the project but can
+   *  clone it, and sets the picked one up first; unset is off. */
+  forkBatchStartSetupMissing?: boolean
 }
 
-export type ForkBatchStartConfig = { enabled: boolean; keepOpen: boolean; autoHost: boolean }
+export type ForkBatchStartConfig = {
+  enabled: boolean
+  keepOpen: boolean
+  autoHost: boolean
+  setupMissing: boolean
+}
 
 export function readForkBatchStartSettings(
   settings: ForkBatchStartSettings | null | undefined
@@ -96,7 +114,8 @@ export function readForkBatchStartSettings(
   return {
     enabled: settings?.forkBatchStart !== false,
     keepOpen: settings?.forkBatchStartKeepOpen !== false,
-    autoHost: settings?.forkBatchStartAutoHost !== false
+    autoHost: settings?.forkBatchStartAutoHost !== false,
+    setupMissing: settings?.forkBatchStartSetupMissing === true
   }
 }
 
@@ -112,7 +131,8 @@ export function readForkBatchStartSettingsFrom(value: unknown): ForkBatchStartCo
   return readForkBatchStartSettings({
     forkBatchStart: flag('forkBatchStart'),
     forkBatchStartKeepOpen: flag('forkBatchStartKeepOpen'),
-    forkBatchStartAutoHost: flag('forkBatchStartAutoHost')
+    forkBatchStartAutoHost: flag('forkBatchStartAutoHost'),
+    forkBatchStartSetupMissing: flag('forkBatchStartSetupMissing')
   })
 }
 
@@ -225,9 +245,11 @@ export function foldForkBatchAnswer(
   labelOf: (agent: TuiAgent) => string
 ): { lines: string[]; retryAgents: TuiAgent[]; error: string | null; allStarted: boolean } {
   const outcome = settleForkBatchOutcome(result, labelOf)
-  const lines = result.tasks.flatMap((task) =>
+  const started = result.tasks.flatMap((task) =>
     task.ok ? [describeForkBatchTask(task, result.hostLabel, labelOf)] : []
   )
+  // A server set up first is named even when nothing started, so a resend knows it is ready.
+  const lines = result.setupNote ? [result.setupNote, ...started] : started
   return {
     lines,
     retryAgents: outcome.retryAgents,
@@ -235,7 +257,7 @@ export function foldForkBatchAnswer(
       ? null
       : [
           ...outcome.errors,
-          lines.length > 0 ? 'The rest started. Send again to retry the failed models.' : ''
+          started.length > 0 ? 'The rest started. Send again to retry the failed models.' : ''
         ]
           .filter(Boolean)
           .join('\n') || 'Nothing started.',

@@ -27,6 +27,8 @@ export function useNewWorkspaceRepositories(args: {
   visible: boolean
   /** Picked once it is listed, in place of the last visited repo. */
   initialRepo?: { id: string; executionHostId: ExecutionHostId }
+  /** Fork (SLRM-2406): bumped to list the servers' repos again after one is set up. */
+  serverGeneration?: number
 }): {
   repos: MobileWorkspaceRepo[]
   allRepos: MobileWorkspaceRepo[]
@@ -36,13 +38,19 @@ export function useNewWorkspaceRepositories(args: {
   /** Set when the project list failed to load and nothing is cached to show. */
   loadError: string | null
   retryLoad: () => void
+  /** Each server's listed repos, keyed by server; absent until that server answers. */
+  serverRepos: ReadonlyMap<ExecutionHostId, MobileWorkspaceRepo[]>
 } {
   const { client, serverClients = NO_SERVER_CLIENTS, hostId, visible, initialRepo } = args
   const queryClient = useQueryClient()
   // The host list's repos, so the form opens with them while repo.list answers.
   const [initialRepos] = useState(() => cachedHostRepos<MobileWorkspaceRepo>(queryClient, hostId))
   const [desktopRepos, setDesktopRepos] = useState<MobileWorkspaceRepo[]>(initialRepos ?? [])
-  const serverRepos = useServerRepos<MobileWorkspaceRepo>(serverClients, visible)
+  const serverRepos = useServerRepos<MobileWorkspaceRepo>(
+    serverClients,
+    visible,
+    args.serverGeneration
+  )
   const [pickedRepo, setSelectedRepo] = useState<MobileWorkspaceRepo | null>(null)
   const [loading, setLoading] = useState(initialRepos == null)
   // Null until a read fails; an empty string is a refusal with no reason to show.
@@ -147,6 +155,7 @@ export function useNewWorkspaceRepositories(args: {
     loading: loading && repos.length === 0,
     // Cached rows stay usable, so a failed refresh only matters when there is nothing to pick.
     loadError: repos.length === 0 ? loadError : null,
-    retryLoad: () => setLoadAttempt((attempt) => attempt + 1)
+    retryLoad: () => setLoadAttempt((attempt) => attempt + 1),
+    serverRepos
   }
 }
