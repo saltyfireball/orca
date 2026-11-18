@@ -44,6 +44,7 @@ import { useNewWorkspaceRepositories } from '../runtime/use-new-workspace-reposi
 import { useNewWorkspaceRuntimeContext } from '../runtime/use-new-workspace-runtime-context'
 import { useNewWorkspaceSetupScript } from '../runtime/use-new-workspace-setup-script'
 import { useNewWorktreeDrawerNavigation } from './use-new-worktree-drawer-navigation'
+import { useMobileForkBatchStart } from '../../../components/fork/batch-start/MobileForkBatchStart'
 
 /** The server a repo runs on; undefined for the desktop's own (local, SSH, folder). */
 function serverOf(repo: MobileWorkspaceRepo): `runtime:${string}` | undefined {
@@ -213,6 +214,17 @@ function NewWorktreeModalContent(props: NewWorktreeModalProps) {
       : {})
   })
 
+  // Fork (SLRM-2395): batch start's switch, and its box in place of the form while on (FORK.md).
+  const forkBatch = useMobileForkBatchStart({
+    hostClient: desktopClient,
+    repoClient: client,
+    selectedRepo,
+    runtimeSettings: runtime.runtimeSettings,
+    agentOptions: agentSelection.pickerAgentOptions,
+    selectedAgent: agentSelection.selectedAgent,
+    onClose
+  })
+
   const sourceAvailability: SmartModeAvailabilityInput = {
     textOnly: selectedRepo != null && !selectedRepoIsGit,
     tasksSupported,
@@ -330,6 +342,8 @@ function NewWorktreeModalContent(props: NewWorktreeModalProps) {
         onSetupDecisionChange={setupScript.setSetupDecisionChoice}
         onRunSetupChange={setupScript.setRunSetup}
         onCreate={() => void createSubmit.create()}
+        forkBatchToggle={forkBatch.toggle}
+        forkBatchBody={folderLaunch ? null : forkBatch.body}
       />
 
       <NewWorktreeModalDrawers

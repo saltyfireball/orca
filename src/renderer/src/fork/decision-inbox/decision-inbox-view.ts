@@ -5,6 +5,8 @@ import type {
 } from '../../../../shared/fork/idle-recovery-wire'
 
 export type DecisionInboxSections = {
+  /** Agents an agent guard paused (SLRM-2385), oldest first. Listed whatever idle recovery's mode. */
+  guarded: ForkIdleRecoveryInboxItem[]
   /** Chats waiting on the user, oldest first. */
   waiting: ForkIdleRecoveryInboxItem[]
   /** Chats that stopped on work they could do now, oldest first. */
@@ -26,6 +28,7 @@ export function decisionInboxSections(
   const list = items ?? []
   const live = list.filter((item) => !item.paused)
   return {
+    guarded: oldestFirst(live.filter((item) => item.verdict === 'guard')),
     waiting: oldestFirst(live.filter((item) => item.verdict === 'waiting_user')),
     stalled: oldestFirst(live.filter((item) => item.verdict === 'stalled')),
     paused: oldestFirst(list.filter((item) => item.paused))

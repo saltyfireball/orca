@@ -8,6 +8,7 @@ import {
   type IdleRecoveryStore
 } from './idle-recovery-service'
 import { emptyIdleRecoveryState, type IdleRecoveryStoredState } from './idle-recovery-state'
+import { registerForkInboxSource } from './idle-recovery-sources'
 import { runIdleRecoverySweep } from './idle-recovery-sweep'
 import { fakeSweepWorld, testCandidate, testVerdict } from './idle-recovery-sweep-fixtures'
 
@@ -286,5 +287,62 @@ describe('idle recovery service', () => {
     await expect(service.sweep()).resolves.toBe(true)
     expect((await service.listInbox()).items).toHaveLength(1)
     warn.mockRestore()
+  })
+
+  it('shows another source rows with the mode off and routes answer and Stop to it (SLRM-2386)', async () => {
+    const ctx = harness({})
+    const dismissed: string[] = []
+    const answered: string[] = []
+    const remove = registerForkInboxSource({
+      id: 'babysit',
+      items: async () => [
+        {
+          chatId: 'chat-9',
+          kind: 'chat',
+          agent: '',
+          title: 'PR acme/api#12',
+          workspace: '',
+          worktreeId: null,
+          verdict: 'stalled',
+          question: '',
+          reason: 'PR babysitter stopped',
+          since: 1,
+          wakes: 0,
+          wakeAt: null,
+          paused: false,
+          source: 'babysit',
+          prKey: 'github.com/acme/api#12'
+        }
+      ],
+      answer: async (chatId, text) => {
+        answered.push(`${chatId}:${text}`)
+        return 'sent'
+      },
+      dismiss: async (chatId) => {
+        dismissed.push(chatId)
+        return true
+      }
+    })
+    try {
+      const inbox = await ctx.service.listInbox()
+      expect(inbox.mode).toBe('off')
+      expect(inbox.items.map((item) => item.source)).toEqual(['babysit'])
+      expect(ctx.loads).toBe(0)
+      expect(
+        await ctx.service.answer({ chatId: 'chat-9', text: 'go on', source: 'babysit' })
+      ).toEqual({ chatId: 'chat-9', result: 'sent' })
+      expect(answered).toEqual(['chat-9:go on'])
+      // Without the source the idle-recovery path answers, which is off here.
+      expect(await ctx.service.answer({ chatId: 'chat-9', text: 'x' })).toMatchObject({
+        result: 'unavailable'
+      })
+      expect(
+        await ctx.service.setPaused({ chatId: 'chat-9', paused: true, source: 'babysit' })
+      ).toMatchObject({ saved: true, paused: false })
+      expect(dismissed).toEqual(['chat-9'])
+    } finally {
+      remove()
+    }
+    expect((await ctx.service.listInbox()).items).toEqual([])
   })
 })
