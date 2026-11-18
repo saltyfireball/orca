@@ -24,6 +24,9 @@ import {
 import type { ForkLettersDeps } from './letters-deps'
 import { forkLetterPartyOf } from './letters-parties'
 
+const str = (value: unknown, max: number): string =>
+  typeof value === 'string' ? cleanForkLetterText(value, max) : ''
+
 export const FORK_LETTERS_PEER_TIMEOUT_MS = 8000
 /** A server written to within this time is polled for answers. */
 export const FORK_LETTERS_PEER_WINDOW_MS = 24 * 60 * 60_000
@@ -108,9 +111,12 @@ export async function forwardForkLetter(
       ...draft,
       to: {
         ...draft.to,
-        chatId: typeof remote?.to?.chatId === 'string' ? remote.to.chatId : to,
+        chatId:
+          typeof remote?.to?.chatId === 'string' && FORK_LETTER_CHAT_ID.test(remote.to.chatId)
+            ? remote.to.chatId
+            : to,
         kind: remote?.to?.kind === 'terminal' ? 'terminal' : 'chat',
-        title: typeof remote?.to?.title === 'string' ? remote.to.title.slice(0, 200) : ''
+        title: str(remote?.to?.title, 200).replace(/\s+/g, ' ')
       }
     }
   } catch (error) {
@@ -135,9 +141,6 @@ export async function forwardForkLetter(
   deps.kick()
   return letter
 }
-
-const str = (value: unknown, max: number): string =>
-  typeof value === 'string' ? cleanForkLetterText(value, max) : ''
 
 /**
  * A letter a server handed over, rebuilt field by field: the server is paired, but its chats are

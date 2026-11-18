@@ -35,8 +35,8 @@ export function formatLetterParty(party: ForkLetterParty): string {
   const name =
     party.kind === 'shell'
       ? party.chatId
-      : `${party.title || party.kind} (${party.chatId.slice(0, 12)})`
-  return party.host ? `${name} @${party.host.name}` : name
+      : `${oneLine(party.title, 60) || party.kind} (${oneLine(party.chatId, 12)})`
+  return party.host ? `${name} @${oneLine(party.host.name, 60)}` : name
 }
 
 export function formatLetterSent(letter: ForkLetter): string {
@@ -84,7 +84,7 @@ export function formatLetterChats(result: ForkLettersChatsResult): string {
 
 export function formatBoardAsk(ask: ForkBoardAsk): string {
   const state = ask.state === 'open' ? 'open' : ask.state === 'done' ? 'done' : 'thrown back'
-  return `Ask ${ask.id} (${ask.type}) ${state}: ${ask.title}`
+  return `Ask ${ask.id} (${ask.type}) ${state}: ${oneLine(ask.title, 200)}`
 }
 
 export function formatBoardList(result: ForkBoardListResult): string {
