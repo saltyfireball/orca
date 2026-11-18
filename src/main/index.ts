@@ -33,6 +33,7 @@ import { installForkChatSleepBridge } from './fork/chat-sleep/chat-sleep-bridge'
 import { installForkMemoryWatch } from './fork/memory-truth/memory-watch'
 import { installForkAgentQueueApp } from './fork/agent-queue/agent-queue-ipc'
 import { installForkSnoozeApp } from './fork/snooze/snooze-ipc'
+import { installForkBranchClashesApp } from './fork/branch-clashes/branch-clashes-app'
 import { installForkChatStallBridge } from './fork/chat-stall/chat-stall-bridge'
 import { installForkLimitResumeBridge } from './fork/limit-resume/limit-resume-bridge'
 import { installForkAgentGuardsBridge } from './fork/agent-guards/agent-guards-bridge'
@@ -249,6 +250,8 @@ if (preflightReady) {
   installForkSyncStatusBridge()
   // Fork (SLRM-2269): snoozed workspaces and chats (FORK.md "Snooze").
   installForkSnoozeApp(() => state.store?.getSettings())
+  // Fork (SLRM-2394): files parallel worktree branches share (FORK.md "Branch clashes").
+  installForkBranchClashesApp(() => state.store?.getSettings())
   // Fork: idle recovery and the Decision inbox, off unless switched on (FORK.md).
   installForkIdleRecoveryBridge()
   setIdleRecoveryDesktopNotifier((title, body) => {
