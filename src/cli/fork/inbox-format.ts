@@ -26,7 +26,11 @@ export function inboxShortId(item: Pick<ForkIdleRecoveryInboxItem, 'chatId' | 'k
 }
 
 function kindLabel(item: ForkIdleRecoveryInboxItem): string {
-  return item.verdict === 'waiting_user' ? 'waiting' : 'stalled'
+  return item.verdict === 'waiting_user'
+    ? 'waiting'
+    : item.verdict === 'guard'
+      ? 'guard-paused'
+      : 'stalled'
 }
 
 function itemLines(item: ForkIdleRecoveryInboxItem, now: number): string[] {
@@ -45,7 +49,8 @@ function itemLines(item: ForkIdleRecoveryInboxItem, now: number): string[] {
 }
 
 export function formatInboxList(result: ForkIdleRecoveryInboxResult): string {
-  if (result.mode === 'off') {
+  // Agents a guard paused (SLRM-2385) are listed even with idle recovery off.
+  if (result.mode === 'off' && result.items.length === 0) {
     return INBOX_OFF_MESSAGE
   }
   if (result.items.length === 0) {

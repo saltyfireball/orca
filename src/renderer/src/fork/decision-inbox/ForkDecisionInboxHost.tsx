@@ -25,6 +25,7 @@ import {
   useForkIdleRecoveryMode
 } from './decision-inbox-store'
 import { decisionInboxNow, decisionInboxSections } from './decision-inbox-view'
+import { useForkAgentGuardPausedCount } from '../agent-guards/agent-guards-store'
 import { ForkDecisionInboxRow, type DecisionInboxRowActions } from './ForkDecisionInboxRow'
 
 /** How often an open dialog redraws its ages. A clock tick only: it reads nothing. */
@@ -87,7 +88,7 @@ function Body(): React.JSX.Element {
       </p>
     )
   }
-  const { waiting, stalled, paused } = decisionInboxSections(result.items)
+  const { guarded, waiting, stalled, paused } = decisionInboxSections(result.items)
   const now = decisionInboxNow(result, receivedAt, Math.max(localNow, receivedAt))
   return (
     <div
@@ -95,11 +96,19 @@ function Body(): React.JSX.Element {
       aria-live="polite"
     >
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      {waiting.length === 0 && stalled.length === 0 && paused.length === 0 ? (
+      {guarded.length === 0 &&
+      waiting.length === 0 &&
+      stalled.length === 0 &&
+      paused.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">
           {t('fork.decisionInbox.empty', 'Nothing is waiting on you.')}
         </p>
       ) : null}
+      <Section
+        title={t('fork.decisionInbox.guardedTitle', 'Paused by a guard')}
+        items={guarded}
+        now={now}
+      />
       <Section
         title={t('fork.decisionInbox.waitingTitle', 'Waiting on you')}
         items={waiting}
@@ -115,7 +124,9 @@ export function ForkDecisionInboxHost(): React.JSX.Element | null {
   const t = useTranslate()
   const mode = useForkIdleRecoveryMode()
   const isOpen = useForkDecisionInboxOpen()
-  const off = mode === 'off'
+  // SLRM-2385: agents a guard paused keep the inbox open with idle recovery off.
+  const guardPaused = useForkAgentGuardPausedCount()
+  const off = mode === 'off' && guardPaused === 0
   useEffect(() => {
     // Switched off while open: close, so turning it on again does not pop the dialog back up.
     if (off && isOpen) {

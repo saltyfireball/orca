@@ -111,5 +111,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-limits',
     keys: ['limits list', 'limits resume-now', 'limits cancel'],
     load: async () => (await import('./limits-handlers.js')).FORK_LIMITS_HANDLERS
+  },
+  // SLRM-2385: failure-loop and spend guards (FORK.md "Agent guards").
+  {
+    name: 'fork-guards',
+    keys: ['guards list', 'guards resume', 'guards cap'],
+    load: async () => (await import('./guards-handlers.js')).FORK_GUARDS_HANDLERS
   }
 ]

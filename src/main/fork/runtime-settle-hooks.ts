@@ -10,6 +10,7 @@ import {
   type LimitResumeServiceRuntime
 } from './limit-resume/limit-resume-service'
 import { startForkServerUpdate, type ForkServersRuntime } from './server-update/servers-live'
+import { startForkAgentGuards } from './agent-guards/agent-guards-service'
 
 export function startForkRuntimeSettleServices(
   runtime: UnattendedResumeRuntime & LimitResumeServiceRuntime & ForkServersRuntime
@@ -20,4 +21,6 @@ export function startForkRuntimeSettleServices(
   startForkLimitResume(runtime)
   // SLRM-2310: settle this host's own update (the watchdog waits on it); auto-update servers.
   startForkServerUpdate(runtime)
+  // SLRM-2385: warn and pause agents stuck in a failure loop or past their spend cap.
+  startForkAgentGuards(runtime)
 }

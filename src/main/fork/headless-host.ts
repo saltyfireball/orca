@@ -13,6 +13,7 @@ import {
   stopForkServerHeartbeat
 } from './server-health/server-health-service'
 import { installForkVisualFallbackSettings } from './visual-image/visual-image-settings'
+import { installForkUsageLedgerOnServer } from './usage-ledger/usage-ledger-server'
 
 export type ForkHeadlessHostStore = {
   getSettings: () => NonNullable<ReturnType<BoundaryCompactionSettingsReader>>
@@ -24,6 +25,7 @@ export type ForkHeadlessHostStore = {
  * - Boundary compaction sweeps the chats whose agent runs here; off unless its mode is on.
  * - The server heartbeat calls its outside address, when one is set (FORK.md "Server health").
  * - `::orca-visual` image files and unquoted values follow this host's own setting (SLRM-2349).
+ * - The usage ledger counts the Claude chats that run here, for the spend cap (SLRM-2385).
  * Returns what to run at shutdown.
  */
 export function installForkHeadlessHost(store: ForkHeadlessHostStore): () => void {
@@ -34,8 +36,18 @@ export function installForkHeadlessHost(store: ForkHeadlessHostStore): () => voi
   })
   startForkServerHeartbeat(() => store.getSettings())
   installForkVisualFallbackSettings(store)
+  let flushLedger: (() => void) | null = null
+  // Runtime tests reach this install too; the ledger (its file and prune timer) stays off there.
+  if (!process.env.VITEST) {
+    void installForkUsageLedgerOnServer(() => store.getSettings())
+      .then((flush) => {
+        flushLedger = flush
+      })
+      .catch((error: unknown) => console.warn('[fork-usage-ledger] could not start', error))
+  }
   return () => {
     stopForkBoundaryCompactionService()
     stopForkServerHeartbeat()
+    flushLedger?.()
   }
 }

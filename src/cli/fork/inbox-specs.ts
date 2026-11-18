@@ -41,6 +41,7 @@ export const FORK_INBOX_COMMAND_SPECS: CommandSpec[] = [
     notes: [
       'A chat already in the inbox keeps its row as it was, marked (paused) and left out of the counts. You can still answer it.',
       '--resume lets idle recovery look at the chat again.',
+      'On a row an agent guard paused, --resume lifts that pause (orca guards resume does the same).',
       ID_NOTE
     ],
     examples: ['orca inbox pause 3f2a', 'orca inbox pause 3f2a --resume']

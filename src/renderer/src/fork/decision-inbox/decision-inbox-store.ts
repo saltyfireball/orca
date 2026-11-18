@@ -8,6 +8,7 @@ import {
   readIdleRecoverySettings,
   type IdleRecoveryMode
 } from '../../../../shared/fork/idle-recovery-settings'
+import { forkAgentGuardPausedCount } from '../agent-guards/agent-guards-store'
 import type {
   ForkIdleRecoveryApi,
   ForkIdleRecoveryInboxResult
@@ -43,9 +44,13 @@ export function useForkIdleRecoveryMode(): IdleRecoveryMode {
   return useAppStore((s) => readIdleRecoverySettings(s.settings).mode)
 }
 
-/** True when the inbox can be shown: the mode is not off and this build has the bridge. */
+/** True when the inbox can be shown: the mode is not off (or an agent guard paused an agent,
+ *  SLRM-2385) and this build has the bridge. */
 export function forkDecisionInboxAvailable(): boolean {
-  return forkIdleRecoveryMode() !== 'off' && forkIdleRecoveryBridge() !== null
+  return (
+    (forkIdleRecoveryMode() !== 'off' || forkAgentGuardPausedCount() > 0) &&
+    forkIdleRecoveryBridge() !== null
+  )
 }
 
 function publish(next: DecisionInboxSnapshot): void {

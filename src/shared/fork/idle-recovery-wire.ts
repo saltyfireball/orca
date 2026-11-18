@@ -53,8 +53,9 @@ export type ForkIdleRecoveryInboxItem = {
   title: string
   workspace: string
   worktreeId: string | null
-  /** Never 'finished': those are not listed. */
-  verdict: Exclude<IdleRecoveryVerdictKind, 'finished'>
+  /** Never 'finished': those are not listed. 'guard': an agent guard paused it (SLRM-2385); an
+   *  answer lifts the pause, and so does Resume. */
+  verdict: Exclude<IdleRecoveryVerdictKind, 'finished'> | 'guard'
   question: string
   reason: string
   /** Epoch ms when this ending was first classified. */

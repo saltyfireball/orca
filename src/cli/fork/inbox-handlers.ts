@@ -69,7 +69,7 @@ async function resolveChatId(ctx: HandlerContext, id: string): Promise<string> {
   const { result } = await ctx.client
     .call<ForkIdleRecoveryInboxResult>(METHODS.inbox, {})
     .catch(incompatible)
-  if (result.mode === 'off') {
+  if (result.mode === 'off' && result.items.length === 0) {
     throw new RuntimeClientError('invalid_argument', INBOX_OFF_MESSAGE)
   }
   return pickInboxItem(result.items, id).chatId
