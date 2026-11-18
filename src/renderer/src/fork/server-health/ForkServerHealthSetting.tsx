@@ -3,6 +3,7 @@
 // here too so they can be set without turning idle recovery on. Main reads the settings on every
 // reading, so a change takes effect within seconds, with no restart.
 import React, { useEffect, useId, useState } from 'react'
+import { installWindowVisibilityInterval } from '@/lib/window-activity/window-visibility-interval'
 import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   FORK_SERVER_HEALTH_LIST_METHOD,
@@ -79,10 +80,10 @@ function ServerStatusList({ enabled }: { enabled: boolean }): React.JSX.Element 
         .catch(() => live && setLoaded(null))
     }
     load()
-    const timer = setInterval(load, REFRESH_MS)
+    const stopPolling = installWindowVisibilityInterval({ run: load, intervalMs: REFRESH_MS })
     return () => {
       live = false
-      clearInterval(timer)
+      stopPolling()
     }
   }, [enabled])
   if (!enabled || !loaded) {
