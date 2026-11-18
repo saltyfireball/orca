@@ -2,7 +2,6 @@
 // and from every paired server through its own RPC, so asks filed by agents on a server show up
 // here too. A server that does not answer in time is named, and the rest still shows. Keep
 // electron out of this file; `letters-ipc.ts` is the window's side.
-import type { ForkBoardAsk, ForkLetter } from '../../../shared/fork/letters'
 import {
   FORK_LETTERS_METHODS as METHODS,
   type ForkBoardCloseWindowRequest,
@@ -14,6 +13,7 @@ import {
 } from '../../../shared/fork/letters-wire'
 import { closeForkBoardAsk, listForkBoardAsks } from './board-service'
 import type { ForkLettersDeps } from './letters-deps'
+import { remoteForkBoardAsk, remoteForkLetter, remoteForkList } from './letters-remote'
 import { listForkLetters } from './letters-service'
 
 export const FORK_LETTERS_VIEW_TIMEOUT_MS = 4000
@@ -50,8 +50,6 @@ async function fromEveryServer<T>(
   )
 }
 
-const asList = <T>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
-
 export async function forkBoardView(deps: ForkLettersDeps): Promise<ForkBoardView> {
   const local = deps.settings().board ? (await listForkBoardAsks(deps, false)).asks : []
   const remote = await fromEveryServer<ForkBoardListResult>(deps, METHODS.boardList, {})
@@ -62,10 +60,8 @@ export async function forkBoardView(deps: ForkLettersDeps): Promise<ForkBoardVie
       unreachable.push(env.name)
       continue
     }
-    for (const ask of asList<ForkBoardAsk>(value.asks)) {
-      if (ask?.state === 'open' && typeof ask.id === 'string') {
-        asks.push({ ...ask, source: { environmentId: env.id, name: env.name } })
-      }
+    for (const ask of remoteForkList(value.asks, remoteForkBoardAsk, 'asks')) {
+      asks.push({ ...ask, source: { environmentId: env.id, name: env.name } })
     }
   }
   asks.sort((a, b) => a.at - b.at)
@@ -89,10 +85,8 @@ export async function forkLettersHistory(
       unreachable.push(env.name)
       continue
     }
-    for (const letter of asList<ForkLetter>(value.letters)) {
-      if (typeof letter?.id === 'string' && typeof letter.text === 'string') {
-        letters.push({ ...letter, source: { environmentId: env.id, name: env.name } })
-      }
+    for (const letter of remoteForkList(value.letters, remoteForkLetter, 'letters')) {
+      letters.push({ ...letter, source: { environmentId: env.id, name: env.name } })
     }
   }
   letters.sort((a, b) => b.at - a.at)

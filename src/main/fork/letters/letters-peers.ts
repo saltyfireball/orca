@@ -3,7 +3,10 @@
 // and kept here as forwarded. A server cannot call its desktop, so a server chat's answer waits
 // there until this desktop collects it: a desktop polls each server it wrote to in the last day.
 import {
+  FORK_LETTER_CHAT_ID,
   FORK_LETTER_MAX_CHARS,
+  FORK_LETTER_QUEUE_PER_CHAT,
+  sameLetterParty,
   forkLetterRateRefusal,
   letterPartyKey,
   pruneForkLetterSent,
@@ -13,11 +16,13 @@ import {
 import { cleanForkLetterText, forkLetterBodyRefusal } from '../../../shared/fork/letters-frame'
 import {
   FORK_LETTERS_METHODS as METHODS,
+  type ForkLetterChat,
   type ForkLettersCollectResult,
   type ForkLettersDeliverRequest,
   type ForkLettersSendResult
 } from '../../../shared/fork/letters-wire'
 import type { ForkLettersDeps } from './letters-deps'
+import { forkLetterPartyOf } from './letters-parties'
 
 export const FORK_LETTERS_PEER_TIMEOUT_MS = 8000
 /** A server written to within this time is polled for answers. */
@@ -150,7 +155,13 @@ export function parseCollectedForkLetter(
   const text = str(value.text, FORK_LETTER_MAX_CHARS)
   const fromId = str(from.chatId, 512)
   const toId = str(to.chatId, 512)
-  if (!/^[a-f0-9]{12}$/.test(id) || !text || !fromId || !toId || forkLetterBodyRefusal(text)) {
+  if (
+    !/^[a-f0-9]{12}$/.test(id) ||
+    !text ||
+    !FORK_LETTER_CHAT_ID.test(fromId) ||
+    !FORK_LETTER_CHAT_ID.test(toId) ||
+    forkLetterBodyRefusal(text)
+  ) {
     return null
   }
   const kind = (k: unknown): 'chat' | 'terminal' => (k === 'terminal' ? 'terminal' : 'chat')
@@ -181,6 +192,31 @@ export function parseCollectedForkLetter(
     note: null,
     tries: 0
   }
+}
+
+/**
+ * A collected letter checked against this host's own record: the recipient must be one of its
+ * chats, named by its exact id and described as this host sees it, and its queue must have room.
+ * Anything else is kept as failed, so the history shows it and nothing is typed.
+ */
+export function admitCollectedForkLetter(
+  letter: ForkLetter,
+  chats: readonly ForkLetterChat[],
+  letters: readonly ForkLetter[]
+): ForkLetter {
+  const chat = chats.find((one) => one.id === letter.to.chatId)
+  if (!chat) {
+    return { ...letter, state: 'failed', settledAt: letter.at, note: 'No chat with that id here.' }
+  }
+  const to = forkLetterPartyOf(chat)
+  const waiting = letters.filter(
+    (other) =>
+      (other.state === 'queued' || other.state === 'pickup') && sameLetterParty(other.to, to)
+  ).length
+  if (waiting >= FORK_LETTER_QUEUE_PER_CHAT) {
+    return { ...letter, to, state: 'failed', settledAt: letter.at, note: 'Its queue was full.' }
+  }
+  return { ...letter, to }
 }
 
 /** True when some paired server was written to recently enough to be polled. */
@@ -224,13 +260,19 @@ export async function pullForkLettersFromPeers(deps: ForkLettersDeps): Promise<b
       continue
     }
     arrived = true
+    const chats = await deps.chats()
     await deps.store.update((current) => {
       const known = new Set(current.letters.map((letter) => letter.id))
       const host = { kind: 'environment' as const, id: envId, name }
-      const added = incoming
-        .map((raw) => parseCollectedForkLetter(raw, host, deps.now()))
-        .filter((letter): letter is ForkLetter => letter !== null && !known.has(letter.id))
-      return { next: { ...current, letters: [...current.letters, ...added] }, result: null }
+      const letters = [...current.letters]
+      for (const raw of incoming.slice(0, 50)) {
+        const parsed = parseCollectedForkLetter(raw, host, deps.now())
+        if (parsed && !known.has(parsed.id)) {
+          known.add(parsed.id)
+          letters.push(admitCollectedForkLetter(parsed, chats, letters))
+        }
+      }
+      return { next: { ...current, letters }, result: null }
     })
   }
   if (arrived) {
