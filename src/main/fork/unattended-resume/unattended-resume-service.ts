@@ -5,6 +5,7 @@
 // `src/shared/fork/unattended-resume.ts`. The continuation is the stock one ("Continue" in the
 // restart offer), sent through the host's own `continueAfterRestart`, so it re-checks
 // eligibility, reserves the offer and writes the same chat notes.
+import { isForkAgentGuardHeld } from '../agent-guards/agent-guards-holds'
 import {
   chatRunsAutomation,
   decideUnattendedResume,
@@ -92,6 +93,10 @@ export async function runUnattendedResumePass(
   const candidates = await host.list()
   const chosen: string[] = []
   for (const candidate of candidates) {
+    // SLRM-2385: a chat an agent guard paused waits for a person.
+    if (isForkAgentGuardHeld(candidate.sessionId)) {
+      continue
+    }
     const decision = decideUnattendedResume({
       settings,
       kind: deps.classify(candidate),
