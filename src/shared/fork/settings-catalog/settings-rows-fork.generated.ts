@@ -136,6 +136,14 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"array","of":{"k":"string"}},"d":"PR babysitter (SLRM-2386): owner/repo names whose pull requests are babysat, \\"*\\" for every repo; unset is none (off).","o":true}',
   forkPrBabysitWaitMinutes:
     '{"t":{"k":"number"},"d":"PR babysitter: minutes to wait for a new CI result after a fix request before it stops and asks you; unset is 120.","o":true}',
+  forkRowContext:
+    '{"t":{"k":"boolean"},"d":"A native Claude chat\'s context size on its agent rows; unset is on.","o":true}',
+  forkRowFixChecks:
+    '{"t":{"k":"boolean"},"d":"An Ask agent to fix button on agent rows when the pull request\'s checks fail; unset is on.","o":true}',
+  forkRowPrChip:
+    '{"t":{"k":"boolean"},"d":"The workspace\'s pull request and its check state on agent rows; unset is on.","o":true}',
+  forkRowSpend:
+    '{"t":{"k":"boolean"},"d":"A native Claude chat\'s estimated spend on its agent rows; unset is on.","o":true}',
   forkServerHealth:
     '{"t":{"k":"boolean"},"d":"Watch the paired remote servers this desktop is connected to and alert when one stops answering; unset is on.","o":true}',
   forkServerHealthAlertCommand:

@@ -1445,7 +1445,8 @@ Apply these in this order. Each one is a single commit.
 104. `SLRM-2386 PR babysitter: send a pull request's chat fix requests when CI fails, merge on green when allowed`
 105. `SLRM-2384 Keep main current and server memory protection: fetch and fast-forward default branches, orca serve service protect`
 106. `SLRM-2392 Pooled limits: Claude and Codex usage limits pooled across every account and paired server`
-107. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
+107. `SLRM-2390 Row status: spend, context, pull request checks and a fix button on agent rows`
+108. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1525,6 +1526,34 @@ Fork-only code lives in `fork/` folders:
     (empty: built-in prices), `forkUsageRetentionDays` (90, shared with SLRM-2103).
   - **Not covered.** Only native Claude chats counted on this computer. `apiKeySource` `none`
     can also be a cloud provider account rather than a subscription.
+
+- **Row status: spend, context, pull request checks and a fix button on agent rows (SLRM-2390).**
+  Sidebar agent rows, compact and full, show small chips after the title, in the child count's
+  chip style. Sub-agent rows show none. Code is in `src/renderer/src/fork/row-status/`.
+  - **Spend.** A native Claude chat's estimated cost so far, priced like the usage report
+    (SLRM-2104, the same user price table). The ledger push that feeds the cache-cold cue now
+    carries each chat's `costUsd`, `unpriced` and `billing` (`src/main/fork/usage-ledger/row-spend.ts`),
+    so it updates live with no new channel. A subscription chat shows `~$1.23`, what its tokens
+    would cost per token; `+` means some models have no price. A compacted chat stays in that
+    push with context 0, so its spend does not drop off.
+  - **Context.** `ctx 142.3k`: the tokens the chat's last main-thread call read, from the same
+    push. Hidden at 0. Terminal agents and Codex have neither chip (the ledger counts native
+    Claude chats only).
+  - **Pull request.** The workspace's PR or MR number with the card's review glyph, colored by
+    its checks: pending, passing or failing (merged, closed and draft keep their state color).
+    It reads the same two cache entries as the workspace card, so it follows the stock PR
+    watcher and never polls.
+  - **Ask agent to fix.** While an open GitHub PR's checks fail, a Fix chip sends the stock
+    fix-checks prompt (`buildFixBrokenChecksPrompt`, with the failed jobs' log tails, as the
+    Checks panel's fix action builds it) to that row's own agent through the stock agent
+    message send, instead of starting a new agent. The checks are read at click time. It shows
+    only where the stock AI actions switch is on, and refuses with a toast when the agent is not
+    running or cannot take a message.
+  - **Settings** (Settings > Blackfish > Agents and workers > Agent row status), all on:
+    `forkRowSpend`, `forkRowContext`, `forkRowPrChip`, `forkRowFixChecks` (needs the PR chip).
+  - **Hooks.** One element and an import each in `worktree-card-compact-agent-row.tsx` (after
+    the child count) and `DashboardAgentRow.tsx` (after the model), and the ledger hook
+    `useCacheState` is now exported.
 
 Upstream files only get short hooks, which keeps rebases small:
 

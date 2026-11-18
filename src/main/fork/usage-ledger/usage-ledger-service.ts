@@ -13,6 +13,8 @@ import { claudeUsageObservation } from './claude-usage-frames'
 import { LedgerFileWriter, readLedgerFile, writeLedgerFile } from './usage-ledger-file'
 import { UsageLedger, type UsageChatMeta } from './usage-ledger'
 import type { UsageLedgerData } from './usage-ledger-model'
+import { cleanUsagePrices, usagePricer } from './usage-report'
+import { chatSpend } from './row-spend'
 
 export type UsageLedgerServiceDeps = {
   filePath: string
@@ -167,11 +169,22 @@ export function forkUsageLedgerObserveClaudeEvent(event: ClaudeStructuredSession
   }
 }
 
-/** The most recently used chats' prompt caches, newest first. */
+/** The most recently used chats' prompt caches, newest first, each with its spend (SLRM-2390). */
 export function forkUsageLedgerCacheStates(): ForkCacheState[] {
-  return (ledger?.cacheStates() ?? [])
+  const current = ledger
+  if (!current) {
+    return []
+  }
+  const chats = current.snapshot().chats
+  const pricer = usagePricer(cleanUsagePrices(service?.readSettings()?.forkUsagePrices))
+  return current
+    .cacheStates()
     .sort((left, right) => right.lastAt - left.lastAt)
     .slice(0, CACHE_STATES_SENT)
+    .map((state) => {
+      const chat = chats[state.sessionId]
+      return chat ? { ...state, ...chatSpend(chat, pricer) } : state
+    })
 }
 
 export function onForkUsageLedgerCacheChanged(listener: () => void): () => void {
