@@ -60,7 +60,9 @@ function hostLines(host: ForkDigestHost): string[] {
   }
   block('Waiting on you', section.waiting, (row) => {
     const what = row.question || (row.verdict === 'stalled' ? 'stalled' : 'waiting')
-    return `${clip(row.title || row.chatId, 60)}: ${clip(what)}`
+    const tag =
+      row.source === 'babysit' ? '[PR babysitter] ' : row.verdict === 'guard' ? '[guard] ' : ''
+    return `${tag}${clip(row.title || row.chatId, 60)}: ${clip(what)}`
   })
   block('Failed', failed, (task) => `${when(task.at)}  ${clip(task.title)}`)
   block('Finished', finished, (task) => `${when(task.at)}  ${clip(task.title)}`)
