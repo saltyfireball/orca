@@ -16,7 +16,8 @@ import {
 } from '../../../../../shared/fork/auto-placement'
 import {
   pickForkPlacementOnHosts,
-  readLocalMachineLoad
+  readLocalMachineLoad,
+  type ForkPlacementDeps
 } from '../../../../fork/auto-placement/auto-placement-probe'
 
 function projectReady(ctx: RpcContext, project: string): boolean {
@@ -65,6 +66,17 @@ function settings(ctx: RpcContext): ForkAutoPlacementSettings | null {
   }
 }
 
+/** This host's placement probe wiring; batch start (SLRM-2395) picks through it too. */
+export function forkPlacementDeps(ctx: RpcContext): ForkPlacementDeps {
+  return {
+    settings: () => settings(ctx),
+    listEnvironments: () => listEnvironments(getAppEnvironment().getPath('userData')),
+    localLoad: (repo, project) => localLoad(ctx, repo, project),
+    callEnvironment: (environmentId, method, params, timeoutMs) =>
+      ctx.runtime.callOrchestrationWorkerServer(environmentId, method, params, timeoutMs)
+  }
+}
+
 export const FORK_AUTO_PLACEMENT_METHODS = [
   defineMethod({
     name: 'fork.placement.load',
@@ -78,15 +90,6 @@ export const FORK_AUTO_PLACEMENT_METHODS = [
     permission: 'workspace',
     params: ForkPlacementPickParams,
     handler: async (params, ctx): Promise<ForkPlacementPickResult> =>
-      pickForkPlacementOnHosts(
-        {
-          settings: () => settings(ctx),
-          listEnvironments: () => listEnvironments(getAppEnvironment().getPath('userData')),
-          localLoad: (repo, project) => localLoad(ctx, repo, project),
-          callEnvironment: (environmentId, method, params, timeoutMs) =>
-            ctx.runtime.callOrchestrationWorkerServer(environmentId, method, params, timeoutMs)
-        },
-        params
-      )
+      pickForkPlacementOnHosts(forkPlacementDeps(ctx), params)
   })
 ] as const
