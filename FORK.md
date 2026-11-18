@@ -730,6 +730,33 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/limit-resume*.ts`, `src/main/fork/limit-resume/` and
     `src/renderer/src/fork/limit-resume/`.
 
+- **Pooled limits (SLRM-2392).** On by default (`forkPooledLimits`, Settings > Blackfish > Usage
+  and accounts). Every Claude and Codex account seen on this machine and its paired servers,
+  pooled into one bar per provider and limit window (5-hour and weekly), with the next reset and
+  how much of the pool it frees. The idea comes from T3 Code (MIT); only the idea is ported.
+  - **Pool.** Each account is an equal share: a window's bar is the mean of its accounts' used
+    percent. The next reset is the soonest one still ahead among accounts with usage in that
+    window, and it frees the used percent of every account resetting within a minute of it,
+    divided by the account count. A reading whose reset has passed counts as unused.
+  - **One account, many machines.** Accounts are matched by sign-in email and organization
+    (Claude) or ChatGPT account (Codex); a machine that does not know the organization matches by
+    email alone, as stock's own login match does. The freshest reading wins and the account lists
+    every machine it was seen on.
+  - **What crosses the wire.** Each machine answers `fork.limits.machineUsage` from the accounts
+    snapshot the usage roster shows: per account a hashed email and organization, the label (the
+    account's name or email, as `accounts.list` already shows), the plan and the two windows.
+    Never a token, credential or folder path. The desktop checks each answer field by field and
+    keeps at most 100 accounts per machine. A server with `forkPooledLimits` off shares nothing.
+  - **Servers** (`forkPooledLimitsServers`, on). `fork.limits.usage` asks every paired server
+    (4 at a time, 4 s each; 15 s with `--refresh`), as auto placement's probe does. A server that
+    does not answer, or runs stock Orca, is named and left out.
+  - **Shown.** In the usage popover under the provider rows, in the roster's own row style, for a
+    provider with two or more accounts. `/usage-limits` in a native chat opens a dialog with every
+    provider, each account and the machines. `orca limits usage [--refresh] [--local] [--json]`
+    prints the same.
+  - Code is in `src/shared/fork/pooled-limits.ts`, `src/main/fork/pooled-limits/`,
+    `src/cli/fork/limits-usage-handler.ts` and `src/renderer/src/fork/pooled-limits/`.
+
 - **Endpoint failover (SLRM-2267).** On by default (`forkEndpointFailover`, Settings >
   Blackfish > Remote servers > Server routes). A saved remote server can be reached on more
   than one address. Stock dials only the saved (or first) endpoint; the fork tries the routes
@@ -1417,7 +1444,8 @@ Apply these in this order. Each one is a single commit.
 103. `SLRM-2383 Worktree ports: a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1`
 104. `SLRM-2386 PR babysitter: send a pull request's chat fix requests when CI fails, merge on green when allowed`
 105. `SLRM-2384 Keep main current and server memory protection: fetch and fast-forward default branches, orca serve service protect`
-106. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
+106. `SLRM-2392 Pooled limits: Claude and Codex usage limits pooled across every account and paired server`
+107. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1856,6 +1884,21 @@ Upstream files only get short hooks, which keeps rebases small:
     card in the fork's Settings pane, and boundary compaction's message box reporter also runs
     (and its list is kept) while limit resume holds for drafts. `forkLimitResumeMessage` is kind
     `runs-command` in `settings-access.ts`.
+
+- Pooled limits (SLRM-2392), from `src/shared/fork/pooled-limits.ts`,
+  `src/main/fork/pooled-limits/`, `src/cli/fork/limits-usage-handler.ts` and
+  `src/renderer/src/fork/pooled-limits/`. On unless `forkPooledLimits` is false:
+  - `FORK_LIMIT_RESUME_METHODS` (a fork file) spreads `FORK_POOLED_LIMITS_METHODS`
+    (`fork.limits.machineUsage`, `fork.limits.usage`); `rpc-params-catalog.generated.ts` is
+    regenerated with them. `limits-specs.ts` adds `limits usage` and the `fork-limits` handler
+    group loads `FORK_LIMITS_USAGE_HANDLERS`.
+  - `UsageRosterPanel.tsx` renders `ForkPooledLimitsRoster` after the provider rows.
+  - `use-native-chat-composer-catalog.ts` passes its commands through
+    `useForkUsageLimitsCatalog`, and `use-native-chat-composer-command-picker.ts` wraps its Orca
+    commands in `useForkUsageLimitsCommand`, so `/usage-limits` never reaches the agent.
+  - Fork files only: `ForkRootHosts` mounts `ForkPooledLimitsDialogHost`; the card is in the fork's
+    Settings pane; the two settings are in `fork-global-settings.ts` and
+    `settings-rows-fork.generated.ts` is regenerated.
 
 - Endpoint failover (SLRM-2267), from `src/shared/fork/endpoint-failover*.ts`,
   `src/main/fork/endpoint-failover/` and `src/renderer/src/fork/endpoint-failover/`. On unless

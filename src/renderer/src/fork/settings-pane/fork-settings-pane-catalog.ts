@@ -191,6 +191,22 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
             'Tokens and estimated cost of native Claude chats.'
           ),
           keywords: words('tokens', 'cost', 'prices', 'card pattern', 'forkUsagePrices')
+        },
+        {
+          title: t('fork.pooledLimits.settingTitle', 'Pooled usage limits'),
+          description: t(
+            'fork.pooledLimits.settingDescription',
+            'One bar per Claude and Codex limit window across every account on this machine and its paired servers.'
+          ),
+          keywords: words(
+            'limits',
+            'usage limits',
+            'pooled',
+            'servers',
+            '5-hour',
+            'weekly',
+            'forkPooledLimits'
+          )
         }
       ]
     ),

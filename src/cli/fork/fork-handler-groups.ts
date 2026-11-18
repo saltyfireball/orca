@@ -115,8 +115,12 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
   // SLRM-2309: chats and terminal agents parked on a usage limit (FORK.md "Limit resume").
   {
     name: 'fork-limits',
-    keys: ['limits list', 'limits resume-now', 'limits cancel'],
-    load: async () => (await import('./limits-handlers.js')).FORK_LIMITS_HANDLERS
+    keys: ['limits list', 'limits resume-now', 'limits cancel', 'limits usage'],
+    load: async () => ({
+      ...(await import('./limits-handlers.js')).FORK_LIMITS_HANDLERS,
+      // SLRM-2392: pooled limits (FORK.md "Pooled limits").
+      ...(await import('./limits-usage-handler.js')).FORK_LIMITS_USAGE_HANDLERS
+    })
   },
   // SLRM-2385: failure-loop and spend guards (FORK.md "Agent guards").
   {
