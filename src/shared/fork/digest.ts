@@ -2,7 +2,7 @@
 // server: orchestration tasks that finished or failed, pull requests merged or open, the
 // estimated cost from the usage ledger, and the chats waiting on the user. Shared by main, the
 // CLI, the desktop dialog and the phone screen.
-import { z } from 'zod'
+import * as z from 'zod'
 import { forkHttpUrlOrNull } from './server-health'
 
 export type ForkDigestSettings = {
