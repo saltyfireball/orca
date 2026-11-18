@@ -31,6 +31,7 @@ import {
 import type { HostScreenController } from './use-host-screen-controller'
 import { HostSharedLinksSheet } from './host-shared-links-sheet'
 import { LOCAL_EXECUTION_HOST_ID } from '../../../src/shared/execution-host/execution-host'
+import { forkDigestHostAction } from '../components/fork/digest/fork-digest-host-entries'
 
 function isErrorVerdict(v: ConnectionVerdict): boolean {
   return isConnectionOutage(v) || v.kind === 'auth-failed'
@@ -146,6 +147,7 @@ export function HostScreenHeader({
           }
         ]
       : []),
+    forkDigestHostAction(hostPath, disconnected, actions.navigateFromHostList),
     ...(floatingWorkspaceEnabled
       ? [
           {

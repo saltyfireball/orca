@@ -20,6 +20,7 @@ import { startForkChatHandoffOnLimit } from './chat-handoff/chat-handoff-on-limi
 import type { ChatHandoffRuntime } from './chat-handoff/chat-handoff-host'
 import { startForkLetters } from './letters/letters-runner'
 import type { ForkLettersRuntime } from './letters/letters-deps'
+import { startForkDigest, type ForkDigestRuntime } from './digest/digest-runtime'
 
 export function startForkRuntimeSettleServices(
   runtime: UnattendedResumeRuntime &
@@ -31,7 +32,8 @@ export function startForkRuntimeSettleServices(
     ForkWorktreePortsRuntime &
     ForkMainSyncRuntime &
     ChatHandoffRuntime &
-    ForkLettersRuntime
+    ForkLettersRuntime,
+    ForkDigestRuntime
 ): void {
   // SLRM-2268: continue cut unattended work once per process.
   startForkUnattendedResume(runtime)
@@ -49,4 +51,6 @@ export function startForkRuntimeSettleServices(
   startForkChatHandoffOnLimit(runtime)
   // SLRM-2389: deliver letters a restart left queued, and collect answers from paired servers.
   startForkLetters(runtime)
+  // SLRM-2388: send the daily digest when forkDigest is on.
+  startForkDigest(runtime)
 }
