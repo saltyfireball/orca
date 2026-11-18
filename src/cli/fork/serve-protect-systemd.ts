@@ -106,7 +106,9 @@ function insideHome(deps: ServeProtectDeps, path: string): boolean {
 
 /** A slice name systemd would accept, or null for the manager's root slice. */
 function safeSlice(value: string | undefined): string | null {
-  return value && value !== '-.slice' && /^[A-Za-z0-9:_.\\-]+\.slice$/.test(value) ? value : null
+  return value && value !== '-.slice' && /^[A-Za-z0-9][A-Za-z0-9:_.\\-]*\.slice$/.test(value)
+    ? value
+    : null
 }
 
 /** The installed unit as the user manager sees it; throws when it is not installed. */
