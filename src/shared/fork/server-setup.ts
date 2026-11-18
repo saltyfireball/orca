@@ -193,7 +193,7 @@ export function parseForkEnvrcUses(text: string): ForkEnvrcUse[] {
 export function forkDirenvDefinesUse(rcText: string, name: string): boolean {
   const escaped = name.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&')
   return new RegExp(
-    `^\\s*(?:function\\s+use_${escaped}\\b|use_${escaped}\\s*\\(\\s*\\))`,
+    `^[ \\t]*(?:function[ \\t]+use_${escaped}\\b|use_${escaped}\\s*\\(\\s*\\))`,
     'm'
   ).test(rcText)
 }
