@@ -31,6 +31,7 @@ export const CLI_COMMAND_NAMES = [
   'diagnostics',
   'dialog',
   'docs',
+  'digest',
   'download',
   'drag',
   'drive',
