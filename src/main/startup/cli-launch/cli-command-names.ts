@@ -10,6 +10,7 @@ export const CLI_COMMAND_NAMES = [
   'babysit',
   'back',
   'bot',
+  'best-of',
   'browser',
   'calendar',
   'capture',
