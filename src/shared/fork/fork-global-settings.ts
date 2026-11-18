@@ -6,6 +6,7 @@ import type { ForkAgentColorState } from './agent-state-color'
 import type { ForkMcpProfileSettings } from './mcp-profiles'
 import type { ForkUsageLedgerSettings } from './usage-ledger'
 import type { ForkAutoPlacementSettings } from './auto-placement'
+import type { ForkServerSetupSettings } from './server-setup'
 import type { ForkPooledLimitsSettings } from './pooled-limits'
 import type { ForkBatchStartSettings } from './batch-start'
 import type { ForkWorktreeMoveSettings } from './worktree-move/worktree-move-settings'
@@ -19,6 +20,8 @@ import type { ForkPrBabysitSettings } from './pr-babysit'
 import type { ForkMainSyncSettings } from './main-sync'
 import type { ForkRowStatusSettings } from './row-status'
 import type { ForkBranchClashSettings } from './branch-clashes'
+import type { ForkReviewGuideSettings } from './review-guide'
+import type { ForkDigestSettings } from './digest'
 import type { ForkWorkspaceTagFilter } from './workspace-tags'
 import type { ForkSavedPrompt } from './saved-prompts'
 
@@ -30,6 +33,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkUsageLedgerSettings &
   /** Fork (SLRM-2266): per-machine placement and auto placement when no machine is named. */
   ForkAutoPlacementSettings &
+  /** Fork (SLRM-2312): set a project up on a paired server that lacks it. */
+  ForkServerSetupSettings &
   /** Fork (SLRM-2392): usage limits pooled across every account on this machine and its paired servers. */
   ForkPooledLimitsSettings &
   /** Fork (SLRM-2395): batch start from the new-workspace composer. */
@@ -51,7 +56,11 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   /** Fork (SLRM-2390): spend, context, pull request and fix button on agent rows. */
   ForkRowStatusSettings &
   /** Fork (SLRM-2394): warn when parallel worktree branches change the same files. */
-  ForkBranchClashSettings & {
+  ForkBranchClashSettings &
+  /** Fork (SLRM-2396): pull request review guides. */
+  ForkReviewGuideSettings &
+  /** Fork (SLRM-2388): the daily digest across this host and its paired servers. */
+  ForkDigestSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */
     forkLostWork?: LostWorkSettings
     /** Fork (SLRM-2265): moving a workspace and its chats to another host; unset keys take the defaults. */
@@ -86,6 +95,14 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkLimitResumeMessage?: string
     /** Fork (SLRM-2309): 'dismiss' presses Esc on Codex's "Approaching rate limits" menu (keeps the model); unset is 'dismiss'. */
     forkLimitResumeCodexSwitchPrompt?: 'dismiss' | 'leave'
+    /** Fork (SLRM-2391): hand a native chat from Claude to Codex or back, from its tab menu and `orca chat handoff`; unset is on. */
+    forkChatHandoff?: boolean
+    /** Fork (SLRM-2391): tokens of history a handoff carries, charged one per UTF-8 byte (1024 to 64000); unset is 16000. */
+    forkChatHandoffBudgetTokens?: number
+    /** Fork (SLRM-2391): handing back to the agent the work came from continues that chat while its context has room; unset is on. */
+    forkChatHandoffReuse?: boolean
+    /** Fork (SLRM-2391): when a chat stops on a usage limit: 'offer' a handoff in a toast, 'auto' hands it off at once, 'off' does neither; unset is 'offer'. */
+    forkChatHandoffOnLimit?: 'off' | 'offer' | 'auto'
     /** Fork (SLRM-1503): show which Claude account each session runs on; unset is on. */
     forkShowAccountChip?: boolean
     /** Fork (SLRM-2095): the running/total child count on sidebar agent rows; unset is on. */

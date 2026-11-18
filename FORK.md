@@ -730,6 +730,40 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/limit-resume*.ts`, `src/main/fork/limit-resume/` and
     `src/renderer/src/fork/limit-resume/`.
 
+- **Chat handoff (SLRM-2391).** On by default (`forkChatHandoff`, Settings > Blackfish > Chats).
+  A native chat moves from Claude to Codex or back. The design comes from T3 Code's portable
+  handoffs (MIT); only the ideas are ported.
+  - **New chat.** A chat of the other agent starts in the same workspace, named after its source
+    (`<name> (Codex)`), with the handoff as its first message: the source's name and Orca session
+    id, then a budgeted selection of its history, then the request (default: carry on). The
+    selection is not a summary: a short chat goes whole; a longer one keeps its original request
+    (at most a quarter of the budget) and as many of its newest entries as fit, each in full and
+    in order, with tool calls and file edits cut to one line. Only the chat's own agent counts,
+    and nothing before its latest `/clear`. Text is charged one token per UTF-8 byte against
+    `forkChatHandoffBudgetTokens` (16000, 1024 to 64000); the request is never shortened. A
+    newest entry larger than the budget goes cut, with the command that reads it whole.
+  - **Older history.** The new agent reads what was left out with `orca chat history <id>
+    [--before <n>] [--limit <n>]` (Orca exposes no MCP server to agents; its agent surface is the
+    CLI), over `fork.chatHandoff.history`. Entries are numbered by journal sequence, newest page
+    first, and a message the page reader shortened is read whole from the journal.
+  - **Handing back.** With `forkChatHandoffReuse` (on), handing a chat to the agent the work came
+    from continues that earlier chat: it gets only the entries since it last saw this chat,
+    queued behind its turn if it is busy. When its context has no room for that (its window, or
+    128k when unknown, less what it holds and a reserve of 16k or a quarter of the window), or
+    with `--fresh`, a new chat starts instead. Links live in `fork-chat-handoff.json` (mode 0600)
+    in the data folder.
+  - **The source.** It stays open. A chat mid-turn is refused unless the turn is stopped first
+    (the tab menu's toast offers Stop and hand off; `--stop`). Its own resume at a usage limit
+    reset (limit resume) is cancelled, so two agents do not take up the same work.
+  - **On a usage limit** (`forkChatHandoffOnLimit`): `offer` (default) shows a toast on this
+    desktop offering the handoff for each native chat limit resume parks; `auto` hands it off at
+    once on the host that runs it, desktop or headless; `off` does neither. Needs limit resume on.
+  - **Entry points.** "Hand off to Codex/Claude" in a native chat tab's right-click menu, and
+    `orca chat handoff [<id>] --to codex|claude [--message <text>] [--fresh] [--stop] [--focus]
+    [--dry-run] [--json]` over `fork.chatHandoff.start` (a paired host with `--environment`).
+  - Code is in `src/shared/fork/chat-handoff*.ts`, `src/main/fork/chat-handoff/`,
+    `src/cli/fork/chat-handoff-*.ts` and `src/renderer/src/fork/chat-handoff/`.
+
 - **Pooled limits (SLRM-2392).** On by default (`forkPooledLimits`, Settings > Blackfish > Usage
   and accounts). Every Claude and Codex account seen on this machine and its paired servers,
   pooled into one bar per provider and limit window (5-hour and weekly), with the next reset and
@@ -756,6 +790,43 @@ named Orca Fork until SLRM-1367. `main` is always
     prints the same.
   - Code is in `src/shared/fork/pooled-limits.ts`, `src/main/fork/pooled-limits/`,
     `src/cli/fork/limits-usage-handler.ts` and `src/renderer/src/fork/pooled-limits/`.
+
+- **Digest (SLRM-2388).** One summary of a time window across this desktop and every paired
+  server: what finished and failed, which of your pull requests merged or are open, the estimated
+  cost, and what waits on you. The idea comes from Devin's session insights and Warp's run
+  records; only the idea is ported.
+  - **What is in it.** Per machine: orchestration tasks that completed or failed in the window
+    (from its orchestration database, at most 100), your pull requests through the GitHub CLI in
+    each local project (`gh pr list --author @me`, merged in the window and every open one; 3
+    projects at a time, 15 s each, a project without gh, a login or a GitHub remote is counted in a
+    note), the Decision inbox's waiting and stalled chats (SLRM-2196; listed only while idle
+    recovery is on, and the digest says so), agents an agent guard paused (SLRM-2385, from
+    `fork.guards.list`'s list), and the usage ledger's estimated cost of the local days the window
+    touches (SLRM-2104; the desktop only). Paired servers this desktop's server health sees as not
+    answering (SLRM-2311) head the list. A pull request two clones list is shown once.
+  - **Fan-out.** `fork.digest.collect` reads this machine and asks every paired server for its own
+    part (`fork.digest.local`, 4 at a time, 45 s each), as auto placement probes them (SLRM-2266).
+    A server that does not answer, or runs stock Orca or an older Blackfish, is named as such.
+    Each server's answer is checked row by row (`digest-schema.ts`) before anything shows it.
+  - **Window.** `--since` (a duration such as 12h or 2d, or a date and time), else since the last
+    daily digest, else the last day; at most 90 days.
+  - **Daily digest.** Off by default (`forkDigest`). Once a day after `forkDigestHour` (8, local
+    time), or when the app next runs that day, it sends the digest since the last one to the
+    Decision inbox's notify targets (SLRM-2208): a desktop notification with the headline
+    (`forkDigestDesktop`, unset follows `forkInboxNotifyDesktop`), a POST of JSON to
+    `forkInboxNotifyWebhookUrl` (`forkDigestWebhook`, unset on when the address is set) and the
+    same JSON on stdin of `forkInboxNotifyCommand` (`forkDigestCommand`, unset on when the command
+    is set; `orca settings` cannot write it). The JSON has `event` `digest`, `since`, `until`,
+    `headline`, `totals`, `serversDown`, `hosts` and `text`. The send is recorded in
+    `fork-digest.json` in the data folder (owner-only) before it goes out, so it never goes twice.
+    It runs on the desktop app and on a headless server, each from its own settings.
+  - **Pull requests** (`forkDigestPullRequests`, on): off leaves gh alone everywhere.
+  - **Where.** `orca digest [--since <when>] [--json]`; "Digest" in the command palette; the
+    Digest card in Settings > Blackfish > Usage and accounts (with Show); and Digest in the
+    phone's host menu, a screen in the Accounts screen's style.
+  - Code is in `src/shared/fork/digest*.ts`, `src/main/fork/digest/`,
+    `src/main/runtime/rpc/methods/fork/fork-digest.ts`, `src/cli/fork/digest-*`,
+    `src/renderer/src/fork/digest/` and `mobile/src/components/fork/digest/`.
 
 - **Endpoint failover (SLRM-2267).** On by default (`forkEndpointFailover`, Settings >
   Blackfish > Remote servers > Server routes). A saved remote server can be reached on more
@@ -1167,6 +1238,43 @@ named Orca Fork until SLRM-1367. `main` is always
   - Not covered: a picked server running stock Orca or an older Blackfish refuses (turn Auto
     machine off to use the run target); the stock form's linked items, base branch, setup choice
     and attachments do not apply to batch prompts.
+- **Set up on a server (SLRM-2312).** New work can start on a paired server that lacks the
+  project: the server clones it from the project's git remote with its own git credentials,
+  registers it, and says what it lacks to build it.
+  - The desktop new-workspace host picker lists "Set up on SERVER..." after the host rows, one per
+    paired server shown as lacking the project and able to take a location now (connected, new
+    enough). It is offered when the project has a git remote that passes the URL check below.
+    Choosing it keeps the picker open: the row shows "Choosing a folder...", "Cloning into
+    PATH..." and "Checking what the project needs...", then the server is selected and a toast
+    lists what is missing. A failure stays on the row and in a toast; nothing is selected.
+  - The steps are stock calls plus two fork ones on the server: `fork.serverSetup.plan` expands
+    the folder setting there (`~` is the server's home), names the clone folder from the URL and
+    refuses a folder that already exists (Set project location picks an existing one); the store's
+    stock `setupProjectClone` runs `repo.clone` and `projectHostSetup.setupExistingFolder`; then
+    `fork.serverSetup.readiness` runs the stock environment doctor on the checkout (tools that
+    package.json, Cargo.toml, go.mod and similar files need) and reads its `.envrc`: direnv
+    missing, or a `use NAME` whose `use_NAME` function is in no direnvrc or `lib/*.sh` of the
+    server, is listed as missing; other `use` lines are listed as notes.
+  - Clone URLs: https, http, ssh, git and scp-like `user@host:path` only. Local paths, `file://`,
+    `<transport>::` remote helpers (`ext::`), a password in the URL, a leading dash, whitespace and
+    control characters are refused, by the desktop and again by the server. Stock `repo.clone`
+    passes the URL after `--`.
+  - CLI: `worktree create --project <p> --host auto --setup-missing` lets the pick include paired
+    servers that lack the project but can clone it (their load probe answers `canSetUp` when
+    asked); the ranking marks them "project will be set up here first", on the same footing as
+    the others. If one is picked, this machine's Orca sets it up (`fork.serverSetup.run`, the same
+    plan, clone, register and readiness calls over the paired-server link) before the create
+    goes there, and the result and readiness go to stderr. `--host runtime:<id> --setup-missing`
+    sets that server up first when it lacks the project. `orca placement --project <p>
+    --setup-missing` shows the ranking. This machine is never cloned onto by a pick.
+  - Settings > Blackfish > Projects, Set up on a server: offer the picker rows
+    (`forkServerSetupOffer`, on by default), the folder to clone into (`forkServerSetupParent`,
+    default `~/development`) and the readiness check (`forkServerSetupReadiness`, on by default).
+  - **Not covered yet:** the mobile new-workspace sheet (its run-target list shows only hosts that
+    already have the project, with no stock set-up rows to extend); batch start's Auto machine
+    (SLRM-2395) still picks only among machines with a ready setup, as it never asks for
+    `setupMissing`; a server too old to answer
+    `fork.serverSetup.plan` gets a message to update it or use Set project location.
 - **Fast new worktrees on macOS (SLRM-2270).** APFS copy-on-write clones for new local worktrees
   (Settings > Blackfish > Projects, "Fast new worktrees (macOS)"). Idea from T3 Code's "Fast
   worktree checkout" (MIT). Other systems, WSL and other volumes create worktrees as before.
@@ -1440,6 +1548,104 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/main/runtime/rpc/methods/fork/fork-branch-clashes.ts`,
     `src/preload/fork/branch-clashes-bridge.ts`, `src/renderer/src/fork/branch-clashes/` and
     `src/cli/fork/branch-clashes-*`.
+- **Typecheck caps (SLRM-2405).** Two environment variables lower what `pnpm typecheck`,
+  `pnpm tc` and the `tc:*` scripts take from the machine, for hosts where several checkouts
+  check at the same time. Unset, the runner behaves as upstream's does. Each takes a positive
+  integer, only ever lowers, and stops the run with a message on any other value.
+  - `ORCA_FORK_TYPECHECK_JOBS`: how many projects are checked at once. Upstream checks two at a
+    time with the default compiler (`tsrs`), fewer when the host has under about 19 GB.
+  - `ORCA_FORK_TYPECHECK_CHECKERS`: checker threads of each `tsrs` compiler (upstream's default
+    is 8). A `--checkers=<n>` flag still wins.
+  - Measured on an 18-core host with 36 GB, the five root projects, cold cache: stock about
+    7 to 10 GB peak for the process tree in 8 to 11 s. One job, 6.5 GB in 11 s. One job with
+    4 checkers, 5.3 GB in 11 s. One job with 2 checkers, 4.1 GB in 16 to 18 s. A run with a warm
+    incremental cache takes 1 to 2 GB in 2 s at any setting.
+  - Code is in `config/scripts/fork/typecheck-jobs.mjs`.
+
+- **Review guides (SLRM-2396).** A Guide tab on the pull request page: an agent writes a tour of
+  the change, with stops in reading order, "Look closely" marks where a maintainer has to make a
+  call, and mechanical changes (renames, formatting, lockfiles, generated files) grouped at the
+  end. Every changed file appears somewhere. Idea from T3 Code's review guides (MIT).
+  - A guide is written only on demand: Write guide in the tab, Write guide on the phone, or
+    `orca review-guide write <pr>`. `forkReviewGuideAutoWrite` (off) writes one when the Guide tab
+    of a pull request without one is opened. `forkReviewGuides` (on) shows the tab, the phone row
+    and the CLI.
+  - The writer is the source control "pull request" agent and model, run as a one-shot text task.
+    It reads the pull request (title, description, file list, patches) from GitHub through the
+    same gh execution and rate-limit budget as the Files tab. That text is untrusted: it goes in a
+    block fenced by a random marker, the answer must be one JSON object that matches a schema, and
+    every path is checked against the pull request's own file list (files the writer left out go
+    in an "Other changed files" group). Text is stripped of control and bidi characters. Claude
+    runs with no tools at all, under `forkReviewGuideTimeoutMinutes` (5); other agents take the
+    stock read-only text-task path and its 60 s limit. `forkReviewGuideMaxPatchKiB` (96) caps the
+    patch text; `forkReviewGuideInstructions` adds the user's own preferences.
+  - Back and Next walk the stops; each file shows its line ranges and the patch lines they cover.
+    A guide written for another head commit is marked stale, hides its excerpts and offers
+    Rewrite guide. At most two guides are written at once, one per pull request.
+  - Viewed: each file shows GitHub's own viewed mark, and Mark viewed (per file, or per stop)
+    sends the stock `markFileAsViewed` toggle. Nothing is marked unless the user clicks.
+  - Guides are kept per pull request in `fork-review-guides/` in userData (owner-only files, the
+    oldest past 300 removed), so the window, the phone and the CLI share them.
+  - CLI: `orca review-guide <pr>`, `orca review-guide write <pr> [--wait]` and
+    `orca review-guide cancel <pr>` (`<pr>` is a number, #number or the pull request URL;
+    `--worktree` or `--repo` pick the checkout, else the current folder's workspace), over
+    `fork.reviewGuide.get`, `.write` and `.cancel` (workspace permission). A workspace on an SSH
+    host is refused: a guide is written where the checkout is.
+  - Phone: a Review guide row on the pull request tab opens a drawer with Back and Next, over the
+    same RPC.
+  - Code is in `src/shared/fork/review-guide*.ts`, `src/main/fork/review-guide/`,
+    `src/main/runtime/rpc/methods/fork/fork-review-guide.ts`,
+    `src/preload/fork/review-guide-bridge.ts`, `src/renderer/src/fork/review-guide/`,
+    `src/cli/fork/review-guide-*` and `mobile/src/components/fork/review-guide/`.
+- **Agents on the iPhone Lock Screen (SLRM-2387).** The iOS app shows running agents from every
+  paired server as one Live Activity (Lock Screen and Dynamic Island, ActivityKit) and in an
+  Agents widget (WidgetKit: small, medium and large on the Home Screen; circular, rectangular and
+  inline on the Lock Screen). Android is not covered.
+  - **What shows.** Agents that need you (yellow), failed (red), are working (blue, with a
+    counting timer) or finished (green), in that order, with the server and workspace; idle
+    agents are left out. A finished agent stays for 15 minutes (5, 15, 30 or 60), counted from
+    when the phone saw it finish, then leaves: the widget's timeline has an entry at that time,
+    and the open app updates the Live Activity then (a backgrounded app cannot, so the Live
+    Activity drops it at the next update). Counts cover every agent; the Live Activity lists four,
+    the large widget eight. Tapping either opens the app's Home. When nothing is left, the Live
+    Activity ends.
+  - **Where the state comes from.** Home's own reads of every paired server (the Agents tab's
+    list, `AgentListInput`), folded by `foldLiveAgents`: a server read live replaces its rows, a
+    server not connected keeps what it last showed. Home stays mounted under other screens, so
+    this runs whenever the app is open. The rows are kept in AsyncStorage across launches, and
+    iOS gets a new state only when the content changed.
+  - **No push updates.** The app updates both surfaces while it runs; iOS can only start a Live
+    Activity while the app is in front. Push cannot update them: upstream's push gateway
+    (`cloud/apps/push`, run by Orca at push.onorca.dev for `com.stably.orca.mobile`) sends only
+    alert pushes (no `content-available`, so no background wake on an alert) and has no
+    ActivityKit push type. A Live Activity not updated for 30 minutes turns stale and says when
+    it was last updated. ActivityKit push would need a gateway that sends `liveactivity` pushes
+    with the app's APNs key and the activity's push token.
+  - **Dismissal.** A Live Activity the user swipes away stays away until an agent it did not
+    show starts or needs them.
+  - **Settings** (phone only, Settings > Notifications > Lock Screen, in AsyncStorage
+    `blackfish:agentLiveActivitySettings`): running agents on the Lock Screen (on), Agents
+    widget (on), keep finished agents (15 minutes). Turning one off ends the Live Activity or
+    empties the widget; with both off the stored rows are deleted too. They are not desktop
+    settings, so the fork settings catalog does not list them.
+  - **Privacy.** Like any Live Activity, it shows agent titles, server and workspace names on the
+    Lock Screen without unlocking; turn it off above to keep them off. The rectangular Lock
+    Screen widget marks titles `privacySensitive`, so iOS redacts them while the phone is
+    locked. Text from servers is cut to 60 characters before it reaches iOS.
+  - **Build.** `mobile/plugins/fork/ios-agent-live-activity.js` (listed in `app.json`) adds, at
+    `expo prebuild`, the `BlackfishWidgets` widget extension target (bundle id
+    `<app bundle id>.BlackfishWidgets`, iOS 16.4, signed with the app's team and signing style,
+    embedded through an "Embed Foundation Extensions" phase), `NSSupportsLiveActivities`, and an
+    App Group `group.<app bundle id>.blackfish` on both targets for the widget's snapshot. The
+    fork does not build or sign the iOS app in CI (upstream's `mobile-ios-release.yml` stays
+    off); a local build with automatic signing registers the extension and App Group on its own.
+    Upstream's Fastfile signs manually with one profile, so a release built that way needs a
+    second profile for the extension, or `BLACKFISH_IOS_WIDGETS=0` at prebuild, which leaves the
+    project as upstream builds it.
+  - Code is in `mobile/src/components/fork/live-activity/` (model, publisher, hook, settings),
+    `mobile/modules/fork-live-activity/` (the `BlackfishLiveActivity` Expo module; `ios/shared`
+    is compiled into the app and the extension, `widget/` only into the extension) and
+    `mobile/plugins/fork/`.
 - **Small extras (SLRM-2397): approval triage, workspace tags with archive on merge, prompt stash,
   saved prompts.** Four small features from ccdeck's approvals, roster hygiene and composer
   shortcuts and T3 Code's prompt stash, each its own setting, built from stock styles only.
@@ -1461,11 +1667,12 @@ named Orca Fork until SLRM-1367. `main` is always
     globs or characters it cannot read, any flag not on that program's allow-list
     (`approval-risk-flags.ts`, exact names only, so `sort --out` and `grep -r` are medium), `cd`
     with a flag, and a program named by a path outside the system bin folders. Any word naming a
-    credential, a flag's value or `HEAD:.env` too, is high. Paths are read as text: a symlink inside the folder that points
-    out of it still counts as inside, and git history (`git log -p`) counts as
-    the workspace's own files, so the grade is advice, not a sandbox. An unknown folder
-    makes every absolute path outside. A plan review, a sign-in page and a startup dialog are not graded. On a high risk card Claude's
-    "Allow for this session" is disabled, so a rule never covers a high risk call.
+    credential, a flag's value or `HEAD:.env` too, is high. Paths are read as text: a symlink inside
+    the folder that points out of it still counts as inside, and git history (`git log -p`) counts
+    as the workspace's own files, so the grade is advice, not a sandbox. An unknown folder makes
+    every absolute path outside. A plan review, a sign-in page and a startup dialog are not graded.
+    On a high risk card Claude's "Allow for this session" is disabled, so a rule never covers a
+    high risk call.
   - Allow low risk (`forkApprovalBulkAllowLow`, off unless true, needs the grade on). Over a
     coordinator's pinned worker prompts, "N low risk approvals" with Allow low risk. The click
     grades every prompt again from what it says then and allows only those still open, still
@@ -1619,7 +1826,13 @@ Apply these in this order. Each one is a single commit.
 109. `SLRM-2394 Branch clashes: warn when parallel worktree branches change the same files, across paired servers`
 110. `SLRM-2395 Batch start: a prompt per worktree and model from the composer, placed with auto placement`
 111. `SLRM-2393 Best of N: one task to 2 to 4 agents in their own worktrees, compared and picked`
-112. `SLRM-2397 Small extras: approval triage by risk, workspace tags and archive on merge, prompt stash, saved prompts`
+112. `SLRM-2312 Set up on a server: clone a project onto a paired server that lacks it from the host picker or --setup-missing`
+113. `SLRM-2391 Chat handoff: hand a chat from Claude to Codex or back with a budgeted history`
+114. `SLRM-2396 Review guides: an agent-written tour of a pull request in a Guide tab, on the phone and in orca review-guide`
+115. `SLRM-2387 Agents on the iPhone Lock Screen: a Live Activity and an Agents widget`
+116. `SLRM-2405 Typecheck caps: environment variables for parallel projects and tsrs checker threads`
+117. `SLRM-2388 Digest: what finished, failed, merged and cost, and what waits on you, across this host and its paired servers`
+118. `SLRM-2397 Small extras: approval triage by risk, workspace tags and archive on merge, prompt stash, saved prompts`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1650,6 +1863,8 @@ Fork-only code lives in `fork/` folders:
 - `src/renderer/src/fork/`
 - `src/cli/fork/`
 - `mobile/src/components/fork/`
+- `mobile/modules/fork-live-activity/`
+- `mobile/plugins/fork/`
 - `config/scripts/fork/`
 - `native/computer-use-macos/Sources/OrcaComputerUseMacOSCore/fork/`
 - `native/computer-use-macos/Tests/OrcaComputerUseMacOSTests/fork/`
@@ -1734,6 +1949,10 @@ Upstream files only get short hooks, which keeps rebases small:
 - An optional `executionHostId` on `runQuickCommandInNewTab` and `createTab`, so a Run tab
   opens on the host captured at confirm.
 - One provider wrap in `MobileSessionRouteScreen.tsx`.
+- Agents on the Lock Screen (SLRM-2387): an import and one hook call in `MobileHomeScreen.tsx`
+  (`useForkAgentLiveActivity`), an import and one element in `mobile/app/notifications.tsx`
+  (`ForkLiveActivitySettings`), one plugin line in `mobile/app.json` and one extra source in
+  `mobile/fingerprint.config.js` (the widget Swift, so a change rebuilds the dev client).
 - One element and a `relative` class in `worktree-card-compact-agent-row.tsx` for the row
   tint, and an import, one element and a `relative` class on the strip icon in
   `worktree-card-compact-agents.tsx` for the icon ring (SLRM-1966). Since upstream 1.4.261 a
@@ -2306,6 +2525,22 @@ Upstream files only get short hooks, which keeps rebases small:
   - The two settings are in `src/shared/fork/fork-global-settings.ts` and
     `settings-rows-fork.generated.ts` is regenerated; the card is in the fork's Settings pane.
 
+- Set up on a server (SLRM-2312), from `src/shared/fork/server-setup*.ts`,
+  `src/main/fork/server-setup/`, `src/cli/fork/server-setup-cli.ts` and
+  `src/renderer/src/fork/server-setup/`:
+  - `rpc-method-registry.ts` spreads `FORK_SERVER_SETUP_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-server-setup.ts`): `fork.serverSetup.plan`,
+    `.readiness` and `.run`; `rpc-params-catalog.generated.ts` is regenerated with it.
+  - `run-target-options.ts` adds the `fork-setup` row kind to `RunTargetRowModel` and, with
+    `forkServerSetup`, appends `forkServerSetupRows`; `RunTargetCombobox.tsx` calls
+    `useForkServerSetup`, passes the flag and starts a `fork-setup` row on Enter;
+    `RunTargetRowList.tsx` renders `ForkServerSetupRow`.
+  - The auto placement files carry `--setup-missing`: `withForkAutoPlacementNotes` also adds the
+    flag to `worktree create`'s allowed flags, and `fork.placement.load` and `.pick` take
+    `setupMissing`.
+  - The three settings are in `src/shared/fork/fork-global-settings.ts` and
+    `settings-rows-fork.generated.ts` is regenerated; the card is in the fork's Settings pane.
+
 - Snooze (SLRM-2269), from `src/shared/fork/snooze*.ts`, `src/main/fork/snooze/`,
   `src/cli/fork/snooze-*.ts` and `src/renderer/src/fork/snooze/`:
   - `rpc-method-registry.ts` spreads `FORK_SNOOZE_METHODS`
@@ -2434,6 +2669,63 @@ Upstream files only get short hooks, which keeps rebases small:
   - `ForkRootHosts.tsx` mounts `ForkWorkspaceTagsDialogHost` and `ForkArchiveOnMergeWatcher`; the
     four cards are in the fork's Settings pane, and the four agent-limit keys are in
     `settings-access.ts`.
+
+- Chat handoff (SLRM-2391), from `src/shared/fork/chat-handoff*.ts`,
+  `src/main/fork/chat-handoff/`, `src/cli/fork/chat-handoff-*.ts` and
+  `src/renderer/src/fork/chat-handoff/`. On unless `forkChatHandoff` is false:
+  - `rpc-method-registry.ts` spreads `FORK_CHAT_HANDOFF_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-chat-handoff.ts`); `rpc-params-catalog.generated.ts`
+    is regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_CHAT_HANDOFF_COMMAND_SPECS` and `fork-handler-groups.ts`
+    adds the `fork-chat-handoff` group (`chat handoff`, `chat history`; `chat` is already listed
+    in `cli-command-names.ts`).
+  - `SortableTabContextMenu.tsx` renders `ForkChatHandoffTabMenuItems` after the account move
+    items. `ForkRootHosts.tsx` mounts `ForkChatHandoffLimitOffer`; the card is in the fork's
+    Settings pane.
+  - `runtime-settle-hooks.ts` (a fork file) calls `startForkChatHandoffOnLimit`, which listens to
+    limit resume's entries. A new chat goes through `createStructuredAgentSessionForWorktree`, the
+    create agent launches use, with the handoff as its first message.
+  - The settings are in `src/shared/fork/fork-global-settings.ts` and
+    `settings-rows-chat.generated.ts` is regenerated.
+
+- Review guides (SLRM-2396), from `src/shared/fork/review-guide*.ts`,
+  `src/main/fork/review-guide/`, `src/cli/fork/review-guide-*.ts`,
+  `src/renderer/src/fork/review-guide/` and `mobile/src/components/fork/review-guide/`:
+  - `rpc-method-registry.ts` spreads `FORK_REVIEW_GUIDE_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-review-guide.ts`); `rpc-params-catalog.generated.ts`
+    is regenerated with it. `runtime-rpc-mobile-method-routing.ts` spreads
+    `FORK_REVIEW_GUIDE_RPC_METHODS` into the execution-host methods so the phone may call them.
+  - `src/cli/specs/index.ts` adds `FORK_REVIEW_GUIDE_COMMAND_SPECS`, `fork-handler-groups.ts`
+    adds the `fork-review-guide` group and `cli-command-names.ts` lists `review-guide`.
+  - `projects-app-hooks.ts` calls `installForkReviewGuideApp`; `preload/index.ts` and
+    `api-types.ts` add `forkReviewGuide` (`src/preload/fork/review-guide-bridge.ts`).
+  - `pull-request-page/page/tabs-shell.tsx` renders `ForkReviewGuideTabTrigger` after the Files
+    trigger and `ForkReviewGuideTabContent` after the Files content.
+  - `MobilePRSidebar.tsx` renders `MobileReviewGuideRow` after the changes card.
+  - The settings are in `src/shared/fork/review-guide.ts`, intersected in
+    `fork-global-settings.ts`; `settings-rows-fork.generated.ts` is regenerated and the card is in
+    the fork's Settings pane.
+- Typecheck caps (SLRM-2405), from `config/scripts/fork/typecheck-jobs.mjs`:
+  - `run-typecheck-projects-in-parallel.mjs` imports it, wraps the default of
+    `runTypecheckProjects`'s `parallelism` in `forkTypecheckParallelism(...)` and the `tsrs`
+    default checker count in `forkTypecheckCheckers(...)`.
+
+- Digest (SLRM-2388), from `src/shared/fork/digest*.ts`, `src/main/fork/digest/`,
+  `src/cli/fork/digest-*.ts`, `src/renderer/src/fork/digest/` and
+  `mobile/src/components/fork/digest/`. The daily send is off unless `forkDigest` is true:
+  - `rpc-method-registry.ts` spreads `FORK_DIGEST_METHODS` (`fork.digest.local`,
+    `fork.digest.collect`); `rpc-params-catalog.generated.ts` is regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_DIGEST_COMMAND_SPECS`, `fork-handler-groups.ts` adds the
+    `fork-digest` group and `cli-command-names.ts` lists `digest`.
+  - `startForkRuntimeSettleServices` (`runtime-settle-hooks.ts`) also calls `startForkDigest`.
+  - Fork files only on the desktop: the palette entry rides on
+    `getForkUsageReportQuickActions()`, `ForkRootHosts` mounts `ForkDigestHost`, the card is in the
+    fork's Settings pane, and `forkDigestCommand` is a runs-command key in `settings-access.ts`.
+  - Mobile: `app/h/[hostId]/digest.tsx` (the shell route) and `digest.web.tsx` (the page) are new
+    route files with no strings; `host-stack-screens.ts` spreads `FORK_HOST_STACK_SCREENS` and
+    `host-screen-header.tsx` adds `forkDigestHostAction(...)` to the host menu.
+  - `runtime-rpc-mobile-paired-desktop-methods.ts` spreads `FORK_DIGEST_RPC_METHODS`
+    (`fork.digest.collect`), so a paired phone may call it and the relaying desktop answers.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

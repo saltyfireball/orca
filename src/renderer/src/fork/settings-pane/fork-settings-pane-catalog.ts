@@ -16,7 +16,10 @@ import { getForkRemoteSettingsSectionParts } from '../endpoint-failover/endpoint
 import { worktreeMoveSearchEntry } from '../worktree-move/worktree-move-search-entry'
 import { apfsCloneSearchEntry } from '../apfs-clone/apfs-clone-search-entry'
 import { snoozeSearchEntry } from '../snooze/snooze-search-entry'
+import { serverSetupSearchEntry } from '../server-setup/server-setup-search-entry'
 import { branchClashesSearchEntry } from '../branch-clashes/branch-clashes-search-entry'
+import { reviewGuideSearchEntry } from '../review-guide/review-guide-search-entry'
+import { digestSearchEntry } from '../digest/digest-search-entry'
 import { serverUpdateSearchEntry } from '../server-update/server-update-search-entry'
 import { prBabysitSearchEntry } from '../pr-babysit/pr-babysit-search-entry'
 import { mainSyncSearchEntry } from '../main-sync/main-sync-search-entry'
@@ -184,7 +187,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
       t('fork.settingsPane.usage.title', 'Usage and accounts'),
       t(
         'fork.settingsPane.usage.description',
-        'Which Claude account a chat runs on, and what your chats have used.'
+        'Which Claude account a chat runs on, what your chats have used, and the daily digest.'
       ),
       [
         {
@@ -218,7 +221,8 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
             'weekly',
             'forkPooledLimits'
           )
-        }
+        },
+        digestSearchEntry(t)
       ]
     ),
     section(
@@ -226,7 +230,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
       t('fork.settingsPane.projects.title', 'Projects'),
       t(
         'fork.settingsPane.projects.description',
-        'The Lost work scan, branch clashes, moving a workspace to another host, fast new worktrees, and what the fork sets for one project.'
+        'The Lost work scan, branch clashes, moving a workspace to another host, fast new worktrees, setting a project up on a server, review guides, and what the fork sets for one project.'
       ),
       [
         {
@@ -241,7 +245,9 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         apfsCloneSearchEntry(t),
         mainSyncSearchEntry(t),
         snoozeSearchEntry(t),
+        serverSetupSearchEntry(t),
         branchClashesSearchEntry(t),
+        reviewGuideSearchEntry(t),
         forkWorkspaceTagsSearchEntry(t),
         {
           title: t('fork.settingsPane.projectList.title', 'Per project'),

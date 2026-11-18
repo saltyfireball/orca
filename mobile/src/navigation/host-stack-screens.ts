@@ -1,4 +1,5 @@
 import { translate } from '../i18n/mobile-i18n'
+import { FORK_HOST_STACK_SCREENS } from '../components/fork/digest/fork-digest-host-entries'
 
 // Keep native/page stack declarations in sync.
 export const HOST_STACK_SCREENS = [
@@ -62,6 +63,7 @@ export const HOST_STACK_SCREENS = [
       return translate('navigation.hostStackScreens.pullRequest', 'Pull Request')
     }
   },
+  ...FORK_HOST_STACK_SCREENS,
   // Declare catch-all last for its title; named children must match first. Undeclared routes would render with group options anyway.
   {
     name: '[hostId]/[...page]',

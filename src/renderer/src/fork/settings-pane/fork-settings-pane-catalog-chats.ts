@@ -36,6 +36,14 @@ export function getForkChatsSearchEntries(t: Translate): SettingsSearchEntry[] {
       keywords: words('usage limit', 'rate limit', 'reset', 'continue', 'codex', 'forkLimitResume')
     },
     {
+      title: t('fork.chatHandoff.title', 'Chat handoff'),
+      description: t(
+        'fork.chatHandoff.description',
+        'Hand a chat from Claude to Codex or back, with its recent history.'
+      ),
+      keywords: words('handoff', 'hand off', 'provider', 'codex', 'claude', 'forkChatHandoff')
+    },
+    {
       title: t('fork.chatSleep.title', 'Chat sleep (experimental)'),
       description: t(
         'fork.settingsPane.search.chatSleep',

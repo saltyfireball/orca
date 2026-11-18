@@ -1,9 +1,10 @@
 // SLRM-2104 (FORK.md "Usage and cost report"): the command palette entry that opens the usage
-// report. Spread into the stock catalog.
+// report, and the digest's (SLRM-2388). Spread into the stock catalog.
 import { ChartColumn } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
 import type { CmdJQuickAction } from '@/components/cmd-j/quick-actions'
 import { openForkUsageReport } from './use-fork-usage-report'
+import { getForkDigestQuickActions } from '../digest/fork-digest-quick-actions'
 
 export function getForkUsageReportQuickActions(): CmdJQuickAction[] {
   const title = translate('fork.usageReport.palette', 'Usage report')
@@ -31,6 +32,8 @@ export function getForkUsageReportQuickActions(): CmdJQuickAction[] {
         openForkUsageReport()
         return { status: 'ok' }
       }
-    }
+    },
+    // SLRM-2388: the digest rides on this hook, so the stock palette list needs no second line.
+    ...getForkDigestQuickActions()
   ]
 }

@@ -151,5 +151,23 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-best-of',
     keys: ['best-of', 'best-of list', 'best-of show', 'best-of pick'],
     load: async () => (await import('./best-of-handlers.js')).FORK_BEST_OF_HANDLERS
+  },
+  // SLRM-2391: hand a chat to the other agent and read a chat's history (FORK.md "Chat handoff").
+  {
+    name: 'fork-chat-handoff',
+    keys: ['chat handoff', 'chat history'],
+    load: async () => (await import('./chat-handoff-handlers.js')).FORK_CHAT_HANDOFF_HANDLERS
+  },
+  // SLRM-2396: pull request review guides (FORK.md "Review guides").
+  {
+    name: 'fork-review-guide',
+    keys: ['review-guide', 'review-guide write', 'review-guide cancel'],
+    load: async () => (await import('./review-guide-handlers.js')).FORK_REVIEW_GUIDE_HANDLERS
+  },
+  // SLRM-2388: what finished, failed, merged and cost, and what waits on you (FORK.md "Digest").
+  {
+    name: 'fork-digest',
+    keys: ['digest'],
+    load: async () => (await import('./digest-handlers.js')).FORK_DIGEST_HANDLERS
   }
 ]

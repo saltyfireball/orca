@@ -77,6 +77,7 @@ import { FORK_IDLE_RECOVERY_RPC_METHODS } from './fork/fork-idle-recovery'
 import { FORK_MCP_PROFILE_METHODS } from './fork/fork-mcp-profiles'
 import { FORK_USAGE_REPORT_METHODS } from './fork/fork-usage-report'
 import { FORK_AUTO_PLACEMENT_METHODS } from './fork/fork-auto-placement'
+import { FORK_SERVER_SETUP_METHODS } from './fork/fork-server-setup'
 import { FORK_BATCH_START_METHODS } from './fork/fork-batch-start'
 import { FORK_ENDPOINT_ADDRESSES_METHODS } from './fork/fork-endpoint-addresses'
 import { FORK_WORKTREE_MOVE_METHODS } from './fork/fork-worktree-move'
@@ -91,6 +92,9 @@ import { FORK_AGENT_GUARDS_METHODS } from './fork/fork-agent-guards'
 import { FORK_WORKTREE_PORTS_METHODS } from './fork/fork-worktree-ports'
 import { FORK_BRANCH_CLASHES_METHODS } from './fork/fork-branch-clashes'
 import { FORK_BEST_OF_METHODS } from './fork/fork-best-of'
+import { FORK_CHAT_HANDOFF_METHODS } from './fork/fork-chat-handoff'
+import { FORK_REVIEW_GUIDE_METHODS } from './fork/fork-review-guide'
+import { FORK_DIGEST_METHODS } from './fork/fork-digest'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
 import { STRUCTURED_AGENT_SESSION_ATTACHMENT_METHODS } from './structured-sessions/attachments/structured-agent-session-attachments'
@@ -216,6 +220,8 @@ export const ALL_RPC_METHODS = [
   ...FORK_SETTINGS_METHODS,
   // SLRM-2266: the load probe and pick behind --on auto and --host auto (FORK.md).
   ...FORK_AUTO_PLACEMENT_METHODS,
+  // SLRM-2312: set a project up on a paired server on demand (FORK.md).
+  ...FORK_SERVER_SETUP_METHODS,
   // SLRM-2395: batch start, a prompt per worktree and model from the composer (FORK.md).
   ...FORK_BATCH_START_METHODS,
   // SLRM-2265: each host's half of `orca worktree move` (FORK.md).
@@ -241,5 +247,11 @@ export const ALL_RPC_METHODS = [
   // SLRM-2394: files parallel worktree branches share, behind `orca clashes` (FORK.md).
   ...FORK_BRANCH_CLASHES_METHODS,
   // SLRM-2393: best-of runs behind `orca best-of` and the compare view (FORK.md).
-  ...FORK_BEST_OF_METHODS
+  ...FORK_BEST_OF_METHODS,
+  // SLRM-2391: hand a chat to the other agent, behind `orca chat handoff|history` (FORK.md).
+  ...FORK_CHAT_HANDOFF_METHODS,
+  // SLRM-2396: pull request review guides behind `orca review-guide` and the phone (FORK.md).
+  ...FORK_REVIEW_GUIDE_METHODS,
+  // SLRM-2388: the digest across this host and its paired servers, behind `orca digest` (FORK.md).
+  ...FORK_DIGEST_METHODS
 ]

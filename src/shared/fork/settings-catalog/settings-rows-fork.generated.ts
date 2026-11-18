@@ -77,6 +77,18 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Background shell tasks and monitors count as children; unset is on.","o":true}',
   forkDeviceApproval:
     '{"t":{"k":"boolean"},"d":"A newly paired device needs approval from an approved device or this host\'s owner. Off unless true.","o":true}',
+  forkDigest:
+    '{"t":{"k":"boolean"},"d":"Send a digest of finished, failed, merged, cost and waiting work once a day to the notification targets. Off unless true.","o":true}',
+  forkDigestCommand:
+    '{"t":{"k":"boolean"},"d":"Digest: give the digest as JSON on stdin to the notification command (forkInboxNotifyCommand); unset is on when that command is set. Set it in the Settings screen.","o":true}',
+  forkDigestDesktop:
+    '{"t":{"k":"boolean"},"d":"Digest: desktop notification with the digest; unset follows forkInboxNotifyDesktop.","o":true}',
+  forkDigestHour:
+    '{"t":{"k":"number"},"d":"Digest: local hour (0 to 23) the daily digest goes out; unset is 8.","o":true}',
+  forkDigestPullRequests:
+    '{"t":{"k":"boolean"},"d":"Digest: ask the GitHub CLI (gh) for your merged and open pull requests in each project; unset is on.","o":true}',
+  forkDigestWebhook:
+    '{"t":{"k":"boolean"},"d":"Digest: POST the digest as JSON to the notification webhook (forkInboxNotifyWebhookUrl); unset is on when that address is set.","o":true}',
   forkEndpointFailover:
     '{"t":{"k":"boolean"},"d":"Endpoint failover: try a saved server\'s other routes when one stops answering, and move back to a better one; unset is on.","o":true}',
   forkEndpointFailoverRetrySeconds:
@@ -126,166 +138,5 @@ export const FORK_SETTINGS_ROWS_FORK = {
   forkLimitResumeTerminals:
     '{"t":{"k":"boolean"},"d":"Also read Claude Code and Codex terminal agents for limit stops; unset is on.","o":true}',
   forkLostWork:
-    '{"t":{"k":"object","fields":{"checks":{"k":"record","of":{"k":"boolean"},"keys":["finishedWorktrees","missingFolders","pullRequests","stashes","unmergedBranches","unmergedWorktrees","untrackedWorktrees"],"optional":true},"defaultBranches":{"k":"record","of":{"k":"string"},"optional":true},"archiveFolder":{"k":"string","optional":true},"squashLookback":{"k":"number","optional":true},"pullRequestLimit":{"k":"number","optional":true},"pullRequestTimeoutSeconds":{"k":"number","optional":true},"projectConcurrency":{"k":"number","optional":true},"itemConcurrency":{"k":"number","optional":true},"inUse":{"k":"object","fields":{"activeWorkspace":{"k":"boolean","optional":true},"liveTerminals":{"k":"boolean","optional":true},"openChats":{"k":"boolean","optional":true},"runningAgents":{"k":"boolean","optional":true},"sleepingChats":{"k":"boolean","optional":true}},"optional":true}}},"d":"The lost work scan\'s checks, base branches and archive folder.","o":true}',
-  forkMainSync:
-    '{"t":{"k":"boolean"},"d":"Fetch each local project\'s default branch on a timer and fast-forward it when it is clean and behind; off unless true.","o":true}',
-  forkMainSyncMinutes:
-    '{"t":{"k":"number"},"d":"Main sync: minutes between two passes (5 to 1440); unset is 15.","o":true}',
-  forkMainSyncProjects:
-    '{"t":{"k":"array","of":{"k":"string"}},"d":"Main sync: projects it keeps current, by name, id or path; unset or empty is every local git project.","o":true}',
-  forkMainSyncSkipInUse:
-    '{"t":{"k":"boolean"},"d":"Main sync: leave a default branch alone while its checkout has live terminals or a working agent; unset is on.","o":true}',
-  forkMcpDefaultBackground:
-    '{"t":{"k":"string"},"d":"MCP profiles: profile for automation runs; unset is \\"all\\".","o":true}',
-  forkMcpDefaultInteractive:
-    '{"t":{"k":"string"},"d":"MCP profiles: profile for chats the user starts; unset is \\"all\\".","o":true}',
-  forkMcpDefaultWorker:
-    '{"t":{"k":"string"},"d":"MCP profiles: profile for orchestration workers; unset is \\"all\\".","o":true}',
-  forkMcpProfiles:
-    '{"t":{"k":"array","of":{"k":"object","fields":{"name":{"k":"string"},"mode":{"k":"enum","values":["allow","deny"]},"servers":{"k":"array","of":{"k":"string"}}}}},"d":"MCP profiles: the user\'s named profiles; \\"all\\" and \\"none\\" are built in.","o":true}',
-  forkMcpProjectProfiles:
-    '{"t":{"k":"array","of":{"k":"object","fields":{"path":{"k":"string"},"profile":{"k":"string"}}}},"d":"MCP profiles: per-project profiles, which take precedence over the launch kind\'s.","o":true}',
-  forkMemoryPauseLaunches:
-    '{"t":{"k":"boolean"},"d":"Pause queued agent launches while memory pressure is high.","o":true}',
-  forkMemoryPollSeconds: '{"t":{"k":"number"},"d":"Seconds between memory readings.","o":true}',
-  forkMemoryWarnPressure:
-    '{"t":{"k":"enum","values":["critical","off","warn"]},"d":"Memory pressure level that raises the warning.","o":true}',
-  forkMemoryWarnSwapGb:
-    '{"t":{"k":"number"},"d":"Swap in use, in GB, that raises the memory warning.","o":true}',
-  forkPlacement:
-    '{"t":{"k":"record","of":{"k":"enum","values":["less","manual","normal","prefer"]}},"d":"Auto placement: per machine (\'local\' or \'runtime:<environment id>\'), how willingly it takes automatically placed work; unset machines are \'normal\'.","o":true}',
-  forkPlacementAutoWhenUnnamed:
-    '{"t":{"k":"boolean"},"d":"Auto placement: when no machine is named and more than one could take the work, pick one as `auto` would. Off unless true.","o":true}',
-  forkPooledLimits:
-    '{"t":{"k":"boolean"},"d":"Pooled usage limits in the usage popover, /usage-limits and `orca limits usage`; this machine shares its numbers with paired desktops. Unset is on.","o":true}',
-  forkPooledLimitsServers:
-    '{"t":{"k":"boolean"},"d":"Pooled limits also ask every paired server; unset is on.","o":true}',
-  forkPrBabysitAutoMerge:
-    '{"t":{"k":"boolean"},"d":"PR babysitter: merge a babysat pull request once every check is green, no change is requested and GitHub reports it mergeable. Off unless true.","o":true}',
-  forkPrBabysitMaxRounds:
-    '{"t":{"k":"number"},"d":"PR babysitter: fix requests sent for one pull request before it stops and asks you (1 to 10); unset is 3.","o":true}',
-  forkPrBabysitMergeMethod:
-    '{"t":{"k":"enum","values":["merge","rebase","repo","squash"]},"d":"PR babysitter: \'repo\' uses the repository\'s default merge method; unset is \'repo\'.","o":true}',
-  forkPrBabysitRepos:
-    '{"t":{"k":"array","of":{"k":"string"}},"d":"PR babysitter (SLRM-2386): owner/repo names whose pull requests are babysat, \\"*\\" for every repo; unset is none (off).","o":true}',
-  forkPrBabysitWaitMinutes:
-    '{"t":{"k":"number"},"d":"PR babysitter: minutes to wait for a new CI result after a fix request before it stops and asks you; unset is 120.","o":true}',
-  forkPromptStash:
-    '{"t":{"k":"boolean"},"d":"Prompt stash (SLRM-2397): Cmd+S (Ctrl+S) in a chat\'s message box sets the draft and its attachments aside, and brings the last one back when the box is empty; unset is on.","o":true}',
-  forkRowContext:
-    '{"t":{"k":"boolean"},"d":"A native Claude chat\'s context size on its agent rows; unset is on.","o":true}',
-  forkRowFixChecks:
-    '{"t":{"k":"boolean"},"d":"An Ask agent to fix button on agent rows when the pull request\'s checks fail; unset is on.","o":true}',
-  forkRowPrChip:
-    '{"t":{"k":"boolean"},"d":"The workspace\'s pull request and its check state on agent rows; unset is on.","o":true}',
-  forkRowSpend:
-    '{"t":{"k":"boolean"},"d":"A native Claude chat\'s estimated spend on its agent rows; unset is on.","o":true}',
-  forkSavedPrompts:
-    '{"t":{"k":"array","of":{"k":"object","fields":{"label":{"k":"string"},"text":{"k":"string"}}}},"d":"Saved prompts: the saved prompts, each a label and its text; unset is none.","o":true}',
-  forkSavedPromptsEnabled:
-    '{"t":{"k":"boolean"},"d":"Saved prompts (SLRM-2397): a saved prompts menu on the chat message box; unset is on.","o":true}',
-  forkServerHealth:
-    '{"t":{"k":"boolean"},"d":"Watch the paired remote servers this desktop is connected to and alert when one stops answering; unset is on.","o":true}',
-  forkServerHealthAlertCommand:
-    '{"t":{"k":"boolean"},"d":"Server health: give the alert as JSON on stdin to the notification command (forkInboxNotifyCommand); unset is on when that command is set. Set it in the Settings screen.","o":true}',
-  forkServerHealthAlertDesktop:
-    '{"t":{"k":"boolean"},"d":"Server health: desktop notification on offline and back; unset follows forkInboxNotifyDesktop.","o":true}',
-  forkServerHealthAlertWebhook:
-    '{"t":{"k":"boolean"},"d":"Server health: POST the alert as JSON to the notification webhook (forkInboxNotifyWebhookUrl); unset is on when that address is set.","o":true}',
-  forkServerHealthOfflineMinutes:
-    '{"t":{"k":"number"},"d":"Server health: minutes a server must stay unreachable before the offline alert; unset is 5.","o":true}',
-  forkServerHealthRecoverySeconds:
-    '{"t":{"k":"number"},"d":"Server health: seconds a server must answer again before it counts as back (no alerts while it flaps); unset is 60.","o":true}',
-  forkServerHeartbeatMethod:
-    '{"t":{"k":"enum","values":["GET","POST"]},"d":"Server heartbeat: \'GET\' or \'POST\' (with an empty body); unset is \'GET\'.","o":true}',
-  forkServerHeartbeatSeconds:
-    '{"t":{"k":"number"},"d":"Server heartbeat: seconds between two calls of the heartbeat address; unset is 60.","o":true}',
-  forkServerHeartbeatUrl:
-    '{"t":{"k":"string"},"d":"Server heartbeat (SLRM-2311): an http(s) address this host calls every few seconds so an outside monitor sees it is alive; unset is none.","o":true}',
-  forkServerUpdateAccept:
-    '{"t":{"k":"boolean"},"d":"Server updates: this host takes update and rollback requests from paired desktops (host-admin); unset is on.","o":true}',
-  forkServerUpdateAuto:
-    '{"t":{"k":"boolean"},"d":"Server updates: when this desktop starts on a new version, update every paired server to it. Off unless true.","o":true}',
-  forkServerUpdateAutoRollback:
-    '{"t":{"k":"boolean"},"d":"Server updates: put the old version back when the new one does not come up; unset is on.","o":true}',
-  forkServerUpdateMacCertSha1:
-    '{"t":{"k":"string"},"d":"Server updates: SHA-1 of the certificate a macOS app must be signed with before it is installed; unset is the fork\'s. Set it in the Settings file.","o":true}',
-  forkServerUpdateMacTeamId:
-    '{"t":{"k":"string"},"d":"Server updates: an Apple Team ID the macOS app must be signed by instead of the certificate pin; unset is none. Set it in the Settings file.","o":true}',
-  forkServerUpdateReadySeconds:
-    '{"t":{"k":"number"},"d":"Server updates: seconds a restarted server has to come up before the old version is put back; unset is 180.","o":true}',
-  forkServerUpdateReleasesUrl:
-    '{"t":{"k":"string"},"d":"Server updates: where this host downloads releases from (https); unset is the fork\'s GitHub releases. Set it in the Settings file.","o":true}',
-  forkServerUpdateTurnWaitMinutes:
-    '{"t":{"k":"number"},"d":"Server updates: minutes a server waits for its running turns to finish before it gives up; unset is 30.","o":true}',
-  forkShowAccountChip:
-    '{"t":{"k":"boolean"},"d":"Show which Claude account each session runs on; unset is on.","o":true}',
-  forkShowChildTally:
-    '{"t":{"k":"boolean"},"d":"The running/total child count on sidebar agent rows; unset is on.","o":true}',
-  forkSleepersButton:
-    '{"t":{"k":"boolean"},"d":"Sleepers: the sidebar toolbar\'s Sleepers button; unset is shown.","o":true}',
-  forkSleepersPinned:
-    '{"t":{"k":"array","of":{"k":"string"}},"d":"Sleepers: native chat session ids that never auto-sleep; unset is none.","o":true}',
-  forkSnooze:
-    '{"t":{"k":"boolean"},"d":"Snooze (SLRM-2269): snooze workspaces and chats out of the sidebar; unset is on.","o":true}',
-  forkSnoozeEveningHour:
-    '{"t":{"k":"number"},"d":"Snooze: the hour (0-23) of the this evening preset; unset is 18.","o":true}',
-  forkSnoozeIdleDays:
-    '{"t":{"k":"number"},"d":"Snooze: the idle days of the menu\'s until idle choice; unset is 3.","o":true}',
-  forkSnoozeMorningHour:
-    '{"t":{"k":"number"},"d":"Snooze: the hour (0-23) of the tomorrow and next Monday morning presets; unset is 9.","o":true}',
-  forkSnoozeSettleCommand:
-    '{"t":{"k":"string"},"d":"Snooze: a command run once when a snooze settles (its pull request merged or its idle days passed); unset is none. Set it in the Settings screen.","o":true}',
-  forkSnoozeWakeOnAttention:
-    '{"t":{"k":"boolean"},"d":"Snooze: a snoozed workspace or chat comes back when it needs an approval or asks a question; unset is on.","o":true}',
-  forkSnoozeWakeOnFailure:
-    '{"t":{"k":"boolean"},"d":"Snooze: a snoozed workspace or chat comes back when its agent fails or errors; unset is on.","o":true}',
-  forkSnoozeWakeOnOpen:
-    '{"t":{"k":"boolean"},"d":"Snooze: opening a snoozed workspace or chat wakes it; unset is on.","o":true}',
-  forkSyncNotice:
-    '{"t":{"k":"boolean"},"d":"Sync status: say when the fork is behind upstream or its last sync failed; unset is on.","o":true}',
-  forkSyncNoticeStaleDays:
-    '{"t":{"k":"number"},"d":"Sync status: days without a new status before it is called stale; unset is 3, 0 is off.","o":true}',
-  forkUnattendedResume:
-    '{"t":{"k":"boolean"},"d":"Workers and automation runs a restart cut carry on by themselves; unset is on.","o":true}',
-  forkUnattendedResumeMaxTries:
-    '{"t":{"k":"number"},"d":"Automatic continuations of one chat in a row; unset is 3.","o":true}',
-  forkUsageCardPattern:
-    '{"t":{"k":"string"},"d":"Regex over branch or workspace name; group 1 (or the match) is the card.","o":true}',
-  forkUsagePrices:
-    '{"t":{"k":"record","of":{"k":"object","fields":{"input":{"k":"number"},"output":{"k":"number"},"cacheRead":{"k":"number"},"cacheWrite":{"k":"number"},"cacheWrite1h":{"k":"number","optional":true}}}},"d":"User price table, USD per million tokens, by model; empty uses defaults.","o":true}',
-  forkUsageRetentionDays:
-    '{"t":{"k":"number"},"d":"Days of usage history the ledger keeps; unset is 90.","o":true}',
-  forkVisualFallback:
-    '{"t":{"k":"boolean"},"d":"::orca-visual also shows png, jpg, gif and webp files and takes unquoted values; unset is on.","o":true}',
-  forkVisualImageMaxMiB:
-    '{"t":{"k":"number"},"d":"Largest image file ::orca-visual shows, in MiB (1 to 5); unset is 4.","o":true}',
-  forkWebhooks:
-    '{"t":{"k":"object","fields":{"enabled":{"k":"boolean","optional":true},"bindHost":{"k":"string","optional":true},"port":{"k":"number","optional":true},"maxBodyKb":{"k":"number","optional":true},"perHookPerMinute":{"k":"number","optional":true},"payloadMaxChars":{"k":"number","optional":true}}},"d":"Signed webhooks that start automation runs; off unless enabled is true.","o":true}',
-  forkWorkerCleanup:
-    '{"t":{"k":"boolean"},"d":"Worker cleanup: finished workers give up their agent, replacing the stock auto-release. Off unless true.","o":true}',
-  forkWorkerCleanupAction:
-    '{"t":{"k":"enum","values":["close","release"]},"d":"Worker cleanup: \'close\' closes the tab, \'release\' keeps a chat\'s tab; unset is \'close\'.","o":true}',
-  forkWorkerCleanupGraceMinutes:
-    '{"t":{"k":"number"},"d":"Worker cleanup: minutes after a worker reports before it is cleaned up; unset is 5.","o":true}',
-  forkWorkerCleanupOnDone:
-    '{"t":{"k":"boolean"},"d":"Worker cleanup: clean up once the worker reports done; unset is on.","o":true}',
-  forkWorkerCleanupOnMerged:
-    '{"t":{"k":"boolean"},"d":"Worker cleanup: clean up once the worker\'s branch is merged; unset is off.","o":true}',
-  forkWorkspaceTagFilter:
-    '{"t":{"k":"object","fields":{"tag":{"k":"string"},"mode":{"k":"enum","values":["hide","only"]}},"nullable":true},"d":"Workspace tags: the sidebar\'s tag filter, \'only\' shows that tag and \'hide\' hides it; unset is none.","o":true}',
-  forkWorkspaceTags:
-    '{"t":{"k":"record","of":{"k":"array","of":{"k":"string"}}},"d":"Workspace tags: each workspace\'s tags, keyed by workspace id and host; unset is none. Set them from the workspace menu.","o":true}',
-  forkWorkspaceTagsEnabled:
-    '{"t":{"k":"boolean"},"d":"Workspace tags (SLRM-2397): tag workspaces and filter the sidebar by a tag; unset is on.","o":true}',
-  forkWorktreeMove:
-    '{"t":{"k":"object","fields":{"menu":{"k":"boolean","optional":true},"whenBusy":{"k":"enum","values":["ask","refuse"],"optional":true},"uncommitted":{"k":"enum","values":["leave","patch","refuse"],"optional":true},"push":{"k":"boolean","optional":true},"chats":{"k":"boolean","optional":true},"rewriteHome":{"k":"boolean","optional":true},"markSource":{"k":"boolean","optional":true},"maxTotalMb":{"k":"number","optional":true}}},"d":"Moving a workspace and its chats to another host; unset keys take the defaults.","o":true}',
-  forkWorktreePorts:
-    '{"t":{"k":"boolean"},"d":"Each workspace gets a block of ports, exported as ORCA_PORT and ORCA_PORT_0..N-1 to its terminals, agents and setup scripts; unset is on.","o":true}',
-  forkWorktreePortsCount:
-    '{"t":{"k":"number"},"d":"Ports in each workspace\'s block (1 to 100); a change applies to new blocks; unset is 10.","o":true}',
-  forkWorktreePortsFrom:
-    '{"t":{"k":"number"},"d":"First port blocks are taken from (1024 to 65535); unset is 20000.","o":true}',
-  forkWorktreePortsTo:
-    '{"t":{"k":"number"},"d":"Last port blocks are taken from (1024 to 65535); unset is 29999.","o":true}'
+    '{"t":{"k":"object","fields":{"checks":{"k":"record","of":{"k":"boolean"},"keys":["finishedWorktrees","missingFolders","pullRequests","stashes","unmergedBranches","unmergedWorktrees","untrackedWorktrees"],"optional":true},"defaultBranches":{"k":"record","of":{"k":"string"},"optional":true},"archiveFolder":{"k":"string","optional":true},"squashLookback":{"k":"number","optional":true},"pullRequestLimit":{"k":"number","optional":true},"pullRequestTimeoutSeconds":{"k":"number","optional":true},"projectConcurrency":{"k":"number","optional":true},"itemConcurrency":{"k":"number","optional":true},"inUse":{"k":"object","fields":{"activeWorkspace":{"k":"boolean","optional":true},"liveTerminals":{"k":"boolean","optional":true},"openChats":{"k":"boolean","optional":true},"runningAgents":{"k":"boolean","optional":true},"sleepingChats":{"k":"boolean","optional":true}},"optional":true}}},"d":"The lost work scan\'s checks, base branches and archive folder.","o":true}'
 }

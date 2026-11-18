@@ -18,7 +18,9 @@ export const AREAS = [
       /^(theme|appFont|appIcon|leftSidebar|rightSidebar|window|reduceVisual|uiLanguage|pluginAppTheme|pluginIconTheme|forkCustomAppTheme|forkAgentStateColors|show[A-Z]|compactWorktreeCards|minimizeToTray|confirmClose|ctrlTab|tabAuto|notifications$|localhostWorktreeLabels)/
   },
   { id: 'chat', title: 'Native chat', match: /^(nativeChat|forkChat|forkCache|promptCache)/ },
-  { id: 'fork', title: 'Fork features', match: /^fork/ },
+  // Two files, so neither generated file passes the 300 line lint limit.
+  { id: 'fork', title: 'Fork features (A to L)', match: /^fork[A-L]/ },
+  { id: 'fork-more', title: 'Fork features (M to Z)', match: /^fork/ },
   {
     id: 'agents',
     title: 'Agents and accounts',
