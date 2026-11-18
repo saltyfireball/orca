@@ -1,13 +1,15 @@
 {
   "schema": 1,
-  "state": "in-sync",
-  "reason": null,
-  "upstreamVersion": "1.4.262",
-  "upstreamSha": "13619bc1c1f07bf10af2aba61def9a4cc532e108",
+  "state": "conflict",
+  "reason": "Rebasing the fork commits onto v1.4.263 stopped on conflicts.",
+  "upstreamVersion": "1.4.263",
+  "upstreamSha": "131f209f7703e21c9b4d933920abe766d0d12820",
   "forkBaseVersion": "1.4.262",
   "forkBaseSha": "13619bc1c1f07bf10af2aba61def9a4cc532e108",
-  "conflicts": [],
-  "since": null,
-  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/44226722450",
-  "checkedAt": "2026-11-18T03:09:16.429Z"
+  "conflicts": [
+    "src/renderer/src/components/maintenance/update-card/UpdateCard.error-card.test.tsx"
+  ],
+  "since": "2026-11-18T16:13:07.882Z",
+  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/44344226629",
+  "checkedAt": "2026-11-18T16:13:07.882Z"
 }
