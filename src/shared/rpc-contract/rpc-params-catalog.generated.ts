@@ -39,6 +39,11 @@ import {
   DesktopBrowserBridgeResultParams
 } from '../browser/client-hosting/desktop-browser-bridge-protocol'
 import {
+  ForkGuardsCapParams,
+  ForkGuardsListParams,
+  ForkGuardsTargetParams
+} from '../fork/agent-guards-wire'
+import {
   ForkAgentQueueListParams,
   ForkAgentQueueStatusParams,
   ForkAgentQueueTicketParams
@@ -1609,6 +1614,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.devices.list': ForkDeviceListParams,
   'fork.devices.revoke': ForkDeviceTargetParams,
   'fork.endpoints.addresses': ForkEndpointAddressesParams,
+  'fork.guards.cap': ForkGuardsCapParams,
+  'fork.guards.list': ForkGuardsListParams,
+  'fork.guards.resume': ForkGuardsTargetParams,
   'fork.idleRecovery.answer': ForkIdleRecoveryAnswerParams,
   'fork.idleRecovery.inbox': ForkIdleRecoveryInboxParams,
   'fork.idleRecovery.pause': ForkIdleRecoveryPauseParams,
