@@ -1,6 +1,6 @@
 // SLRM-2104 (FORK.md "Usage and cost report"): the usage report's shape, shared by main, the CLI
 // and the renderer. Built from the usage ledger (SLRM-2103); costs are estimates.
-import { z } from 'zod'
+import * as z from 'zod'
 import type { ForkUsagePrice, ForkUsageTokens } from './usage-ledger'
 
 export const FORK_USAGE_REPORT_GROUPS = ['chat', 'coordinator', 'workspace', 'day', 'card'] as const
