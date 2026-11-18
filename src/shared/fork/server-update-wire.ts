@@ -79,7 +79,10 @@ export type ForkServerUpdateJob = {
 }
 
 export type ForkServerUpdateStatus = {
+  /** The release version: the resolved install's own (Info.plist or orcad/out/package.json). */
   version: string
+  /** The running process's build string (orcad's `0.1.0+<hash>`), when it differs from `version`. */
+  buildVersion?: string
   platform: string
   arch: string
   /** Where the release would be installed, or null with `problem` saying why it cannot be. */
@@ -102,7 +105,12 @@ export type ForkServerRow = {
   error?: 'unreachable' | 'no-support'
   /** -1 behind this desktop, 0 the same, 1 ahead; null when either version is not comparable. */
   versus: number | null
+  /** A server this desktop deployed and runs over SSH: `orca environment update` updates it. */
+  sshManaged?: boolean
 }
+
+/** The state shown for a server this desktop deployed and updates over SSH. */
+export const FORK_SSH_MANAGED_MESSAGE = 'ssh-managed (use orca environment update)'
 
 export type ForkServersListResult = { version: string; servers: ForkServerRow[] }
 

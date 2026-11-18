@@ -771,13 +771,22 @@ named Orca Fork until SLRM-1367. `main` is always
   server's own connection, with no SSH: `orca servers update (--all | <name>...)`, the Server
   updates card (Settings > Blackfish > Remote servers), or on its own once this desktop starts on
   a new version (`forkServerUpdateAuto`, off by default). `orca servers list` shows each server's
-  version, whether it is behind, how it is installed and the version kept for a rollback.
+  release version, its orcad build string apart (BUILD), whether it is behind, how it is installed
+  and the version kept for a rollback.
+  - **Versions.** A server's version is the release of the install it resolved (the app's
+    `CFBundleShortVersionString`, or `orcad/out/package.json` of an unpacked Linux server), the
+    same one an update checks a download against; without one, the release orcad stamps into
+    `ORCA_APP_VERSION` at start-up. orcad's own version is a build string (`0.1.0+<hash>`) that
+    does not compare with a release, so it is only reported as `buildVersion`. Behind, current,
+    the downgrade rule and the start-up check of a restarted server all use the release.
   - **Which servers.** Servers that `orca serve service install` or dotfiles orca-server set up:
     a LaunchAgent (`com.stablyai.orca.serve*`) running Blackfish from an app bundle, or a systemd
     user unit (`orca-serve*.service`) running an unpacked Linux server's `bin/orca-ide`. The server
     finds its own unit by the profile in its `ORCA_USER_DATA_PATH`, and the install from the
     launcher its command line runs. Anything else (no unit, stock Orca, a folder this user cannot
-    replace, Windows) is refused and `orca servers list` says why.
+    replace, Windows) is refused and `orca servers list` says why. A server this desktop deployed
+    over SSH (`connectionDependency: ssh-tunnel`) with no such unit is listed as `ssh-managed (use
+    orca environment update)`, not as an error, and an update run skips it.
   - **Steps, on the server.** `fork.serverUpdate.apply` (host-admin) downloads the release from its
     own `forkServerUpdateReleasesUrl` (the fork's GitHub releases by default; https only, or http
     on loopback, and every redirect too), into a work folder beside the install

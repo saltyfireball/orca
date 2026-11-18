@@ -5,8 +5,18 @@ import {
   normalizeForkReleasesUrl,
   parseForkMacManifest,
   parseForkSha256Sums,
+  pickForkReleaseVersion,
   readForkServerUpdateConfig
 } from './server-update'
+
+describe('pickForkReleaseVersion', () => {
+  it("keeps a release host version and swaps orcad's build string for its stamped release", () => {
+    expect(pickForkReleaseVersion('1.4.262001', '1.4.250001')).toBe('1.4.262001')
+    expect(pickForkReleaseVersion('0.1.0+081afb112818', ' 1.4.262001 ')).toBe('1.4.262001')
+    expect(pickForkReleaseVersion('0.1.0+081afb112818', undefined)).toBe('0.1.0+081afb112818')
+    expect(pickForkReleaseVersion('0.1.0+081afb112818', '0.0.0-dev')).toBe('0.1.0+081afb112818')
+  })
+})
 
 const MAC_YML = `version: 1.4.261002
 files:

@@ -9,6 +9,7 @@ import { getAppEnvironment } from '../../../shared/app-lifecycle/app-environment
 import { listEnvironments } from '../../../shared/remote-runtime/host-store/runtime-environment-store'
 import {
   isForkReleaseVersion,
+  pickForkReleaseVersion,
   pickForkServerUpdateSettings,
   readForkServerUpdateConfig,
   type ForkServerUpdateSettings
@@ -103,7 +104,12 @@ export function startForkServerUpdate(runtime: ForkServersRuntime): void {
 async function runForkServerUpdateStart(runtime: ForkServersRuntime): Promise<void> {
   const userData = getCanonicalUserDataPath()
   const version = getAppEnvironment().getVersion()
-  const settled = await settleForkServerUpdateAtStart(userData, version, Date.now())
+  // A job's versions are releases; orcad's own version is a build string.
+  const settled = await settleForkServerUpdateAtStart(
+    userData,
+    pickForkReleaseVersion(version, process.env.ORCA_APP_VERSION),
+    Date.now()
+  )
   if (settled) {
     console.log(`[fork-server-update] ${settled.kind} ${settled.phase}: ${settled.message ?? ''}`)
   }

@@ -167,6 +167,40 @@ describe('fork server updater', () => {
     expect(t.fetched).toEqual([])
   })
 
+  it("reports the install's release version, not orcad's build string, and compares that", async () => {
+    const t = setup()
+    const orcad = createForkServerUpdater({ ...t.deps, version: () => '0.1.0+081afb112818' })
+    expect(await orcad.status(t.settings)).toMatchObject({
+      version: '1.4.259010',
+      buildVersion: '0.1.0+081afb112818'
+    })
+    expect(await orcad.apply(t.settings, { version: '1.4.259010' })).toEqual({ current: true })
+    await expect(orcad.apply(t.settings, { version: '1.4.258001' })).rejects.toThrow(
+      /from 1\.4\.259010 to 1\.4\.258001/
+    )
+    expect(await orcad.apply(t.settings, { version: '1.4.261002' })).toMatchObject({
+      job: { fromVersion: '1.4.259010', targetVersion: '1.4.261002' }
+    })
+    await settled(orcad, t.settings)
+    // A desktop on the same release leaves buildVersion out.
+    expect((await createForkServerUpdater(t.deps).status(t.settings)).buildVersion).toBeUndefined()
+  })
+
+  it('falls back to the release version when no install is resolved', async () => {
+    const t = setup()
+    const updater = createForkServerUpdater({
+      ...t.deps,
+      homeDir: join(root, 'elsewhere'),
+      version: () => '0.1.0+081afb112818',
+      releaseVersion: () => '1.4.262001'
+    })
+    expect(await updater.status(t.settings)).toMatchObject({
+      version: '1.4.262001',
+      buildVersion: '0.1.0+081afb112818',
+      install: null
+    })
+  })
+
   it('rolls back to the kept version, which a later rollback can undo', async () => {
     const t = setup()
     const updater = createForkServerUpdater(t.deps)
