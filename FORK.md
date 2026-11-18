@@ -1262,6 +1262,50 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/snooze*.ts`, `src/main/fork/snooze/`,
     `src/main/runtime/rpc/methods/fork/fork-snooze.ts`, `src/preload/fork/snooze-bridge.ts`,
     `src/renderer/src/fork/snooze/` and `src/cli/fork/snooze-*`.
+- **Best of N (SLRM-2393).** Send one task to 2 to 4 agents, each in its own new worktree, then
+  compare the attempts side by side and keep one. Ideas from Codex cloud `--attempts`, Cursor's
+  best-of-n and Crystal. The settings are in Settings > Blackfish > Agents and workers, "Best of
+  N".
+  - Start: `orca best-of <n> (--prompt <text> | --prompt-file <path|->) [--agents
+    agent[:model[:effort]],...] [--on auto|here|<server>,...] [--repo <selector>]
+    [--base-branch <ref>]`, run from an Orca terminal or chat. Each attempt is a stock supervised
+    orchestration worker (`orchestration.workerStart`, `--worktree new-top-level`, named
+    `best-of-<tag>-<n>`), kept open, and all attempts share one Run: the first start makes or
+    joins the caller's Run and the rest join it in parallel. `--agents` and `--on` are lists
+    cycled over the attempts; `auto` asks auto placement (SLRM-2266) for a machine per attempt
+    and needs `--repo`, `here` is this machine, anything else is a paired server as worker-start
+    `--on` takes it. A start that fails is recorded with its error and the others carry on.
+  - Each attempt's prompt is the task plus the attempt note (`forkBestOfAttemptNote`, unset is the
+    built-in note), which asks it to work only in its worktree, run the tests and checks that
+    apply, commit (not push) and end its report with `Tests:` and `Checks:` lines. The note is a
+    runs-command setting: `orca settings` refuses to write it, as it becomes part of every
+    attempt's prompt.
+  - Compare: "Best of N" in the command palette opens a dialog with one column per attempt: agent
+    and model, host, task state, the committed diff against the worktree's create base (files and
+    +/- per file, from the owning host's stock `git.branchCompare`) and its uncommitted file
+    count (`git.status`), tests and checks as the report states them, the cost (the usage ledger's
+    workspace row; native Claude chats on this machine only, else "not counted") and the report
+    itself. Open activates the attempt's workspace and opens its committed changes in the stock
+    combined diff. `orca best-of list` and `orca best-of show <id>` print the same.
+  - Pick: "Keep this one" (or `orca best-of pick <id> --attempt <n> [--losers
+    archive|remove|keep]`) keeps the winner and, per `forkBestOfLoserAction` (unset is
+    `archive`), archives the other worktrees through the stock `worktree.archive` (checkout
+    deleted, branch and workspace row kept), removes them through `worktree.rm` (branch kept), or
+    leaves them. Each call goes to the host that owns the worktree; nothing is forced, so a
+    worktree with uncommitted changes stays and its column says why. A run is picked once.
+  - Runs live in `fork-best-of.json` in userData (owner-only); `forkBestOfHistory` (20) runs are
+    kept, and "Forget this run" drops one without touching its worktrees. `forkBestOf` (unset is
+    on) refuses new runs when off; `forkBestOfAgents` (`claude`) and `forkBestOfPlacement`
+    (`auto`) are the defaults for `--agents` and `--on`.
+  - RPC on this machine: `fork.bestOf.record`, `.list`, `.show` (each attempt's worker, task
+    report and cost, from the orchestration database and the usage ledger; a worker on a paired
+    server is read from its federated record), `.settle` and `.forget`. `.record` refuses a
+    worker that is already an attempt of a run, so a pick only reaches the run's own workers.
+    None of them starts,
+    stops or removes anything; the CLI and the window do that over the stock methods.
+  - Code is in `src/shared/fork/best-of/`, `src/main/fork/best-of/`,
+    `src/main/runtime/rpc/methods/fork/fork-best-of.ts`, `src/renderer/src/fork/best-of/` and
+    `src/cli/fork/best-of-*`.
 
 - **Agents on the iPhone Lock Screen (SLRM-2387).** The iOS app shows running agents from every
   paired server as one Live Activity (Lock Screen and Dynamic Island, ActivityKit) and in an
@@ -1555,6 +1599,7 @@ Apply these in this order. Each one is a single commit.
 107. `SLRM-2390 Row status: spend, context, pull request checks and a fix button on agent rows`
 108. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
      Follow-up: an inbox answer to a guard-paused agent lifts the pause only once the send is taken.
+103. `SLRM-2393 Best of N: one task to 2 to 4 agents in their own worktrees, compared and picked`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2342,6 +2387,17 @@ Upstream files only get short hooks, which keeps rebases small:
     `card-identity-parts.tsx`), so it adds no upstream line of its own. The settings are in
     `src/shared/fork/fork-global-settings.ts`, `settings-rows-fork.generated.ts` is regenerated,
     and the card is in the fork's Settings pane.
+- Best of N (SLRM-2393), from `src/shared/fork/best-of/`, `src/main/fork/best-of/`,
+  `src/cli/fork/best-of-*.ts` and `src/renderer/src/fork/best-of/`:
+  - `rpc-method-registry.ts` spreads `FORK_BEST_OF_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-best-of.ts`); `rpc-params-catalog.generated.ts` is
+    regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_BEST_OF_COMMAND_SPECS`, `fork-handler-groups.ts` adds the
+    `fork-best-of` group and `cli-command-names.ts` lists `best-of`.
+  - `quick-actions.ts` spreads `getForkBestOfQuickActions()`; `ForkRootHosts.tsx` mounts
+    `ForkBestOfHost`; the card is in the fork's Settings pane (reusing the snooze card's
+    `CommandSetting`, now exported), and `forkBestOfAttemptNote` is a runs-command key in
+    `settings-access.ts`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

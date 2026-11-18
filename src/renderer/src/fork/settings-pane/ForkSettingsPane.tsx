@@ -33,6 +33,7 @@ import { ForkLostWorkSettings } from '../lost-work/ForkLostWorkSettings'
 import { ForkSyncNoticeSetting } from '../sync-status/ForkSyncNoticeSetting'
 import { ForkAutoPlacementSetting } from '../auto-placement/ForkAutoPlacementSetting'
 import { ForkBatchStartSetting } from '../batch-start/ForkBatchStartSetting'
+import { ForkBestOfSetting } from '../best-of/ForkBestOfSetting'
 import { ForkEndpointFailoverSetting } from '../endpoint-failover/ForkEndpointFailoverSetting'
 import { ForkWorktreeMoveSettings } from '../worktree-move/ForkWorktreeMoveSettings'
 import { ForkApfsCloneSetting } from '../apfs-clone/ForkApfsCloneSetting'
@@ -88,6 +89,7 @@ const SECTION_CARDS: Record<
     ['idle-recovery', ForkIdleRecoverySetting],
     ['pr-babysit', ForkPrBabysitSetting]
     ['agent-guards', ForkAgentGuardsSetting]
+    ['best-of', ForkBestOfSetting]
   ],
   usage: [
     ['account-chip', ForkAccountChipSetting],
