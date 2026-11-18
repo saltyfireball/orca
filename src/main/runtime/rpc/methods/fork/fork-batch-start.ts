@@ -23,6 +23,8 @@ import {
 import { launchAgentOnHost } from '../agent-launch/agent-launch'
 import { agentLaunchFeatureRequirement } from '../../startup/agent-launch-feature-requirement'
 import { forkPlacementDeps } from './fork-auto-placement'
+import { forkServerSetupRunDeps } from './fork-server-setup'
+import { runForkServerSetupOnEnvironment } from '../../../../fork/server-setup/server-setup-run'
 
 /** A new chat's first start reaches the queue gate just after its launch returns. */
 const QUEUE_STATUS_WAIT_MS = 1_500
@@ -44,7 +46,17 @@ function shortHostname(): string {
 
 function batchStartDeps(ctx: RpcContext): ForkBatchStartDeps {
   return {
-    pick: (hosts, project) => pickForkPlacementOnHosts(forkPlacementDeps(ctx), { hosts, project }),
+    pick: (hosts, project, setupMissing) =>
+      pickForkPlacementOnHosts(forkPlacementDeps(ctx), {
+        hosts,
+        project,
+        ...(setupMissing ? { setupMissing: true } : {})
+      }),
+    setUp: (environmentId, projectId) =>
+      runForkServerSetupOnEnvironment(forkServerSetupRunDeps(ctx), {
+        environmentId,
+        project: projectId
+      }),
     readySetupHosts: (projectId) => forkBatchReadySetupHosts(setups(ctx), projectId),
     localRepo: (project) =>
       forkBatchLocalSetupRepo(ctx.runtime.listProjects(), setups(ctx), project),

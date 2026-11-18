@@ -1196,8 +1196,15 @@ named Orca Fork until SLRM-1367. `main` is always
   - Worktree names are the prompt's first words, the agent and a random tail; the display name is
     the prompt's first line. Folder (non-git) projects and folder workspaces are not offered.
   - Settings > Blackfish > Agents and workers, Batch start: `forkBatchStart` (show the switch, on),
-    `forkBatchStartKeepOpen` (on) and `forkBatchStartAutoHost` (on). The phone reads its paired
-    host's values.
+    `forkBatchStartKeepOpen` (on), `forkBatchStartAutoHost` (on) and `forkBatchStartSetupMissing`
+    (off, SLRM-2406). The phone reads its paired host's values.
+  - With `forkBatchStartSetupMissing` on, Auto machine asks the pick with `setupMissing`, as
+    `--host auto --setup-missing` does (SLRM-2406): a paired server that lacks the project but can
+    clone it ranks with the others. When one is picked, the desktop sets it up first through
+    `fork.serverSetup.run` (clone, register, readiness), then forwards the batch; the answer's
+    `setupNote` leads the acknowledgement ("Set up on SERVER: cloned into PATH. Missing: ...").
+    A failed setup starts nothing. Clients wait the clone and readiness time on top of the batch
+    wait when they ask for it.
   - Not covered: a picked server running stock Orca or an older Blackfish refuses (turn Auto
     machine off to use the run target); the stock form's linked items, base branch, setup choice
     and attachments do not apply to batch prompts.
@@ -1233,11 +1240,20 @@ named Orca Fork until SLRM-1367. `main` is always
   - Settings > Blackfish > Projects, Set up on a server: offer the picker rows
     (`forkServerSetupOffer`, on by default), the folder to clone into (`forkServerSetupParent`,
     default `~/development`) and the readiness check (`forkServerSetupReadiness`, on by default).
-  - **Not covered yet:** the mobile new-workspace sheet (its run-target list shows only hosts that
-    already have the project, with no stock set-up rows to extend); batch start's Auto machine
-    (SLRM-2395) still picks only among machines with a ready setup, as it never asks for
-    `setupMissing`; a server too old to answer
-    `fork.serverSetup.plan` gets a message to update it or use Set project location.
+  - Phone (SLRM-2406): the new-workspace sheet's Run on list adds "Set up on SERVER..." rows after
+    its run targets, one per paired server the phone reaches whose own repo list has answered
+    without the project, when the paired host's `forkServerSetupOffer` is on and the project's
+    remote passes the URL check. Picking one runs the same flow with typed mobile operations:
+    `fork.serverSetup.plan` on the server (through the desktop relay), `fork.serverSetup.run` on
+    the paired desktop with `skipReadiness` (it clones and registers over its own link), then
+    `fork.serverSetup.readiness` on the server when `forkServerSetupReadiness` is on. A "Set up on
+    a server" group under Project and Run on shows each stage, the outcome line and any failure in
+    red text (no Alert, which does nothing in the web session); once the server's list shows the
+    new repo, it is picked as the run target.
+  - Batch start's Auto machine can set a server up first too; see Batch start (SLRM-2406).
+  - **Not covered yet:** a server too old to answer `fork.serverSetup.plan` gets a message to
+    update it or use Set project location; a paired desktop too old for the phone's run call gets
+    a message to update it.
 - **Fast new worktrees on macOS (SLRM-2270).** APFS copy-on-write clones for new local worktrees
   (Settings > Blackfish > Projects, "Fast new worktrees (macOS)"). Idea from T3 Code's "Fast
   worktree checkout" (MIT). Other systems, WSL and other volumes create worktrees as before.
@@ -1717,6 +1733,7 @@ Apply these in this order. Each one is a single commit.
 113. `SLRM-2391 Chat handoff: hand a chat from Claude to Codex or back with a budgeted history`
 114. `SLRM-2396 Review guides: an agent-written tour of a pull request in a Guide tab, on the phone and in orca review-guide`
 115. `SLRM-2387 Agents on the iPhone Lock Screen: a Live Activity and an Agents widget`
+116. `SLRM-2406 Set up on a server from the phone and from batch start's Auto machine`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2422,6 +2439,12 @@ Upstream files only get short hooks, which keeps rebases small:
   - The auto placement files carry `--setup-missing`: `withForkAutoPlacementNotes` also adds the
     flag to `worktree create`'s allowed flags, and `fork.placement.load` and `.pick` take
     `setupMissing`.
+  - Phone (SLRM-2406), from `mobile/src/components/fork/server-setup/`: `NewWorktreeModal.tsx` calls
+    `useMobileForkServerRefresh` and `useMobileForkServerSetup`, appends its rows to the run-target
+    items and renders its status before the batch toggle in the `forkBatchToggle` slot;
+    `NewWorktreeModalDrawers.tsx` takes the rows in its run-target items and sends a picked one to
+    `onForkServerSetup`; `use-new-workspace-repositories.ts` takes `serverGeneration` (passed to
+    `useServerRepos`) and returns `serverRepos`.
   - The three settings are in `src/shared/fork/fork-global-settings.ts` and
     `settings-rows-fork.generated.ts` is regenerated; the card is in the fork's Settings pane.
 
@@ -2506,6 +2529,8 @@ Upstream files only get short hooks, which keeps rebases small:
     card stays mounted, hidden), and skips its Cmd+Enter handler then.
   - Mobile: `NewWorktreeModal.tsx` calls `useMobileForkBatchStart`; `NewWorktreeFormSheet.tsx`
     takes `forkBatchToggle` and `forkBatchBody` and shows the body in place of the form.
+  - SLRM-2406: `fork-batch-start.ts` sets a picked server up through `forkServerSetupRunDeps`
+    (exported from `fork-server-setup.ts`) and `runForkServerSetupOnEnvironment`.
   - The settings are in `src/shared/fork/fork-global-settings.ts` and
     `settings-rows-fork.generated.ts` is regenerated; the card is in the fork's Settings pane.
 - Best of N (SLRM-2393), from `src/shared/fork/best-of/`, `src/main/fork/best-of/`,

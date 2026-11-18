@@ -14,6 +14,16 @@ describe('forkBatchRoute', () => {
     })
   })
 
+  it('asks auto to set a server up only when the setting is on (SLRM-2406)', () => {
+    expect(forkBatchRoute(target, true, 'p', ['claude'], true).request).toMatchObject({
+      placement: 'auto',
+      setupMissing: true
+    })
+    expect(
+      forkBatchRoute({ ...target, hostId: 'runtime:env-1' }, false, 'p', ['claude'], true).request
+    ).not.toHaveProperty('setupMissing')
+  })
+
   it('sends a paired server run target to that server, by repo', () => {
     expect(forkBatchRoute({ ...target, hostId: 'runtime:env-1' }, false, 'p', ['codex'])).toEqual({
       runtime: { kind: 'environment', environmentId: 'env-1' },

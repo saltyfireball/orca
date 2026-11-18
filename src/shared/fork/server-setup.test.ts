@@ -3,14 +3,57 @@ import {
   checkForkCloneUrl,
   checkForkSetupParent,
   describeForkServerSetupReadiness,
+  forkCloneUrlFromRepos,
   forkDirenvDefinesUse,
   forkEnvrcReadiness,
   forkProjectCloneUrl,
   forkServerSetupOffered,
   forkServerSetupParent,
   forkServerSetupReadinessOn,
-  parseForkEnvrcUses
+  parseForkEnvrcUses,
+  readForkServerSetupSettingsFrom
 } from './server-setup'
+import { describeForkServerSetupRun, ForkServerSetupRunResultSchema } from './server-setup-wire'
+
+describe('phone helpers (SLRM-2406)', () => {
+  it('reads only well-typed settings from an RPC answer', () => {
+    expect(readForkServerSetupSettingsFrom(null)).toEqual({})
+    expect(
+      readForkServerSetupSettingsFrom({
+        forkServerSetupOffer: false,
+        forkServerSetupParent: '/srv',
+        forkServerSetupReadiness: 'no'
+      })
+    ).toEqual({ forkServerSetupOffer: false, forkServerSetupParent: '/srv' })
+  })
+
+  it('takes the first remote among repos, credentials removed', () => {
+    const remote = (remoteUrl: string) => ({
+      gitRemoteIdentity: { canonicalKey: 'k', remoteName: 'origin', remoteUrl }
+    })
+    expect(forkCloneUrlFromRepos([{}, remote('https://user:pw@github.com/o/r.git')])).toBe(
+      'https://github.com/o/r.git'
+    )
+    expect(forkCloneUrlFromRepos([{ gitRemoteIdentity: null }])).toBe('')
+  })
+
+  it('describes a finished run and parses it on the wire', () => {
+    const run = {
+      hostKey: 'runtime:e',
+      serverName: 'kif',
+      cloned: true,
+      clonePath: '/home/k/development/r',
+      readiness: { missing: [], notes: [] }
+    }
+    expect(ForkServerSetupRunResultSchema.parse(run)).toEqual(run)
+    expect(describeForkServerSetupRun(run)).toBe(
+      'Set up on kif: cloned into /home/k/development/r. Nothing the project needs is missing.'
+    )
+    expect(describeForkServerSetupRun({ ...run, cloned: false, readiness: null })).toBe(
+      'kif already had the project.'
+    )
+  })
+})
 
 describe('checkForkCloneUrl', () => {
   it.each([
