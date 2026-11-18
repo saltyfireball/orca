@@ -3,6 +3,7 @@
 import type { ProfilePreferences } from '../persistence/loading-store/profile-preferences/profile-preferences'
 import { installForkChatSurvive } from './chat-survive/chat-survive-setting'
 import { watchForkUsageRetention } from './usage-ledger/usage-ledger-service'
+import { installForkVisualFallbackSettings } from './visual-image/visual-image-settings'
 
 export { forkPostReadyAppName } from './app-name'
 
@@ -14,5 +15,6 @@ export async function installForkReady(
   store: Pick<ProfilePreferences, 'getSettings' | 'onSettingsChanged'>
 ): Promise<void> {
   watchForkUsageRetention(store)
+  installForkVisualFallbackSettings(store)
   await installForkChatSurvive(store)
 }

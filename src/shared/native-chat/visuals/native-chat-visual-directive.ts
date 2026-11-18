@@ -2,6 +2,11 @@
 // with up to three leading spaces/trailing horizontal whitespace or CR. Attributes use lowercase keys and unescaped quoted values
 // (no quote/backslash/control characters). file is required; title optional; reject duplicate keys, ignore unknown keys for newer agents.
 
+import {
+  forkIsVisualImageFileName,
+  forkUnquotedVisualAttribute
+} from '../../fork/visual-image-fallback'
+
 export const NATIVE_CHAT_VISUAL_DIRECTIVE_MARKER = '::orca-visual{'
 
 /** Longest line the grammar considers. Bounds parsing and the streaming-tail check. */
@@ -32,7 +37,7 @@ export function isNativeChatVisualFileName(name: string): boolean {
   if (
     name.length === 0 ||
     name.length > NATIVE_CHAT_VISUAL_FILE_MAX_LENGTH ||
-    !FILE_NAME_PATTERN.test(name) ||
+    !(FILE_NAME_PATTERN.test(name) || forkIsVisualImageFileName(name)) ||
     name.includes('..')
   ) {
     return false
@@ -70,7 +75,7 @@ function parseAttributes(body: string): Map<string, string> | null {
   const attributes = new Map<string, string>()
   let rest = body.replace(LINE_SPACE, '')
   while (rest.length > 0) {
-    const match = ATTRIBUTE_PATTERN.exec(rest)
+    const match = ATTRIBUTE_PATTERN.exec(rest) ?? forkUnquotedVisualAttribute(rest)
     if (!match) {
       return null
     }
