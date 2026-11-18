@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { homedir } from 'node:os'
 import { runProcess } from '@orca/process-host'
 import { getAppEnvironment } from '../../../shared/app-lifecycle/app-environment'
+import { pickForkReleaseVersion } from '../../../shared/fork/server-update'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { getCanonicalUserDataPath } from '../../persistence/loading-store/user-data-path'
 import { listBusyChats } from '../restart-guard/busy-chats'
@@ -27,6 +28,13 @@ export function countForkBusyTurns(): number {
   ).length
 }
 
+/** This process's release version (orcad's own version is a build string; see the picker). */
+export function forkRunningReleaseVersion(
+  hostVersion: string = getAppEnvironment().getVersion()
+): string {
+  return pickForkReleaseVersion(hostVersion, process.env.ORCA_APP_VERSION)
+}
+
 const run: ForkRun = async (program, args) => {
   const result = await runProcess({
     program,
@@ -46,6 +54,7 @@ export function liveForkServerUpdater(): ForkServerUpdater {
   updater ??= createForkServerUpdater({
     userDataPath: getCanonicalUserDataPath,
     version: () => getAppEnvironment().getVersion(),
+    releaseVersion: () => forkRunningReleaseVersion(),
     platform: process.platform,
     arch: process.arch,
     homeDir: homedir(),
