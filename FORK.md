@@ -1148,6 +1148,33 @@ named Orca Fork until SLRM-1367. `main` is always
   - **Not covered yet:** the mobile new-workspace sheet (its run-target list shows only hosts that
     already have the project, with no stock set-up rows to extend); a server too old to answer
     `fork.serverSetup.plan` gets a message to update it or use Set project location.
+- **Batch start (SLRM-2395).** Send prompt after prompt from the new-workspace composer, on the
+  desktop and the phone; each prompt becomes one worktree plus agent per chosen model. Ideas from
+  Conductor's "create more" switch and T3 Code's start-in-the-background and multi-model pick.
+  - A Batch switch under the composer's title (desktop) or under Project and Run target (phone)
+    swaps the single-workspace form for the batch box: project, prompt, models (multi-select, at
+    most 6, one task each), Auto machine and Keep open. The composer's own project and run target
+    are reused; switching Batch off brings the stock form back as it was.
+  - Each prompt goes to `fork.batchStart.start`. With Auto machine on, the desktop (or the phone's
+    paired desktop) ranks itself and its paired servers as `--host auto` does (SLRM-2266) and runs
+    the batch there; a picked server gets the batch forwarded and resolves the project against its
+    own setups. Off, the composer's run target takes it (a paired server over its own RPC). Every
+    model starts through `agent.launch` with a new worktree, so the agent launch queue (SLRM-2098)
+    gates it like any launch.
+  - A prompt is acknowledged before the box clears: the answer names the machine and each
+    worktree, with its queue place when it waits. Anything that failed stays in the box with the
+    failed models still picked, so sending again starts no duplicates. Started prompts are listed
+    under the box.
+  - Start follows Keep open (clear for the next prompt, or close the composer once acknowledged);
+    Cmd+Enter (Ctrl+Enter elsewhere) always starts in the background and leaves a fresh draft.
+  - Worktree names are the prompt's first words, the agent and a random tail; the display name is
+    the prompt's first line. Folder (non-git) projects and folder workspaces are not offered.
+  - Settings > Blackfish > Agents and workers, Batch start: `forkBatchStart` (show the switch, on),
+    `forkBatchStartKeepOpen` (on) and `forkBatchStartAutoHost` (on). The phone reads its paired
+    host's values.
+  - Not covered: a picked server running stock Orca or an older Blackfish refuses (turn Auto
+    machine off to use the run target); the stock form's linked items, base branch, setup choice
+    and attachments do not apply to batch prompts.
 - **Fast new worktrees on macOS (SLRM-2270).** APFS copy-on-write clones for new local worktrees
   (Settings > Blackfish > Projects, "Fast new worktrees (macOS)"). Idea from T3 Code's "Fast
   worktree checkout" (MIT). Other systems, WSL and other volumes create worktrees as before.
@@ -1404,6 +1431,7 @@ Apply these in this order. Each one is a single commit.
 103. `SLRM-2386 PR babysitter: send a pull request's chat fix requests when CI fails, merge on green when allowed`
 103. `SLRM-2383 Worktree ports: a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1`
 103. `SLRM-2312 Set up on a server: clone a project onto a paired server that lacks it from the host picker or --setup-missing`
+103. `SLRM-2395 Batch start: a prompt per worktree and model from the composer, placed with auto placement`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2103,6 +2131,19 @@ Upstream files only get short hooks, which keeps rebases small:
     regenerated.
   - `config/main-sync-fs-baseline.txt` allows `worktree-port-registry.ts` its one synchronous
     read of the file, at first use (terminal env is built synchronously); writes are async.
+- Batch start (SLRM-2395), from `src/shared/fork/batch-start.ts`,
+  `src/shared/fork/use-fork-batch-start.ts`, `src/main/fork/batch-start/`,
+  `src/renderer/src/fork/batch-start/` and `mobile/src/components/fork/batch-start/`:
+  - `rpc-method-registry.ts` spreads `FORK_BATCH_START_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-batch-start.ts`); `rpc-params-catalog.generated.ts` is
+    regenerated with it. `fork-auto-placement.ts` exports `forkPlacementDeps` for its pick.
+  - `NewWorkspaceComposerModal.tsx` calls `useForkBatchStartMode`, renders
+    `ForkBatchStartModeSwitch` under the title and `ForkBatchStartBox` while it is on (the stock
+    card stays mounted, hidden), and skips its Cmd+Enter handler then.
+  - Mobile: `NewWorktreeModal.tsx` calls `useMobileForkBatchStart`; `NewWorktreeFormSheet.tsx`
+    takes `forkBatchToggle` and `forkBatchBody` and shows the body in place of the form.
+  - The settings are in `src/shared/fork/fork-global-settings.ts` and
+    `settings-rows-fork.generated.ts` is regenerated; the card is in the fork's Settings pane.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
