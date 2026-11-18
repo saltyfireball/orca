@@ -138,6 +138,8 @@ export const FORK_SETTINGS_ROWS_FORK_MORE = {
     '{"t":{"k":"number"},"d":"Sync status: days without a new status before it is called stale; unset is 3, 0 is off.","o":true}',
   forkUnattendedResume:
     '{"t":{"k":"boolean"},"d":"Workers and automation runs a restart cut carry on by themselves; unset is on.","o":true}',
+  forkUnattendedResumeInteractive:
+    '{"t":{"k":"boolean"},"d":"Interactive chats a restart cut carry on by themselves too; unset follows forkChatSurvive.","o":true}',
   forkUnattendedResumeMaxTries:
     '{"t":{"k":"number"},"d":"Automatic continuations of one chat in a row; unset is 3.","o":true}',
   forkUsageCardPattern:

@@ -82,6 +82,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkUnattendedResume?: boolean
     /** Fork (SLRM-2268): automatic continuations of one chat in a row; unset is 3. */
     forkUnattendedResumeMaxTries?: number
+    /** Fork (SLRM-2411): interactive chats a restart cut carry on by themselves too; unset follows forkChatSurvive. */
+    forkUnattendedResumeInteractive?: boolean
     /** Fork (SLRM-2309): chats and terminal agents stopped on a usage limit resume at the reset; unset is on. */
     forkLimitResume?: boolean
     /** Fork (SLRM-2309): also read Claude Code and Codex terminal agents for limit stops; unset is on. */

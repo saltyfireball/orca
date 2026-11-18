@@ -55,7 +55,9 @@ const AGENT_LIMITS: SettingsKey[] = [
   'forkLettersWindowMinutes',
   'forkLettersLoopEach',
   'forkLettersFromPaired',
-  'forkBoardMaxOpenPerChat'
+  'forkBoardMaxOpenPerChat',
+  // SLRM-2411: continuing a person's own chats after a restart answers the restart offer for them.
+  'forkUnattendedResumeInteractive'
 ]
 
 const ACCOUNTS: SettingsKey[] = [
