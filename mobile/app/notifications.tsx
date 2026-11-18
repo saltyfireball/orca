@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import NotificationsScreen from '../src/settings/notification-settings-screen'
 import { nativeNotificationSettingsOperations } from '../src/settings/native-notification-settings-operations'
 import { useMobileTranslation } from '../src/i18n/use-mobile-translation'
+import { ForkLiveActivitySettings } from '../src/components/fork/live-activity/ForkLiveActivitySettings'
 
 export default function NativeNotificationsRoute() {
   const t = useMobileTranslation()
@@ -21,6 +22,7 @@ export default function NativeNotificationsRoute() {
         <>
           <NativeNotificationDeliverySettings enabled={enabled} />
           <NotificationDisplayTest onTroubleshoot={() => router.push('/troubleshoot')} />
+          <ForkLiveActivitySettings />
         </>
       )}
     </NotificationsScreen>
