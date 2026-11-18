@@ -9,6 +9,7 @@ import {
   ForkCacheColdCue,
   useForkComposerHandleRef
 } from '../../../fork/cache-cold/ForkCacheColdCue'
+import { ForkBoardTray } from '../../../fork/letters/ForkBoardTray'
 
 export const NativeChatComposer = forwardRef<NativeChatComposerHandle, NativeChatComposerProps>(
   function NativeChatComposer(props, ref): React.JSX.Element {
@@ -19,6 +20,8 @@ export const NativeChatComposer = forwardRef<NativeChatComposerHandle, NativeCha
         key={props.paneKey}
         enabled={Boolean(props.structuredTransport)}
       >
+        {/* Fork (SLRM-2389): this chat's open asks on the board, above the message box. */}
+        <ForkBoardTray sessionId={props.structuredTransport?.sessionId} />
         <ForkCacheColdCue composer={props} handle={handle} />
         <NativeChatComposerPane {...props} ref={paneRef} />
       </NativeChatTextAttachmentScope>
