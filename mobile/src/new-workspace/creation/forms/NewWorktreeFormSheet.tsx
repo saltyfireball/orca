@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Text, View } from 'react-native'
 import { FolderGit2 } from 'lucide-react-native'
 import { useMobileTranslation } from '../../../i18n/use-mobile-translation'
@@ -68,6 +69,9 @@ export function NewWorktreeFormSheet(props: {
   onRunSetupChange: (run: boolean) => void
   onWaitForSetupChange: (wait: boolean) => void
   onCreate: () => void
+  /** Fork (SLRM-2395): the Batch switch, and the batch box that replaces the form while on. */
+  forkBatchToggle?: ReactNode
+  forkBatchBody?: ReactNode
 }) {
   useMobileColorScheme()
   const t = useMobileTranslation()
@@ -108,6 +112,18 @@ export function NewWorktreeFormSheet(props: {
           icon={FolderGit2}
           title={t('components.newWorktreeFormSheet.noProjectsFound', 'No projects found')}
         />
+      ) : props.forkBatchBody ? (
+        <>
+          <NewWorktreeProjectTargetFields
+            project={props.project}
+            runTarget={props.runTarget}
+            projectBadgeColor={props.projectBadgeColor}
+            onOpenProject={props.onOpenProject}
+            onOpenRunTarget={props.onOpenRunTarget}
+          />
+          {props.forkBatchToggle}
+          {props.forkBatchBody}
+        </>
       ) : (
         <>
           <NewWorktreeProjectTargetFields
@@ -117,6 +133,7 @@ export function NewWorktreeFormSheet(props: {
             onOpenProject={props.onOpenProject}
             onOpenRunTarget={props.onOpenRunTarget}
           />
+          {props.forkBatchToggle}
 
           {props.selectedRepoConnectionId ? (
             <NewWorkspaceSshConnectionField
