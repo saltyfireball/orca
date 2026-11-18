@@ -5,7 +5,10 @@ import { toast } from 'sonner'
 import { translate } from '@/i18n/i18n'
 import { callRuntimeRpc } from '@/runtime/rpc/calls/runtime-rpc-call'
 import { chatHandoffAgentLabel, type ChatHandoffAgent } from '../../../../shared/fork/chat-handoff'
-import type { ChatHandoffResult } from '../../../../shared/fork/chat-handoff-wire'
+import type {
+  ChatHandoffResult,
+  ChatHandoffStarted
+} from '../../../../shared/fork/chat-handoff-wire'
 import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 
 /** Reading a long chat and starting the other agent can take a while on a busy host. */
@@ -13,7 +16,7 @@ const HANDOFF_TIMEOUT_MS = 2 * 60_000
 
 export type ChatHandoffAsk = { sessionId: string; to: ChatHandoffAgent; stop?: boolean }
 
-function startedText(result: Extract<ChatHandoffResult, { status: 'started' }>): string {
+function startedText(result: ChatHandoffStarted): string {
   const agent = chatHandoffAgentLabel(result.agent)
   const base =
     result.mode === 'continue'
