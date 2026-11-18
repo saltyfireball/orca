@@ -4,7 +4,7 @@
 // the same unit names), plus one for the unit's slice, reloads the user manager and applies the
 // memory values at once. It never edits the unit itself, never restarts it, and never runs a root
 // step: those (protection up the slice tree, tailscaled and sshd) are printed for the user.
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { RuntimeClientError } from '../runtime/connection/types'
 import {
@@ -24,7 +24,19 @@ import {
 
 export { readServeProtectStatus } from './serve-protect-systemd'
 
+/** A symlink is never ours: protect writes plain files only. */
+function isLink(path: string): boolean {
+  try {
+    return lstatSync(path).isSymbolicLink()
+  } catch {
+    return false
+  }
+}
+
 function writeOurs(path: string, content: string): void {
+  if (isLink(path)) {
+    throw new RuntimeClientError('conflict', `${path} is a symlink; move it away first.`)
+  }
   if (existsSync(path) && !readFileSync(path, 'utf8').startsWith(SERVE_PROTECT_MARKER)) {
     throw new RuntimeClientError(
       'conflict',
@@ -36,7 +48,12 @@ function writeOurs(path: string, content: string): void {
 }
 
 function removeOurs(path: string | null): boolean {
-  if (!path || !existsSync(path) || !readFileSync(path, 'utf8').startsWith(SERVE_PROTECT_MARKER)) {
+  if (
+    !path ||
+    isLink(path) ||
+    !existsSync(path) ||
+    !readFileSync(path, 'utf8').startsWith(SERVE_PROTECT_MARKER)
+  ) {
     return false
   }
   rmSync(path, { force: true })
