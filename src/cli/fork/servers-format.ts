@@ -1,10 +1,11 @@
 // Server updates (FORK.md, SLRM-2310): text for `orca servers`. Strings from a server are passed
 // through `clean` first, so a server cannot write control sequences to this terminal.
-import type {
-  ForkServerRow,
-  ForkServersListResult,
-  ForkServersRunResult,
-  ForkServersRunRow
+import {
+  FORK_SSH_MANAGED_MESSAGE,
+  type ForkServerRow,
+  type ForkServersListResult,
+  type ForkServersRunResult,
+  type ForkServersRunRow
 } from '../../shared/fork/server-update-wire'
 
 export function clean(text: string | undefined | null): string {
@@ -32,6 +33,9 @@ function serverState(row: ForkServerRow): string {
     return 'no server updates (update it once by hand)'
   }
   const status = row.status
+  if (row.sshManaged) {
+    return FORK_SSH_MANAGED_MESSAGE
+  }
   if (!status.install) {
     return clean(status.problem) || 'cannot update here'
   }
@@ -55,10 +59,11 @@ export function formatServersList(result: ForkServersListResult): string {
     return 'No paired servers.'
   }
   const rows = [
-    ['NAME', 'VERSION', 'STATE', 'KIND', 'ROLLBACK'],
+    ['NAME', 'VERSION', 'BUILD', 'STATE', 'KIND', 'ROLLBACK'],
     ...result.servers.map((row) => [
       clean(row.name),
       clean(row.status?.version) || '-',
+      clean(row.status?.buildVersion) || '-',
       serverState(row),
       row.status?.install
         ? `${row.status.install.kind} (${clean(row.status.install.service)})`

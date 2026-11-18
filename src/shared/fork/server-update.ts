@@ -136,6 +136,19 @@ export function isForkReleaseVersion(version: string): boolean {
 }
 
 /**
+ * A process's release version from its host's version and the release stamped into
+ * ORCA_APP_VERSION. The desktop's version is a release; orcad reports a build string
+ * (`0.1.0+<hash>`) and stamps its install's release at start-up, which is used instead.
+ */
+export function pickForkReleaseVersion(hostVersion: string, stamped: string | undefined): string {
+  if (isForkReleaseVersion(hostVersion)) {
+    return hostVersion
+  }
+  const release = stamped?.trim()
+  return release && isForkReleaseVersion(release) ? release : hostVersion
+}
+
+/**
  * Orders two versions by their leading three numbers; a version with a suffix (a local build)
  * sorts below the same numbers without one. Null when either has no leading three numbers.
  */
