@@ -53,7 +53,8 @@ function subscribe(listener: () => void): () => void {
   }
 }
 
-function useCacheState(sessionId: string | undefined): ForkCacheState | undefined {
+/** One chat's ledger state (context, spend), from the one shared subscription; SLRM-2390's rows read it too. */
+export function useCacheState(sessionId: string | undefined): ForkCacheState | undefined {
   return useSyncExternalStore(
     subscribe,
     () => (sessionId ? states.get(sessionId) : undefined),
