@@ -7,6 +7,14 @@ export const FORK_SETTINGS_ROWS_CHAT = {
     '{"t":{"k":"number"},"d":"Smallest context worth the cue, in tokens; unset is 50000.","o":true}',
   forkCacheWindowMinutes:
     '{"t":{"k":"number"},"d":"Minutes an idle prompt cache lives when usage does not say; unset is 5.","o":true}',
+  forkChatHandoff:
+    '{"t":{"k":"boolean"},"d":"Hand a native chat from Claude to Codex or back, from its tab menu and `orca chat handoff`; unset is on.","o":true}',
+  forkChatHandoffBudgetTokens:
+    '{"t":{"k":"number"},"d":"Tokens of history a handoff carries, charged one per UTF-8 byte (1024 to 64000); unset is 16000.","o":true}',
+  forkChatHandoffOnLimit:
+    '{"t":{"k":"enum","values":["auto","off","offer"]},"d":"When a chat stops on a usage limit: \'offer\' a handoff in a toast, \'auto\' hands it off at once, \'off\' does neither; unset is \'offer\'.","o":true}',
+  forkChatHandoffReuse:
+    '{"t":{"k":"boolean"},"d":"Handing back to the agent the work came from continues that chat while its context has room; unset is on.","o":true}',
   forkChatSleep:
     '{"t":{"k":"boolean"},"d":"Chat sleep: idle native chats give up their provider process. Off unless true.","o":true}',
   forkChatSleepIdleMinutes:
