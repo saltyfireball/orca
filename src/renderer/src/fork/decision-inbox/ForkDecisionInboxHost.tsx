@@ -26,7 +26,6 @@ import {
   useForkIdleRecoveryMode
 } from './decision-inbox-store'
 import { decisionInboxNow, decisionInboxSections } from './decision-inbox-view'
-import { useForkAgentGuardPausedCount } from '../agent-guards/agent-guards-store'
 import { ForkDecisionInboxRow, type DecisionInboxRowActions } from './ForkDecisionInboxRow'
 import {
   ForkDecisionInboxAsks,
@@ -144,10 +143,6 @@ export function ForkDecisionInboxHost(): React.JSX.Element | null {
   const mode = useForkIdleRecoveryMode()
   const board = useForkBoardEnabled()
   const isOpen = useForkDecisionInboxOpen()
-  const off = !useForkDecisionInboxOn()
-  // SLRM-2385: agents a guard paused keep the inbox open with idle recovery off.
-  const guardPaused = useForkAgentGuardPausedCount()
-  const off = mode === 'off' && guardPaused === 0
   const recovery = useForkDecisionInboxOn()
   // SLRM-2389: the board alone keeps the inbox on.
   const off = !recovery && !board

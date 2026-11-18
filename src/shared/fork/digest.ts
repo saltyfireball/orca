@@ -22,6 +22,8 @@ export type ForkDigestSettings = {
 
 export const FORK_DIGEST_LOCAL_METHOD = 'fork.digest.local'
 export const FORK_DIGEST_COLLECT_METHOD = 'fork.digest.collect'
+/** What a paired phone may call: the relaying desktop answers, and asks its own servers. */
+export const FORK_DIGEST_RPC_METHODS = [FORK_DIGEST_COLLECT_METHOD] as const
 export const FORK_DIGEST_DEFAULT_HOUR = 8
 /** Without a last digest, the window is the last day. */
 export const FORK_DIGEST_DEFAULT_WINDOW_MS = 24 * 60 * 60_000
