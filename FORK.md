@@ -1646,6 +1646,69 @@ named Orca Fork until SLRM-1367. `main` is always
     `mobile/modules/fork-live-activity/` (the `BlackfishLiveActivity` Expo module; `ios/shared`
     is compiled into the app and the extension, `widget/` only into the extension) and
     `mobile/plugins/fork/`.
+- **Small extras (SLRM-2397): approval triage, workspace tags with archive on merge, prompt stash,
+  saved prompts.** Four small features from ccdeck's approvals, roster hygiene and composer
+  shortcuts and T3 Code's prompt stash, each its own setting, built from stock styles only.
+  - Approval triage (`forkApprovalRisk`, off unless true). A native chat's own approval card and
+    each worker approval pinned in its coordinator's chat show a stock Badge, Low, Medium or High
+    risk, and the reason in a few words. The grade (`src/shared/fork/approval-risk*.ts`) reads the
+    card's title and the tool's input against the folder the agent works in (the chat's folder;
+    a worker's own workspace when the window knows it, else unknown). Low is only a plain chain of
+    known read-only programs on files inside that folder (`ls`, `cat`, `rg`, `git status`,
+    `git diff` and the like), a Read, Grep or Glob inside it, or an edit of an ordinary file in it.
+    High: git writes and fetches (push, commit, reset, checkout, config, remote and the rest),
+    every `gh` command that is not a view or list, deleting (`rm`), `sudo`, `ssh` and its family,
+    process control, nested shells and piping into one, `xargs`, `eval`, package publishing and
+    global installs, uploads with `curl`, a write outside the folder, anything touching
+    credentials, `.env`, `.ssh`, `.claude` or `.git/config` and hooks, a call asking to leave the
+    sandbox, an MCP tool whose name sends or changes something, and a command too long to read.
+    Medium is everything else, including the network, running code (tests, builds, interpreters,
+    package managers), reading outside the folder, and anything with expansion, redirection,
+    globs or characters it cannot read, any flag not on that program's allow-list
+    (`approval-risk-flags.ts`, exact names only, so `sort --out` and `grep -r` are medium), `cd`
+    with a flag, and a program named by a path outside the system bin folders. Any word naming a
+    credential, a flag's value or `HEAD:.env` too, is high. Paths are read as text: a symlink inside
+    the folder that points out of it still counts as inside, and git history (`git log -p`) counts
+    as the workspace's own files, so the grade is advice, not a sandbox. An unknown folder makes
+    every absolute path outside. A plan review, a sign-in page and a startup dialog are not graded.
+    On a high risk card Claude's "Allow for this session" is disabled, so a rule never covers a
+    high risk call.
+  - Allow low risk (`forkApprovalBulkAllowLow`, off unless true, needs the grade on). Over a
+    coordinator's pinned worker prompts, "N low risk approvals" with Allow low risk. The click
+    grades every prompt again from what it says then and allows only those still open, still
+    offering Allow and still low; medium and high stay one at a time. Both keys are agent-limit
+    keys: `orca settings` refuses to write them.
+  - Workspace tags (`forkWorkspaceTagsEnabled`, unset is on). "Tags..." in the workspace menu
+    sets up to 8 short words (`forkWorkspaceTags`, keyed by workspace id and host). A card shows
+    two after its title as stock reference-label badges and +N for the rest. A click on a tag
+    shows only its workspaces, a second hides them, a third clears the filter
+    (`forkWorkspaceTagFilter`); a line over the list says "Only x" or "Hiding x" with Clear.
+  - Archive on merge (`forkArchiveOnMerge`, off unless true; an agent-limit key). A workspace
+    whose pull request shows as merged is archived through the stock `worktree.archive` RPC,
+    which keeps its branch and record and refuses a checkout with uncommitted or unpushed work.
+    It leaves the open workspace, one with an agent not done, the main checkout and one snoozed
+    until merge alone (that snooze settles first, so its settle command still finds the folder;
+    snooze itself never archives). A refused try is said once and retried after 30 minutes. The
+    toast offers Undo, and an "Archived (N)" row at the bottom of the sidebar, built from the
+    Snoozed row's styles, lists archived workspaces with Restore (`worktree.restore`, the
+    project's own setup choice). It reads the merge from the review cache the cards already
+    keep; it asks GitHub for nothing more.
+    A pull request the PR babysitter (SLRM-2386) merges is archived the same way when this is on;
+    the babysitter itself never archives, and agent guards (SLRM-2385) never answer approvals.
+  - Prompt stash (`forkPromptStash`, unset is on). Cmd+S (Ctrl+S on Windows and Linux) in a chat
+    message box with a draft sets it aside with its attachments (by their kept paths), pasted
+    text files and pills, and empties the box; in an empty box it brings the newest back. The
+    stock Save shortcut acts only in an editor and its workspace fallback skips text inputs, so
+    Cmd+S was free in the message box. Up to 20 drafts, newest first, in the window's local
+    storage. Files held only in a web client's memory cannot be stashed, and a queued message's
+    edit box is left alone.
+  - Saved prompts (`forkSavedPromptsEnabled`, unset is on; `forkSavedPrompts`, an agent-limit
+    key). A menu beside Attach on the message box lists them; a pick puts its text in the box at
+    the caret, nothing is sent. The same menu lists the stashed drafts (a pick restores one, x
+    drops it). The list is edited in Settings > Blackfish > Chats, "Saved prompts".
+  - Code is in `src/shared/fork/approval-risk*.ts`, `workspace-tags.ts`, `prompt-stash.ts`,
+    `saved-prompts.ts`, and `src/renderer/src/fork/approval-triage/`, `workspace-tags/`,
+    `prompt-stash/` and `saved-prompts/`.
 
 - **Letters and the board (SLRM-2389).** On by default (`forkLetters`, `forkBoard`, Settings >
   Blackfish > Chats). From John's archived ccdeck (its letters and Board); only the idea is ported.
@@ -1817,7 +1880,8 @@ Apply these in this order. Each one is a single commit.
 115. `SLRM-2387 Agents on the iPhone Lock Screen: a Live Activity and an Agents widget`
 116. `SLRM-2405 Typecheck caps: environment variables for parallel projects and tsrs checker threads`
 117. `SLRM-2388 Digest: what finished, failed, merged and cost, and what waits on you, across this host and its paired servers`
-118. `SLRM-2389 Letters and the board: chats message each other between turns, and agents file asks for the user`
+118. `SLRM-2397 Small extras: approval triage by risk, workspace tags and archive on merge, prompt stash, saved prompts`
+119. `SLRM-2389 Letters and the board: chats message each other between turns, and agents file asks for the user`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2636,6 +2700,24 @@ Upstream files only get short hooks, which keeps rebases small:
     `card-identity-parts.tsx`), so it adds no upstream line of its own. The settings are in
     `src/shared/fork/fork-global-settings.ts`, `settings-rows-fork.generated.ts` is regenerated,
     and the card is in the fork's Settings pane.
+- Small extras (SLRM-2397), from `src/shared/fork/approval-risk*.ts`, `workspace-tags.ts`,
+  `prompt-stash.ts`, `saved-prompts.ts` and `src/renderer/src/fork/{approval-triage,workspace-tags,prompt-stash,saved-prompts}/`:
+  - `NativeChatApprovalCard.tsx` takes `forkTriage`, renders `ForkApprovalRiskLine` under the
+    title and disables an option `forkApprovalOptionHeld` names.
+    `NativeChatStructuredPromptCard.tsx` passes the chat's folder and session options;
+    `use-structured-prompt-response-hold.ts` carries the folder (`NativeChatStructuredSession.tsx`
+    passes `fileLinkContext` on its existing line, the file being at its line budget).
+  - `NativeChatWorkerApprovals.tsx` renders `ForkApprovalBulkAllow` over the stack and gives
+    each card its worker's folder.
+  - `card-identity-parts.tsx` renders `ForkWorktreeTagChips` after the title;
+    `WorktreeContextMenuView.tsx` renders `ForkTagsWorktreeMenuItem` after the snooze item;
+    `use-visible-worktrees.ts` passes the list through `filterByTag`; `sidebar/index.tsx`
+    renders `ForkTagFilterBar` over the list and `ForkArchivedSection` under the Snoozed row.
+  - `NativeChatComposerPane.tsx` wraps its key handler in `forkWithPromptStashKey`;
+    `NativeChatComposerActions.tsx` adds `ForkSavedPromptsMenu` to the left controls.
+  - `ForkRootHosts.tsx` mounts `ForkWorkspaceTagsDialogHost` and `ForkArchiveOnMergeWatcher`; the
+    four cards are in the fork's Settings pane, and the four agent-limit keys are in
+    `settings-access.ts`.
 
 - Chat handoff (SLRM-2391), from `src/shared/fork/chat-handoff*.ts`,
   `src/main/fork/chat-handoff/`, `src/cli/fork/chat-handoff-*.ts` and

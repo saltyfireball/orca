@@ -24,6 +24,10 @@ import { serverUpdateSearchEntry } from '../server-update/server-update-search-e
 import { prBabysitSearchEntry } from '../pr-babysit/pr-babysit-search-entry'
 import { mainSyncSearchEntry } from '../main-sync/main-sync-search-entry'
 import { rowStatusSearchEntry } from '../row-status/row-status-search-entry'
+import {
+  forkChatExtrasSearchEntries,
+  forkWorkspaceTagsSearchEntry
+} from './fork-settings-pane-catalog-extras'
 
 export const FORK_SETTINGS_PANE_ID = 'fork'
 
@@ -80,7 +84,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         'fork.settingsPane.chats.description',
         'How chats survive a restart, sleep, stall, compact and choose their MCP servers.'
       ),
-      getForkChatsSearchEntries(t)
+      [...getForkChatsSearchEntries(t), ...forkChatExtrasSearchEntries(t)]
     ),
     section(
       'agents',
@@ -244,6 +248,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         serverSetupSearchEntry(t),
         branchClashesSearchEntry(t),
         reviewGuideSearchEntry(t),
+        forkWorkspaceTagsSearchEntry(t),
         {
           title: t('fork.settingsPane.projectList.title', 'Per project'),
           description: t(

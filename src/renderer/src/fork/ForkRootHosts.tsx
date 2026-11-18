@@ -13,6 +13,8 @@ import { ForkVisualFallbackReader } from './visual-image/ForkVisualFallbackSetti
 import { ForkPooledLimitsDialogHost } from './pooled-limits/ForkPooledLimitsDialog'
 import { ForkBestOfHost } from './best-of/ForkBestOfDialog'
 import { ForkChatHandoffLimitOffer } from './chat-handoff/ForkChatHandoffLimitOffer'
+import { ForkWorkspaceTagsDialogHost } from './workspace-tags/ForkWorkspaceTagsDialog'
+import { ForkArchiveOnMergeWatcher } from './workspace-tags/ForkArchiveOnMergeWatcher'
 import { ForkLettersDialogHost } from './letters/ForkLettersDialog'
 
 /**
@@ -37,6 +39,8 @@ export function ForkRootHosts(): React.JSX.Element {
       <ForkPooledLimitsDialogHost />
       <ForkBestOfHost />
       <ForkChatHandoffLimitOffer />
+      <ForkWorkspaceTagsDialogHost />
+      <ForkArchiveOnMergeWatcher />
       <ForkLettersDialogHost />
     </>
   )
