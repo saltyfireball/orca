@@ -1,6 +1,6 @@
 // Set up on a server (FORK.md, SLRM-2312): the fork.serverSetup.* RPC contract shared by the
 // desktop, the CLI and the server that answers.
-import { z } from 'zod'
+import * as z from 'zod'
 import {
   describeForkServerSetupReadiness,
   FORK_SERVER_SETUP_MAX_TEXT,
