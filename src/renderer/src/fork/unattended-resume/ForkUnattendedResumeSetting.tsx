@@ -1,5 +1,5 @@
-// Unattended resume (FORK.md, SLRM-2268): its settings card. On by default; the main process
-// reads it once at start-up, in the desktop app and in the headless server alike.
+// Unattended resume (FORK.md, SLRM-2268, SLRM-2411): its settings card. On by default; the main
+// process reads it once at start-up, in the desktop app and in the headless server alike.
 import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import {
   readUnattendedResumeSettings,
@@ -40,10 +40,20 @@ export function ForkUnattendedResumeSetting({
         label={t('fork.unattendedResume.label', 'Continue unattended work by itself')}
         description={t(
           'fork.unattendedResume.help',
-          'Orchestration workers and automation runs carry on without waiting for you. A turn that was waiting on an approval or a question is left for you. Chats you started keep the usual offer.'
+          'Orchestration workers and automation runs carry on without waiting for you. A turn that was waiting on an approval or a question is left for you. Chats you started keep the usual offer unless the next switch is on.'
         )}
         checked={config.enabled}
         onChange={() => updateSettings({ forkUnattendedResume: !config.enabled })}
+      />
+      <SettingsSwitchRow
+        label={t('fork.unattendedResume.interactiveLabel', 'Continue my chats too')}
+        description={t(
+          'fork.unattendedResume.interactiveHelp',
+          'Chats you started carry on after a restart or update when chat survive could not keep them running. Only a turn the agent was working on; never one waiting on an approval, a question or you, one you stopped, one an agent guard paused, or one waiting out a usage limit. Unset follows chat survive.'
+        )}
+        checked={config.interactive}
+        disabled={!config.enabled}
+        onChange={() => updateSettings({ forkUnattendedResumeInteractive: !config.interactive })}
       />
       <SettingsRow
         label={triesLabel}

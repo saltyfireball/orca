@@ -25,7 +25,16 @@ export function getForkChatsSearchEntries(t: Translate): SettingsSearchEntry[] {
         'fork.unattendedResume.description',
         'Continue interrupted workers and automation runs after a restart or update.'
       ),
-      keywords: words('restart', 'update', 'worker', 'automation', 'tries', 'forkUnattendedResume')
+      keywords: words(
+        'restart',
+        'update',
+        'worker',
+        'automation',
+        'tries',
+        'interactive',
+        'forkUnattendedResume',
+        'forkUnattendedResumeInteractive'
+      )
     },
     {
       title: t('fork.limitResume.title', 'Limit resume'),

@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AgentSessionRestartActivity } from '../../../shared/agent-session/lifecycle/stopping/agent-session-restart-activity'
 import type { StructuredAgentSessionResumeCandidate } from '../../native-chat/agent-session-wire/recovery/structured-agent-session-restart-resume-set'
+import type { UnattendedResumeHold } from '../../../shared/fork/unattended-resume'
+import { setForkAgentGuardHeld } from '../agent-guards/agent-guards-holds'
 import {
   runUnattendedResumePass,
   UNATTENDED_RESUME_OWNER,
@@ -41,14 +43,16 @@ function candidate(
 function rig(
   candidates: StructuredAgentSessionResumeCandidate[],
   kinds: Record<string, 'worker' | 'automation' | null>,
-  settings: Record<string, unknown> = {}
+  settings: Record<string, unknown> = {},
+  holds: Record<string, UnattendedResumeHold> = {}
 ) {
   let saved: UnattendedResumeTries = new Map()
   const continueAfterRestart = vi.fn(async (sessionIds: readonly string[]) => ({
     resumed: [],
     continued: sessionIds.map((sessionId) => ({ sessionId, outcome: 'continued' as const }))
   }))
-  const host = vi.fn(async () => ({ list: async () => candidates, continueAfterRestart }))
+  const hold = vi.fn(async (sessionId: string) => holds[sessionId] ?? null)
+  const host = vi.fn(async () => ({ list: async () => candidates, continueAfterRestart, hold }))
   const deps: UnattendedResumeDeps = {
     settings: () => settings,
     listMarkers: async () => candidates.map(({ sessionId }) => ({ sessionId })),
@@ -61,8 +65,11 @@ function rig(
     now: () => 5000,
     log: () => {}
   }
-  return { deps, host, continueAfterRestart, tries: () => saved }
+  return { deps, host, hold, continueAfterRestart, tries: () => saved }
 }
+
+const decisionOf = (result: Awaited<ReturnType<typeof runUnattendedResumePass>>, id: string) =>
+  result.decisions.find((entry) => entry.sessionId === id)?.decision
 
 describe('runUnattendedResumePass', () => {
   it('continues unattended chats and leaves interactive ones to the offer', async () => {
@@ -142,6 +149,85 @@ describe('runUnattendedResumePass', () => {
     await runUnattendedResumePass(off.deps)
     expect(off.host).not.toHaveBeenCalled()
     expect(off.continueAfterRestart).not.toHaveBeenCalled()
+  })
+})
+
+describe('runUnattendedResumePass for interactive chats (SLRM-2411)', () => {
+  afterEach(() => setForkAgentGuardHeld([]))
+
+  it('continues an interactive chat the agent was working on once the setting is on', async () => {
+    const { deps, continueAfterRestart, tries } = rig(
+      [candidate('mine'), candidate('worker')],
+      { worker: 'worker', mine: null },
+      { forkUnattendedResumeInteractive: true }
+    )
+    await runUnattendedResumePass(deps)
+    expect(continueAfterRestart).toHaveBeenCalledWith(['mine', 'worker'], UNATTENDED_RESUME_OWNER)
+    expect(tries().get('mine')).toEqual({ tries: 1, lastTryAt: 5000 })
+  })
+
+  it('takes its default from chat survive', async () => {
+    const off = rig([candidate('mine')], { mine: null }, { forkChatSurvive: false })
+    await runUnattendedResumePass(off.deps)
+    expect(off.continueAfterRestart).not.toHaveBeenCalled()
+    const on = rig([candidate('mine')], { mine: null }, { forkChatSurvive: true })
+    await runUnattendedResumePass(on.deps)
+    expect(on.continueAfterRestart).toHaveBeenCalledWith(['mine'], UNATTENDED_RESUME_OWNER)
+    const overridden = rig(
+      [candidate('mine')],
+      { mine: null },
+      { forkChatSurvive: true, forkUnattendedResumeInteractive: false }
+    )
+    await runUnattendedResumePass(overridden.deps)
+    expect(overridden.continueAfterRestart).not.toHaveBeenCalled()
+  })
+
+  it('leaves a chat a person stopped, one waiting on a limit, and one it cannot read', async () => {
+    const { deps, continueAfterRestart, tries, hold } = rig(
+      [candidate('stopped'), candidate('limit'), candidate('unknown'), candidate('free')],
+      { stopped: null, limit: null, unknown: 'worker', free: null },
+      { forkUnattendedResumeInteractive: true },
+      { stopped: 'person-stopped', limit: 'limit-wait', unknown: 'hold-unknown' }
+    )
+    const result = await runUnattendedResumePass(deps)
+    expect(continueAfterRestart).toHaveBeenCalledWith(['free'], UNATTENDED_RESUME_OWNER)
+    expect(decisionOf(result, 'stopped')).toEqual({ action: 'skip', reason: 'person-stopped' })
+    expect(decisionOf(result, 'limit')).toEqual({ action: 'skip', reason: 'limit-wait' })
+    expect(decisionOf(result, 'unknown')).toEqual({ action: 'skip', reason: 'hold-unknown' })
+    expect([...tries().keys()]).toEqual(['free'])
+    expect(hold).toHaveBeenCalledTimes(4)
+  })
+
+  it('reads no holds for chats the rule already leaves', async () => {
+    const { deps, hold } = rig(
+      [candidate('mine'), candidate('asks', { state: 'waiting', prompts: [], tasks: [] })],
+      { mine: null, asks: null }
+    )
+    await runUnattendedResumePass(deps)
+    expect(hold).not.toHaveBeenCalled()
+  })
+
+  it('never continues a chat an agent guard paused', async () => {
+    setForkAgentGuardHeld(['paused'])
+    const { deps, continueAfterRestart } = rig(
+      [candidate('paused'), candidate('free')],
+      { paused: null, free: null },
+      { forkUnattendedResumeInteractive: true }
+    )
+    await runUnattendedResumePass(deps)
+    expect(continueAfterRestart).toHaveBeenCalledWith(['free'], UNATTENDED_RESUME_OWNER)
+  })
+
+  it('stops an interactive chat at the same try cap', async () => {
+    const { deps, continueAfterRestart } = rig(
+      [candidate('mine')],
+      { mine: null },
+      { forkUnattendedResumeInteractive: true, forkUnattendedResumeMaxTries: 2 }
+    )
+    for (let pass = 0; pass < 4; pass += 1) {
+      await runUnattendedResumePass(deps)
+    }
+    expect(continueAfterRestart).toHaveBeenCalledTimes(2)
   })
 })
 

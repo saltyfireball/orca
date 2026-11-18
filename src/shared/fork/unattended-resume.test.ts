@@ -23,7 +23,11 @@ function facts(overrides: Partial<UnattendedResumeFacts> = {}): UnattendedResume
 
 describe('readUnattendedResumeSettings', () => {
   it('is on with 3 tries when unset', () => {
-    expect(readUnattendedResumeSettings(undefined)).toEqual({ enabled: true, maxTries: 3 })
+    expect(readUnattendedResumeSettings(undefined)).toEqual({
+      enabled: true,
+      maxTries: 3,
+      interactive: false
+    })
     expect(UNATTENDED_RESUME_DEFAULT_MAX_TRIES).toBe(3)
   })
 
@@ -40,11 +44,44 @@ describe('readUnattendedResumeSettings', () => {
   })
 })
 
+describe('interactive resume setting (SLRM-2411)', () => {
+  it('follows chat survive while unset', () => {
+    expect(readUnattendedResumeSettings({ forkChatSurvive: true }).interactive).toBe(true)
+    expect(readUnattendedResumeSettings({ forkChatSurvive: false }).interactive).toBe(false)
+    expect(readUnattendedResumeSettings({}).interactive).toBe(false)
+    expect(readUnattendedResumeSettings({ forkChatSurvive: 'yes' }).interactive).toBe(false)
+  })
+
+  it('takes an explicit true or false over chat survive', () => {
+    expect(
+      readUnattendedResumeSettings({
+        forkChatSurvive: true,
+        forkUnattendedResumeInteractive: false
+      }).interactive
+    ).toBe(false)
+    expect(
+      readUnattendedResumeSettings({ forkUnattendedResumeInteractive: true }).interactive
+    ).toBe(true)
+    expect(
+      readUnattendedResumeSettings({ forkChatSurvive: true, forkUnattendedResumeInteractive: 1 })
+        .interactive
+    ).toBe(true)
+  })
+})
+
 describe('pickUnattendedResumeSettings', () => {
-  it('takes the two keys off a whole settings object and nothing else', () => {
-    expect(pickUnattendedResumeSettings({ theme: 'dark', forkUnattendedResume: false })).toEqual({
+  it('takes its keys off a whole settings object and nothing else', () => {
+    expect(
+      pickUnattendedResumeSettings({
+        theme: 'dark',
+        forkUnattendedResume: false,
+        forkChatSurvive: true
+      })
+    ).toEqual({
       forkUnattendedResume: false,
-      forkUnattendedResumeMaxTries: undefined
+      forkUnattendedResumeMaxTries: undefined,
+      forkUnattendedResumeInteractive: undefined,
+      forkChatSurvive: true
     })
     expect(pickUnattendedResumeSettings(null)).toBeNull()
     expect(pickUnattendedResumeSettings('x')).toBeNull()
@@ -61,6 +98,49 @@ describe('decideUnattendedResume', () => {
     expect(decideUnattendedResume(facts({ kind: null }))).toEqual({
       action: 'skip',
       reason: 'interactive'
+    })
+  })
+
+  it('continues an interactive chat the agent was working on when the setting is on', () => {
+    const on = readUnattendedResumeSettings({ forkUnattendedResumeInteractive: true })
+    expect(decideUnattendedResume(facts({ kind: null, settings: on }))).toEqual({
+      action: 'resume'
+    })
+    const survive = readUnattendedResumeSettings({ forkChatSurvive: true })
+    expect(decideUnattendedResume(facts({ kind: null, settings: survive }))).toEqual({
+      action: 'resume'
+    })
+  })
+
+  it('leaves an interactive turn that was not working, asked, or used its tries', () => {
+    const on = readUnattendedResumeSettings({ forkUnattendedResumeInteractive: true })
+    const cases: [AgentSessionRestartActivity | undefined, string][] = [
+      [{ state: 'waiting', prompts: [], tasks: [] }, 'awaiting-person'],
+      [{ state: 'blocked', prompts: [], tasks: [] }, 'awaiting-person'],
+      [{ state: 'done', prompts: [], tasks: [{ kind: 'agent', label: 'x' }] }, 'awaiting-person'],
+      [
+        { state: 'working', prompts: [{ kind: 'question', label: 'Which?' }], tasks: [] },
+        'awaiting-person'
+      ],
+      [undefined, 'activity-unknown']
+    ]
+    for (const [activity, reason] of cases) {
+      expect(decideUnattendedResume(facts({ kind: null, settings: on, activity }))).toEqual({
+        action: 'skip',
+        reason
+      })
+    }
+    expect(decideUnattendedResume(facts({ kind: null, settings: on, triesUsed: 3 }))).toEqual({
+      action: 'skip',
+      reason: 'tries-used'
+    })
+    const off = readUnattendedResumeSettings({
+      forkUnattendedResume: false,
+      forkUnattendedResumeInteractive: true
+    })
+    expect(decideUnattendedResume(facts({ kind: null, settings: off }))).toEqual({
+      action: 'skip',
+      reason: 'disabled'
     })
   })
 
