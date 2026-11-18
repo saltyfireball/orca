@@ -2,8 +2,8 @@
 // Hover lists each child by name and state. CompactAgentRow and the collapsed strip hook it in.
 import React, { useMemo } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { AgentStateDot, agentStateLabel } from '@/components/AgentStateDot'
-import { STATE_INDICATOR_TOOLTIP_DELAY_MS } from '@/components/StateIndicatorTooltip'
+import { AgentStateDot, agentStateLabel } from '@/components/agent/status/AgentStateDot'
+import { STATE_INDICATOR_TOOLTIP_DELAY_MS } from '@/components/agent/status/StateIndicatorTooltip'
 import { cn } from '@/lib/class-names'
 import { translate } from '@/i18n/i18n'
 import { useTranslate, type Translate } from '@/i18n/use-translate'

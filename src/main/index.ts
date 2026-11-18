@@ -32,12 +32,8 @@ import { startForkEndpointFailover } from './fork/endpoint-failover/endpoint-fai
 import { installForkChatSleepBridge } from './fork/chat-sleep/chat-sleep-bridge'
 import { installForkMemoryWatch } from './fork/memory-truth/memory-watch'
 import { installForkAgentQueueApp } from './fork/agent-queue/agent-queue-ipc'
-import { installForkSnoozeApp } from './fork/snooze/snooze-ipc'
-import { installForkBranchClashesApp } from './fork/branch-clashes/branch-clashes-app'
-import { installForkChatStallBridge } from './fork/chat-stall/chat-stall-bridge'
-import { installForkLimitResumeBridge } from './fork/limit-resume/limit-resume-bridge'
-import { installForkAgentGuardsBridge } from './fork/agent-guards/agent-guards-bridge'
-import { installForkWorkerCleanupBridge } from './fork/worker-cleanup/worker-cleanup-bridge'
+import { installForkProjectApps } from './fork/projects-app-hooks'
+import { installForkChatBridges } from './fork/chat-bridges-app-hooks'
 import { installForkMcpProfilesApp } from './fork/mcp-profiles/mcp-profiles-ipc'
 import {
   installForkUsageLedger,
@@ -236,11 +232,7 @@ if (preflightReady) {
   installForkMemoryWatch(() => state.store?.getSettings())
   // Fork (SLRM-2098): the agent launch queue, off unless switched on.
   installForkAgentQueueApp(() => state.store?.getSettings())
-  installForkChatStallBridge()
-  // Fork (SLRM-2309): the "resumes at" labels of chats parked on a usage limit (FORK.md).
-  installForkLimitResumeBridge()
-  installForkAgentGuardsBridge() // Fork (SLRM-2385): the guard status line (FORK.md).
-  installForkWorkerCleanupBridge()
+  installForkChatBridges() // Fork: chat stall, limit resume, guards, worker cleanup (FORK.md).
   // Fork: MCP profiles; every chat loads every server until profiles are set.
   installForkMcpProfilesApp(() => state.store?.getSettings())
   // Fork (SLRM-2270): APFS clones for new worktrees on macOS.
@@ -248,10 +240,8 @@ if (preflightReady) {
   // Fork (SLRM-2103/2104): the usage ledger behind the cache-cold cue and the usage report.
   installForkUsageLedger(() => forkUsageLedgerStoreReader(state.store))
   installForkSyncStatusBridge()
-  // Fork (SLRM-2269): snoozed workspaces and chats (FORK.md "Snooze").
-  installForkSnoozeApp(() => state.store?.getSettings())
-  // Fork (SLRM-2394): files parallel worktree branches share (FORK.md "Branch clashes").
-  installForkBranchClashesApp(() => state.store?.getSettings())
+  // Fork (SLRM-2269, SLRM-2394): snoozed workspaces and chats, and branch clashes (FORK.md).
+  installForkProjectApps(() => state.store?.getSettings())
   // Fork: idle recovery and the Decision inbox, off unless switched on (FORK.md).
   installForkIdleRecoveryBridge()
   setIdleRecoveryDesktopNotifier((title, body) => {
