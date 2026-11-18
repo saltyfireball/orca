@@ -1478,6 +1478,42 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/preload/fork/branch-clashes-bridge.ts`, `src/renderer/src/fork/branch-clashes/` and
     `src/cli/fork/branch-clashes-*`.
 
+- **Review guides (SLRM-2396).** A Guide tab on the pull request page: an agent writes a tour of
+  the change, with stops in reading order, "Look closely" marks where a maintainer has to make a
+  call, and mechanical changes (renames, formatting, lockfiles, generated files) grouped at the
+  end. Every changed file appears somewhere. Idea from T3 Code's review guides (MIT).
+  - A guide is written only on demand: Write guide in the tab, Write guide on the phone, or
+    `orca review-guide write <pr>`. `forkReviewGuideAutoWrite` (off) writes one when the Guide tab
+    of a pull request without one is opened. `forkReviewGuides` (on) shows the tab, the phone row
+    and the CLI.
+  - The writer is the source control "pull request" agent and model, run as a one-shot text task.
+    It reads the pull request (title, description, file list, patches) from GitHub through the
+    same gh execution and rate-limit budget as the Files tab. That text is untrusted: it goes in a
+    block fenced by a random marker, the answer must be one JSON object that matches a schema, and
+    every path is checked against the pull request's own file list (files the writer left out go
+    in an "Other changed files" group). Text is stripped of control and bidi characters. Claude
+    runs with no tools at all, under `forkReviewGuideTimeoutMinutes` (5); other agents take the
+    stock read-only text-task path and its 60 s limit. `forkReviewGuideMaxPatchKiB` (96) caps the
+    patch text; `forkReviewGuideInstructions` adds the user's own preferences.
+  - Back and Next walk the stops; each file shows its line ranges and the patch lines they cover.
+    A guide written for another head commit is marked stale, hides its excerpts and offers
+    Rewrite guide. At most two guides are written at once, one per pull request.
+  - Viewed: each file shows GitHub's own viewed mark, and Mark viewed (per file, or per stop)
+    sends the stock `markFileAsViewed` toggle. Nothing is marked unless the user clicks.
+  - Guides are kept per pull request in `fork-review-guides/` in userData (owner-only files, the
+    oldest past 300 removed), so the window, the phone and the CLI share them.
+  - CLI: `orca review-guide <pr>`, `orca review-guide write <pr> [--wait]` and
+    `orca review-guide cancel <pr>` (`<pr>` is a number, #number or the pull request URL;
+    `--worktree` or `--repo` pick the checkout, else the current folder's workspace), over
+    `fork.reviewGuide.get`, `.write` and `.cancel` (workspace permission). A workspace on an SSH
+    host is refused: a guide is written where the checkout is.
+  - Phone: a Review guide row on the pull request tab opens a drawer with Back and Next, over the
+    same RPC.
+  - Code is in `src/shared/fork/review-guide*.ts`, `src/main/fork/review-guide/`,
+    `src/main/runtime/rpc/methods/fork/fork-review-guide.ts`,
+    `src/preload/fork/review-guide-bridge.ts`, `src/renderer/src/fork/review-guide/`,
+    `src/cli/fork/review-guide-*` and `mobile/src/components/fork/review-guide/`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -1600,6 +1636,11 @@ Apply these in this order. Each one is a single commit.
 108. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
      Follow-up: an inbox answer to a guard-paused agent lifts the pause only once the send is taken.
 103. `SLRM-2393 Best of N: one task to 2 to 4 agents in their own worktrees, compared and picked`
+109. `SLRM-2394 Branch clashes: warn when parallel worktree branches change the same files, across paired servers`
+110. `SLRM-2395 Batch start: a prompt per worktree and model from the composer, placed with auto placement`
+111. `SLRM-2393 Best of N: one task to 2 to 4 agents in their own worktrees, compared and picked`
+112. `SLRM-2312 Set up on a server: clone a project onto a paired server that lacks it from the host picker or --setup-missing`
+113. `SLRM-2396 Review guides: an agent-written tour of a pull request in a Guide tab, on the phone and in orca review-guide`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2398,6 +2439,40 @@ Upstream files only get short hooks, which keeps rebases small:
     `ForkBestOfHost`; the card is in the fork's Settings pane (reusing the snooze card's
     `CommandSetting`, now exported), and `forkBestOfAttemptNote` is a runs-command key in
     `settings-access.ts`.
+
+- Branch clashes (SLRM-2394), from `src/shared/fork/branch-clashes*.ts`,
+  `src/main/fork/branch-clashes/`, `src/cli/fork/branch-clashes-*.ts` and
+  `src/renderer/src/fork/branch-clashes/`:
+  - `rpc-method-registry.ts` spreads `FORK_BRANCH_CLASHES_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-branch-clashes.ts`): `fork.clashes.local` and
+    `fork.clashes.scan`; `rpc-params-catalog.generated.ts` is regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_BRANCH_CLASHES_COMMAND_SPECS`, `fork-handler-groups.ts`
+    adds the `fork-branch-clashes` group and `cli-command-names.ts` lists `clashes`.
+  - `src/main/index.ts` is at max-lines, so its snooze line now calls `installForkProjectApps`
+    (`src/main/fork/projects-app-hooks.ts`), which starts snooze and then
+    `installForkBranchClashesApp`; `preload/index.ts` and `api-types.ts` add `forkClashes` (`src/preload/fork/branch-clashes-bridge.ts`).
+  - The chip renders inside the fork's `ForkClaudeAccountWorktreeChip` (the worktree row hook in
+    `card-identity-parts.tsx`), so it adds no upstream line of its own. The settings are in
+    `src/shared/fork/fork-global-settings.ts`, `settings-rows-fork.generated.ts` is regenerated,
+    and the card is in the fork's Settings pane.
+
+- Review guides (SLRM-2396), from `src/shared/fork/review-guide*.ts`,
+  `src/main/fork/review-guide/`, `src/cli/fork/review-guide-*.ts`,
+  `src/renderer/src/fork/review-guide/` and `mobile/src/components/fork/review-guide/`:
+  - `rpc-method-registry.ts` spreads `FORK_REVIEW_GUIDE_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-review-guide.ts`); `rpc-params-catalog.generated.ts`
+    is regenerated with it. `runtime-rpc-mobile-method-routing.ts` spreads
+    `FORK_REVIEW_GUIDE_RPC_METHODS` into the execution-host methods so the phone may call them.
+  - `src/cli/specs/index.ts` adds `FORK_REVIEW_GUIDE_COMMAND_SPECS`, `fork-handler-groups.ts`
+    adds the `fork-review-guide` group and `cli-command-names.ts` lists `review-guide`.
+  - `projects-app-hooks.ts` calls `installForkReviewGuideApp`; `preload/index.ts` and
+    `api-types.ts` add `forkReviewGuide` (`src/preload/fork/review-guide-bridge.ts`).
+  - `pull-request-page/page/tabs-shell.tsx` renders `ForkReviewGuideTabTrigger` after the Files
+    trigger and `ForkReviewGuideTabContent` after the Files content.
+  - `MobilePRSidebar.tsx` renders `MobileReviewGuideRow` after the changes card.
+  - The settings are in `src/shared/fork/review-guide.ts`, intersected in
+    `fork-global-settings.ts`; `settings-rows-fork.generated.ts` is regenerated and the card is in
+    the fork's Settings pane.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
