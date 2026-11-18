@@ -15,6 +15,8 @@ import {
   readIdleRecoveryStatus,
   setIdleRecoveryPaused
 } from './idle-recovery-service'
+import { listForkPrBabysit } from '../pr-babysit/pr-babysit-hooks'
+import { onForkInboxSourceChanged } from './idle-recovery-sources'
 
 let installed = false
 
@@ -26,17 +28,21 @@ export function installForkIdleRecoveryBridge(): void {
   installed = true
   ipcMain.handle(CHANNELS.inbox, () => listIdleRecoveryInbox())
   ipcMain.handle(CHANNELS.status, () => readIdleRecoveryStatus())
+  ipcMain.handle(CHANNELS.babysit, () => listForkPrBabysit())
   ipcMain.handle(CHANNELS.answer, (_event, request: unknown) =>
     answerIdleRecoveryChat(ForkIdleRecoveryAnswerParams.parse(request))
   )
   ipcMain.handle(CHANNELS.pause, (_event, request: unknown) =>
     setIdleRecoveryPaused(ForkIdleRecoveryPauseParams.parse(request))
   )
-  onIdleRecoveryChanged(() => {
+  const tellWindows = (): void => {
     for (const window of BrowserWindow.getAllWindows()) {
       if (!window.isDestroyed() && !window.webContents.isDestroyed()) {
         window.webContents.send(CHANNELS.changed)
       }
     }
-  })
+  }
+  onIdleRecoveryChanged(tellWindows)
+  // Other features' inbox rows (the PR babysitter, SLRM-2386) and its status lines.
+  onForkInboxSourceChanged(tellWindows)
 }
