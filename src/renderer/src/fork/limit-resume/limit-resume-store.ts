@@ -72,6 +72,11 @@ export function useForkLimitResumeEntry(subject: {
   return useSyncExternalStore(subscribe, () => findLimitResumeEntry(entries, subject))
 }
 
+/** Every entry main reports (SLRM-2391's handoff offer reads them all). */
+export function useForkLimitResumeEntries(): readonly LimitResumeEntry[] {
+  return useSyncExternalStore(subscribe, () => entries)
+}
+
 /** Test seam. */
 export function resetForkLimitResumeStore(): void {
   entries = []
