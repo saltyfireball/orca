@@ -15,6 +15,7 @@ import {
 import { installForkVisualFallbackSettings } from './visual-image/visual-image-settings'
 import { installForkPrBabysit } from './pr-babysit/pr-babysit-hooks'
 import { installForkWorktreePorts } from './worktree-ports/worktree-ports-service'
+import { installForkUsageLedgerOnServer } from './usage-ledger/usage-ledger-server'
 
 export type ForkHeadlessHostStore = {
   getSettings: () => NonNullable<ReturnType<BoundaryCompactionSettingsReader>>
@@ -28,6 +29,7 @@ export type ForkHeadlessHostStore = {
  * - `::orca-visual` image files and unquoted values follow this host's own setting (SLRM-2349).
  * - The PR babysitter acts on CI lines of this host's chats (SLRM-2386).
  * - Workspace port blocks follow this host's own settings (SLRM-2383).
+ * - The usage ledger counts the Claude chats that run here, for the spend cap (SLRM-2385).
  * Returns what to run at shutdown.
  */
 export function installForkHeadlessHost(store: ForkHeadlessHostStore): () => void {
@@ -40,9 +42,19 @@ export function installForkHeadlessHost(store: ForkHeadlessHostStore): () => voi
   installForkVisualFallbackSettings(store)
   const stopPrBabysit = installForkPrBabysit(store)
   installForkWorktreePorts(store)
+  let flushLedger: (() => void) | null = null
+  // Runtime tests reach this install too; the ledger (its file and prune timer) stays off there.
+  if (!process.env.VITEST) {
+    void installForkUsageLedgerOnServer(() => store.getSettings())
+      .then((flush) => {
+        flushLedger = flush
+      })
+      .catch((error: unknown) => console.warn('[fork-usage-ledger] could not start', error))
+  }
   return () => {
     stopPrBabysit()
     stopForkBoundaryCompactionService()
     stopForkServerHeartbeat()
+    flushLedger?.()
   }
 }
