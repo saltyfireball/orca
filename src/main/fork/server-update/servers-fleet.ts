@@ -10,6 +10,7 @@ import type {
   ForkServerUpdateStatus
 } from '../../../shared/fork/server-update-wire'
 import {
+  FORK_SSH_MANAGED_MESSAGE,
   isForkServerUpdateStartResult,
   isForkServerUpdateStatus
 } from '../../../shared/fork/server-update-wire'
@@ -20,8 +21,15 @@ const POLL_MS = 3_000
 /** Download, check and restart, on top of the turn wait. */
 const UPDATE_SLACK_MS = 20 * 60_000
 
+export type ForkServerEnvironment = {
+  id: string
+  name: string
+  /** `ssh-tunnel`: this desktop deployed the server over SSH and reaches it through a tunnel. */
+  connectionDependency?: string
+}
+
 export type ForkServersDeps = {
-  listEnvironments: () => Promise<readonly { id: string; name: string }[]>
+  listEnvironments: () => Promise<readonly ForkServerEnvironment[]>
   call: (
     environmentId: string,
     method: string,
@@ -60,6 +68,17 @@ async function readStatus(
   }
 }
 
+/**
+ * A server this desktop deployed over SSH (`orca environment update` updates it) and that no
+ * `orca serve` service runs: not an error, just updated another way.
+ */
+function isSshManaged(
+  environment: ForkServerEnvironment,
+  status: ForkServerUpdateStatus | null
+): boolean {
+  return environment.connectionDependency === 'ssh-tunnel' && !status?.install
+}
+
 export async function listForkServers(deps: ForkServersDeps): Promise<ForkServersListResult> {
   const version = deps.localVersion()
   const servers: ForkServerRow[] = []
@@ -78,7 +97,8 @@ export async function listForkServers(deps: ForkServersDeps): Promise<ForkServer
             id: environment.id,
             name: environment.name,
             status,
-            versus: compareForkVersions(status.version, version)
+            versus: compareForkVersions(status.version, version),
+            ...(isSshManaged(environment, status) ? { sshManaged: true } : {})
           }
     )
   }
@@ -87,9 +107,9 @@ export async function listForkServers(deps: ForkServersDeps): Promise<ForkServer
 
 /** Picks servers by name or id; every one when none is named. Unknown names are an error. */
 export function pickForkServers(
-  environments: readonly { id: string; name: string }[],
+  environments: readonly ForkServerEnvironment[],
   wanted: readonly string[] | undefined
-): { id: string; name: string }[] {
+): ForkServerEnvironment[] {
   if (!wanted || wanted.length === 0) {
     return [...environments]
   }
@@ -164,6 +184,7 @@ async function runOne(
   deps: ForkServersDeps,
   request: ForkServersRunRequest,
   row: ForkServersRunRow,
+  environment: ForkServerEnvironment,
   onChange: () => void
 ): Promise<void> {
   const status = await readStatus(deps, row.id)
@@ -177,6 +198,11 @@ async function runOne(
   }
   row.fromVersion = status.version
   row.version = status.version
+  if (isSshManaged(environment, status)) {
+    row.outcome = 'skipped'
+    row.message = FORK_SSH_MANAGED_MESSAGE
+    return
+  }
   if (request.kind === 'update' && compareForkVersions(status.version, request.version) === 0) {
     row.outcome = 'current'
     return
@@ -238,9 +264,9 @@ export async function runForkServers(
     outcome: 'pending'
   }))
   const changed = (): void => onChange(rows.map((row) => ({ ...row })))
-  for (const row of rows) {
+  for (const [index, row] of rows.entries()) {
     try {
-      await runOne(deps, request, row, changed)
+      await runOne(deps, request, row, picked[index], changed)
     } catch (error) {
       row.outcome = 'failed'
       row.message = message(error)

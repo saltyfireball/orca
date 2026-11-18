@@ -52,6 +52,14 @@ function ServerRow({
     state = t('fork.serverUpdate.unreachable', 'Not answering')
   } else if (!status) {
     state = t('fork.serverUpdate.noSupport', 'No server updates here; update it once by hand')
+  } else if (row.sshManaged) {
+    state = t(
+      'fork.serverUpdate.sshManaged',
+      '{{version}}, SSH-managed (use orca environment update)',
+      {
+        version: status.version
+      }
+    )
   } else if (!status.install) {
     state = status.problem ?? t('fork.serverUpdate.cannot', 'Cannot be updated from here')
   } else if (row.versus !== null && row.versus < 0) {
