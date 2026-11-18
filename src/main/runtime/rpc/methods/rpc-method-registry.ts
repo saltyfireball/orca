@@ -84,6 +84,7 @@ import { FORK_WORKTREE_MOVE_METHODS } from './fork/fork-worktree-move'
 import { FORK_DEVICE_APPROVAL_METHODS } from './fork/fork-device-approval'
 import { FORK_WEBHOOK_METHODS } from './fork/fork-webhooks'
 import { FORK_SNOOZE_METHODS } from './fork/fork-snooze'
+import { FORK_LETTERS_RPC_METHODS } from './fork/fork-letters'
 import { FORK_SERVER_HEALTH_METHODS } from './fork/fork-server-health'
 import { FORK_MAIN_SYNC_METHODS } from './fork/fork-main-sync'
 import { FORK_LIMIT_RESUME_METHODS } from './fork/fork-limit-resume'
@@ -250,5 +251,7 @@ export const ALL_RPC_METHODS = [
   // SLRM-2396: pull request review guides behind `orca review-guide` and the phone (FORK.md).
   ...FORK_REVIEW_GUIDE_METHODS,
   // SLRM-2391: hand a chat to the other agent, behind `orca chat handoff|history` (FORK.md).
-  ...FORK_CHAT_HANDOFF_METHODS
+  ...FORK_CHAT_HANDOFF_METHODS,
+  // SLRM-2389: letters between chats and the board of asks, behind `orca letter` and `orca board` (FORK.md).
+  ...FORK_LETTERS_RPC_METHODS
 ]

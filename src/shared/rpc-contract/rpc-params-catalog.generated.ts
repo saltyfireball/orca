@@ -60,6 +60,16 @@ import {
   ForkIdleRecoveryPauseParams,
   ForkIdleRecoveryStatusParams
 } from '../fork/idle-recovery-wire'
+import {
+  ForkBoardAddParams,
+  ForkBoardCloseParams,
+  ForkBoardListParams,
+  ForkLettersChatsParams,
+  ForkLettersCollectParams,
+  ForkLettersDeliverParams,
+  ForkLettersListParams,
+  ForkLettersSendParams
+} from '../fork/letters-wire'
 import { ForkLimitsListParams, ForkLimitsTargetParams } from '../fork/limit-resume-wire'
 import { ForkLostWorkScanParams } from '../fork/lost-work'
 import { ForkMainSyncRunParams, ForkMainSyncStatusParams } from '../fork/main-sync'
@@ -1253,6 +1263,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.bestOf.record': ForkBestOfRecordParams,
   'fork.bestOf.settle': ForkBestOfSettleParams,
   'fork.bestOf.show': ForkBestOfShowParams,
+  'fork.board.add': ForkBoardAddParams,
+  'fork.board.close': ForkBoardCloseParams,
+  'fork.board.list': ForkBoardListParams,
   'fork.chatHandoff.history': ForkChatHistoryParams,
   'fork.chatHandoff.start': ForkChatHandoffStartParams,
   'fork.claudeAccount.cancel': ForkClaudeAccountCancelParams,
@@ -1271,6 +1284,11 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.idleRecovery.pause': ForkIdleRecoveryPauseParams,
   'fork.idleRecovery.status': ForkIdleRecoveryStatusParams,
   'fork.launchDefaults.show': null,
+  'fork.letters.chats': ForkLettersChatsParams,
+  'fork.letters.collect': ForkLettersCollectParams,
+  'fork.letters.deliver': ForkLettersDeliverParams,
+  'fork.letters.list': ForkLettersListParams,
+  'fork.letters.send': ForkLettersSendParams,
   'fork.limits.cancel': ForkLimitsTargetParams,
   'fork.limits.list': ForkLimitsListParams,
   'fork.limits.machineUsage': ForkMachineUsageParams,

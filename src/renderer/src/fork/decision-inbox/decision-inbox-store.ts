@@ -14,6 +14,7 @@ import type {
   ForkIdleRecoveryApi,
   ForkIdleRecoveryInboxResult
 } from '../../../../shared/fork/idle-recovery-wire'
+import { forkBoardEnabled } from '../letters/board-store'
 
 export type DecisionInboxSnapshot = {
   result: ForkIdleRecoveryInboxResult | null
@@ -60,7 +61,10 @@ export function useForkDecisionInboxOn(): boolean {
   return useAppStore((s) => forkDecisionInboxOn(s.settings as InboxSettings))
 }
 
-/** True when the inbox can be shown: it is on and this build has the bridge. */
+/**
+ * True when the inbox can be shown: it is on and this build has the bridge, or the board is on
+ * (SLRM-2389: its asks are listed here too).
+ */
 export function forkDecisionInboxAvailable(): boolean {
   return (
     forkDecisionInboxOn(useAppStore.getState().settings as InboxSettings) &&
@@ -70,6 +74,10 @@ export function forkDecisionInboxAvailable(): boolean {
   return (
     (forkIdleRecoveryMode() !== 'off' || forkAgentGuardPausedCount() > 0) &&
     forkIdleRecoveryBridge() !== null
+    ((forkDecisionInboxOn(useAppStore.getState().settings as InboxSettings) ||
+      forkAgentGuardPausedCount() > 0) &&
+      forkIdleRecoveryBridge() !== null) ||
+    forkBoardEnabled()
   )
 }
 

@@ -86,7 +86,9 @@ describe('with idle recovery off', () => {
     state.current.settings = {}
     installFakeBridge()
     const actions = getForkDecisionInboxQuickActions()
+    // The third is the letters history (SLRM-2389): this fake window has no letters bridge.
     expect(actions.map((action) => action.isAvailable({} as never).available)).toEqual([
+      false,
       false,
       false
     ])
