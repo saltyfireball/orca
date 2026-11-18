@@ -51,6 +51,7 @@ import { PullDownMenu } from '../../../components/nav-bar/PullDownMenu'
 import { useBackClaim } from '../../../navigation/use-back-claim'
 import { prTabStyles as styles } from './pr-tab-styles'
 import { mobilePrSidebarStyles as sidebarStyles } from './mobile-pr-sidebar-styles'
+import { MobileReviewGuideRow } from '../../../components/fork/review-guide/MobileReviewGuide'
 
 type BranchCompare = { commitsAhead?: number; baseRef: string } | null
 
@@ -208,6 +209,7 @@ function PrTabSections({
         })}
       </ListGroup>
       <PrChangesCard data={data} onPress={onOpenChanges} />
+      <MobileReviewGuideRow tab={tab} data={data} />
       <PrDescription tab={tab} data={data} />
     </>
   )
