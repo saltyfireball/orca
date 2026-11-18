@@ -28,6 +28,7 @@ import {
   type ConnectionVerdict
 } from '../transport/connection/connection-health'
 import type { HostScreenController } from './use-host-screen-controller'
+import { forkDigestHostAction } from '../components/fork/digest/fork-digest-host-entries'
 
 function isErrorVerdict(v: ConnectionVerdict): boolean {
   return isConnectionOutage(v) || v.kind === 'auth-failed'
@@ -126,6 +127,7 @@ export function HostScreenHeader({
       closeBeforePress: true,
       onPress: () => actions.navigateFromHostList(`${hostPath}/accounts`)
     },
+    forkDigestHostAction(hostPath, disconnected, actions.navigateFromHostList),
     ...(floatingWorkspaceEnabled
       ? [
           {

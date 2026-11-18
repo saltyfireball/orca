@@ -18,6 +18,7 @@ import { ForkChatStallSetting } from '../chat-stall/ForkChatStallSetting'
 import { ForkCacheColdSetting } from '../cache-cold/ForkCacheColdSetting'
 import { ForkMcpProfileSetting } from '../mcp-profiles/ForkMcpProfileSetting'
 import { ForkVisualFallbackSetting } from '../visual-image/ForkVisualFallbackSetting'
+import { ForkLettersSetting } from '../letters/ForkLettersSetting'
 import { ForkChildTallySetting } from '../agent-child-tally/ForkChildTallySetting'
 import { ForkRowStatusSetting } from '../row-status/ForkRowStatusSetting'
 import { ForkAgentStateColorSetting } from '../agent-state-color/ForkAgentStateColorSetting'
@@ -30,6 +31,7 @@ import { ForkPrBabysitSetting } from '../pr-babysit/ForkPrBabysitSetting'
 import { ForkAccountChipSetting } from '../claude-account-chip/ForkAccountChipSetting'
 import { ForkUsageReportSettings } from '../usage-report/ForkUsageReportSettings'
 import { ForkPooledLimitsSetting } from '../pooled-limits/ForkPooledLimitsSetting'
+import { ForkDigestSetting } from '../digest/ForkDigestSetting'
 import { ForkLostWorkSettings } from '../lost-work/ForkLostWorkSettings'
 import { ForkSyncNoticeSetting } from '../sync-status/ForkSyncNoticeSetting'
 import { ForkAutoPlacementSetting } from '../auto-placement/ForkAutoPlacementSetting'
@@ -48,6 +50,10 @@ import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
 import { ForkServerHealthSetting } from '../server-health/ForkServerHealthSetting'
 import { ForkServerHeartbeatSetting } from '../server-health/ForkServerHeartbeatSetting'
 import { ForkServerUpdateSetting } from '../server-update/ForkServerUpdateSetting'
+import { ForkApprovalTriageSetting } from '../approval-triage/ForkApprovalTriageSetting'
+import { ForkPromptStashSetting } from '../prompt-stash/ForkPromptStashSetting'
+import { ForkSavedPromptsSetting } from '../saved-prompts/ForkSavedPromptsSetting'
+import { ForkWorkspaceTagsSetting } from '../workspace-tags/ForkWorkspaceTagsSetting'
 import { ForkProjectSettingsList } from './ForkProjectSettingsList'
 import { ForkSettingsSectionLinks } from './ForkSettingsSectionLinks'
 import { getForkSettingsSections, type ForkSettingsSectionId } from './fork-settings-pane-catalog'
@@ -75,7 +81,11 @@ const SECTION_CARDS: Record<
     ['cache-cold', ForkCacheColdSetting],
     ['boundary-compaction', ForkBoundaryCompactionSetting],
     ['mcp-profile', ForkMcpProfileSetting],
-    ['visual-fallback', ForkVisualFallbackSetting]
+    ['visual-fallback', ForkVisualFallbackSetting],
+    ['approval-triage', ForkApprovalTriageSetting],
+    ['prompt-stash', ForkPromptStashSetting],
+    ['saved-prompts', ForkSavedPromptsSetting],
+    ['letters', ForkLettersSetting]
   ],
   agents: [
     ['child-tally', ForkChildTallySetting],
@@ -97,7 +107,8 @@ const SECTION_CARDS: Record<
   usage: [
     ['account-chip', ForkAccountChipSetting],
     ['usage-report', ForkUsageReportSettings],
-    ['pooled-limits', ForkPooledLimitsSetting]
+    ['pooled-limits', ForkPooledLimitsSetting],
+    ['digest', ForkDigestSetting]
   ],
   projects: [
     ['lost-work', ForkLostWorkSettings],
@@ -108,6 +119,7 @@ const SECTION_CARDS: Record<
     ['server-setup', ForkServerSetupSetting],
     ['branch-clashes', ForkBranchClashesSetting],
     ['review-guide', ForkReviewGuideSetting],
+    ['workspace-tags', ForkWorkspaceTagsSetting],
     ['project-settings-list', ForkProjectSettingsList]
   ],
   remote: [

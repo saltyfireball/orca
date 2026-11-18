@@ -13,13 +13,15 @@ import {
   useForkDecisionInboxOn
 } from './decision-inbox-store'
 import { decisionInboxBadgeText, decisionInboxSections } from './decision-inbox-view'
+import { useForkBoard, useForkBoardEnabled } from '../letters/board-store'
 
-function Counted(): React.JSX.Element {
+function Counted({ recovery, board }: { recovery: boolean; board: boolean }): React.JSX.Element {
   const t = useTranslate()
-  const { result } = useForkDecisionInbox(true)
+  const { result } = useForkDecisionInbox(recovery)
   const sections = decisionInboxSections(result?.items)
-  // Agents a guard paused wait on the user too (SLRM-2385).
-  const waiting = sections.waiting.length + sections.guarded.length
+  // Agents a guard paused wait on the user too (SLRM-2385), and the board's open asks (SLRM-2389).
+  const asks = useForkBoard(board).view?.asks.length ?? 0
+  const waiting = sections.waiting.length + sections.guarded.length + asks
   const stalled = sections.stalled.length
   const label =
     waiting === 0 && stalled === 0
@@ -72,6 +74,8 @@ function Counted(): React.JSX.Element {
 
 export function ForkDecisionInboxButton(): React.JSX.Element | null {
   const on = useForkDecisionInboxOn()
-  // The counts are read only inside `Counted`, so nothing is read while the inbox is off.
-  return !on || !forkIdleRecoveryBridge() ? null : <Counted />
+  const board = useForkBoardEnabled()
+  const recovery = on && forkIdleRecoveryBridge() !== null
+  // The counts are read only inside `Counted`, so nothing is read while the inbox and the board are off.
+  return recovery || board ? <Counted recovery={recovery} board={board} /> : null
 }

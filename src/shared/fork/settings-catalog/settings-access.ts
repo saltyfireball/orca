@@ -43,7 +43,19 @@ const AGENT_LIMITS: SettingsKey[] = [
   'nestedWorkerMaxDepth',
   'artifactSharingEnabled',
   'agentSkillSharingEnabled',
-  'orchestrationCoordinatorApprovalsEnabled'
+  'orchestrationCoordinatorApprovalsEnabled',
+  // SLRM-2397: approval triage's grade and bulk allow, archive on merge (removes checkouts), and
+  // the saved prompts a person sends: an agent must not set what answers or speaks for the person.
+  'forkApprovalRisk',
+  'forkApprovalBulkAllowLow',
+  'forkArchiveOnMerge',
+  'forkSavedPrompts',
+  // SLRM-2389: the letter and board rate limits agents would otherwise raise for themselves.
+  'forkLettersMaxPerWindow',
+  'forkLettersWindowMinutes',
+  'forkLettersLoopEach',
+  'forkLettersFromPaired',
+  'forkBoardMaxOpenPerChat'
 ]
 
 const ACCOUNTS: SettingsKey[] = [
@@ -64,6 +76,8 @@ const RUNS_COMMAND: SettingsKey[] = [
   'forkSnoozeSettleCommand',
   // SLRM-2311: whether server health alerts run the notification command.
   'forkServerHealthAlertCommand',
+  // SLRM-2388: whether the daily digest runs the notification command.
+  'forkDigestCommand',
   // SLRM-2309: the text typed into every terminal agent resumed after a usage limit.
   'forkLimitResumeMessage',
   // SLRM-2310: where a server downloads new code from, and whose signature it accepts.

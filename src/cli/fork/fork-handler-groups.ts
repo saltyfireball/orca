@@ -163,5 +163,25 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-review-guide',
     keys: ['review-guide', 'review-guide write', 'review-guide cancel'],
     load: async () => (await import('./review-guide-handlers.js')).FORK_REVIEW_GUIDE_HANDLERS
+  },
+  // SLRM-2388: what finished, failed, merged and cost, and what waits on you (FORK.md "Digest").
+  {
+    name: 'fork-digest',
+    keys: ['digest'],
+    load: async () => (await import('./digest-handlers.js')).FORK_DIGEST_HANDLERS
+  },
+  // SLRM-2389: letters between chats and the board of asks (FORK.md "Letters and the board").
+  {
+    name: 'fork-letters',
+    keys: [
+      'letter send',
+      'letter list',
+      'letter chats',
+      'board add',
+      'board list',
+      'board done',
+      'board back'
+    ],
+    load: async () => (await import('./letters-handlers.js')).FORK_LETTERS_HANDLERS
   }
 ]

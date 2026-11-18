@@ -105,6 +105,7 @@ describe('fork settings access', () => {
       'browserPasswordsOfferToSave',
       'forkCacheColdThresholdTokens',
       'forkBoundaryCompactThresholdTokens',
+      'forkChatHandoffBudgetTokens',
       'antigravityChatAuth',
       'geminiCliOAuthEnabled',
       'claudeOAuthUsageEnabled',

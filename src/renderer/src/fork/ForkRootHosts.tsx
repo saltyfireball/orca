@@ -4,6 +4,7 @@ import { ForkDecisionInboxHost } from './decision-inbox/ForkDecisionInboxHost'
 import { ForkLostWorkHost } from './lost-work/ForkLostWorkHost'
 import { ForkSleepersDialogHost } from './sleepers/ForkSleepersDialog'
 import { ForkUsageReportHost } from './usage-report/ForkUsageReportDialog'
+import { ForkDigestHost } from './digest/ForkDigestDialog'
 import { ForkWorkerCleanupReporter } from './worker-cleanup/ForkWorkerCleanup'
 import { ForkWorktreeMoveDialogHost } from './worktree-move/ForkWorktreeMoveDialog'
 import { ForkSnoozeCustomDialogHost } from './snooze/ForkSnoozeCustomDialog'
@@ -12,6 +13,9 @@ import { ForkVisualFallbackReader } from './visual-image/ForkVisualFallbackSetti
 import { ForkPooledLimitsDialogHost } from './pooled-limits/ForkPooledLimitsDialog'
 import { ForkBestOfHost } from './best-of/ForkBestOfDialog'
 import { ForkChatHandoffLimitOffer } from './chat-handoff/ForkChatHandoffLimitOffer'
+import { ForkWorkspaceTagsDialogHost } from './workspace-tags/ForkWorkspaceTagsDialog'
+import { ForkArchiveOnMergeWatcher } from './workspace-tags/ForkArchiveOnMergeWatcher'
+import { ForkLettersDialogHost } from './letters/ForkLettersDialog'
 
 /**
  * The fork's always-mounted hosts, behind one hook in `AppRootSurfaces.tsx` so that upstream
@@ -25,6 +29,7 @@ export function ForkRootHosts(): React.JSX.Element {
       <ForkWorkerCleanupReporter />
       <ForkSleepersDialogHost />
       <ForkUsageReportHost />
+      <ForkDigestHost />
       <ForkLostWorkHost />
       <ForkDecisionInboxHost />
       <ForkWorktreeMoveDialogHost />
@@ -34,6 +39,9 @@ export function ForkRootHosts(): React.JSX.Element {
       <ForkPooledLimitsDialogHost />
       <ForkBestOfHost />
       <ForkChatHandoffLimitOffer />
+      <ForkWorkspaceTagsDialogHost />
+      <ForkArchiveOnMergeWatcher />
+      <ForkLettersDialogHost />
     </>
   )
 }

@@ -19,10 +19,15 @@ import { snoozeSearchEntry } from '../snooze/snooze-search-entry'
 import { serverSetupSearchEntry } from '../server-setup/server-setup-search-entry'
 import { branchClashesSearchEntry } from '../branch-clashes/branch-clashes-search-entry'
 import { reviewGuideSearchEntry } from '../review-guide/review-guide-search-entry'
+import { digestSearchEntry } from '../digest/digest-search-entry'
 import { serverUpdateSearchEntry } from '../server-update/server-update-search-entry'
 import { prBabysitSearchEntry } from '../pr-babysit/pr-babysit-search-entry'
 import { mainSyncSearchEntry } from '../main-sync/main-sync-search-entry'
 import { rowStatusSearchEntry } from '../row-status/row-status-search-entry'
+import {
+  forkChatExtrasSearchEntries,
+  forkWorkspaceTagsSearchEntry
+} from './fork-settings-pane-catalog-extras'
 
 export const FORK_SETTINGS_PANE_ID = 'fork'
 
@@ -79,7 +84,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         'fork.settingsPane.chats.description',
         'How chats survive a restart, sleep, stall, compact and choose their MCP servers.'
       ),
-      getForkChatsSearchEntries(t)
+      [...getForkChatsSearchEntries(t), ...forkChatExtrasSearchEntries(t)]
     ),
     section(
       'agents',
@@ -182,7 +187,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
       t('fork.settingsPane.usage.title', 'Usage and accounts'),
       t(
         'fork.settingsPane.usage.description',
-        'Which Claude account a chat runs on, and what your chats have used.'
+        'Which Claude account a chat runs on, what your chats have used, and the daily digest.'
       ),
       [
         {
@@ -216,7 +221,8 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
             'weekly',
             'forkPooledLimits'
           )
-        }
+        },
+        digestSearchEntry(t)
       ]
     ),
     section(
@@ -242,6 +248,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         serverSetupSearchEntry(t),
         branchClashesSearchEntry(t),
         reviewGuideSearchEntry(t),
+        forkWorkspaceTagsSearchEntry(t),
         {
           title: t('fork.settingsPane.projectList.title', 'Per project'),
           description: t(

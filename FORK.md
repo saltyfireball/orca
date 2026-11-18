@@ -791,6 +791,43 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/pooled-limits.ts`, `src/main/fork/pooled-limits/`,
     `src/cli/fork/limits-usage-handler.ts` and `src/renderer/src/fork/pooled-limits/`.
 
+- **Digest (SLRM-2388).** One summary of a time window across this desktop and every paired
+  server: what finished and failed, which of your pull requests merged or are open, the estimated
+  cost, and what waits on you. The idea comes from Devin's session insights and Warp's run
+  records; only the idea is ported.
+  - **What is in it.** Per machine: orchestration tasks that completed or failed in the window
+    (from its orchestration database, at most 100), your pull requests through the GitHub CLI in
+    each local project (`gh pr list --author @me`, merged in the window and every open one; 3
+    projects at a time, 15 s each, a project without gh, a login or a GitHub remote is counted in a
+    note), the Decision inbox's waiting and stalled chats (SLRM-2196; listed only while idle
+    recovery is on, and the digest says so), agents an agent guard paused (SLRM-2385, from
+    `fork.guards.list`'s list), and the usage ledger's estimated cost of the local days the window
+    touches (SLRM-2104; the desktop only). Paired servers this desktop's server health sees as not
+    answering (SLRM-2311) head the list. A pull request two clones list is shown once.
+  - **Fan-out.** `fork.digest.collect` reads this machine and asks every paired server for its own
+    part (`fork.digest.local`, 4 at a time, 45 s each), as auto placement probes them (SLRM-2266).
+    A server that does not answer, or runs stock Orca or an older Blackfish, is named as such.
+    Each server's answer is checked row by row (`digest-schema.ts`) before anything shows it.
+  - **Window.** `--since` (a duration such as 12h or 2d, or a date and time), else since the last
+    daily digest, else the last day; at most 90 days.
+  - **Daily digest.** Off by default (`forkDigest`). Once a day after `forkDigestHour` (8, local
+    time), or when the app next runs that day, it sends the digest since the last one to the
+    Decision inbox's notify targets (SLRM-2208): a desktop notification with the headline
+    (`forkDigestDesktop`, unset follows `forkInboxNotifyDesktop`), a POST of JSON to
+    `forkInboxNotifyWebhookUrl` (`forkDigestWebhook`, unset on when the address is set) and the
+    same JSON on stdin of `forkInboxNotifyCommand` (`forkDigestCommand`, unset on when the command
+    is set; `orca settings` cannot write it). The JSON has `event` `digest`, `since`, `until`,
+    `headline`, `totals`, `serversDown`, `hosts` and `text`. The send is recorded in
+    `fork-digest.json` in the data folder (owner-only) before it goes out, so it never goes twice.
+    It runs on the desktop app and on a headless server, each from its own settings.
+  - **Pull requests** (`forkDigestPullRequests`, on): off leaves gh alone everywhere.
+  - **Where.** `orca digest [--since <when>] [--json]`; "Digest" in the command palette; the
+    Digest card in Settings > Blackfish > Usage and accounts (with Show); and Digest in the
+    phone's host menu, a screen in the Accounts screen's style.
+  - Code is in `src/shared/fork/digest*.ts`, `src/main/fork/digest/`,
+    `src/main/runtime/rpc/methods/fork/fork-digest.ts`, `src/cli/fork/digest-*`,
+    `src/renderer/src/fork/digest/` and `mobile/src/components/fork/digest/`.
+
 - **Endpoint failover (SLRM-2267).** On by default (`forkEndpointFailover`, Settings >
   Blackfish > Remote servers > Server routes). A saved remote server can be reached on more
   than one address. Stock dials only the saved (or first) endpoint; the fork tries the routes
@@ -1527,6 +1564,19 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/main/runtime/rpc/methods/fork/fork-branch-clashes.ts`,
     `src/preload/fork/branch-clashes-bridge.ts`, `src/renderer/src/fork/branch-clashes/` and
     `src/cli/fork/branch-clashes-*`.
+- **Typecheck caps (SLRM-2405).** Two environment variables lower what `pnpm typecheck`,
+  `pnpm tc` and the `tc:*` scripts take from the machine, for hosts where several checkouts
+  check at the same time. Unset, the runner behaves as upstream's does. Each takes a positive
+  integer, only ever lowers, and stops the run with a message on any other value.
+  - `ORCA_FORK_TYPECHECK_JOBS`: how many projects are checked at once. Upstream checks two at a
+    time with the default compiler (`tsrs`), fewer when the host has under about 19 GB.
+  - `ORCA_FORK_TYPECHECK_CHECKERS`: checker threads of each `tsrs` compiler (upstream's default
+    is 8). A `--checkers=<n>` flag still wins.
+  - Measured on an 18-core host with 36 GB, the five root projects, cold cache: stock about
+    7 to 10 GB peak for the process tree in 8 to 11 s. One job, 6.5 GB in 11 s. One job with
+    4 checkers, 5.3 GB in 11 s. One job with 2 checkers, 4.1 GB in 16 to 18 s. A run with a warm
+    incremental cache takes 1 to 2 GB in 2 s at any setting.
+  - Code is in `config/scripts/fork/typecheck-jobs.mjs`.
 
 - **Review guides (SLRM-2396).** A Guide tab on the pull request page: an agent writes a tour of
   the change, with stops in reading order, "Look closely" marks where a maintainer has to make a
@@ -1612,6 +1662,117 @@ named Orca Fork until SLRM-1367. `main` is always
     `mobile/modules/fork-live-activity/` (the `BlackfishLiveActivity` Expo module; `ios/shared`
     is compiled into the app and the extension, `widget/` only into the extension) and
     `mobile/plugins/fork/`.
+- **Small extras (SLRM-2397): approval triage, workspace tags with archive on merge, prompt stash,
+  saved prompts.** Four small features from ccdeck's approvals, roster hygiene and composer
+  shortcuts and T3 Code's prompt stash, each its own setting, built from stock styles only.
+  - Approval triage (`forkApprovalRisk`, off unless true). A native chat's own approval card and
+    each worker approval pinned in its coordinator's chat show a stock Badge, Low, Medium or High
+    risk, and the reason in a few words. The grade (`src/shared/fork/approval-risk*.ts`) reads the
+    card's title and the tool's input against the folder the agent works in (the chat's folder;
+    a worker's own workspace when the window knows it, else unknown). Low is only a plain chain of
+    known read-only programs on files inside that folder (`ls`, `cat`, `rg`, `git status`,
+    `git diff` and the like), a Read, Grep or Glob inside it, or an edit of an ordinary file in it.
+    High: git writes and fetches (push, commit, reset, checkout, config, remote and the rest),
+    every `gh` command that is not a view or list, deleting (`rm`), `sudo`, `ssh` and its family,
+    process control, nested shells and piping into one, `xargs`, `eval`, package publishing and
+    global installs, uploads with `curl`, a write outside the folder, anything touching
+    credentials, `.env`, `.ssh`, `.claude` or `.git/config` and hooks, a call asking to leave the
+    sandbox, an MCP tool whose name sends or changes something, and a command too long to read.
+    Medium is everything else, including the network, running code (tests, builds, interpreters,
+    package managers), reading outside the folder, and anything with expansion, redirection,
+    globs or characters it cannot read, any flag not on that program's allow-list
+    (`approval-risk-flags.ts`, exact names only, so `sort --out` and `grep -r` are medium), `cd`
+    with a flag, and a program named by a path outside the system bin folders. Any word naming a
+    credential, a flag's value or `HEAD:.env` too, is high. Paths are read as text: a symlink inside
+    the folder that points out of it still counts as inside, and git history (`git log -p`) counts
+    as the workspace's own files, so the grade is advice, not a sandbox. An unknown folder makes
+    every absolute path outside. A plan review, a sign-in page and a startup dialog are not graded.
+    On a high risk card Claude's "Allow for this session" is disabled, so a rule never covers a
+    high risk call.
+  - Allow low risk (`forkApprovalBulkAllowLow`, off unless true, needs the grade on). Over a
+    coordinator's pinned worker prompts, "N low risk approvals" with Allow low risk. The click
+    grades every prompt again from what it says then and allows only those still open, still
+    offering Allow and still low; medium and high stay one at a time. Both keys are agent-limit
+    keys: `orca settings` refuses to write them.
+  - Workspace tags (`forkWorkspaceTagsEnabled`, unset is on). "Tags..." in the workspace menu
+    sets up to 8 short words (`forkWorkspaceTags`, keyed by workspace id and host). A card shows
+    two after its title as stock reference-label badges and +N for the rest. A click on a tag
+    shows only its workspaces, a second hides them, a third clears the filter
+    (`forkWorkspaceTagFilter`); a line over the list says "Only x" or "Hiding x" with Clear.
+  - Archive on merge (`forkArchiveOnMerge`, off unless true; an agent-limit key). A workspace
+    whose pull request shows as merged is archived through the stock `worktree.archive` RPC,
+    which keeps its branch and record and refuses a checkout with uncommitted or unpushed work.
+    It leaves the open workspace, one with an agent not done, the main checkout and one snoozed
+    until merge alone (that snooze settles first, so its settle command still finds the folder;
+    snooze itself never archives). A refused try is said once and retried after 30 minutes. The
+    toast offers Undo, and an "Archived (N)" row at the bottom of the sidebar, built from the
+    Snoozed row's styles, lists archived workspaces with Restore (`worktree.restore`, the
+    project's own setup choice). It reads the merge from the review cache the cards already
+    keep; it asks GitHub for nothing more.
+    A pull request the PR babysitter (SLRM-2386) merges is archived the same way when this is on;
+    the babysitter itself never archives, and agent guards (SLRM-2385) never answer approvals.
+  - Prompt stash (`forkPromptStash`, unset is on). Cmd+S (Ctrl+S on Windows and Linux) in a chat
+    message box with a draft sets it aside with its attachments (by their kept paths), pasted
+    text files and pills, and empties the box; in an empty box it brings the newest back. The
+    stock Save shortcut acts only in an editor and its workspace fallback skips text inputs, so
+    Cmd+S was free in the message box. Up to 20 drafts, newest first, in the window's local
+    storage. Files held only in a web client's memory cannot be stashed, and a queued message's
+    edit box is left alone.
+  - Saved prompts (`forkSavedPromptsEnabled`, unset is on; `forkSavedPrompts`, an agent-limit
+    key). A menu beside Attach on the message box lists them; a pick puts its text in the box at
+    the caret, nothing is sent. The same menu lists the stashed drafts (a pick restores one, x
+    drops it). The list is edited in Settings > Blackfish > Chats, "Saved prompts".
+  - Code is in `src/shared/fork/approval-risk*.ts`, `workspace-tags.ts`, `prompt-stash.ts`,
+    `saved-prompts.ts`, and `src/renderer/src/fork/approval-triage/`, `workspace-tags/`,
+    `prompt-stash/` and `saved-prompts/`.
+
+- **Letters and the board (SLRM-2389).** On by default (`forkLetters`, `forkBoard`, Settings >
+  Blackfish > Chats). From John's archived ccdeck (its letters and Board); only the idea is ported.
+  - **Letters.** `orca letter send <to> <text> [--cite <id>] [--host <server>]` sends one chat's
+    message to another chat or terminal agent by id (a unique prefix of 4+ characters), listed by
+    `orca letter chats`. The host signs it with the chat whose environment ran the command
+    (`ORCA_AGENT_SESSION_ID`, else `ORCA_PANE_KEY`, checked against this host's chats); outside any
+    agent it is signed "shell". It is queued and typed in only between the recipient's turns,
+    through idle recovery's guarded send: a native chat that is loaded and not in a turn (checked
+    again inside the send, queued never steered), a terminal agent at an empty prompt with no
+    dialog or draft and only where the agent reads the terminal (checked again before the first
+    write). One letter per recipient per pass, a pass every 5 s while letters wait and none
+    otherwise; a send that may have arrived counts as delivered, so none is typed twice. A sleeping
+    chat keeps its letters until it is loaded; a letter not delivered in a day expires.
+  - **Untrusted.** The recipient sees `[Blackfish letter <id> from ...]`, a line saying the words
+    are another agent's, not the user's, and cannot approve anything, then the body between
+    `--- letter begins ---` and `--- letter ends ---`, then the command to answer. The frame is
+    built from the host's own record; a body that writes those markers (after NFKC folding and
+    with invisible characters taken out) is refused, and control, bidi and zero-width characters
+    are stripped. Titles a sender controls are printed only when plain.
+  - **Cite.** `--cite` names an earlier letter between the same two chats; any other is refused.
+  - **Rate limits.** Per sending chat: `forkLettersMaxPerWindow` (20) letters and asks in
+    `forkLettersWindowMinutes` (10); two chats that wrote each other `forkLettersLoopEach` (6)
+    times each way in the window are refused as a loop; a recipient holds at most 20 waiting
+    letters. `orca settings` cannot write the limits (kind `agent-limit`).
+  - **Paired hosts.** `--host <server>` hands the letter at once to that paired server's
+    `fork.letters.deliver` over the desktop's own RPC client; the server marks the sender as a
+    paired device (unverified) and delivers it the same way. A server chat's answer to a desktop
+    chat waits there until the desktop collects it (`fork.letters.collect`); a desktop polls each
+    server it wrote to in the last day every 15 s. `forkLettersFromPaired` (on) refuses all of it.
+  - **The board.** `orca board add REVIEW|DECIDE|DO <title> [--body <text>]` files an ask for the
+    user. A chat holds at most `forkBoardMaxOpenPerChat` (10) open asks, and filing counts against
+    its letter rate. Its open asks show in a closed tray above its message box (one line with the
+    count and the first ask; open, each ask is a collapsed row in a capped scroll area, Escape
+    closes it), and every open ask, from this host and each paired server, shows in the Decision
+    inbox under "Asks for you" with Go to chat. Done: by the user or the agent that filed it.
+    Throw back: by the user only, with a note the asking chat is sent between its turns. The
+    inbox and its toolbar count show while the board is on, even with idle recovery off.
+  - **History.** "Letters between chats..." in the palette, the Decision inbox and the Settings
+    card opens every letter of the last week, newest first, from this host and its paired
+    servers; a name narrows it to that chat. `orca letter list [--chat <id>]` lists them too
+    (the calling chat's own by default).
+  - **State.** `fork-letters.json` in the data folder (mode 0600, written atomically): letters,
+    asks, the rate log and the servers written to. Settled letters and closed asks are kept a
+    week.
+  - Code is in `src/shared/fork/letters*.ts`, `src/main/fork/letters/`,
+    `src/main/runtime/rpc/methods/fork/fork-letters.ts`, `src/preload/fork/letters-bridge.ts`,
+    `src/cli/fork/letters-*.ts` and `src/renderer/src/fork/letters/`.
 
 ## Patch list
 
@@ -1733,7 +1894,11 @@ Apply these in this order. Each one is a single commit.
 113. `SLRM-2391 Chat handoff: hand a chat from Claude to Codex or back with a budgeted history`
 114. `SLRM-2396 Review guides: an agent-written tour of a pull request in a Guide tab, on the phone and in orca review-guide`
 115. `SLRM-2387 Agents on the iPhone Lock Screen: a Live Activity and an Agents widget`
-116. `SLRM-2406 Set up on a server from the phone and from batch start's Auto machine`
+116. `SLRM-2405 Typecheck caps: environment variables for parallel projects and tsrs checker threads`
+117. `SLRM-2388 Digest: what finished, failed, merged and cost, and what waits on you, across this host and its paired servers`
+118. `SLRM-2397 Small extras: approval triage by risk, workspace tags and archive on merge, prompt stash, saved prompts`
+119. `SLRM-2389 Letters and the board: chats message each other between turns, and agents file asks for the user`
+120. `SLRM-2406 Set up on a server from the phone and from batch start's Auto machine`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2560,6 +2725,24 @@ Upstream files only get short hooks, which keeps rebases small:
     `card-identity-parts.tsx`), so it adds no upstream line of its own. The settings are in
     `src/shared/fork/fork-global-settings.ts`, `settings-rows-fork.generated.ts` is regenerated,
     and the card is in the fork's Settings pane.
+- Small extras (SLRM-2397), from `src/shared/fork/approval-risk*.ts`, `workspace-tags.ts`,
+  `prompt-stash.ts`, `saved-prompts.ts` and `src/renderer/src/fork/{approval-triage,workspace-tags,prompt-stash,saved-prompts}/`:
+  - `NativeChatApprovalCard.tsx` takes `forkTriage`, renders `ForkApprovalRiskLine` under the
+    title and disables an option `forkApprovalOptionHeld` names.
+    `NativeChatStructuredPromptCard.tsx` passes the chat's folder and session options;
+    `use-structured-prompt-response-hold.ts` carries the folder (`NativeChatStructuredSession.tsx`
+    passes `fileLinkContext` on its existing line, the file being at its line budget).
+  - `NativeChatWorkerApprovals.tsx` renders `ForkApprovalBulkAllow` over the stack and gives
+    each card its worker's folder.
+  - `card-identity-parts.tsx` renders `ForkWorktreeTagChips` after the title;
+    `WorktreeContextMenuView.tsx` renders `ForkTagsWorktreeMenuItem` after the snooze item;
+    `use-visible-worktrees.ts` passes the list through `filterByTag`; `sidebar/index.tsx`
+    renders `ForkTagFilterBar` over the list and `ForkArchivedSection` under the Snoozed row.
+  - `NativeChatComposerPane.tsx` wraps its key handler in `forkWithPromptStashKey`;
+    `NativeChatComposerActions.tsx` adds `ForkSavedPromptsMenu` to the left controls.
+  - `ForkRootHosts.tsx` mounts `ForkWorkspaceTagsDialogHost` and `ForkArchiveOnMergeWatcher`; the
+    four cards are in the fork's Settings pane, and the four agent-limit keys are in
+    `settings-access.ts`.
 
 - Chat handoff (SLRM-2391), from `src/shared/fork/chat-handoff*.ts`,
   `src/main/fork/chat-handoff/`, `src/cli/fork/chat-handoff-*.ts` and
@@ -2596,6 +2779,46 @@ Upstream files only get short hooks, which keeps rebases small:
   - The settings are in `src/shared/fork/review-guide.ts`, intersected in
     `fork-global-settings.ts`; `settings-rows-fork.generated.ts` is regenerated and the card is in
     the fork's Settings pane.
+- Typecheck caps (SLRM-2405), from `config/scripts/fork/typecheck-jobs.mjs`:
+  - `run-typecheck-projects-in-parallel.mjs` imports it, wraps the default of
+    `runTypecheckProjects`'s `parallelism` in `forkTypecheckParallelism(...)` and the `tsrs`
+    default checker count in `forkTypecheckCheckers(...)`.
+
+- Digest (SLRM-2388), from `src/shared/fork/digest*.ts`, `src/main/fork/digest/`,
+  `src/cli/fork/digest-*.ts`, `src/renderer/src/fork/digest/` and
+  `mobile/src/components/fork/digest/`. The daily send is off unless `forkDigest` is true:
+  - `rpc-method-registry.ts` spreads `FORK_DIGEST_METHODS` (`fork.digest.local`,
+    `fork.digest.collect`); `rpc-params-catalog.generated.ts` is regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_DIGEST_COMMAND_SPECS`, `fork-handler-groups.ts` adds the
+    `fork-digest` group and `cli-command-names.ts` lists `digest`.
+  - `startForkRuntimeSettleServices` (`runtime-settle-hooks.ts`) also calls `startForkDigest`.
+  - Fork files only on the desktop: the palette entry rides on
+    `getForkUsageReportQuickActions()`, `ForkRootHosts` mounts `ForkDigestHost`, the card is in the
+    fork's Settings pane, and `forkDigestCommand` is a runs-command key in `settings-access.ts`.
+  - Mobile: `app/h/[hostId]/digest.tsx` (the shell route) and `digest.web.tsx` (the page) are new
+    route files with no strings; `host-stack-screens.ts` spreads `FORK_HOST_STACK_SCREENS` and
+    `host-screen-header.tsx` adds `forkDigestHostAction(...)` to the host menu.
+  - `runtime-rpc-mobile-paired-desktop-methods.ts` spreads `FORK_DIGEST_RPC_METHODS`
+    (`fork.digest.collect`), so a paired phone may call it and the relaying desktop answers.
+
+- Letters and the board (SLRM-2389), from `src/shared/fork/letters*.ts`,
+  `src/main/fork/letters/`, `src/cli/fork/letters-*.ts` and `src/renderer/src/fork/letters/`:
+  - `rpc-method-registry.ts` spreads `FORK_LETTERS_RPC_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-letters.ts`); `rpc-params-catalog.generated.ts` is
+    regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_LETTERS_COMMAND_SPECS`, `fork-handler-groups.ts` adds the
+    `fork-letters` group and `cli-command-names.ts` lists `letter` and `board`.
+  - `projects-app-hooks.ts` calls `installForkLettersApp`; `preload/index.ts` and `api-types.ts`
+    add `forkLetters` (`src/preload/fork/letters-bridge.ts`). `runtime-settle-hooks.ts` calls
+    `startForkLetters` (the desktop, `orca serve` and orcad).
+  - `NativeChatComposer.tsx` renders `ForkBoardTray` before the cache-cold cue.
+  - The Decision inbox (`ForkDecisionInboxHost`, `ForkDecisionInboxButton`,
+    `decision-inbox-store.ts`) lists and counts the board's asks and stays on while the board is;
+    its palette entries add "Letters between chats...". `ForkRootHosts.tsx` mounts
+    `ForkLettersDialogHost`.
+  - The settings are in `src/shared/fork/letters.ts`, intersected in `fork-global-settings.ts`;
+    `settings-rows-fork.generated.ts` is regenerated, the limits are `agent-limit` keys in
+    `settings-access.ts`, and the card is in the fork's Settings pane (Chats).
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
