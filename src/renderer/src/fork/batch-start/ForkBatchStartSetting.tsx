@@ -55,6 +55,16 @@ export function ForkBatchStartSetting({ settings, updateSettings }: Props): Reac
         disabled={!config.enabled}
         onChange={() => updateSettings({ forkBatchStartAutoHost: !config.autoHost })}
       />
+      <SettingsSwitchRow
+        label={t('fork.batchStart.setupMissingLabel', 'Auto machine may set a server up first')}
+        description={t(
+          'fork.batchStart.setupMissingHelp',
+          'Also consider paired servers that lack the project but can clone it from its git remote; the picked one is set up first, as Set up on a server does.'
+        )}
+        checked={config.setupMissing}
+        disabled={!config.enabled}
+        onChange={() => updateSettings({ forkBatchStartSetupMissing: !config.setupMissing })}
+      />
     </section>
   )
 }

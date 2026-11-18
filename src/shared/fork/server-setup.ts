@@ -7,8 +7,8 @@ import type { Repo } from '../repository/repo-types'
 import { stripCredentialsFromMessage } from '../git/remotes/git-remote-error'
 
 export type ForkServerSetupSettings = {
-  /** Set up on a server: the new-workspace host picker offers "Set up on SERVER..." for a paired
-   *  server that lacks the project; unset is on. */
+  /** Set up on a server: the new-workspace host picker (and the phone's run-target list, SLRM-2406)
+   *  offers "Set up on SERVER..." for a paired server that lacks the project; unset is on. */
   forkServerSetupOffer?: boolean
   /** Set up on a server: folder on the server the project is cloned into, as NAME under it. `~`
    *  is that server's home; unset is ~/development. */
@@ -36,6 +36,21 @@ export function forkServerSetupReadinessOn(settings: SettingsSource): boolean {
 export function forkServerSetupParent(settings: SettingsSource): string {
   const value = settings?.forkServerSetupParent?.trim()
   return value ? value : FORK_SERVER_SETUP_DEFAULT_PARENT
+}
+
+/** The same settings, from a settings object read over RPC (a phone reading its host's; SLRM-2406). */
+export function readForkServerSetupSettingsFrom(value: unknown): ForkServerSetupSettings {
+  if (typeof value !== 'object' || value === null) {
+    return {}
+  }
+  const offer = 'forkServerSetupOffer' in value ? value.forkServerSetupOffer : undefined
+  const parent = 'forkServerSetupParent' in value ? value.forkServerSetupParent : undefined
+  const readiness = 'forkServerSetupReadiness' in value ? value.forkServerSetupReadiness : undefined
+  return {
+    ...(typeof offer === 'boolean' ? { forkServerSetupOffer: offer } : {}),
+    ...(typeof parent === 'string' ? { forkServerSetupParent: parent } : {}),
+    ...(typeof readiness === 'boolean' ? { forkServerSetupReadiness: readiness } : {})
+  }
 }
 
 /** Control characters (and, with `spaces`, whitespace): never part of a URL or folder name. */
@@ -141,6 +156,14 @@ export function forkProjectCloneUrl(
   }
   const own = project?.gitRemoteIdentity?.remoteUrl
   return own ? stripCredentialsFromMessage(own) : ''
+}
+
+/** The first git remote among a project's checkouts, credentials removed (the phone, which sees
+ *  repos rather than projects; SLRM-2406). */
+export function forkCloneUrlFromRepos(repos: readonly Pick<Repo, 'gitRemoteIdentity'>[]): string {
+  const remoteUrl = repos.find((repo) => repo.gitRemoteIdentity?.remoteUrl)?.gitRemoteIdentity
+    ?.remoteUrl
+  return remoteUrl ? stripCredentialsFromMessage(remoteUrl) : ''
 }
 
 /** What the server lacks for the project, as plain lines. */

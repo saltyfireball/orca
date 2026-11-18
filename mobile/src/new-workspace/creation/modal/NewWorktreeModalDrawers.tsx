@@ -22,6 +22,10 @@ import {
 import { SmartWorkspaceSourceDrawer } from '../../source-selection/presentation/SmartWorkspaceSourceDrawer'
 import type { JiraSite, JiraSiteSelection } from '../../../../../src/shared/jira/jira-types'
 import type { NewWorktreeDrawerView } from './use-new-worktree-drawer-navigation'
+import {
+  isMobileForkServerSetupItem,
+  type MobileForkServerSetupItem
+} from '../../../components/fork/server-setup/mobile-fork-server-setup-rows'
 
 type Composer = ReturnType<typeof useMobileComposerSource>
 
@@ -40,7 +44,11 @@ export function NewWorktreeModalDrawers(props: {
   sshReady: boolean
   projectPickerItems: NewWorkspaceProjectOption<MobileWorkspaceRepo>[]
   selectedProjectId: string | null
-  runTargetPickerItems: NewWorkspaceRunTargetOption<MobileWorkspaceRepo>[]
+  runTargetPickerItems: (
+    | NewWorkspaceRunTargetOption<MobileWorkspaceRepo>
+    | MobileForkServerSetupItem
+  )[]
+  onForkServerSetup?: (item: MobileForkServerSetupItem) => void
   pickerAgentOptions: NewWorktreeAgentOption[]
   selectedAgent: NewWorktreeAgentOption
   setupTrustPrompt: OrcaHookTrustPrompt | null
@@ -97,7 +105,11 @@ export function NewWorktreeModalDrawers(props: {
         title={t('components.newWorktreeModalDrawers.runOn', 'Run on')}
         items={props.runTargetPickerItems}
         selectedId={props.selectedRepo ? getRepoExecutionHostId(props.selectedRepo) : ''}
-        onSelect={(item) => props.onRepoChange(item.repo)}
+        onSelect={(item) =>
+          isMobileForkServerSetupItem(item)
+            ? props.onForkServerSetup?.(item)
+            : props.onRepoChange(item.repo)
+        }
         onClose={props.onTransitionToForm}
         renderIcon={(item) => <HostKindIcon hostId={item.hostId} size={18} />}
       />
