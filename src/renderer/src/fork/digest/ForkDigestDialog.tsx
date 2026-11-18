@@ -127,7 +127,19 @@ function HostSection({ host }: { host: ForkDigestHost }): React.JSX.Element {
         <>
           <Group title={t('fork.digest.waiting', 'Waiting on you')} count={section.waiting.length}>
             {section.waiting.map((row) => (
-              <Line key={row.chatId} main={row.title || row.chatId} detail={row.question} />
+              <Line
+                key={`${row.source ?? ''}:${row.chatId}`}
+                main={row.title || row.chatId}
+                detail={
+                  row.source === 'babysit'
+                    ? t('fork.digest.babysit', 'PR babysitter: {{text}}', { text: row.question })
+                    : row.verdict === 'guard'
+                      ? t('fork.digest.guard', 'Paused by a guard: {{text}}', {
+                          text: row.question
+                        })
+                      : row.question
+                }
+              />
             ))}
           </Group>
           <Group title={t('fork.digest.failed', 'Failed')} count={failed.length}>

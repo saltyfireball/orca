@@ -53,7 +53,7 @@ function HostRows({ host, t, first }: { host: ForkDigestHost; t: T; first: boole
   if (section) {
     for (const row of section.waiting) {
       rows.push({
-        key: `w:${row.chatId}`,
+        key: `w:${row.source ?? ''}:${row.chatId}`,
         title: t('fork.digest.waitingRow', 'Waiting: {{title}}', {
           title: row.title || row.chatId
         }),

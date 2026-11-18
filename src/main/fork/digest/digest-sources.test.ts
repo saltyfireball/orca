@@ -105,7 +105,13 @@ function usageReport(): ForkUsageReport {
     label: 'Total',
     chats: 2,
     calls: 4,
-    tokens: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    tokens: {
+      inputTokens: 1,
+      outputTokens: 1,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      cacheWrite1hTokens: 0
+    },
     totalTokens: 500,
     costUsd: 0.25,
     subscriptionTokens: 0,
@@ -134,7 +140,7 @@ describe('readForkDigestLocal', () => {
           items: [
             {
               chatId: 'c1',
-              kind: 'native',
+              kind: 'chat',
               agent: 'claude',
               title: 'T',
               workspace: 'w',
@@ -149,7 +155,7 @@ describe('readForkDigestLocal', () => {
             },
             {
               chatId: 'c2',
-              kind: 'native',
+              kind: 'chat',
               agent: 'claude',
               title: 'P',
               workspace: 'w',
@@ -161,13 +167,31 @@ describe('readForkDigestLocal', () => {
               wakes: 0,
               wakeAt: null,
               paused: true
+            },
+            {
+              chatId: 'o/r#9',
+              kind: 'chat',
+              agent: 'claude',
+              title: 'PR 9',
+              workspace: 'w',
+              worktreeId: null,
+              verdict: 'waiting_user',
+              question: 'CI still red after 3 fixes',
+              reason: '',
+              since: 2,
+              wakes: 0,
+              wakeAt: null,
+              paused: false,
+              source: 'babysit',
+              prKey: 'github.com/o/r#9'
             }
           ]
         })
       },
       { since: Date.UTC(2026, 10, 17, 9) }
     )
-    expect(section.waiting.map((row) => row.chatId)).toEqual(['c1'])
+    expect(section.waiting.map((row) => row.chatId)).toEqual(['c1', 'o/r#9'])
+    expect(section.waiting[1].source).toBe('babysit')
     expect(section.cost).toMatchObject({ days: 2, costUsd: 0.25, chats: 2 })
     expect(section.notes).toEqual([])
   })
