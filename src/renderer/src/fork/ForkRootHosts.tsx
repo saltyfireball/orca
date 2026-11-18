@@ -14,6 +14,8 @@ import { ForkPooledLimitsDialogHost } from './pooled-limits/ForkPooledLimitsDial
 import { ForkBestOfHost } from './best-of/ForkBestOfDialog'
 import { ForkChatHandoffLimitOffer } from './chat-handoff/ForkChatHandoffLimitOffer'
 import { ForkLettersDialogHost } from './letters/ForkLettersDialog'
+import { ForkWorkspaceTagsDialogHost } from './workspace-tags/ForkWorkspaceTagsDialog'
+import { ForkArchiveOnMergeWatcher } from './workspace-tags/ForkArchiveOnMergeWatcher'
 
 /**
  * The fork's always-mounted hosts, behind one hook in `AppRootSurfaces.tsx` so that upstream
@@ -38,6 +40,8 @@ export function ForkRootHosts(): React.JSX.Element {
       <ForkBestOfHost />
       <ForkChatHandoffLimitOffer />
       <ForkLettersDialogHost />
+      <ForkWorkspaceTagsDialogHost />
+      <ForkArchiveOnMergeWatcher />
     </>
   )
 }

@@ -35,6 +35,8 @@ import {
   forkWithoutSnoozedWorktrees,
   useForkSnoozedWorktreeKeys
 } from '@/fork/snooze/use-fork-snooze'
+import { useForkWorkspaceTagSettings } from '@/fork/workspace-tags/use-fork-workspace-tags'
+import { filterByTag } from '../../../../../../shared/fork/workspace-tags'
 
 const EMPTY_WORKTREE_ID_SET: ReadonlySet<string> = new Set()
 
@@ -134,6 +136,8 @@ export function useVisibleSidebarWorktrees(args: {
   const hiddenVmCheckouts = useSyncExternalStore(subscribeHiddenVmCheckouts, readHiddenVmCheckouts)
   // SLRM-2269: fork hook, snoozed workspaces leave the list (FORK.md "Snooze").
   const forkSnoozed = useForkSnoozedWorktreeKeys()
+  // SLRM-2397: fork hook, the sidebar's tag filter (FORK.md "Workspace tags").
+  const forkTags = useForkWorkspaceTagSettings()
   const recomputedVisibleWorktrees = useMemo(() => {
     const visible = computeVisibleWorktrees(worktreesByRepo, sortedIds, {
       filterRepoIds,
@@ -166,12 +170,16 @@ export function useVisibleSidebarWorktrees(args: {
         ? [args.agentSendTargetWorktreeId]
         : undefined
     })
-    return forkWithoutSnoozedWorktrees(
-      withoutHiddenVmWorktrees(visible, hiddenVmCheckouts),
-      forkSnoozed
+    return filterByTag(
+      forkWithoutSnoozedWorktrees(
+        withoutHiddenVmWorktrees(visible, hiddenVmCheckouts),
+        forkSnoozed
+      ),
+      forkTags
     )
   }, [
     forkSnoozed,
+    forkTags,
     hiddenVmCheckouts,
     args.agentSendTargetWorktreeId,
     worktreeIdsWithLiveAgent,
