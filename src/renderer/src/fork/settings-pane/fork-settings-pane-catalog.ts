@@ -18,6 +18,7 @@ import { snoozeSearchEntry } from '../snooze/snooze-search-entry'
 import { serverSetupSearchEntry } from '../server-setup/server-setup-search-entry'
 import { serverUpdateSearchEntry } from '../server-update/server-update-search-entry'
 import { prBabysitSearchEntry } from '../pr-babysit/pr-babysit-search-entry'
+import { rowStatusSearchEntry } from '../row-status/row-status-search-entry'
 
 export const FORK_SETTINGS_PANE_ID = 'fork'
 
@@ -92,6 +93,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
           ),
           keywords: words('badge', 'children', 'sub-agents', 'tally', 'forkShowChildTally')
         },
+        rowStatusSearchEntry(t),
         {
           title: t('fork.agentStateColors.title', 'Agent state colors'),
           description: t(
