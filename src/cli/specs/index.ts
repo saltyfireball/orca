@@ -70,6 +70,7 @@ import { FORK_GUARDS_COMMAND_SPECS } from '../fork/guards-specs'
 import { FORK_BEST_OF_COMMAND_SPECS } from '../fork/best-of-specs'
 import { FORK_REVIEW_GUIDE_COMMAND_SPECS } from '../fork/review-guide-specs'
 import { FORK_CHAT_HANDOFF_COMMAND_SPECS } from '../fork/chat-handoff-specs'
+import { FORK_LETTERS_COMMAND_SPECS } from '../fork/letters-specs'
 import {
   FORK_AUTO_PLACEMENT_COMMAND_SPECS,
   withForkAutoPlacementNotes
@@ -149,6 +150,9 @@ export const COMMAND_SPECS: CommandSpec[] = withForkAutoPlacementNotes(
     ...FORK_BRANCH_CLASHES_COMMAND_SPECS,
     ...FORK_BEST_OF_COMMAND_SPECS,
     ...FORK_REVIEW_GUIDE_COMMAND_SPECS,
-    ...FORK_CHAT_HANDOFF_COMMAND_SPECS
+    ...FORK_CHAT_HANDOFF_COMMAND_SPECS,
+    ...FORK_CHAT_HANDOFF_COMMAND_SPECS,
+    ...FORK_REVIEW_GUIDE_COMMAND_SPECS,
+    ...FORK_LETTERS_COMMAND_SPECS
   ])
 )

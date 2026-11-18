@@ -98,6 +98,23 @@ export function getForkChatsSearchEntries(t: Translate): SettingsSearchEntry[] {
         'Let a chat visual show an image file, not only an HTML page.'
       ),
       keywords: words('image', 'png', 'jpg', 'visual', 'orca-visual', 'forkVisualFallback')
+    },
+    {
+      title: t('fork.letters.settings.title', 'Letters and the board'),
+      description: t(
+        'fork.settingsPane.search.letters',
+        'Chats message each other between turns, and agents file asks for you.'
+      ),
+      keywords: words(
+        'letter',
+        'message',
+        'board',
+        'ask',
+        'review',
+        'decide',
+        'forkLetters',
+        'forkBoard'
+      )
     }
   ]
 }

@@ -43,7 +43,13 @@ const AGENT_LIMITS: SettingsKey[] = [
   'nestedWorkerMaxDepth',
   'artifactSharingEnabled',
   'agentSkillSharingEnabled',
-  'orchestrationCoordinatorApprovalsEnabled'
+  'orchestrationCoordinatorApprovalsEnabled',
+  // SLRM-2389: the letter and board rate limits agents would otherwise raise for themselves.
+  'forkLettersMaxPerWindow',
+  'forkLettersWindowMinutes',
+  'forkLettersLoopEach',
+  'forkLettersFromPaired',
+  'forkBoardMaxOpenPerChat'
 ]
 
 const ACCOUNTS: SettingsKey[] = [

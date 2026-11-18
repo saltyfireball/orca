@@ -1596,6 +1596,54 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/preload/fork/review-guide-bridge.ts`, `src/renderer/src/fork/review-guide/`,
     `src/cli/fork/review-guide-*` and `mobile/src/components/fork/review-guide/`.
 
+- **Letters and the board (SLRM-2389).** On by default (`forkLetters`, `forkBoard`, Settings >
+  Blackfish > Chats). From John's archived ccdeck (its letters and Board); only the idea is ported.
+  - **Letters.** `orca letter send <to> <text> [--cite <id>] [--host <server>]` sends one chat's
+    message to another chat or terminal agent by id (a unique prefix of 4+ characters), listed by
+    `orca letter chats`. The host signs it with the chat whose environment ran the command
+    (`ORCA_AGENT_SESSION_ID`, else `ORCA_PANE_KEY`, checked against this host's chats); outside any
+    agent it is signed "shell". It is queued and typed in only between the recipient's turns,
+    through idle recovery's guarded send: a native chat that is loaded and not in a turn (checked
+    again inside the send, queued never steered), a terminal agent at an empty prompt with no
+    dialog or draft and only where the agent reads the terminal (checked again before the first
+    write). One letter per recipient per pass, a pass every 5 s while letters wait and none
+    otherwise; a send that may have arrived counts as delivered, so none is typed twice. A sleeping
+    chat keeps its letters until it is loaded; a letter not delivered in a day expires.
+  - **Untrusted.** The recipient sees `[Blackfish letter <id> from ...]`, a line saying the words
+    are another agent's, not the user's, and cannot approve anything, then the body between
+    `--- letter begins ---` and `--- letter ends ---`, then the command to answer. The frame is
+    built from the host's own record; a body that writes those markers (after NFKC folding and
+    with invisible characters taken out) is refused, and control, bidi and zero-width characters
+    are stripped. Titles a sender controls are printed only when plain.
+  - **Cite.** `--cite` names an earlier letter between the same two chats; any other is refused.
+  - **Rate limits.** Per sending chat: `forkLettersMaxPerWindow` (20) letters and asks in
+    `forkLettersWindowMinutes` (10); two chats that wrote each other `forkLettersLoopEach` (6)
+    times each way in the window are refused as a loop; a recipient holds at most 20 waiting
+    letters. `orca settings` cannot write the limits (kind `agent-limit`).
+  - **Paired hosts.** `--host <server>` hands the letter at once to that paired server's
+    `fork.letters.deliver` over the desktop's own RPC client; the server marks the sender as a
+    paired device (unverified) and delivers it the same way. A server chat's answer to a desktop
+    chat waits there until the desktop collects it (`fork.letters.collect`); a desktop polls each
+    server it wrote to in the last day every 15 s. `forkLettersFromPaired` (on) refuses all of it.
+  - **The board.** `orca board add REVIEW|DECIDE|DO <title> [--body <text>]` files an ask for the
+    user. A chat holds at most `forkBoardMaxOpenPerChat` (10) open asks, and filing counts against
+    its letter rate. Its open asks show in a closed tray above its message box (one line with the
+    count and the first ask; open, each ask is a collapsed row in a capped scroll area, Escape
+    closes it), and every open ask, from this host and each paired server, shows in the Decision
+    inbox under "Asks for you" with Go to chat. Done: by the user or the agent that filed it.
+    Throw back: by the user only, with a note the asking chat is sent between its turns. The
+    inbox and its toolbar count show while the board is on, even with idle recovery off.
+  - **History.** "Letters between chats..." in the palette, the Decision inbox and the Settings
+    card opens every letter of the last week, newest first, from this host and its paired
+    servers; a name narrows it to that chat. `orca letter list [--chat <id>]` lists them too
+    (the calling chat's own by default).
+  - **State.** `fork-letters.json` in the data folder (mode 0600, written atomically): letters,
+    asks, the rate log and the servers written to. Settled letters and closed asks are kept a
+    week.
+  - Code is in `src/shared/fork/letters*.ts`, `src/main/fork/letters/`,
+    `src/main/runtime/rpc/methods/fork/fork-letters.ts`, `src/preload/fork/letters-bridge.ts`,
+    `src/cli/fork/letters-*.ts` and `src/renderer/src/fork/letters/`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -1728,6 +1776,7 @@ Apply these in this order. Each one is a single commit.
 114. `SLRM-2396 Review guides: an agent-written tour of a pull request in a Guide tab, on the phone and in orca review-guide`
 115. `SLRM-2387 Agents on the iPhone Lock Screen: a Live Activity and an Agents widget`
 116. `SLRM-2406 Set up on a server from the phone and from batch start's Auto machine`
+115. `SLRM-2389 Letters and the board: chats message each other between turns, and agents file asks for the user`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2585,6 +2634,25 @@ Upstream files only get short hooks, which keeps rebases small:
     create agent launches use, with the handoff as its first message.
   - The settings are in `src/shared/fork/fork-global-settings.ts` and
     `settings-rows-chat.generated.ts` is regenerated.
+
+- Letters and the board (SLRM-2389), from `src/shared/fork/letters*.ts`,
+  `src/main/fork/letters/`, `src/cli/fork/letters-*.ts` and `src/renderer/src/fork/letters/`:
+  - `rpc-method-registry.ts` spreads `FORK_LETTERS_RPC_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-letters.ts`); `rpc-params-catalog.generated.ts` is
+    regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_LETTERS_COMMAND_SPECS`, `fork-handler-groups.ts` adds the
+    `fork-letters` group and `cli-command-names.ts` lists `letter` and `board`.
+  - `projects-app-hooks.ts` calls `installForkLettersApp`; `preload/index.ts` and `api-types.ts`
+    add `forkLetters` (`src/preload/fork/letters-bridge.ts`). `runtime-settle-hooks.ts` calls
+    `startForkLetters` (the desktop, `orca serve` and orcad).
+  - `NativeChatComposer.tsx` renders `ForkBoardTray` before the cache-cold cue.
+  - The Decision inbox (`ForkDecisionInboxHost`, `ForkDecisionInboxButton`,
+    `decision-inbox-store.ts`) lists and counts the board's asks and stays on while the board is;
+    its palette entries add "Letters between chats...". `ForkRootHosts.tsx` mounts
+    `ForkLettersDialogHost`.
+  - The settings are in `src/shared/fork/letters.ts`, intersected in `fork-global-settings.ts`;
+    `settings-rows-fork.generated.ts` is regenerated, the limits are `agent-limit` keys in
+    `settings-access.ts`, and the card is in the fork's Settings pane (Chats).
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
