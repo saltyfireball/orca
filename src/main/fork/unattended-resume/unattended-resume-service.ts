@@ -1,8 +1,10 @@
 // Unattended resume (FORK.md, SLRM-2268): once per process, after start-up settles, continue the
 // turns a restart or update cut in chats nobody is watching. Runs wherever the chat host runs: the
 // desktop app and the headless server (`orca serve`, orcad) both reach it through the runtime's
-// start-up hook. Interactive chats keep the stock offer; the rule is in
-// `src/shared/fork/unattended-resume.ts`. The continuation is the stock one ("Continue" in the
+// start-up hook. Interactive chats keep the stock offer unless `forkUnattendedResumeInteractive`
+// is on (SLRM-2411); the rule is in `src/shared/fork/unattended-resume.ts`. Before a chat is
+// continued its saved conversation is read for a person's Stop and a usage-limit wait
+// (`unattended-resume-holds.ts`). The continuation is the stock one ("Continue" in the
 // restart offer), sent through the host's own `continueAfterRestart`, so it re-checks
 // eligibility, reserves the offer and writes the same chat notes.
 import { isForkAgentGuardHeld } from '../agent-guards/agent-guards-holds'
@@ -13,6 +15,7 @@ import {
   readUnattendedResumeSettings,
   type UnattendedAutomationRunFacts,
   type UnattendedResumeDecision,
+  type UnattendedResumeHold,
   type UnattendedResumeSettingsSource,
   type UnattendedRunKind
 } from '../../../shared/fork/unattended-resume'
@@ -27,6 +30,7 @@ import {
   writeUnattendedResumeTries,
   type UnattendedResumeTries
 } from './unattended-resume-tries'
+import { readUnattendedResumeHold } from './unattended-resume-holds'
 
 export const UNATTENDED_RESUME_OWNER = 'trusted-local:fork-unattended-resume'
 
@@ -36,6 +40,8 @@ export type UnattendedResumeHost = {
     sessionIds: readonly string[],
     owner: string
   ) => ReturnType<StructuredAgentSessionRestartResume['continueAfterRestart']>
+  /** SLRM-2411: why a chat the rule would continue must wait for a person, or null. */
+  hold: (sessionId: string) => Promise<UnattendedResumeHold | null>
 }
 
 export type UnattendedResumeDeps = {
@@ -97,17 +103,23 @@ export async function runUnattendedResumePass(
     if (isForkAgentGuardHeld(candidate.sessionId)) {
       continue
     }
-    const decision = decideUnattendedResume({
+    let decision = decideUnattendedResume({
       settings,
       kind: deps.classify(candidate),
       activity: candidate.activity,
       triesUsed: tries.get(candidate.sessionId)?.tries ?? 0
     })
+    if (decision.action === 'resume') {
+      const hold = await host.hold(candidate.sessionId)
+      if (hold) {
+        decision = { action: 'skip', reason: hold }
+      }
+    }
     result.decisions.push({ sessionId: candidate.sessionId, decision })
     if (decision.action === 'resume') {
       chosen.push(candidate.sessionId)
-    } else if (decision.reason === 'tries-used' || decision.reason === 'awaiting-person') {
-      deps.log('left an interrupted unattended chat for a person', {
+    } else if (decision.reason !== 'disabled' && decision.reason !== 'interactive') {
+      deps.log('left an interrupted chat for a person', {
         sessionId: candidate.sessionId,
         reason: decision.reason
       })
@@ -128,7 +140,7 @@ export async function runUnattendedResumePass(
   const action = await host.continueAfterRestart(chosen, UNATTENDED_RESUME_OWNER)
   for (const outcome of action.continued) {
     result.continued.push({ sessionId: outcome.sessionId, outcome: outcome.outcome })
-    deps.log('continued an interrupted unattended chat', {
+    deps.log('continued an interrupted chat', {
       sessionId: outcome.sessionId,
       outcome: outcome.outcome,
       ...(outcome.reason ? { reason: outcome.reason } : {})
@@ -188,7 +200,8 @@ async function runLiveUnattendedResume(runtime: UnattendedResumeRuntime): Promis
       return {
         list: () => host.restartResume.list(),
         continueAfterRestart: (sessionIds, owner) =>
-          host.restartResume.continueAfterRestart(sessionIds, owner)
+          host.restartResume.continueAfterRestart(sessionIds, owner),
+        hold: (sessionId) => readUnattendedResumeHold(host.deps.journalDatabase, sessionId)
       }
     },
     classify: await liveClassifier(runtime, () => records),
