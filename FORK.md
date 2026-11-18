@@ -1596,6 +1596,19 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/main/runtime/rpc/methods/fork/fork-branch-clashes.ts`,
     `src/preload/fork/branch-clashes-bridge.ts`, `src/renderer/src/fork/branch-clashes/` and
     `src/cli/fork/branch-clashes-*`.
+- **Typecheck caps (SLRM-2405).** Two environment variables lower what `pnpm typecheck`,
+  `pnpm tc` and the `tc:*` scripts take from the machine, for hosts where several checkouts
+  check at the same time. Unset, the runner behaves as upstream's does. Each takes a positive
+  integer, only ever lowers, and stops the run with a message on any other value.
+  - `ORCA_FORK_TYPECHECK_JOBS`: how many projects are checked at once. Upstream checks two at a
+    time with the default compiler (`tsrs`), fewer when the host has under about 19 GB.
+  - `ORCA_FORK_TYPECHECK_CHECKERS`: checker threads of each `tsrs` compiler (upstream's default
+    is 8). A `--checkers=<n>` flag still wins.
+  - Measured on an 18-core host with 36 GB, the five root projects, cold cache: stock about
+    7 to 10 GB peak for the process tree in 8 to 11 s. One job, 6.5 GB in 11 s. One job with
+    4 checkers, 5.3 GB in 11 s. One job with 2 checkers, 4.1 GB in 16 to 18 s. A run with a warm
+    incremental cache takes 1 to 2 GB in 2 s at any setting.
+  - Code is in `config/scripts/fork/typecheck-jobs.mjs`.
 
 - **Review guides (SLRM-2396).** A Guide tab on the pull request page: an agent writes a tour of
   the change, with stops in reading order, "Look closely" marks where a maintainer has to make a
@@ -1815,6 +1828,7 @@ Apply these in this order. Each one is a single commit.
 116. `SLRM-2406 Set up on a server from the phone and from batch start's Auto machine`
 115. `SLRM-2389 Letters and the board: chats message each other between turns, and agents file asks for the user`
 113. `SLRM-2388 Digest: what finished, failed, merged and cost, and what waits on you, across this host and its paired servers`
+112. `SLRM-2405 Typecheck caps: environment variables for parallel projects and tsrs checker threads`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2705,6 +2719,10 @@ Upstream files only get short hooks, which keeps rebases small:
   - Mobile: `app/h/[hostId]/digest.tsx` (the shell route) and `digest.web.tsx` (the page) are new
     route files with no strings; `host-stack-screens.ts` spreads `FORK_HOST_STACK_SCREENS` and
     `host-screen-header.tsx` adds `forkDigestHostAction(...)` to the host menu.
+- Typecheck caps (SLRM-2405), from `config/scripts/fork/typecheck-jobs.mjs`:
+  - `run-typecheck-projects-in-parallel.mjs` imports it, wraps the default of
+    `runTypecheckProjects`'s `parallelism` in `forkTypecheckParallelism(...)` and the `tsrs`
+    default checker count in `forkTypecheckCheckers(...)`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
