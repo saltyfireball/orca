@@ -3,11 +3,10 @@
 // bundle id), waits until no turn is running, swaps it in with the old install kept, and restarts
 // its service through a watchdog that puts the old install back if the new one does not come up.
 // One job at a time; tests pass fakes for every outside effect.
-import { constants } from 'node:fs'
-import { access } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import {
   compareForkVersions,
+  isForkReleaseVersion,
   readForkServerUpdateConfig,
   type ForkServerUpdateConfig,
   type ForkServerUpdateSettings
@@ -20,6 +19,7 @@ import type {
 import type { ForkFetch } from './server-update-fetch'
 import {
   findForkServerInstall,
+  isForkInstallWritable,
   readInstallVersion,
   type ForkServerInstall
 } from './server-update-install'
@@ -52,7 +52,10 @@ const ACTIVE = new Set(['downloading', 'verifying', 'waiting', 'restarting'])
 
 export type ForkServerUpdaterDeps = {
   userDataPath: () => string
+  /** The host's own version (orcad: a build string, not a release). */
   version: () => string
+  /** The release used when no install is resolved; `version` when left out. */
+  releaseVersion?: () => string
   platform: NodeJS.Platform
   arch: string
   homeDir: string
@@ -78,16 +81,6 @@ export type ForkServerUpdateRequest = {
   waitMinutes?: number
 }
 
-async function defaultWritable(path: string): Promise<boolean> {
-  try {
-    await access(path, constants.W_OK)
-    await access(dirname(path), constants.W_OK)
-    return true
-  } catch {
-    return false
-  }
-}
-
 function errorText(error: unknown): string {
   return (error instanceof Error ? error.message : String(error)).slice(0, 600)
 }
@@ -97,7 +90,7 @@ export function createForkServerUpdater(deps: ForkServerUpdaterDeps) {
   // Held from the first await of a request until its job exists, so two requests never both pass.
   let admitting = false
   const installVersion = deps.installVersion ?? readInstallVersion
-  const writable = deps.writable ?? defaultWritable
+  const writable = deps.writable ?? isForkInstallWritable
 
   const lookup = (): Promise<ForkServerInstall | { problem: string }> =>
     findForkServerInstall({
@@ -106,6 +99,11 @@ export function createForkServerUpdater(deps: ForkServerUpdaterDeps) {
       configHome: deps.configHome,
       userDataPath: deps.userDataPath()
     })
+
+  // The resolved install's own release (what an update checks against), never orcad's build.
+  const releaseOf = async (found: ForkServerInstall | null): Promise<string> =>
+    (found ? await installVersion(found.kind, found.path) : null) ??
+    (deps.releaseVersion ?? deps.version)()
 
   const update = (patch: Partial<ForkServerUpdateJob>): void => {
     if (job) {
@@ -238,8 +236,11 @@ export function createForkServerUpdater(deps: ForkServerUpdaterDeps) {
       const read = readForkServerUpdateConfig(settings)
       const install = await lookup()
       const found = 'problem' in install ? null : install
+      const version = await releaseOf(found)
+      const build = deps.version() // orcad's `0.1.0+<hash>`; a release host has none apart
       return {
-        version: deps.version(),
+        version,
+        ...(build !== version && !isForkReleaseVersion(build) ? { buildVersion: build } : {}),
         platform: deps.platform,
         arch: deps.arch,
         install: found ? { kind: found.kind, path: found.path, service: found.service.name } : null,
@@ -257,13 +258,14 @@ export function createForkServerUpdater(deps: ForkServerUpdaterDeps) {
       settings: ForkServerUpdateSettings | null,
       request: ForkServerUpdateRequest & { version: string }
     ): Promise<ForkServerUpdateStartResult> {
-      const running = deps.version()
+      const resolved = await lookup()
+      const running = await releaseOf('problem' in resolved ? null : resolved)
       const order = compareForkVersions(request.version, running)
       if (order === 0) {
         return { current: true }
       }
       if ((order === null || order < 0) && !request.allowDowngrade) {
-        // Checked before admit, so a refused downgrade never reads the install.
+        // Checked before admit, so a refused downgrade never touches the work folder.
         config(settings)
         throw new Error(
           `refusing to go from ${running} to ${request.version}: that is not newer (pass --allow-downgrade to do it anyway)`
@@ -309,7 +311,7 @@ export function createForkServerUpdater(deps: ForkServerUpdaterDeps) {
         admitting = false
         throw new Error('no earlier version is kept on this server')
       }
-      const started = begin('rollback', deps.version(), previous)
+      const started = begin('rollback', await releaseOf(install), previous)
       // The kept install is run again: check the folder is ours and, on macOS, its signer.
       const check = async (): Promise<void> => {
         await checkForkUpdateOwned(workDir, deps.uid)
