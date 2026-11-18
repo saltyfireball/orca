@@ -10,7 +10,7 @@ import {
   forkIdleRecoveryBridge,
   openForkDecisionInbox,
   useForkDecisionInbox,
-  useForkIdleRecoveryMode
+  useForkDecisionInboxOn
 } from './decision-inbox-store'
 import { decisionInboxBadgeText, decisionInboxSections } from './decision-inbox-view'
 
@@ -70,7 +70,7 @@ function Counted(): React.JSX.Element {
 }
 
 export function ForkDecisionInboxButton(): React.JSX.Element | null {
-  const mode = useForkIdleRecoveryMode()
-  // The counts are read only inside `Counted`, so nothing is read while the mode is off.
-  return mode === 'off' || !forkIdleRecoveryBridge() ? null : <Counted />
+  const on = useForkDecisionInboxOn()
+  // The counts are read only inside `Counted`, so nothing is read while the inbox is off.
+  return !on || !forkIdleRecoveryBridge() ? null : <Counted />
 }
