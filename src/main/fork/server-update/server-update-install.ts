@@ -2,8 +2,9 @@
 // it. The answer comes from the service unit `orca serve service install` or dotfiles orca-server
 // wrote for this profile (same label prefix and unit name), so a server that is not run by
 // launchd or systemd, or runs from somewhere else, is never touched. Keep electron out of this file.
-import { readdir, readFile, realpath, stat } from 'node:fs/promises'
-import { join } from 'node:path'
+import { constants } from 'node:fs'
+import { access, readdir, readFile, realpath, stat } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { SERVE_LAUNCHD_LABEL_PREFIX } from '../../../shared/remote-runtime/serve-supervisor/serve-bundle-coordination'
 import { isSameUserDataPath } from '../../../shared/remote-runtime/serve-supervisor/serve-user-data-path'
 import { FORK_SERVER_UPDATE_MAC_BUNDLE_ID } from '../../../shared/fork/server-update'
@@ -261,4 +262,15 @@ export async function readInstallVersion(
     return null
   }
   return readLinuxServerVersion(path)
+}
+
+/** True when this user may replace the install: write access to it and to its folder. */
+export async function isForkInstallWritable(path: string): Promise<boolean> {
+  try {
+    await access(path, constants.W_OK)
+    await access(dirname(path), constants.W_OK)
+    return true
+  } catch {
+    return false
+  }
 }
