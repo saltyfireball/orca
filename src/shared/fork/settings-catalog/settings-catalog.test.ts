@@ -26,6 +26,7 @@ describe('fork settings catalog', () => {
     expect(missing, 'run: pnpm run generate:fork-settings-catalog').toEqual([])
   })
 
+  // Why: the generator spawns a node child that loads the settings types, slow on a cold CI runner.
   it('matches the GlobalSettings type: no key missing, none left over', () => {
     // The generator reads the type; --check fails when its output is not what is committed.
     const run = (): string =>
