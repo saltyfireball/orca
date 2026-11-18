@@ -87,6 +87,14 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Also read Claude Code and Codex terminal agents for limit stops; unset is on.","o":true}',
   forkLostWork:
     '{"t":{"k":"object","fields":{"checks":{"k":"record","of":{"k":"boolean"},"keys":["finishedWorktrees","missingFolders","pullRequests","stashes","unmergedBranches","unmergedWorktrees","untrackedWorktrees"],"optional":true},"defaultBranches":{"k":"record","of":{"k":"string"},"optional":true},"archiveFolder":{"k":"string","optional":true},"squashLookback":{"k":"number","optional":true},"pullRequestLimit":{"k":"number","optional":true},"pullRequestTimeoutSeconds":{"k":"number","optional":true},"projectConcurrency":{"k":"number","optional":true},"itemConcurrency":{"k":"number","optional":true},"inUse":{"k":"object","fields":{"activeWorkspace":{"k":"boolean","optional":true},"liveTerminals":{"k":"boolean","optional":true},"openChats":{"k":"boolean","optional":true},"runningAgents":{"k":"boolean","optional":true},"sleepingChats":{"k":"boolean","optional":true}},"optional":true}}},"d":"The lost work scan\'s checks, base branches and archive folder.","o":true}',
+  forkMainSync:
+    '{"t":{"k":"boolean"},"d":"Fetch each local project\'s default branch on a timer and fast-forward it when it is clean and behind; off unless true.","o":true}',
+  forkMainSyncMinutes:
+    '{"t":{"k":"number"},"d":"Main sync: minutes between two passes (5 to 1440); unset is 15.","o":true}',
+  forkMainSyncProjects:
+    '{"t":{"k":"array","of":{"k":"string"}},"d":"Main sync: projects it keeps current, by name, id or path; unset or empty is every local git project.","o":true}',
+  forkMainSyncSkipInUse:
+    '{"t":{"k":"boolean"},"d":"Main sync: leave a default branch alone while its checkout has live terminals or a working agent; unset is on.","o":true}',
   forkMcpDefaultBackground:
     '{"t":{"k":"string"},"d":"MCP profiles: profile for automation runs; unset is \\"all\\".","o":true}',
   forkMcpDefaultInteractive:

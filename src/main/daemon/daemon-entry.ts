@@ -31,11 +31,14 @@ import { isWindowsProcessTableAvailable } from '../windows/windows-process-table
 import { leaseAppImageGenerationForCurrentProcess } from '../cli/appimage/appimage-generation-lease'
 import { createDaemonShutdownDeadline } from './launch/daemon-shutdown-deadline'
 import { setDaemonProcessName } from './daemon-process-name'
+import { forkRaiseDaemonOomScore } from '../fork/serve-protect/daemon-oom-score'
 
 async function main(): Promise<void> {
   // The parent closes startup stderr after readiness; later EPIPE errors must not kill the daemon.
   process.stderr.on('error', () => {})
   setDaemonProcessName()
+  // Fork (SLRM-2384): agents take the protect drop-in's higher OOM score, not the server's.
+  await forkRaiseDaemonOomScore()
 
   const {
     socketPath,
