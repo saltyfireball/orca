@@ -6,7 +6,7 @@
 //
 // The fingerprint is a set of named parts, one hash each: the command, the cwd, the session, each
 // arg flag, the order of the flags and each provider env key. Two launches match when every part
-// does, and a mismatch can say which parts differ by name, never by value. What only describes
+// does (an Orca env key only one of them has aside), and a mismatch can say which parts differ by name, never by value. What only describes
 // the app run (its version, per-spawn tokens) is not a part, so an app update alone changes
 // nothing here.
 import { createHash } from 'node:crypto'
@@ -193,9 +193,18 @@ export function readChatSurviveLaunchPrint(value: unknown): ChatSurviveLaunchPri
 }
 
 /**
+ * Orca's own env, which the provider never reads: it tells the tools the chat runs (the orca CLI,
+ * the workspace's ports) where they are. An update that starts or stops exporting such a key
+ * (SLRM-2383 added ORCA_PORT and ORCA_PORT_0..N-1 to every chat, SLRM-2411) leaves the running
+ * provider the one this start expects, so a key only one launch has is no difference. A changed
+ * value still is.
+ */
+const ORCA_OWN_ENV_PART = /^env:ORCA_/
+
+/**
  * The names of the parts in which two fingerprints differ, sorted: one that changed, one only the
- * saved launch had and one only this launch has. Empty when they are the same launch. Names only
- * (arg flags and env keys), so the answer is safe to log.
+ * saved launch had and one only this launch has (Orca's own env keys aside). Empty when they are
+ * the same launch. Names only (arg flags and env keys), so the answer is safe to log.
  */
 export function chatSurviveLaunchDiff(
   saved: ChatSurviveLaunchPrint,
@@ -203,11 +212,13 @@ export function chatSurviveLaunchDiff(
 ): string[] {
   const names = new Set([...Object.keys(saved.parts), ...Object.keys(now.parts)])
   return [...names]
-    .filter(
-      (name) =>
-        !Object.hasOwn(saved.parts, name) ||
-        !Object.hasOwn(now.parts, name) ||
-        saved.parts[name] !== now.parts[name]
-    )
+    .filter((name) => {
+      const inSaved = Object.hasOwn(saved.parts, name)
+      const inNow = Object.hasOwn(now.parts, name)
+      if (inSaved && inNow) {
+        return saved.parts[name] !== now.parts[name]
+      }
+      return !ORCA_OWN_ENV_PART.test(name)
+    })
     .sort()
 }
