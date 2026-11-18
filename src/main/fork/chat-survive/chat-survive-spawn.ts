@@ -163,8 +163,10 @@ function adoptedChild(
       `[fork-chat-survive] chat ${sessionId}: surviving provider not adopted, ${refusal}`
     )
     stopChatSurviveClaim(claim)
+    // The reason goes in the error too: upstream's trace keeps the start failure's cause, while
+    // the console line above is lost in a packaged app (SLRM-2411). Part names only, never values.
     throw new Error(
-      'the chat-survive provider for this chat was started otherwise and is still stopping'
+      `the chat-survive provider for this chat was started otherwise and is still stopping (${refusal})`
     )
   }
   const tracker = createChatSurviveStreamTracker(claim.mark)
