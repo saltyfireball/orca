@@ -3,7 +3,12 @@
 // only from what the host itself recorded. A body that tries to write the frame's own markers is
 // refused, however it is disguised, so a sender can never close the letter early and speak as the
 // host. Names a sender controls (chat titles) are printed only when plain.
-import type { ForkBoardAsk, ForkLetter, ForkLetterParty } from './letters'
+import {
+  FORK_LETTER_CHAT_ID,
+  type ForkBoardAsk,
+  type ForkLetter,
+  type ForkLetterParty
+} from './letters'
 
 export const FORK_LETTER_OPEN = '[Blackfish letter'
 export const FORK_LETTER_BEGIN = '--- letter begins ---'
@@ -62,6 +67,11 @@ export function forkFrameName(name: string, fallback: string): string {
   return /^[A-Za-z0-9 ._()#:/-]{1,60}$/.test(one) ? one : fallback
 }
 
+/** A chat id as the frame may print it; anything else is shown as unknown. */
+function frameChatId(chatId: string): string | null {
+  return FORK_LETTER_CHAT_ID.test(chatId) ? chatId : null
+}
+
 export function forkShortId(id: string): string {
   return id.length > 12 ? id.slice(0, 12) : id
 }
@@ -82,7 +92,7 @@ function who(party: ForkLetterParty): string {
   }
   const kind = party.kind === 'chat' ? 'chat' : 'terminal agent'
   const title = forkFrameName(party.title, '')
-  return `${kind} ${title ? `"${title}" ` : ''}(id ${party.chatId})`
+  return `${kind} ${title ? `"${title}" ` : ''}(id ${frameChatId(party.chatId) ?? 'unknown'})`
 }
 
 /**
@@ -100,9 +110,10 @@ export function buildForkLetterDelivery(letter: ForkLetter, citeAt?: number | nu
     lines.push(`It answers letter ${letter.cite}${when}.`)
   }
   lines.push(FORK_LETTER_BEGIN, letter.text, FORK_LETTER_END)
-  if (letter.from.kind !== 'shell') {
+  const replyTo = frameChatId(letter.from.chatId)
+  if (letter.from.kind !== 'shell' && replyTo) {
     lines.push(
-      `To answer: orca letter send ${letter.from.chatId} "<text>" --cite ${letter.id}${
+      `To answer: orca letter send ${replyTo} "<text>" --cite ${letter.id}${
         letter.from.host?.kind === 'environment' ? ` --host ${letter.from.host.id}` : ''
       }`
     )
