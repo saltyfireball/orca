@@ -19,7 +19,21 @@ describe('decisionInboxSections', () => {
   })
 
   it('reads nothing as empty', () => {
-    expect(decisionInboxSections(null)).toEqual({ waiting: [], stalled: [], paused: [] })
+    expect(decisionInboxSections(null)).toEqual({
+      guarded: [],
+      waiting: [],
+      stalled: [],
+      paused: []
+    })
+  })
+
+  it('lists agents a guard paused apart from the chats idle recovery judged (SLRM-2385)', () => {
+    const sections = decisionInboxSections([
+      inboxItem({ chatId: 'waiting' }),
+      inboxItem({ chatId: 'looping', verdict: 'guard' })
+    ])
+    expect(sections.guarded.map((item) => item.chatId)).toEqual(['looping'])
+    expect(sections.waiting.map((item) => item.chatId)).toEqual(['waiting'])
   })
 
   it('keeps paused chats apart from both counts, oldest first', () => {
