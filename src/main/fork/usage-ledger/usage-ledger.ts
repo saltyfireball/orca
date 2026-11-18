@@ -163,15 +163,19 @@ export class UsageLedger {
   }
 
   cacheStates(): ForkCacheState[] {
-    return Object.values(this.data.chats)
-      .filter((chat) => chat.contextTokens > 0)
-      .map((chat) => ({
-        sessionId: chat.sessionId,
-        lastAt: chat.lastAt,
-        contextTokens: chat.contextTokens,
-        ...(chat.ttl ? { ttl: chat.ttl } : {}),
-        working: this.working.has(chat.sessionId)
-      }))
+    return (
+      Object.values(this.data.chats)
+        // A compacted chat stays listed (context 0) so its row keeps its spend (SLRM-2390).
+        .filter((chat) => chat.contextTokens > 0 || Object.keys(chat.days).length > 0)
+        .map((chat) => ({
+          sessionId: chat.sessionId,
+          lastAt: chat.lastAt,
+          contextTokens: chat.contextTokens,
+          ...(chat.ttl ? { ttl: chat.ttl } : {}),
+          ...(chat.billing ? { billing: chat.billing } : {}),
+          working: this.working.has(chat.sessionId)
+        }))
+    )
   }
 
   /** Drops days older than the retention, chats left with none, then the oldest past the cap. */
