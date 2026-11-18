@@ -15,6 +15,7 @@ import { worktreeMoveSearchEntry } from '../worktree-move/worktree-move-search-e
 import { apfsCloneSearchEntry } from '../apfs-clone/apfs-clone-search-entry'
 import { snoozeSearchEntry } from '../snooze/snooze-search-entry'
 import { serverUpdateSearchEntry } from '../server-update/server-update-search-entry'
+import { prBabysitSearchEntry } from '../pr-babysit/pr-babysit-search-entry'
 import { mainSyncSearchEntry } from '../main-sync/main-sync-search-entry'
 
 export const FORK_SETTINGS_PANE_ID = 'fork'
@@ -138,7 +139,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
       t('fork.settingsPane.idleRecovery.title', 'Idle recovery'),
       t(
         'fork.settingsPane.idleRecovery.description',
-        'Judge how an idle chat ended its turn, and list the ones waiting on you.'
+        'Judge how an idle chat ended its turn, list the ones waiting on you, and babysit pull requests.'
       ),
       [
         {
@@ -155,7 +156,8 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
             'notification',
             'forkIdleSweepMode'
           )
-        }
+        },
+        prBabysitSearchEntry(t)
       ]
     ),
     section(
