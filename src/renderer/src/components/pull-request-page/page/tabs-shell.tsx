@@ -27,6 +27,10 @@ import {
 import { ConversationTab } from '../conversation/tab'
 import { ChecksTab } from '../checks/tab'
 import { PRFilesCombinedDiffViewer } from '../files/combined-diff-viewer'
+import {
+  ForkReviewGuideTabContent,
+  ForkReviewGuideTabTrigger
+} from '@/fork/review-guide/ForkReviewGuideTab'
 
 export function PullRequestPageTabs({
   tab,
@@ -118,6 +122,7 @@ export function PullRequestPageTabs({
             </span>
           )}
         </TabsTrigger>
+        <ForkReviewGuideTabTrigger repoId={effectiveRepoId} />
       </TabsList>
 
       <div className="min-h-0 flex-1 overflow-y-auto scrollbar-sleek">
@@ -224,6 +229,16 @@ export function PullRequestPageTabs({
             />
           )}
         </TabsContent>
+        <ForkReviewGuideTabContent
+          tab={tab}
+          workItem={workItem}
+          projectOrigin={projectOrigin}
+          repoId={effectiveRepoId}
+          headSha={details?.headSha}
+          files={files}
+          pendingViewedPaths={pendingViewedPaths}
+          onViewedChange={handlePRFileViewedChange}
+        />
       </div>
     </Tabs>
   )
