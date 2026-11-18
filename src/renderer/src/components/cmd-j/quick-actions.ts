@@ -24,6 +24,7 @@ import { getForkLostWorkQuickActions } from '@/fork/lost-work/fork-lost-work-qui
 import { getForkSleepersQuickActions } from '@/fork/sleepers/fork-sleepers-quick-actions'
 import { getForkDecisionInboxQuickActions } from '@/fork/decision-inbox/fork-decision-inbox-quick-actions'
 import { getForkUsageReportQuickActions } from '@/fork/usage-report/fork-usage-report-quick-actions'
+import { getForkBestOfQuickActions } from '@/fork/best-of/fork-best-of-quick-actions'
 
 export type CmdJQuickActionRunResult =
   | { status: 'ok' }
@@ -190,6 +191,8 @@ export const getCmdJQuickActions = createLocalizedCatalog((): CmdJQuickAction[] 
   ...getForkLostWorkQuickActions(),
   // SLRM-2104: open the usage report (FORK.md).
   ...getForkUsageReportQuickActions(),
+  // SLRM-2393: open the best-of compare view (FORK.md).
+  ...getForkBestOfQuickActions(),
   {
     id: CREATE_WORKSPACE_QUICK_ACTION_ID,
     kind: 'action',

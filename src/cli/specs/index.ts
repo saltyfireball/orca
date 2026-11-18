@@ -57,6 +57,7 @@ import { FORK_SERVERS_COMMAND_SPECS } from '../fork/servers-specs'
 import { FORK_GUARDS_COMMAND_SPECS } from '../fork/guards-specs'
 import { FORK_MAIN_SYNC_COMMAND_SPECS } from '../fork/main-sync-specs'
 import { FORK_SERVE_PROTECT_COMMAND_SPECS } from '../fork/serve-protect-specs'
+import { FORK_BEST_OF_COMMAND_SPECS } from '../fork/best-of-specs'
 import {
   FORK_AUTO_PLACEMENT_COMMAND_SPECS,
   withForkAutoPlacementNotes
@@ -123,6 +124,7 @@ export const COMMAND_SPECS: CommandSpec[] = withForkAutoPlacementNotes(
     ...FORK_GUARDS_COMMAND_SPECS,
     ...FORK_MAIN_SYNC_COMMAND_SPECS,
     ...FORK_SERVE_PROTECT_COMMAND_SPECS,
-    ...FORK_BRANCH_CLASHES_COMMAND_SPECS
+    ...FORK_BRANCH_CLASHES_COMMAND_SPECS,
+    ...FORK_BEST_OF_COMMAND_SPECS
   ])
 )
