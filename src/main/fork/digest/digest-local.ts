@@ -33,6 +33,7 @@ function waitingOf(inbox: ForkIdleRecoveryInboxResult): ForkDigestWaiting[] {
       workspace: item.workspace,
       question: item.question || item.reason,
       verdict: item.verdict,
+      ...(item.source === 'babysit' ? { source: item.source } : {}),
       since: item.since
     }))
 }
@@ -79,7 +80,9 @@ export async function readForkDigestLocal(
   try {
     const inbox = await deps.inbox()
     if (inbox.mode === 'off') {
-      notes.push('Idle recovery is off here, so no chat is listed as waiting on you.')
+      notes.push(
+        'Idle recovery is off here, so chats that ended on a question are not listed; guard pauses and the PR babysitter still are.'
+      )
     }
     waiting = waitingOf(inbox)
   } catch {
