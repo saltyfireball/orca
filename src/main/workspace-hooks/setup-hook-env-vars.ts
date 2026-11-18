@@ -2,6 +2,7 @@ import { getRuntimePathBasename } from '../../shared/file-access/cross-platform-
 import { TERMINAL_GIT_CREDENTIAL_GUARD_POLICY_ENV } from '../../shared/shell/launch/terminal-git-credential-guard'
 import type { WorkspaceHookOwner } from '../../shared/workspace-setup/hooks/workspace-hook-owner'
 import { isFolderRepo } from '../../shared/repository/repo-kind'
+import { forkWorktreePortSetupEnvFor } from '../fork/worktree-ports/worktree-ports-service'
 
 /** The workspace a hook runs for; folder workspaces share one directory, so the path can't name them. */
 export type HookWorkspaceIdentity = {
@@ -42,7 +43,9 @@ export function getSetupEnvVars(
     CONDUCTOR_ROOT_PATH: repo.path,
     CONDUCTOR_WORKSPACE_PATH: worktreePath,
     CONDUCTOR_WORKSPACE_NAME: workspaceName,
-    GHOSTX_ROOT_PATH: repo.path
+    GHOSTX_ROOT_PATH: repo.path,
+    // Fork (SLRM-2383): the workspace's port block, plus CONDUCTOR_PORT (FORK.md).
+    ...forkWorktreePortSetupEnvFor(identity?.worktreeId)
   }
 }
 

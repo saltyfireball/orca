@@ -4,6 +4,7 @@ import type { ProfilePreferences } from '../persistence/loading-store/profile-pr
 import { installForkChatSurvive } from './chat-survive/chat-survive-setting'
 import { watchForkUsageRetention } from './usage-ledger/usage-ledger-service'
 import { installForkVisualFallbackSettings } from './visual-image/visual-image-settings'
+import { installForkWorktreePorts } from './worktree-ports/worktree-ports-service'
 import { installForkPrBabysit } from './pr-babysit/pr-babysit-hooks'
 
 export { forkPostReadyAppName } from './app-name'
@@ -17,6 +18,7 @@ export async function installForkReady(
 ): Promise<void> {
   watchForkUsageRetention(store)
   installForkVisualFallbackSettings(store)
+  installForkWorktreePorts(store)
   installForkPrBabysit(store)
   await installForkChatSurvive(store)
 }

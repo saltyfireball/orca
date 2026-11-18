@@ -11,6 +11,7 @@ import type { ForkApfsCloneSettings } from './apfs-clone'
 import type { ForkWebhookSettings } from './webhooks'
 import type { ForkServerHealthSettings } from './server-health'
 import type { ForkServerUpdateSettings } from './server-update'
+import type { ForkWorktreePortsSettings } from './worktree-ports'
 import type { ForkPrBabysitSettings } from './pr-babysit'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
@@ -27,6 +28,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkServerHealthSettings &
   /** Fork (SLRM-2310): update paired servers from this desktop, and take updates as a server. */
   ForkServerUpdateSettings &
+  /** Fork (SLRM-2383): a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1. */
+  ForkWorktreePortsSettings &
   /** Fork (SLRM-2386): the PR babysitter; off unless a repo is listed. */
   ForkPrBabysitSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */
