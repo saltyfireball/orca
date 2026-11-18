@@ -12,6 +12,10 @@ import {
   type ForkBatchStartResult,
   type ForkBatchStartTask
 } from '../../../shared/fork/batch-start'
+import {
+  describeForkServerSetupRun,
+  type ForkServerSetupRunResult
+} from '../../../shared/fork/server-setup-wire'
 
 const RUNTIME_PREFIX = 'runtime:'
 
@@ -40,8 +44,15 @@ export type ForkBatchLaunchAnswer = {
 }
 
 export type ForkBatchStartDeps = {
-  /** Ranks this machine and its paired servers for the project. */
-  pick: (hosts: string[], project: string) => Promise<ForkPlacementPickResult>
+  /** Ranks this machine and its paired servers for the project; with `setupMissing`, servers that
+   *  lack it but can clone it count, marked `needsSetup`. */
+  pick: (
+    hosts: string[],
+    project: string,
+    setupMissing: boolean
+  ) => Promise<ForkPlacementPickResult>
+  /** Sets the project up on a paired server (fork.serverSetup.run) before the batch goes there. */
+  setUp: (environmentId: string, projectId: string) => Promise<ForkServerSetupRunResult>
   /** Machines this one keeps a ready setup of the project for. */
   readySetupHosts: (projectId: string) => string[]
   /** The project's repo selector on this machine, or null when it has no ready setup here. */
@@ -130,7 +141,11 @@ export async function runForkBatchStart(
     return runHere(deps, request)
   }
   const project = request.project
-  const pick = await deps.pick(deps.readySetupHosts(project.id), project.id)
+  const pick = await deps.pick(
+    deps.readySetupHosts(project.id),
+    project.id,
+    request.setupMissing === true
+  )
   if (pick.off || !pick.picked) {
     const why = pick.off ? [] : pick.ranked.map(describeForkPlacementCandidate)
     throw new Error(['No machine can take this project now.', ...why].filter(Boolean).join('\n'))
@@ -140,6 +155,14 @@ export async function runForkBatchStart(
     return runHere(deps, { ...request, repo: undefined, repoHostId: undefined })
   }
   const environmentId = picked.hostKey.slice(RUNTIME_PREFIX.length)
+  // SLRM-2406: a server picked because it can clone the project is set up first, as --setup-missing.
+  const setupNote = picked.needsSetup
+    ? await deps
+        .setUp(environmentId, project.id)
+        .then(describeForkServerSetupRun, (error: unknown) => {
+          throw new Error(`Could not set up the project on ${picked.name}: ${messageOf(error)}`)
+        })
+    : undefined
   // The server resolves the project against its own setups; a repo id from here means nothing there.
   const forwarded = await deps
     .forward(environmentId, {
@@ -156,5 +179,10 @@ export async function runForkBatchStart(
           : `${picked.name}: ${messageOf(error)}`
       )
     })
-  return { ...forwarded, hostKey: picked.hostKey, hostLabel: picked.name }
+  return {
+    ...forwarded,
+    hostKey: picked.hostKey,
+    hostLabel: picked.name,
+    ...(setupNote ? { setupNote } : {})
+  }
 }

@@ -134,6 +134,18 @@ describe('runForkServerSetupOnEnvironment', () => {
     expect(call.mock.calls.map((entry) => entry[1])).not.toContain('fork.serverSetup.readiness')
   })
 
+  it('skips readiness when the caller checks it itself (SLRM-2406)', async () => {
+    const call = fakeServer()
+    const result = await runForkServerSetupOnEnvironment(deps(call), {
+      environmentId: 'env-1',
+      project: 'Repo',
+      skipReadiness: true
+    })
+    expect(result.cloned).toBe(true)
+    expect(result.readiness).toBeNull()
+    expect(call.mock.calls.map((entry) => entry[1])).not.toContain('fork.serverSetup.readiness')
+  })
+
   it('refuses an unknown server or project', async () => {
     const call = fakeServer()
     await expect(

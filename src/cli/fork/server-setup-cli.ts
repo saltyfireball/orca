@@ -6,9 +6,8 @@ import { RuntimeClientError } from '../runtime/connection/types'
 import { resolveHostFlagTarget } from '../hosts/execution-host-flag'
 import { describeForkServerSetupReadiness } from '../../shared/fork/server-setup'
 import {
-  FORK_SERVER_SETUP_CLONE_TIMEOUT_MS,
-  FORK_SERVER_SETUP_READINESS_TIMEOUT_MS,
   FORK_SERVER_SETUP_RUN_METHOD,
+  FORK_SERVER_SETUP_RUN_TIMEOUT_MS,
   type ForkServerSetupRunResult
 } from '../../shared/fork/server-setup-wire'
 
@@ -49,7 +48,7 @@ export async function forkSetUpProjectOnServer(
     const { result } = await client.call<ForkServerSetupRunResult>(
       FORK_SERVER_SETUP_RUN_METHOD,
       { environmentId, project },
-      { timeoutMs: FORK_SERVER_SETUP_CLONE_TIMEOUT_MS + FORK_SERVER_SETUP_READINESS_TIMEOUT_MS }
+      { timeoutMs: FORK_SERVER_SETUP_RUN_TIMEOUT_MS }
     )
     const lines = formatForkServerSetupNote(result)
     if (lines.length > 0) {

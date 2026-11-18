@@ -80,7 +80,7 @@ export function ForkServerSetupSetting({ settings, updateSettings }: Props): Rea
         label={t('fork.serverSetup.offerLabel', 'Offer "Set up on SERVER..." in the host picker')}
         description={t(
           'fork.serverSetup.offerHelp',
-          'Shown for a paired server that is connected and lacks the project, when the project has a git remote.'
+          "Shown for a paired server that is connected and lacks the project, when the project has a git remote. The phone's run-target list offers the same rows, reading this machine's settings."
         )}
         checked={offered}
         onChange={() => updateSettings({ forkServerSetupOffer: !offered })}
