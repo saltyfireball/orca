@@ -190,6 +190,55 @@ describe('pickForkPlacementOnHosts with a project', () => {
     expect(result.picked?.hostKey).toBe('local')
     expect(result.ranked.map((c) => c.status)).toEqual(['eligible', 'eligible'])
   })
+
+  it('counts a server that can clone the project with setupMissing, marked needsSetup (SLRM-2312)', async () => {
+    const fake = deps(
+      {},
+      {
+        'env-a': { load: load(32, 0, 60), projectReady: false, canSetUp: true },
+        'env-b': { load: load(32, 0, 60), projectReady: false },
+        'env-c': { load: load(4, 0, 2), projectReady: true }
+      }
+    )
+    const localLoad = vi.fn(async () => ({ load: load(8, 0, 32), canSetUp: true }))
+    fake.localLoad = localLoad
+    const result = await pickForkPlacementOnHosts(fake, { hosts: [], project, setupMissing: true })
+    if (result.off === true) {
+      throw new Error('unexpected off')
+    }
+    expect(fake.callEnvironment).toHaveBeenCalledWith(
+      'env-a',
+      'fork.placement.load',
+      { project, setupMissing: true },
+      2_500
+    )
+    expect(result.picked).toMatchObject({ hostKey: 'runtime:env-a', needsSetup: true })
+    expect(
+      Object.fromEntries(result.ranked.map((c) => [c.hostKey, [c.status, c.needsSetup ?? false]]))
+    ).toEqual({
+      'runtime:env-a': ['eligible', true],
+      'runtime:env-c': ['eligible', false],
+      // This machine is never cloned onto by a pick, and an older server cannot say it can clone.
+      local: ['no-setup', false],
+      'runtime:env-b': ['no-setup', false]
+    })
+  })
+
+  it('never asks whether a server can clone without setupMissing', async () => {
+    const fake = deps({}, { 'env-a': { load: load(32, 0, 60), canSetUp: true } })
+    fake.listEnvironments = () => [{ id: 'env-a', name: 'alpha' }]
+    const result = await pickForkPlacementOnHosts(fake, { hosts: [], project })
+    if (result.off === true) {
+      throw new Error('unexpected off')
+    }
+    expect(fake.callEnvironment).toHaveBeenCalledWith(
+      'env-a',
+      'fork.placement.load',
+      { project },
+      2_500
+    )
+    expect(result.picked).toBeNull()
+  })
 })
 
 describe('parseDarwinVmStat', () => {
