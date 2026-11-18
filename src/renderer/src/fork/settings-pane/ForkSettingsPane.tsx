@@ -15,6 +15,7 @@ import { ForkSleepersSetting } from '../sleepers/ForkSleepersSetting'
 import { ForkChatStallSetting } from '../chat-stall/ForkChatStallSetting'
 import { ForkCacheColdSetting } from '../cache-cold/ForkCacheColdSetting'
 import { ForkMcpProfileSetting } from '../mcp-profiles/ForkMcpProfileSetting'
+import { ForkVisualFallbackSetting } from '../visual-image/ForkVisualFallbackSetting'
 import { ForkChildTallySetting } from '../agent-child-tally/ForkChildTallySetting'
 import { ForkAgentStateColorSetting } from '../agent-state-color/ForkAgentStateColorSetting'
 import { ForkWorkerCleanupSetting } from '../worker-cleanup/ForkWorkerCleanupSetting'
@@ -61,7 +62,8 @@ const SECTION_CARDS: Record<
     ['chat-stall', ForkChatStallSetting],
     ['cache-cold', ForkCacheColdSetting],
     ['boundary-compaction', ForkBoundaryCompactionSetting],
-    ['mcp-profile', ForkMcpProfileSetting]
+    ['mcp-profile', ForkMcpProfileSetting],
+    ['visual-fallback', ForkVisualFallbackSetting]
   ],
   agents: [
     ['child-tally', ForkChildTallySetting],
