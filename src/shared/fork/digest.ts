@@ -71,7 +71,10 @@ export type ForkDigestWaiting = {
   title: string
   workspace: string
   question: string
-  verdict: 'waiting_user' | 'stalled'
+  /** 'guard': an agent guard paused it (SLRM-2385). */
+  verdict: 'waiting_user' | 'stalled' | 'guard'
+  /** 'babysit': a pull request the PR babysitter stopped on (SLRM-2386). */
+  source?: 'babysit'
   since: number
 }
 
