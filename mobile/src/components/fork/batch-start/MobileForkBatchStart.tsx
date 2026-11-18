@@ -59,6 +59,7 @@ function BatchBody(
     [agents]
   )
   const { hostClient, repoClient, selectedRepo } = props
+  const setupMissing = props.config.setupMissing
   const send = useCallback(
     (prompt: string, picked: TuiAgent[], auto: boolean) => {
       const client = auto ? hostClient : repoClient
@@ -73,11 +74,12 @@ function BatchBody(
         },
         auto,
         prompt,
-        picked
+        picked,
+        setupMissing
       )
       return sendMobileForkBatchStart(client, request)
     },
-    [hostClient, repoClient, selectedRepo]
+    [hostClient, repoClient, selectedRepo, setupMissing]
   )
   const initial = props.selectedAgent.id === '__blank__' ? agents[0]?.id : props.selectedAgent.id
   const batch = useForkBatchStart({

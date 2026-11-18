@@ -13,6 +13,16 @@ describe('mobileForkBatchRequest', () => {
     })
   })
 
+  it('asks auto to set a server up only when the setting is on (SLRM-2406)', () => {
+    expect(mobileForkBatchRequest(target, true, 'p', ['claude'], true)).toMatchObject({
+      placement: 'auto',
+      setupMissing: true
+    })
+    expect(mobileForkBatchRequest(target, false, 'p', ['claude'], true)).not.toHaveProperty(
+      'setupMissing'
+    )
+  })
+
   it('runs on the repo host otherwise, naming an SSH host', () => {
     expect(mobileForkBatchRequest(target, false, 'p', ['codex'])).toEqual({
       repo: 'id:r1',

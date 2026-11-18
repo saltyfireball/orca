@@ -99,6 +99,7 @@ export function ForkBatchStartBox(props: ForkBatchStartBoxProps): React.JSX.Elem
   const { repoId, hostId } = props
   const projectId = project?.projectId ?? null
   const projectName = project?.displayName
+  const setupMissing = config.setupMissing
   const send = useCallback(
     (prompt: string, agents: TuiAgent[], auto: boolean) => {
       if (!projectId) {
@@ -108,10 +109,11 @@ export function ForkBatchStartBox(props: ForkBatchStartBoxProps): React.JSX.Elem
         { project: { id: projectId, name: projectName }, repoId, hostId },
         auto,
         prompt,
-        agents
+        agents,
+        setupMissing
       )
     },
-    [hostId, projectId, projectName, repoId]
+    [hostId, projectId, projectName, repoId, setupMissing]
   )
   const batch = useForkBatchStart({
     config,

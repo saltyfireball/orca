@@ -45,6 +45,10 @@ import { useNewWorkspaceRuntimeContext } from '../runtime/use-new-workspace-runt
 import { useNewWorkspaceSetupScript } from '../runtime/use-new-workspace-setup-script'
 import { useNewWorktreeDrawerNavigation } from './use-new-worktree-drawer-navigation'
 import { useMobileForkBatchStart } from '../../../components/fork/batch-start/MobileForkBatchStart'
+import {
+  useMobileForkServerRefresh,
+  useMobileForkServerSetup
+} from '../../../components/fork/server-setup/MobileForkServerSetup'
 
 /** The server a repo runs on; undefined for the desktop's own (local, SSH, folder). */
 function serverOf(repo: MobileWorkspaceRepo): `runtime:${string}` | undefined {
@@ -81,18 +85,28 @@ function NewWorktreeModalContent(props: NewWorktreeModalProps) {
     onClose,
     folderLaunch
   } = props
-  const { repos, allRepos, selectedRepo, setSelectedRepo, loading, loadError, retryLoad } =
-    useNewWorkspaceRepositories({
-      client: desktopClient,
-      serverClients,
-      hostId,
-      visible,
-      ...(folderLaunch
-        ? {
-            initialRepo: { id: folderLaunch.repoId, executionHostId: folderLaunch.executionHostId }
-          }
-        : {})
-    })
+  const forkServerRefresh = useMobileForkServerRefresh()
+  const {
+    repos,
+    allRepos,
+    selectedRepo,
+    setSelectedRepo,
+    loading,
+    loadError,
+    retryLoad,
+    serverRepos
+  } = useNewWorkspaceRepositories({
+    client: desktopClient,
+    serverClients,
+    hostId,
+    visible,
+    serverGeneration: forkServerRefresh.generation,
+    ...(folderLaunch
+      ? {
+          initialRepo: { id: folderLaunch.repoId, executionHostId: folderLaunch.executionHostId }
+        }
+      : {})
+  })
   // Route picked-repo operations to its host; desktop settings/accounts stay on desktop.
   const repoServer = selectedRepo ? serverOf(selectedRepo) : undefined
   const client = repoServer ? (serverClients?.get(repoServer) ?? null) : desktopClient
@@ -257,6 +271,18 @@ function NewWorktreeModalContent(props: NewWorktreeModalProps) {
     () => buildNewWorkspaceRunTargetOptions(repos, selectedProjectId, hostPlatform, hostLabelById),
     [hostLabelById, hostPlatform, repos, selectedProjectId, t]
   )
+  // Fork (SLRM-2406): "Set up on SERVER..." rows after the run targets, and their progress (FORK.md).
+  const forkServerSetup = useMobileForkServerSetup({
+    desktopClient,
+    serverClients,
+    listedServers: serverRepos,
+    hostLabelById,
+    repos: allRepos,
+    selectedProjectId,
+    runtimeSettings: runtime.runtimeSettings,
+    refreshServers: forkServerRefresh.refresh,
+    onSetUp: (repo) => selectRepo(repo, false)
+  })
   const selectedRunTarget = selectedRepo
     ? getNewWorkspaceRunTarget(selectedRepo, hostPlatform, hostLabelById)
     : null
@@ -345,7 +371,12 @@ function NewWorktreeModalContent(props: NewWorktreeModalProps) {
         onRunSetupChange={setupScript.setRunSetup}
         onWaitForSetupChange={setupScript.setWaitForSetup}
         onCreate={() => void createSubmit.create()}
-        forkBatchToggle={forkBatch.toggle}
+        forkBatchToggle={
+          <>
+            {forkServerSetup.status}
+            {forkBatch.toggle}
+          </>
+        }
         forkBatchBody={folderLaunch ? null : forkBatch.body}
       />
 
@@ -363,7 +394,8 @@ function NewWorktreeModalContent(props: NewWorktreeModalProps) {
         sshReady={!executionTarget.sshGate.requiresConnection}
         projectPickerItems={projectPickerItems}
         selectedProjectId={selectedProjectId}
-        runTargetPickerItems={runTargetPickerItems}
+        runTargetPickerItems={[...runTargetPickerItems, ...forkServerSetup.items]}
+        onForkServerSetup={forkServerSetup.start}
         pickerAgentOptions={agentSelection.pickerAgentOptions}
         selectedAgent={agentSelection.selectedAgent}
         setupTrustPrompt={createSubmit.setupTrustPrompt}

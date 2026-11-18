@@ -21,6 +21,7 @@ function deps(overrides: Partial<ForkBatchStartDeps> = {}): ForkBatchStartDeps {
     })),
     queuePosition: vi.fn(async () => null),
     forward: vi.fn(),
+    setUp: vi.fn(),
     randomTail: () => 'ab12',
     ...overrides
   }
@@ -89,7 +90,7 @@ describe('runForkBatchStart', () => {
       agents: ['claude'],
       placement: 'auto'
     })
-    expect(d.pick).toHaveBeenCalledWith(['local', 'runtime:s1'], 'p1')
+    expect(d.pick).toHaveBeenCalledWith(['local', 'runtime:s1'], 'p1', false)
     expect(result.hostKey).toBe('local')
     expect(vi.mocked(d.launch).mock.calls[0]?.[0].target.create.repo).toBe('id:r1')
   })
@@ -122,6 +123,77 @@ describe('runForkBatchStart', () => {
     })
     expect(result).toMatchObject({ hostKey: 'runtime:s1', hostLabel: 'kif' })
     expect(d.launch).not.toHaveBeenCalled()
+  })
+
+  it('auto with setupMissing: sets the picked server up first, then forwards (SLRM-2406)', async () => {
+    const order: string[] = []
+    const setUp = vi.fn(async () => {
+      order.push('setUp')
+      return {
+        hostKey: 'runtime:s1',
+        serverName: 'kif',
+        cloned: true,
+        clonePath: '/home/k/development/orca',
+        readiness: { missing: ['pnpm'], notes: [] }
+      }
+    })
+    const forward = vi.fn(async () => {
+      order.push('forward')
+      return {
+        hostKey: 'local',
+        hostLabel: 'kif-host',
+        tasks: [{ agent: 'claude' as const, ok: true as const, worktreeId: 'w', name: 'n' }]
+      }
+    })
+    const pick = vi.fn(async (): Promise<ForkPlacementPickResult> => ({
+      picked: { ...candidate('runtime:s1', 'kif'), needsSetup: true },
+      ranked: []
+    }))
+    const result = await runForkBatchStart(deps({ pick, setUp, forward }), {
+      project: { id: 'p1' },
+      prompt: 'x',
+      agents: ['claude'],
+      placement: 'auto',
+      setupMissing: true
+    })
+    expect(pick).toHaveBeenCalledWith(['local'], 'p1', true)
+    expect(setUp).toHaveBeenCalledWith('s1', 'p1')
+    expect(order).toEqual(['setUp', 'forward'])
+    expect(forward).toHaveBeenCalledWith('s1', {
+      project: { id: 'p1' },
+      prompt: 'x',
+      agents: ['claude'],
+      placement: 'here'
+    })
+    expect(result.setupNote).toBe(
+      'Set up on kif: cloned into /home/k/development/orca. Missing: pnpm'
+    )
+  })
+
+  it('auto with setupMissing: a failed setup starts nothing on that server', async () => {
+    const forward = vi.fn()
+    await expect(
+      runForkBatchStart(
+        deps({
+          pick: async () => ({
+            picked: { ...candidate('runtime:s1', 'kif'), needsSetup: true },
+            ranked: []
+          }),
+          setUp: vi.fn(async () => {
+            throw new Error('clone refused')
+          }),
+          forward
+        }),
+        {
+          project: { id: 'p1' },
+          prompt: 'x',
+          agents: ['claude'],
+          placement: 'auto',
+          setupMissing: true
+        }
+      )
+    ).rejects.toThrow('Could not set up the project on kif: clone refused')
+    expect(forward).not.toHaveBeenCalled()
   })
 
   it('auto: names a server without the method, and says when nothing can take it', async () => {
