@@ -39,6 +39,7 @@ import { ForkApfsCloneSetting } from '../apfs-clone/ForkApfsCloneSetting'
 import { ForkSnoozeSetting } from '../snooze/ForkSnoozeSetting'
 import { ForkServerSetupSetting } from '../server-setup/ForkServerSetupSetting'
 import { ForkMainSyncSetting } from '../main-sync/ForkMainSyncSetting'
+import { ForkBranchClashesSetting } from '../branch-clashes/ForkBranchClashesSetting'
 import { ForkDeviceApprovalSetting } from '../device-approval/ForkDeviceApprovalSetting'
 import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
 import { ForkServerHealthSetting } from '../server-health/ForkServerHealthSetting'
@@ -100,6 +101,7 @@ const SECTION_CARDS: Record<
     ['main-sync', ForkMainSyncSetting],
     ['snooze', ForkSnoozeSetting],
     ['server-setup', ForkServerSetupSetting],
+    ['branch-clashes', ForkBranchClashesSetting],
     ['project-settings-list', ForkProjectSettingsList]
   ],
   remote: [

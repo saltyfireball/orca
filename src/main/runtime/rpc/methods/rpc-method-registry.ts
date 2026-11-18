@@ -96,6 +96,7 @@ import { FORK_LIMIT_RESUME_METHODS } from './fork/fork-limit-resume'
 import { FORK_SERVER_UPDATE_METHODS } from './fork/fork-server-update'
 import { FORK_WORKTREE_PORTS_METHODS } from './fork/fork-worktree-ports'
 import { FORK_AGENT_GUARDS_METHODS } from './fork/fork-agent-guards'
+import { FORK_BRANCH_CLASHES_METHODS } from './fork/fork-branch-clashes'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
 import { STRUCTURED_AGENT_SESSION_ATTACHMENT_METHODS } from './structured-sessions/attachments/structured-agent-session-attachments'
@@ -316,7 +317,9 @@ const SERVICE_RPC_METHODS = [
   // SLRM-2384: keep each project's default branch current, behind `orca main-sync` (FORK.md).
   ...FORK_MAIN_SYNC_METHODS,
   // SLRM-2385: failure-loop and spend guards behind `orca guards` (FORK.md).
-  ...FORK_AGENT_GUARDS_METHODS
+  ...FORK_AGENT_GUARDS_METHODS,
+  // SLRM-2394: files parallel worktree branches share, behind `orca clashes` (FORK.md).
+  ...FORK_BRANCH_CLASHES_METHODS
 ] as const
 
 type ConcatMethods<A extends readonly unknown[], B extends readonly unknown[]> = readonly [
