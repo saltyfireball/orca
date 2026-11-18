@@ -82,6 +82,14 @@ export function getForkChatsSearchEntries(t: Translate): SettingsSearchEntry[] {
         'Choose which MCP servers a Claude chat loads.'
       ),
       keywords: words('mcp', 'servers', 'profile', 'workers', 'automation', 'forkMcpProfiles')
+    },
+    {
+      title: t('fork.visualFallback.title', 'Inline images in chat'),
+      description: t(
+        'fork.settingsPane.search.visualFallback',
+        'Let a chat visual show an image file, not only an HTML page.'
+      ),
+      keywords: words('image', 'png', 'jpg', 'visual', 'orca-visual', 'forkVisualFallback')
     }
   ]
 }

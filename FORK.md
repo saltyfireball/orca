@@ -800,7 +800,7 @@ named Orca Fork until SLRM-1367. `main` is always
     and that version. Any failure leaves the install untouched. Then it waits until no turn runs
     (the restart guard's busy chats less those only waiting on a question; terminal agents live
     in the terminal daemon, which a restart keeps), up to `forkServerUpdateTurnWaitMinutes` (30,
-    or `--wait`); `--now` skips the wait. It moves the running install to `previous` in the work
+    or `--wait <minutes>`, which also takes `--wait=<minutes>`); `--now` skips the wait. It moves the running install to `previous` in the work
     folder, moves the new one in, and starts the watchdog.
   - **Restart and rollback.** A detached `/bin/sh` watchdog (values only as arguments) restarts the
     service (`launchctl kickstart -k gui/<uid>/<label>` or `systemctl --user restart <unit>`) and
@@ -957,6 +957,25 @@ named Orca Fork until SLRM-1367. `main` is always
     the sections and their search entries, and `ForkSettingsPane.tsx` places the cards: a new
     fork setting is added to both (`ForkSettingsPane.test.tsx` fails when a search entry has
     no card heading to land on).
+- **Image files in chat visuals (SLRM-2349).** `::orca-visual` also shows a PNG, JPEG, GIF or
+  WebP file from the chat's scratch folder, and takes unquoted values with no space, quote,
+  brace or backslash, so a line like `::orca-visual{file=cassie-hair-2324.jpg title="Hair"}`
+  shows the picture instead of raw text on desktop, web and the phone. The `.html` path is
+  unchanged.
+  - The host that runs the chat reads the image under every stock rule (a basename only, no
+    traversal or device names, the chat's scratch folder only, no symlinks, the per-message
+    cap), up to its own size cap. Only the first bytes decide the type (PNG, JPEG, GIF or WebP;
+    the extension is not trusted, and SVG or anything else is refused as `not_text`). It answers
+    with a small HTML page that inlines the image as a `data:` URL, so every client shows it
+    through the sandboxed visual frame it already has. The revision is the hash of the image.
+  - Each process checks its own copy of the setting: the host's for the read (desktop app and
+    headless server alike), the window's for parsing replies. The phone parses with the
+    fallback on and the host still refuses images when its own setting is off.
+  - Settings > Blackfish > Chats > Inline images in chat: `forkVisualFallback` (on) and
+    `forkVisualImageMaxMiB` (4, from 1 to 5: a 5 MiB image is about 6.7 MiB as base64, under the
+    phone bridge's 8 MiB reply limit).
+  - Code is in `src/shared/fork/visual-image-fallback.ts`, `src/main/fork/visual-image/` and
+    `src/renderer/src/fork/visual-image/`.
 - **Pairing on a pinned bind (SLRM-2264).** `orca serve --bind <ip>` with a real network
   address (a Tailscale or LAN IP) is already reachable there, so laptop and phone pairing use it
   as is. Stock Orca tried to widen it to all interfaces, refused, and failed every pairing with
@@ -1213,6 +1232,7 @@ Apply these in this order. Each one is a single commit.
 99. `SLRM-2309 Limit resume: resume chats and terminal agents when a usage limit resets`
 100. `SLRM-2310 Server updates: update every paired server from the desktop over its own RPC, with a rollback`
 101. `SLRM-2316 Follow upstream 1.4.262's moved modules and native provider launch in fork code`
+102. `SLRM-2349 Chat visuals: show image files and take unquoted values, and servers --wait takes a separate value`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -1682,6 +1702,23 @@ Upstream files only get short hooks, which keeps rebases small:
     `forkServerUpdateAuto` on, starts a run over the paired servers.
   - The card is in the fork's Settings pane; its search entry is
     `server-update-search-entry.ts`, added to the Remote servers section by the catalog.
+  - `src/cli/arguments/args.ts` asks `forkFlagTakesValue(commandPath, flag)`
+    (`src/cli/fork/value-flags.ts`) before it treats a boolean-listed flag as bare, so
+    `servers update|rollback --wait 5` reads like `--wait=5` while every other command keeps
+    `--wait` boolean.
+
+- Image files in chat visuals (SLRM-2349), from `src/shared/fork/visual-image-fallback.ts`,
+  `src/main/fork/visual-image/` and `src/renderer/src/fork/visual-image/`:
+  - `native-chat-visual-directive.ts` imports two hooks: `isNativeChatVisualFileName` also takes
+    `forkIsVisualImageFileName(name)` and `parseAttributes` falls back to
+    `forkUnquotedVisualAttribute(rest)`. Every caller of the name check (the grammar, the
+    `agentSession.readVisual` params, the reader, the renderer placeholder and the guest-theme
+    location) follows it. Its test's unquoted case now uses a value with a quote.
+  - `native-chat-visual-file-read.ts` takes its byte cap from `forkVisualFileMaxBytes` and asks
+    `forkVisualImageDocument` before it decodes text.
+  - `mobile-native-chat-visual-read.ts` caps a reply's html at `forkVisualMaxDocumentChars`.
+  - `installForkReady` and `installForkHeadlessHost` call `installForkVisualFallbackSettings`;
+    `ForkRootHosts` mounts `ForkVisualFallbackReader`; the card is in the fork's Settings pane.
 
 - Device approval and webhook automations (SLRM-2271), from `src/shared/fork/device-approval.ts`,
   `src/shared/fork/webhooks.ts`, `src/main/fork/device-approval/`, `src/main/fork/webhooks/`,

@@ -8,6 +8,7 @@ import {
   CLI_GLOBAL_VALUE_FLAGS,
   findCliCommandIndex
 } from '../../shared/cli/cli-argument-boundary'
+import { forkFlagTakesValue } from '../fork/value-flags'
 
 export type ParsedArgs = {
   commandPath: string[]
@@ -91,7 +92,7 @@ export function parseArgs(
     const isBoolean = spec?.valueFlags?.includes(flag)
       ? false
       : BOOLEAN_FLAGS.has(flag) || spec?.booleanFlags?.includes(flag) === true
-    if (isBoolean) {
+    if (isBoolean && !forkFlagTakesValue(commandPath, flag)) {
       flagEntries.push([flag, true])
       continue
     }
