@@ -17,6 +17,7 @@ import { ForkCacheColdSetting } from '../cache-cold/ForkCacheColdSetting'
 import { ForkMcpProfileSetting } from '../mcp-profiles/ForkMcpProfileSetting'
 import { ForkVisualFallbackSetting } from '../visual-image/ForkVisualFallbackSetting'
 import { ForkChildTallySetting } from '../agent-child-tally/ForkChildTallySetting'
+import { ForkRowStatusSetting } from '../row-status/ForkRowStatusSetting'
 import { ForkAgentStateColorSetting } from '../agent-state-color/ForkAgentStateColorSetting'
 import { ForkWorkerCleanupSetting } from '../worker-cleanup/ForkWorkerCleanupSetting'
 import { ForkAgentQueueSetting } from '../agent-queue/ForkAgentQueueSetting'
@@ -67,6 +68,7 @@ const SECTION_CARDS: Record<
   ],
   agents: [
     ['child-tally', ForkChildTallySetting],
+    ['row-status', ForkRowStatusSetting],
     ['agent-state-color', ForkAgentStateColorSetting],
     ['worker-cleanup', ForkWorkerCleanupSetting],
     ['agent-queue', ForkAgentQueueSetting],

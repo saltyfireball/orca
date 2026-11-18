@@ -102,6 +102,14 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"record","of":{"k":"enum","values":["less","manual","normal","prefer"]}},"d":"Auto placement: per machine (\'local\' or \'runtime:<environment id>\'), how willingly it takes automatically placed work; unset machines are \'normal\'.","o":true}',
   forkPlacementAutoWhenUnnamed:
     '{"t":{"k":"boolean"},"d":"Auto placement: when no machine is named and more than one could take the work, pick one as `auto` would. Off unless true.","o":true}',
+  forkRowContext:
+    '{"t":{"k":"boolean"},"d":"A native Claude chat\'s context size on its agent rows; unset is on.","o":true}',
+  forkRowFixChecks:
+    '{"t":{"k":"boolean"},"d":"An Ask agent to fix button on agent rows when the pull request\'s checks fail; unset is on.","o":true}',
+  forkRowPrChip:
+    '{"t":{"k":"boolean"},"d":"The workspace\'s pull request and its check state on agent rows; unset is on.","o":true}',
+  forkRowSpend:
+    '{"t":{"k":"boolean"},"d":"A native Claude chat\'s estimated spend on its agent rows; unset is on.","o":true}',
   forkServerHealth:
     '{"t":{"k":"boolean"},"d":"Watch the paired remote servers this desktop is connected to and alert when one stops answering; unset is on.","o":true}',
   forkServerHealthAlertCommand:
