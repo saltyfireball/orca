@@ -13,6 +13,7 @@ import type { NativeChatStructuredComposerTransport } from '../submit/native-cha
 import { useNativeChatSideChatCommand } from './use-native-chat-side-chat-command'
 import { useNativeChatMentionNameMatches } from '../../native-chat-composer-room'
 import type { NativeChatComposerRoom } from '../native-chat-composer-types'
+import { useForkUsageLimitsCommand } from '@/fork/pooled-limits/use-fork-usage-limits-command'
 
 type PickerArgs = Parameters<typeof useNativeChatPickerState>[0]
 type ResumeArgs = Parameters<typeof useNativeChatResumeCommand>[0]
@@ -98,5 +99,10 @@ export function useNativeChatComposerCommandPicker(
     }),
     [resumeConsume, resumeIntercept, resumeMatches, sideConsume, sideIntercept, sideMatches]
   )
-  return { picker, orcaCommands }
+  // Fork (SLRM-2392): Blackfish's /usage-limits runs before the commands above.
+  const active = structuredTransport !== undefined && mode === undefined
+  return {
+    picker,
+    orcaCommands: useForkUsageLimitsCommand(orcaCommands, { active, picker, editor })
+  }
 }

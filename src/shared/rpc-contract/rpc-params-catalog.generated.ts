@@ -68,6 +68,7 @@ import {
   ForkPrBabysitStartParams,
   ForkPrBabysitStopParams
 } from '../fork/pr-babysit-wire'
+import { ForkMachineUsageParams, ForkPooledLimitsParams } from '../fork/pooled-limits'
 import { ForkServerHealthListParams } from '../fork/server-health'
 import {
   ForkServerSetupPlanParams,
@@ -1624,7 +1625,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.launchDefaults.show': null,
   'fork.limits.cancel': ForkLimitsTargetParams,
   'fork.limits.list': ForkLimitsListParams,
+  'fork.limits.machineUsage': ForkMachineUsageParams,
   'fork.limits.resumeNow': ForkLimitsTargetParams,
+  'fork.limits.usage': ForkPooledLimitsParams,
   'fork.lostWork.scan': ForkLostWorkScanParams,
   'fork.mainSync.run': ForkMainSyncRunParams,
   'fork.mainSync.status': ForkMainSyncStatusParams,
