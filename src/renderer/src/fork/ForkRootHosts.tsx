@@ -10,6 +10,7 @@ import { ForkSnoozeCustomDialogHost } from './snooze/ForkSnoozeCustomDialog'
 import { ForkSnoozeWatcher } from './snooze/ForkSnoozeWatcher'
 import { ForkVisualFallbackReader } from './visual-image/ForkVisualFallbackSetting'
 import { ForkPooledLimitsDialogHost } from './pooled-limits/ForkPooledLimitsDialog'
+import { ForkBestOfHost } from './best-of/ForkBestOfDialog'
 import { ForkWorkspaceTagsDialogHost } from './workspace-tags/ForkWorkspaceTagsDialog'
 import { ForkArchiveOnMergeWatcher } from './workspace-tags/ForkArchiveOnMergeWatcher'
 
@@ -32,6 +33,7 @@ export function ForkRootHosts(): React.JSX.Element {
       <ForkSnoozeWatcher />
       <ForkVisualFallbackReader />
       <ForkPooledLimitsDialogHost />
+      <ForkBestOfHost />
       <ForkWorkspaceTagsDialogHost />
       <ForkArchiveOnMergeWatcher />
     </>

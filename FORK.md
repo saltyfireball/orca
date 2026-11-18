@@ -1140,6 +1140,33 @@ named Orca Fork until SLRM-1367. `main` is always
   - The pick happens in the CLI before stock routing: it rewrites `--on` or `--host` and prints
     the pick and the skipped machines on stderr. Stock worker-start and host resolution are not
     edited.
+- **Batch start (SLRM-2395).** Send prompt after prompt from the new-workspace composer, on the
+  desktop and the phone; each prompt becomes one worktree plus agent per chosen model. Ideas from
+  Conductor's "create more" switch and T3 Code's start-in-the-background and multi-model pick.
+  - A Batch switch under the composer's title (desktop) or under Project and Run target (phone)
+    swaps the single-workspace form for the batch box: project, prompt, models (multi-select, at
+    most 6, one task each), Auto machine and Keep open. The composer's own project and run target
+    are reused; switching Batch off brings the stock form back as it was.
+  - Each prompt goes to `fork.batchStart.start`. With Auto machine on, the desktop (or the phone's
+    paired desktop) ranks itself and its paired servers as `--host auto` does (SLRM-2266) and runs
+    the batch there; a picked server gets the batch forwarded and resolves the project against its
+    own setups. Off, the composer's run target takes it (a paired server over its own RPC). Every
+    model starts through `agent.launch` with a new worktree, so the agent launch queue (SLRM-2098)
+    gates it like any launch.
+  - A prompt is acknowledged before the box clears: the answer names the machine and each
+    worktree, with its queue place when it waits. Anything that failed stays in the box with the
+    failed models still picked, so sending again starts no duplicates. Started prompts are listed
+    under the box.
+  - Start follows Keep open (clear for the next prompt, or close the composer once acknowledged);
+    Cmd+Enter (Ctrl+Enter elsewhere) always starts in the background and leaves a fresh draft.
+  - Worktree names are the prompt's first words, the agent and a random tail; the display name is
+    the prompt's first line. Folder (non-git) projects and folder workspaces are not offered.
+  - Settings > Blackfish > Agents and workers, Batch start: `forkBatchStart` (show the switch, on),
+    `forkBatchStartKeepOpen` (on) and `forkBatchStartAutoHost` (on). The phone reads its paired
+    host's values.
+  - Not covered: a picked server running stock Orca or an older Blackfish refuses (turn Auto
+    machine off to use the run target); the stock form's linked items, base branch, setup choice
+    and attachments do not apply to batch prompts.
 - **Fast new worktrees on macOS (SLRM-2270).** APFS copy-on-write clones for new local worktrees
   (Settings > Blackfish > Projects, "Fast new worktrees (macOS)"). Idea from T3 Code's "Fast
   worktree checkout" (MIT). Other systems, WSL and other volumes create worktrees as before.
@@ -1200,6 +1227,50 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/snooze*.ts`, `src/main/fork/snooze/`,
     `src/main/runtime/rpc/methods/fork/fork-snooze.ts`, `src/preload/fork/snooze-bridge.ts`,
     `src/renderer/src/fork/snooze/` and `src/cli/fork/snooze-*`.
+- **Best of N (SLRM-2393).** Send one task to 2 to 4 agents, each in its own new worktree, then
+  compare the attempts side by side and keep one. Ideas from Codex cloud `--attempts`, Cursor's
+  best-of-n and Crystal. The settings are in Settings > Blackfish > Agents and workers, "Best of
+  N".
+  - Start: `orca best-of <n> (--prompt <text> | --prompt-file <path|->) [--agents
+    agent[:model[:effort]],...] [--on auto|here|<server>,...] [--repo <selector>]
+    [--base-branch <ref>]`, run from an Orca terminal or chat. Each attempt is a stock supervised
+    orchestration worker (`orchestration.workerStart`, `--worktree new-top-level`, named
+    `best-of-<tag>-<n>`), kept open, and all attempts share one Run: the first start makes or
+    joins the caller's Run and the rest join it in parallel. `--agents` and `--on` are lists
+    cycled over the attempts; `auto` asks auto placement (SLRM-2266) for a machine per attempt
+    and needs `--repo`, `here` is this machine, anything else is a paired server as worker-start
+    `--on` takes it. A start that fails is recorded with its error and the others carry on.
+  - Each attempt's prompt is the task plus the attempt note (`forkBestOfAttemptNote`, unset is the
+    built-in note), which asks it to work only in its worktree, run the tests and checks that
+    apply, commit (not push) and end its report with `Tests:` and `Checks:` lines. The note is a
+    runs-command setting: `orca settings` refuses to write it, as it becomes part of every
+    attempt's prompt.
+  - Compare: "Best of N" in the command palette opens a dialog with one column per attempt: agent
+    and model, host, task state, the committed diff against the worktree's create base (files and
+    +/- per file, from the owning host's stock `git.branchCompare`) and its uncommitted file
+    count (`git.status`), tests and checks as the report states them, the cost (the usage ledger's
+    workspace row; native Claude chats on this machine only, else "not counted") and the report
+    itself. Open activates the attempt's workspace and opens its committed changes in the stock
+    combined diff. `orca best-of list` and `orca best-of show <id>` print the same.
+  - Pick: "Keep this one" (or `orca best-of pick <id> --attempt <n> [--losers
+    archive|remove|keep]`) keeps the winner and, per `forkBestOfLoserAction` (unset is
+    `archive`), archives the other worktrees through the stock `worktree.archive` (checkout
+    deleted, branch and workspace row kept), removes them through `worktree.rm` (branch kept), or
+    leaves them. Each call goes to the host that owns the worktree; nothing is forced, so a
+    worktree with uncommitted changes stays and its column says why. A run is picked once.
+  - Runs live in `fork-best-of.json` in userData (owner-only); `forkBestOfHistory` (20) runs are
+    kept, and "Forget this run" drops one without touching its worktrees. `forkBestOf` (unset is
+    on) refuses new runs when off; `forkBestOfAgents` (`claude`) and `forkBestOfPlacement`
+    (`auto`) are the defaults for `--agents` and `--on`.
+  - RPC on this machine: `fork.bestOf.record`, `.list`, `.show` (each attempt's worker, task
+    report and cost, from the orchestration database and the usage ledger; a worker on a paired
+    server is read from its federated record), `.settle` and `.forget`. `.record` refuses a
+    worker that is already an attempt of a run, so a pick only reaches the run's own workers.
+    None of them starts,
+    stops or removes anything; the CLI and the window do that over the stock methods.
+  - Code is in `src/shared/fork/best-of/`, `src/main/fork/best-of/`,
+    `src/main/runtime/rpc/methods/fork/fork-best-of.ts`, `src/renderer/src/fork/best-of/` and
+    `src/cli/fork/best-of-*`.
 
 - **Worktree ports (SLRM-2383).** Each workspace holds a block of ports on the host that runs it,
   so many workers on one machine stop fighting over dev-server ports (Conductor gives each
@@ -1541,7 +1612,9 @@ Apply these in this order. Each one is a single commit.
 108. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
      Follow-up: an inbox answer to a guard-paused agent lifts the pause only once the send is taken.
 109. `SLRM-2394 Branch clashes: warn when parallel worktree branches change the same files, across paired servers`
-110. `SLRM-2397 Small extras: approval triage by risk, workspace tags and archive on merge, prompt stash, saved prompts`
+110. `SLRM-2395 Batch start: a prompt per worktree and model from the composer, placed with auto placement`
+111. `SLRM-2393 Best of N: one task to 2 to 4 agents in their own worktrees, compared and picked`
+112. `SLRM-2397 Small extras: approval triage by risk, workspace tags and archive on merge, prompt stash, saved prompts`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2298,6 +2371,30 @@ Upstream files only get short hooks, which keeps rebases small:
     process.
   - The settings are in `fork-global-settings.ts` and `settings-rows-fork.generated.ts` is
     regenerated; the card is in the fork's Settings pane and its search entry in the pane catalog.
+- Batch start (SLRM-2395), from `src/shared/fork/batch-start.ts`,
+  `src/shared/fork/use-fork-batch-start.ts`, `src/main/fork/batch-start/`,
+  `src/renderer/src/fork/batch-start/` and `mobile/src/components/fork/batch-start/`:
+  - `rpc-method-registry.ts` spreads `FORK_BATCH_START_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-batch-start.ts`); `rpc-params-catalog.generated.ts` is
+    regenerated with it. `fork-auto-placement.ts` exports `forkPlacementDeps` for its pick.
+  - `NewWorkspaceComposerModal.tsx` calls `useForkBatchStartMode`, renders
+    `ForkBatchStartModeSwitch` under the title and `ForkBatchStartBox` while it is on (the stock
+    card stays mounted, hidden), and skips its Cmd+Enter handler then.
+  - Mobile: `NewWorktreeModal.tsx` calls `useMobileForkBatchStart`; `NewWorktreeFormSheet.tsx`
+    takes `forkBatchToggle` and `forkBatchBody` and shows the body in place of the form.
+  - The settings are in `src/shared/fork/fork-global-settings.ts` and
+    `settings-rows-fork.generated.ts` is regenerated; the card is in the fork's Settings pane.
+- Best of N (SLRM-2393), from `src/shared/fork/best-of/`, `src/main/fork/best-of/`,
+  `src/cli/fork/best-of-*.ts` and `src/renderer/src/fork/best-of/`:
+  - `rpc-method-registry.ts` spreads `FORK_BEST_OF_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-best-of.ts`); `rpc-params-catalog.generated.ts` is
+    regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_BEST_OF_COMMAND_SPECS`, `fork-handler-groups.ts` adds the
+    `fork-best-of` group and `cli-command-names.ts` lists `best-of`.
+  - `quick-actions.ts` spreads `getForkBestOfQuickActions()`; `ForkRootHosts.tsx` mounts
+    `ForkBestOfHost`; the card is in the fork's Settings pane (reusing the snooze card's
+    `CommandSetting`, now exported), and `forkBestOfAttemptNote` is a runs-command key in
+    `settings-access.ts`.
 
 - Branch clashes (SLRM-2394), from `src/shared/fork/branch-clashes*.ts`,
   `src/main/fork/branch-clashes/`, `src/cli/fork/branch-clashes-*.ts` and

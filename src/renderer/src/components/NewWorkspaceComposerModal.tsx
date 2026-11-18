@@ -44,6 +44,12 @@ import '@/components/sidebar/workspace-creation/folder/folder-workspace-source-r
 import { getFolderWorkspacePrimaryActionLabel } from '@/components/sidebar/workspace-creation/folder/folder-workspace-source-selection'
 import { useAgentMenuObservation } from '@/components/agent/launch-menu/use-new-tab-agent-menu-rows'
 import { addAppKeyListener, removeAppKeyListener } from '@/lib/keyboard/app-keyboard-router'
+import { ForkBatchStartBox } from '@/fork/batch-start/ForkBatchStartBox'
+import {
+  ForkBatchStartModeSwitch,
+  forkBatchStartBoxProps,
+  useForkBatchStartMode
+} from '@/fork/batch-start/ForkBatchStartModeSwitch'
 
 // Keep Add Project’s clone/SSH machinery outside the composer entry render, matching App loading.
 const HostedAddRepoDialog = lazyWithRetry(
@@ -127,6 +133,8 @@ function QuickTabBody({
 }): React.JSX.Element {
   const t = useTranslate()
   const settings = useAppStore((s) => s.settings)
+  // Fork (SLRM-2395): batch start replaces the form while its switch is on (FORK.md).
+  const forkBatch = useForkBatchStartMode()
   const {
     cardProps,
     composerRef,
@@ -300,6 +308,7 @@ function QuickTabBody({
     (option) => option.id === cardProps.selectedProjectId
   )
   const isFolderWorkspaceTarget = selectedProjectOption?.kind === 'project-group'
+  const forkBatchOn = forkBatch.on && !isFolderWorkspaceTarget
   const primaryActionLabel = isFolderWorkspaceTarget
     ? getFolderWorkspacePrimaryActionLabel(t)
     : cardProps.selectedRepoIsGit
@@ -309,7 +318,7 @@ function QuickTabBody({
   // Let Radix own Escape for the topmost layer. This dialog auto-focuses input, so page-style blur-first handling swallowed its first Escape.
   const nestedDialogOpen = agentSettingsOpen || addProjectOpen || nestedDialogCount > 0
   useEffect(() => {
-    if (!active || nestedDialogOpen) {
+    if (!active || nestedDialogOpen || forkBatchOn) {
       // Nested dialogs own input; never submit the underlying composer through this capture handler.
       return
     }
@@ -333,7 +342,7 @@ function QuickTabBody({
     }
     addAppKeyListener('keydown', onKeyDown)
     return () => removeAppKeyListener('keydown', onKeyDown)
-  }, [active, composerRef, createDisabled, handleCreate, nestedDialogOpen])
+  }, [active, composerRef, createDisabled, handleCreate, nestedDialogOpen, forkBatchOn])
 
   return (
     <>
@@ -346,6 +355,7 @@ function QuickTabBody({
               )
             : primaryActionLabel}
         </DialogTitle>
+        {isFolderWorkspaceTarget ? null : <ForkBatchStartModeSwitch mode={forkBatch} />}
         <DialogDescription className="sr-only">
           {t(
             'components.newWorkspace.createDescription',
@@ -353,10 +363,13 @@ function QuickTabBody({
           )}
         </DialogDescription>
       </DialogHeader>
+      {forkBatchOn ? (
+        <ForkBatchStartBox {...forkBatchStartBoxProps(cardProps, quickAgent, onClose)} />
+      ) : null}
       <NewWorkspaceComposerCard
         contextualTourSource={modalData.contextualTourSource}
         // Keep focus rings and the Advanced hover highlight inside the scroll padding.
-        containerClassName="px-2"
+        containerClassName={forkBatchOn ? 'hidden' : 'px-2'}
         contentClassName="-mx-2 flex-1 overflow-y-auto px-2 pb-1 scrollbar-sleek"
         composerRef={composerRef}
         onComposerNodeChange={onComposerNodeChange}

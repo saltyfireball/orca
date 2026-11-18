@@ -32,6 +32,8 @@ import { ForkPooledLimitsSetting } from '../pooled-limits/ForkPooledLimitsSettin
 import { ForkLostWorkSettings } from '../lost-work/ForkLostWorkSettings'
 import { ForkSyncNoticeSetting } from '../sync-status/ForkSyncNoticeSetting'
 import { ForkAutoPlacementSetting } from '../auto-placement/ForkAutoPlacementSetting'
+import { ForkBatchStartSetting } from '../batch-start/ForkBatchStartSetting'
+import { ForkBestOfSetting } from '../best-of/ForkBestOfSetting'
 import { ForkEndpointFailoverSetting } from '../endpoint-failover/ForkEndpointFailoverSetting'
 import { ForkWorktreeMoveSettings } from '../worktree-move/ForkWorktreeMoveSettings'
 import { ForkApfsCloneSetting } from '../apfs-clone/ForkApfsCloneSetting'
@@ -87,7 +89,9 @@ const SECTION_CARDS: Record<
     ['launch-defaults', ForkLaunchDefaultsSetting],
     ['memory', ForkMemorySettings],
     ['auto-placement', ForkAutoPlacementSetting],
-    ['agent-guards', ForkAgentGuardsSetting]
+    ['agent-guards', ForkAgentGuardsSetting],
+    ['batch-start', ForkBatchStartSetting],
+    ['best-of', ForkBestOfSetting]
   ],
   'idle-recovery': [
     ['idle-recovery', ForkIdleRecoverySetting],

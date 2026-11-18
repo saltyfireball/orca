@@ -33,6 +33,24 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Approval triage (SLRM-2397): approval cards show a low, medium or high risk grade, and high risk cannot be allowed for the session. Off unless true.","o":true}',
   forkArchiveOnMerge:
     '{"t":{"k":"boolean"},"d":"Archive on merge (SLRM-2397): archive a workspace once its pull request merges, through the stock archive. Off unless true.","o":true}',
+  forkBatchStart:
+    '{"t":{"k":"boolean"},"d":"A Batch switch in the new-workspace composer for rapid prompts; unset is on.","o":true}',
+  forkBatchStartAutoHost:
+    '{"t":{"k":"boolean"},"d":"The batch box starts with Auto machine on; unset is on.","o":true}',
+  forkBatchStartKeepOpen:
+    '{"t":{"k":"boolean"},"d":"The batch box starts with Keep open on; unset is on.","o":true}',
+  forkBestOf:
+    '{"t":{"k":"boolean"},"d":"Best of N (SLRM-2393): `orca best-of` and the compare view; unset is on.","o":true}',
+  forkBestOfAgents:
+    '{"t":{"k":"string"},"d":"Best of N: default agents of the attempts, agent[:model[:effort]] comma separated and cycled; unset is claude.","o":true}',
+  forkBestOfAttemptNote:
+    '{"t":{"k":"string"},"d":"Best of N: the note added to every attempt\'s prompt, {{index}} and {{count}} filled in; unset is the built-in note. Set it in the Settings screen.","o":true}',
+  forkBestOfHistory:
+    '{"t":{"k":"number"},"d":"Best of N: how many runs the compare view keeps; unset is 20.","o":true}',
+  forkBestOfLoserAction:
+    '{"t":{"k":"enum","values":["archive","keep","remove"]},"d":"Best of N: what a pick does with the worktrees of the attempts that lost; unset is \'archive\'.","o":true}',
+  forkBestOfPlacement:
+    '{"t":{"k":"string"},"d":"Best of N: default machines of the attempts, auto, here or server names, comma separated and cycled; unset is auto.","o":true}',
   forkBoundaryCompactIdleSeconds:
     '{"t":{"k":"number"},"d":"Boundary compaction: seconds a chat rests after its turn before it may be compacted; unset is 120.","o":true}',
   forkBoundaryCompactMaxWaitMinutes:

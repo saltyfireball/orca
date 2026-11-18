@@ -145,5 +145,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-serve-protect',
     keys: ['serve service protect', 'serve service protect status', 'serve service unprotect'],
     load: async () => (await import('./serve-protect-handlers.js')).FORK_SERVE_PROTECT_HANDLERS
+  },
+  // SLRM-2393: one task to 2 to 4 agents, compared and picked (FORK.md "Best of N").
+  {
+    name: 'fork-best-of',
+    keys: ['best-of', 'best-of list', 'best-of show', 'best-of pick'],
+    load: async () => (await import('./best-of-handlers.js')).FORK_BEST_OF_HANDLERS
   }
 ]
