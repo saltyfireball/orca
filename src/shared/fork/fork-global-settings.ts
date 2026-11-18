@@ -7,24 +7,24 @@ import type { ForkMcpProfileSettings } from './mcp-profiles'
 import type { ForkUsageLedgerSettings } from './usage-ledger'
 import type { ForkAutoPlacementSettings } from './auto-placement'
 import type { ForkServerSetupSettings } from './server-setup'
-import type { ForkBatchStartSettings } from './batch-start'
 import type { ForkPooledLimitsSettings } from './pooled-limits'
+import type { ForkBatchStartSettings } from './batch-start'
 import type { ForkWorktreeMoveSettings } from './worktree-move/worktree-move-settings'
 import type { ForkApfsCloneSettings } from './apfs-clone'
 import type { ForkWebhookSettings } from './webhooks'
 import type { ForkServerHealthSettings } from './server-health'
 import type { ForkServerUpdateSettings } from './server-update'
-import type { ForkPrBabysitSettings } from './pr-babysit'
-import type { ForkWorktreePortsSettings } from './worktree-ports'
-import type { ForkRowStatusSettings } from './row-status'
-import type { ForkMainSyncSettings } from './main-sync'
 import type { ForkAgentGuardSettings } from './agent-guards'
+import type { ForkWorktreePortsSettings } from './worktree-ports'
+import type { ForkPrBabysitSettings } from './pr-babysit'
+import type { ForkMainSyncSettings } from './main-sync'
+import type { ForkRowStatusSettings } from './row-status'
 import type { ForkBranchClashSettings } from './branch-clashes'
 import type { ForkReviewGuideSettings } from './review-guide'
-import type { ForkLettersSettings } from './letters'
 import type { ForkDigestSettings } from './digest'
 import type { ForkWorkspaceTagFilter } from './workspace-tags'
 import type { ForkSavedPrompt } from './saved-prompts'
+import type { ForkLettersSettings } from './letters'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -36,34 +36,34 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkAutoPlacementSettings &
   /** Fork (SLRM-2312): set a project up on a paired server that lacks it. */
   ForkServerSetupSettings &
-  /** Fork (SLRM-2395): batch start from the new-workspace composer. */
-  ForkBatchStartSettings &
   /** Fork (SLRM-2392): usage limits pooled across every account on this machine and its paired servers. */
   ForkPooledLimitsSettings &
+  /** Fork (SLRM-2395): batch start from the new-workspace composer. */
+  ForkBatchStartSettings &
   /** Fork (SLRM-2270): APFS clones for new worktrees on macOS. */
   ForkApfsCloneSettings &
   /** Fork (SLRM-2311): paired server health alerts and this host's heartbeat. */
   ForkServerHealthSettings &
   /** Fork (SLRM-2310): update paired servers from this desktop, and take updates as a server. */
   ForkServerUpdateSettings &
-  /** Fork (SLRM-2386): the PR babysitter; off unless a repo is listed. */
-  ForkPrBabysitSettings &
-  /** Fork (SLRM-2383): a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1. */
-  ForkWorktreePortsSettings & {
-  /** Fork (SLRM-2390): spend, context, pull request and fix button on agent rows. */
-  ForkRowStatusSettings & {
-  /** Fork (SLRM-2384): keep each local project's default branch current. */
-  ForkMainSyncSettings &
   /** Fork (SLRM-2385): the failure-loop guard and the spend cap. */
   ForkAgentGuardSettings &
+  /** Fork (SLRM-2383): a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1. */
+  ForkWorktreePortsSettings &
+  /** Fork (SLRM-2386): the PR babysitter; off unless a repo is listed. */
+  ForkPrBabysitSettings &
+  /** Fork (SLRM-2384): keep each local project's default branch current. */
+  ForkMainSyncSettings &
+  /** Fork (SLRM-2390): spend, context, pull request and fix button on agent rows. */
+  ForkRowStatusSettings &
   /** Fork (SLRM-2394): warn when parallel worktree branches change the same files. */
   ForkBranchClashSettings &
   /** Fork (SLRM-2396): pull request review guides. */
   ForkReviewGuideSettings &
-  /** Fork (SLRM-2389): letters between chats and the board of asks for the user. */
-  ForkLettersSettings &
   /** Fork (SLRM-2388): the daily digest across this host and its paired servers. */
-  ForkDigestSettings & {
+  ForkDigestSettings &
+  /** Fork (SLRM-2389): letters between chats and the board of asks for the user. */
+  ForkLettersSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */
     forkLostWork?: LostWorkSettings
     /** Fork (SLRM-2265): moving a workspace and its chats to another host; unset keys take the defaults. */

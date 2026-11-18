@@ -96,12 +96,12 @@ import { FORK_SERVER_HEALTH_METHODS } from './fork/fork-server-health'
 import { FORK_MAIN_SYNC_METHODS } from './fork/fork-main-sync'
 import { FORK_LIMIT_RESUME_METHODS } from './fork/fork-limit-resume'
 import { FORK_SERVER_UPDATE_METHODS } from './fork/fork-server-update'
-import { FORK_WORKTREE_PORTS_METHODS } from './fork/fork-worktree-ports'
 import { FORK_AGENT_GUARDS_METHODS } from './fork/fork-agent-guards'
+import { FORK_WORKTREE_PORTS_METHODS } from './fork/fork-worktree-ports'
 import { FORK_BRANCH_CLASHES_METHODS } from './fork/fork-branch-clashes'
 import { FORK_BEST_OF_METHODS } from './fork/fork-best-of'
-import { FORK_REVIEW_GUIDE_METHODS } from './fork/fork-review-guide'
 import { FORK_CHAT_HANDOFF_METHODS } from './fork/fork-chat-handoff'
+import { FORK_REVIEW_GUIDE_METHODS } from './fork/fork-review-guide'
 import { FORK_DIGEST_METHODS } from './fork/fork-digest'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
@@ -321,24 +321,24 @@ const SERVICE_RPC_METHODS = [
   ...FORK_LIMIT_RESUME_METHODS,
   // SLRM-2310: update paired servers over their own RPC, behind `orca servers` (FORK.md).
   ...FORK_SERVER_UPDATE_METHODS,
+  // SLRM-2385: failure-loop and spend guards behind `orca guards` (FORK.md).
+  ...FORK_AGENT_GUARDS_METHODS,
   // SLRM-2383: the port block a workspace holds, behind `orca ports` (FORK.md).
   ...FORK_WORKTREE_PORTS_METHODS,
   // SLRM-2384: keep each project's default branch current, behind `orca main-sync` (FORK.md).
   ...FORK_MAIN_SYNC_METHODS,
-  // SLRM-2385: failure-loop and spend guards behind `orca guards` (FORK.md).
-  ...FORK_AGENT_GUARDS_METHODS,
   // SLRM-2394: files parallel worktree branches share, behind `orca clashes` (FORK.md).
   ...FORK_BRANCH_CLASHES_METHODS,
   // SLRM-2393: best-of runs behind `orca best-of` and the compare view (FORK.md).
   ...FORK_BEST_OF_METHODS,
-  // SLRM-2396: pull request review guides behind `orca review-guide` and the phone (FORK.md).
-  ...FORK_REVIEW_GUIDE_METHODS,
   // SLRM-2391: hand a chat to the other agent, behind `orca chat handoff|history` (FORK.md).
   ...FORK_CHAT_HANDOFF_METHODS,
-  // SLRM-2389: letters between chats and the board of asks, behind `orca letter` and `orca board` (FORK.md).
-  ...FORK_LETTERS_RPC_METHODS,
+  // SLRM-2396: pull request review guides behind `orca review-guide` and the phone (FORK.md).
+  ...FORK_REVIEW_GUIDE_METHODS,
   // SLRM-2388: the digest across this host and its paired servers, behind `orca digest` (FORK.md).
-  ...FORK_DIGEST_METHODS
+  ...FORK_DIGEST_METHODS,
+  // SLRM-2389: letters between chats and the board of asks, behind `orca letter` and `orca board` (FORK.md).
+  ...FORK_LETTERS_RPC_METHODS
 ] as const
 
 type ConcatMethods<A extends readonly unknown[], B extends readonly unknown[]> = readonly [

@@ -121,8 +121,18 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
   // SLRM-2309: chats and terminal agents parked on a usage limit (FORK.md "Limit resume").
   {
     name: 'fork-limits',
-    keys: ['limits list', 'limits resume-now', 'limits cancel'],
-    load: async () => (await import('./limits-handlers.js')).FORK_LIMITS_HANDLERS
+    keys: ['limits list', 'limits resume-now', 'limits cancel', 'limits usage'],
+    load: async () => ({
+      ...(await import('./limits-handlers.js')).FORK_LIMITS_HANDLERS,
+      // SLRM-2392: pooled limits (FORK.md "Pooled limits").
+      ...(await import('./limits-usage-handler.js')).FORK_LIMITS_USAGE_HANDLERS
+    })
+  },
+  // SLRM-2385: failure-loop and spend guards (FORK.md "Agent guards").
+  {
+    name: 'fork-guards',
+    keys: ['guards list', 'guards resume', 'guards cap'],
+    load: async () => (await import('./guards-handlers.js')).FORK_GUARDS_HANDLERS
   },
   // SLRM-2384: keep each project's default branch current (FORK.md "Keep main current").
   {
@@ -135,33 +145,30 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-serve-protect',
     keys: ['serve service protect', 'serve service protect status', 'serve service unprotect'],
     load: async () => (await import('./serve-protect-handlers.js')).FORK_SERVE_PROTECT_HANDLERS
-    keys: ['limits list', 'limits resume-now', 'limits cancel', 'limits usage'],
-    load: async () => ({
-      ...(await import('./limits-handlers.js')).FORK_LIMITS_HANDLERS,
-      // SLRM-2392: pooled limits (FORK.md "Pooled limits").
-      ...(await import('./limits-usage-handler.js')).FORK_LIMITS_USAGE_HANDLERS
-    })
-  // SLRM-2385: failure-loop and spend guards (FORK.md "Agent guards").
-  {
-    name: 'fork-guards',
-    keys: ['guards list', 'guards resume', 'guards cap'],
-    load: async () => (await import('./guards-handlers.js')).FORK_GUARDS_HANDLERS
+  },
   // SLRM-2393: one task to 2 to 4 agents, compared and picked (FORK.md "Best of N").
   {
     name: 'fork-best-of',
     keys: ['best-of', 'best-of list', 'best-of show', 'best-of pick'],
     load: async () => (await import('./best-of-handlers.js')).FORK_BEST_OF_HANDLERS
   },
-  // SLRM-2396: pull request review guides (FORK.md "Review guides").
-  {
-    name: 'fork-review-guide',
-    keys: ['review-guide', 'review-guide write', 'review-guide cancel'],
-    load: async () => (await import('./review-guide-handlers.js')).FORK_REVIEW_GUIDE_HANDLERS
   // SLRM-2391: hand a chat to the other agent and read a chat's history (FORK.md "Chat handoff").
   {
     name: 'fork-chat-handoff',
     keys: ['chat handoff', 'chat history'],
     load: async () => (await import('./chat-handoff-handlers.js')).FORK_CHAT_HANDOFF_HANDLERS
+  },
+  // SLRM-2396: pull request review guides (FORK.md "Review guides").
+  {
+    name: 'fork-review-guide',
+    keys: ['review-guide', 'review-guide write', 'review-guide cancel'],
+    load: async () => (await import('./review-guide-handlers.js')).FORK_REVIEW_GUIDE_HANDLERS
+  },
+  // SLRM-2388: what finished, failed, merged and cost, and what waits on you (FORK.md "Digest").
+  {
+    name: 'fork-digest',
+    keys: ['digest'],
+    load: async () => (await import('./digest-handlers.js')).FORK_DIGEST_HANDLERS
   },
   // SLRM-2389: letters between chats and the board of asks (FORK.md "Letters and the board").
   {
@@ -176,10 +183,5 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
       'board back'
     ],
     load: async () => (await import('./letters-handlers.js')).FORK_LETTERS_HANDLERS
-  // SLRM-2388: what finished, failed, merged and cost, and what waits on you (FORK.md "Digest").
-  {
-    name: 'fork-digest',
-    keys: ['digest'],
-    load: async () => (await import('./digest-handlers.js')).FORK_DIGEST_HANDLERS
   }
 ]
