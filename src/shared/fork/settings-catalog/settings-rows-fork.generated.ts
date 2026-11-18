@@ -33,6 +33,8 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"The batch box starts with Auto machine on; unset is on.","o":true}',
   forkBatchStartKeepOpen:
     '{"t":{"k":"boolean"},"d":"The batch box starts with Keep open on; unset is on.","o":true}',
+  forkBatchStartSetupMissing:
+    '{"t":{"k":"boolean"},"d":"Auto machine also considers paired servers that lack the project but can clone it, and sets the picked one up first; unset is off.","o":true}',
   forkBestOf:
     '{"t":{"k":"boolean"},"d":"Best of N (SLRM-2393): `orca best-of` and the compare view; unset is on.","o":true}',
   forkBestOfAgents:
@@ -201,7 +203,7 @@ export const FORK_SETTINGS_ROWS_FORK = {
   forkServerHeartbeatUrl:
     '{"t":{"k":"string"},"d":"Server heartbeat (SLRM-2311): an http(s) address this host calls every few seconds so an outside monitor sees it is alive; unset is none.","o":true}',
   forkServerSetupOffer:
-    '{"t":{"k":"boolean"},"d":"Set up on a server: the new-workspace host picker offers \\"Set up on SERVER...\\" for a paired server that lacks the project; unset is on.","o":true}',
+    '{"t":{"k":"boolean"},"d":"Set up on a server: the new-workspace host picker (and the phone\'s run-target list, SLRM-2406) offers \\"Set up on SERVER...\\" for a paired server that lacks the project; unset is on.","o":true}',
   forkServerSetupParent:
     '{"t":{"k":"string"},"d":"Set up on a server: folder on the server the project is cloned into, as NAME under it. `~` is that server\'s home; unset is ~/development.","o":true}',
   forkServerSetupReadiness:
