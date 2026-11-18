@@ -791,6 +791,43 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/pooled-limits.ts`, `src/main/fork/pooled-limits/`,
     `src/cli/fork/limits-usage-handler.ts` and `src/renderer/src/fork/pooled-limits/`.
 
+- **Digest (SLRM-2388).** One summary of a time window across this desktop and every paired
+  server: what finished and failed, which of your pull requests merged or are open, the estimated
+  cost, and what waits on you. The idea comes from Devin's session insights and Warp's run
+  records; only the idea is ported.
+  - **What is in it.** Per machine: orchestration tasks that completed or failed in the window
+    (from its orchestration database, at most 100), your pull requests through the GitHub CLI in
+    each local project (`gh pr list --author @me`, merged in the window and every open one; 3
+    projects at a time, 15 s each, a project without gh, a login or a GitHub remote is counted in a
+    note), the Decision inbox's waiting and stalled chats (SLRM-2196; listed only while idle
+    recovery is on, and the digest says so), agents an agent guard paused (SLRM-2385, from
+    `fork.guards.list`'s list), and the usage ledger's estimated cost of the local days the window
+    touches (SLRM-2104; the desktop only). Paired servers this desktop's server health sees as not
+    answering (SLRM-2311) head the list. A pull request two clones list is shown once.
+  - **Fan-out.** `fork.digest.collect` reads this machine and asks every paired server for its own
+    part (`fork.digest.local`, 4 at a time, 45 s each), as auto placement probes them (SLRM-2266).
+    A server that does not answer, or runs stock Orca or an older Blackfish, is named as such.
+    Each server's answer is checked row by row (`digest-schema.ts`) before anything shows it.
+  - **Window.** `--since` (a duration such as 12h or 2d, or a date and time), else since the last
+    daily digest, else the last day; at most 90 days.
+  - **Daily digest.** Off by default (`forkDigest`). Once a day after `forkDigestHour` (8, local
+    time), or when the app next runs that day, it sends the digest since the last one to the
+    Decision inbox's notify targets (SLRM-2208): a desktop notification with the headline
+    (`forkDigestDesktop`, unset follows `forkInboxNotifyDesktop`), a POST of JSON to
+    `forkInboxNotifyWebhookUrl` (`forkDigestWebhook`, unset on when the address is set) and the
+    same JSON on stdin of `forkInboxNotifyCommand` (`forkDigestCommand`, unset on when the command
+    is set; `orca settings` cannot write it). The JSON has `event` `digest`, `since`, `until`,
+    `headline`, `totals`, `serversDown`, `hosts` and `text`. The send is recorded in
+    `fork-digest.json` in the data folder (owner-only) before it goes out, so it never goes twice.
+    It runs on the desktop app and on a headless server, each from its own settings.
+  - **Pull requests** (`forkDigestPullRequests`, on): off leaves gh alone everywhere.
+  - **Where.** `orca digest [--since <when>] [--json]`; "Digest" in the command palette; the
+    Digest card in Settings > Blackfish > Usage and accounts (with Show); and Digest in the
+    phone's host menu, a screen in the Accounts screen's style.
+  - Code is in `src/shared/fork/digest*.ts`, `src/main/fork/digest/`,
+    `src/main/runtime/rpc/methods/fork/fork-digest.ts`, `src/cli/fork/digest-*`,
+    `src/renderer/src/fork/digest/` and `mobile/src/components/fork/digest/`.
+
 - **Endpoint failover (SLRM-2267).** On by default (`forkEndpointFailover`, Settings >
   Blackfish > Remote servers > Server routes). A saved remote server can be reached on more
   than one address. Stock dials only the saved (or first) endpoint; the fork tries the routes
@@ -1777,6 +1814,7 @@ Apply these in this order. Each one is a single commit.
 115. `SLRM-2387 Agents on the iPhone Lock Screen: a Live Activity and an Agents widget`
 116. `SLRM-2406 Set up on a server from the phone and from batch start's Auto machine`
 115. `SLRM-2389 Letters and the board: chats message each other between turns, and agents file asks for the user`
+113. `SLRM-2388 Digest: what finished, failed, merged and cost, and what waits on you, across this host and its paired servers`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2653,6 +2691,20 @@ Upstream files only get short hooks, which keeps rebases small:
   - The settings are in `src/shared/fork/letters.ts`, intersected in `fork-global-settings.ts`;
     `settings-rows-fork.generated.ts` is regenerated, the limits are `agent-limit` keys in
     `settings-access.ts`, and the card is in the fork's Settings pane (Chats).
+- Digest (SLRM-2388), from `src/shared/fork/digest*.ts`, `src/main/fork/digest/`,
+  `src/cli/fork/digest-*.ts`, `src/renderer/src/fork/digest/` and
+  `mobile/src/components/fork/digest/`. The daily send is off unless `forkDigest` is true:
+  - `rpc-method-registry.ts` spreads `FORK_DIGEST_METHODS` (`fork.digest.local`,
+    `fork.digest.collect`); `rpc-params-catalog.generated.ts` is regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_DIGEST_COMMAND_SPECS`, `fork-handler-groups.ts` adds the
+    `fork-digest` group and `cli-command-names.ts` lists `digest`.
+  - `startForkRuntimeSettleServices` (`runtime-settle-hooks.ts`) also calls `startForkDigest`.
+  - Fork files only on the desktop: the palette entry rides on
+    `getForkUsageReportQuickActions()`, `ForkRootHosts` mounts `ForkDigestHost`, the card is in the
+    fork's Settings pane, and `forkDigestCommand` is a runs-command key in `settings-access.ts`.
+  - Mobile: `app/h/[hostId]/digest.tsx` (the shell route) and `digest.web.tsx` (the page) are new
+    route files with no strings; `host-stack-screens.ts` spreads `FORK_HOST_STACK_SCREENS` and
+    `host-screen-header.tsx` adds `forkDigestHostAction(...)` to the host menu.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
