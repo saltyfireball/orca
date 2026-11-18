@@ -48,6 +48,7 @@ import {
 import { ForkLimitsListParams, ForkLimitsTargetParams } from '../fork/limit-resume-wire'
 import { ForkLostWorkScanParams } from '../fork/lost-work'
 import { ForkMcpChatParams, ForkMcpChatSetParams, ForkMcpListParams } from '../fork/mcp-profiles'
+import { ForkMachineUsageParams, ForkPooledLimitsParams } from '../fork/pooled-limits'
 import { ForkServerHealthListParams } from '../fork/server-health'
 import {
   ForkServerUpdateApplyParams,
@@ -1226,7 +1227,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.launchDefaults.show': null,
   'fork.limits.cancel': ForkLimitsTargetParams,
   'fork.limits.list': ForkLimitsListParams,
+  'fork.limits.machineUsage': ForkMachineUsageParams,
   'fork.limits.resumeNow': ForkLimitsTargetParams,
+  'fork.limits.usage': ForkPooledLimitsParams,
   'fork.lostWork.scan': ForkLostWorkScanParams,
   'fork.mcpProfiles.chat': ForkMcpChatParams,
   'fork.mcpProfiles.list': ForkMcpListParams,

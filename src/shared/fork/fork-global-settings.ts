@@ -6,6 +6,7 @@ import type { ForkAgentColorState } from './agent-state-color'
 import type { ForkMcpProfileSettings } from './mcp-profiles'
 import type { ForkUsageLedgerSettings } from './usage-ledger'
 import type { ForkAutoPlacementSettings } from './auto-placement'
+import type { ForkPooledLimitsSettings } from './pooled-limits'
 import type { ForkWorktreeMoveSettings } from './worktree-move/worktree-move-settings'
 import type { ForkApfsCloneSettings } from './apfs-clone'
 import type { ForkWebhookSettings } from './webhooks'
@@ -20,6 +21,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkUsageLedgerSettings &
   /** Fork (SLRM-2266): per-machine placement and auto placement when no machine is named. */
   ForkAutoPlacementSettings &
+  /** Fork (SLRM-2392): usage limits pooled across every account on this machine and its paired servers. */
+  ForkPooledLimitsSettings &
   /** Fork (SLRM-2270): APFS clones for new worktrees on macOS. */
   ForkApfsCloneSettings &
   /** Fork (SLRM-2311): paired server health alerts and this host's heartbeat. */

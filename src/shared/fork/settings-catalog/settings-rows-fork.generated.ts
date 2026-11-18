@@ -102,6 +102,10 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"record","of":{"k":"enum","values":["less","manual","normal","prefer"]}},"d":"Auto placement: per machine (\'local\' or \'runtime:<environment id>\'), how willingly it takes automatically placed work; unset machines are \'normal\'.","o":true}',
   forkPlacementAutoWhenUnnamed:
     '{"t":{"k":"boolean"},"d":"Auto placement: when no machine is named and more than one could take the work, pick one as `auto` would. Off unless true.","o":true}',
+  forkPooledLimits:
+    '{"t":{"k":"boolean"},"d":"Pooled usage limits in the usage popover, /usage-limits and `orca limits usage`; this machine shares its numbers with paired desktops. Unset is on.","o":true}',
+  forkPooledLimitsServers:
+    '{"t":{"k":"boolean"},"d":"Pooled limits also ask every paired server; unset is on.","o":true}',
   forkServerHealth:
     '{"t":{"k":"boolean"},"d":"Watch the paired remote servers this desktop is connected to and alert when one stops answering; unset is on.","o":true}',
   forkServerHealthAlertCommand:

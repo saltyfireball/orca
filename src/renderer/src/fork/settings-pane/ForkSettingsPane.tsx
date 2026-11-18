@@ -25,6 +25,7 @@ import { ForkMemorySettings } from '../memory-truth/ForkMemorySettings'
 import { ForkIdleRecoverySetting } from '../idle-recovery/ForkIdleRecoverySetting'
 import { ForkAccountChipSetting } from '../claude-account-chip/ForkAccountChipSetting'
 import { ForkUsageReportSettings } from '../usage-report/ForkUsageReportSettings'
+import { ForkPooledLimitsSetting } from '../pooled-limits/ForkPooledLimitsSetting'
 import { ForkLostWorkSettings } from '../lost-work/ForkLostWorkSettings'
 import { ForkSyncNoticeSetting } from '../sync-status/ForkSyncNoticeSetting'
 import { ForkAutoPlacementSetting } from '../auto-placement/ForkAutoPlacementSetting'
@@ -77,7 +78,8 @@ const SECTION_CARDS: Record<
   'idle-recovery': [['idle-recovery', ForkIdleRecoverySetting]],
   usage: [
     ['account-chip', ForkAccountChipSetting],
-    ['usage-report', ForkUsageReportSettings]
+    ['usage-report', ForkUsageReportSettings],
+    ['pooled-limits', ForkPooledLimitsSetting]
   ],
   projects: [
     ['lost-work', ForkLostWorkSettings],
