@@ -25,6 +25,8 @@ import {
   isOrcaSessionId
 } from '../../../../../shared/agent-session/identity/orca-session-address'
 import type { WorkerApprovalDecision } from '../../../../../shared/orchestration/approvals/worker-approval-payload'
+import { ForkApprovalBulkAllow } from '@/fork/approval-triage/ForkApprovalBulkAllow'
+import { forkWorkerApprovalCwd } from '@/fork/approval-triage/fork-approval-triage'
 
 // The person's own Deny: the worker gets this, word for word where its agent takes a message.
 const OWNER_DENY_REASON = 'Denied by the owner.'
@@ -123,6 +125,12 @@ export function NativeChatWorkerApprovalStack({
       className="scrollbar-sleek max-h-[40%] min-h-0 shrink-[4] overflow-y-auto"
       data-native-chat-worker-approvals=""
     >
+      {/* SLRM-2397: fork hook (FORK.md "Approval triage") */}
+      <ForkApprovalBulkAllow
+        entries={open}
+        pending={submitting}
+        onAllow={(entry) => answer(entry, 'allow')}
+      />
       {approvals.map((entry) => {
         const { approval } = entry
         if (approval.state !== 'open') {
@@ -165,6 +173,7 @@ export function NativeChatWorkerApprovalStack({
                   }
                 : {})}
               placement="stacked"
+              forkTriage={{ cwd: forkWorkerApprovalCwd(entry) }}
             />
           </div>
         )

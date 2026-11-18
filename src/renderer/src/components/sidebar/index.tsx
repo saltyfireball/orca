@@ -44,6 +44,8 @@ import { WORKSPACE_LIST_REGION_ID } from '@/components/app-rail/app-rail-layout'
 import { setWorkspaceListRegionPresent } from '@/components/app-rail/workspace-list-region-presence'
 import { WorktreeCardsUpdateNotice } from './workspace-card/template/WorktreeCardsUpdateNotice'
 import { ForkSnoozedSection } from '@/fork/snooze/ForkSnoozedSection'
+import { ForkTagFilterBar } from '@/fork/workspace-tags/ForkTagFilterBar'
+import { ForkArchivedSection } from '@/fork/workspace-tags/ForkArchivedSection'
 
 // Load the shared Activity badge/list pipeline after the sidebar shell.
 const SidebarAgentsList = lazyWithRetry(() => import('../activity/sidebar/SidebarAgentsList'))
@@ -267,6 +269,8 @@ function Sidebar({
               <StartupWorktreeRefreshStatus />
               <WorktreeCardsUpdateNotice />
               <WorktreeCardsIntroNotice />
+              {/* SLRM-2397: fork hook (FORK.md "Workspace tags") */}
+              <ForkTagFilterBar />
             </>
           )}
           <SidebarProjectsListSlot botsShown={botsShown} collapsed={projectsCollapsed}>
@@ -287,6 +291,7 @@ function Sidebar({
       )}
       {/* SLRM-2269: fork hook (FORK.md "Snooze") */}
       {projectsCollapsed ? null : <ForkSnoozedSection />}
+      {projectsCollapsed ? null : <ForkArchivedSection />}
     </React.Fragment>
   )
 
