@@ -1260,6 +1260,53 @@ named Orca Fork until SLRM-1367. `main` is always
     the spend a resume set aside; a record with nothing left is dropped, any after 30 days.
   - Code is in `src/shared/fork/agent-guards*.ts`, `src/main/fork/agent-guards/`,
     `src/cli/fork/guards-*` and `src/renderer/src/fork/agent-guards/`.
+- **Keep main current (SLRM-2384).** Off by default. Each host (the desktop app, `orca serve` and
+  orcad on a headless server) fetches the default branch of each of its local git projects on a
+  timer and fast-forwards it, so new worktrees start from current main.
+  - The branch is the project's Lost work default branch override, else the remote's `HEAD`, else
+    `main`, `master`, `trunk` or `develop`; the remote and its branch are the branch's upstream,
+    else the remote `HEAD` came from. The fetch is `git fetch --no-tags --no-write-fetch-head
+    <remote> <branch>` through the app's own git runner, so credentials and SSH set up for git
+    apply and nothing prompts.
+  - It moves the branch only by a fast-forward: in the main checkout with `git merge --ff-only
+    --no-autostash` when the checkout is clean (untracked files aside), no merge, rebase,
+    cherry-pick, revert, bisect or index lock is under way, HEAD is still the branch at the commit
+    it read, and (unless `forkMainSyncSkipInUse` is false) no terminal or working agent is live in
+    it; checked out nowhere, with a compare-and-swap `git update-ref`. A branch checked out in a
+    linked worktree, a diverged branch and a branch with commits the remote lacks are never moved.
+  - Each move, and each new reason a project was left alone, is logged as `[fork-main-sync]`.
+  - Settings (Settings > Blackfish > Projects, or `orca settings`): `forkMainSync` (off),
+    `forkMainSyncMinutes` (15, from 5 to 1440), `forkMainSyncProjects` (names, ids or paths;
+    empty is every local git project), `forkMainSyncSkipInUse` (on). The settings are read
+    before every pass and a change to them brings the next pass forward, with no restart.
+  - CLI: `orca main-sync [--json]` prints the last result per project and `orca main-sync run
+    [--repo <name|id|path>]` runs a pass now (even while off), over `fork.mainSync.status` and
+    `fork.mainSync.run`; add `--environment` for a paired server.
+  - Code is in `src/shared/fork/main-sync.ts`, `src/main/fork/main-sync/`,
+    `src/main/runtime/rpc/methods/fork/fork-main-sync.ts`, `src/cli/fork/main-sync-*.ts` and
+    `src/renderer/src/fork/main-sync/`.
+- **Server memory protection (SLRM-2384).** `orca serve service protect` (Linux) keeps an always-on
+  server reachable when agents use up memory. It works on the orca-serve user unit that
+  `orca serve service install` or the dotfiles `orca-server` installer wrote (the same names).
+  - It writes `50-blackfish-protect.conf` drop-ins beside the unit (never the unit itself) and for
+    its slice: `MemoryMin` (256M) and `MemoryLow` (1G), applied at once with `systemctl --user
+    set-property --runtime`; `OOMScoreAdjust` (`auto`: the user manager's own score, the lowest
+    an unprivileged unit may take); and `ORCA_FORK_CHILD_OOM_SCORE_ADJ` (300). The terminal
+    daemon, which the server starts and which starts every agent, raises its own score to that
+    value at start, so the kernel kills agents before the server. The scores apply at the next
+    start of the service and of the daemon; protect restarts nothing.
+  - Root steps are printed, never run, and only the ones still needed: `systemctl set-property`
+    of the same memory values on `user.slice`, `user-<uid>.slice` and `user@<uid>.service`
+    (protection reaches a unit only through its parents), and an `OOMScoreAdjust` drop-in (-500)
+    plus a live write for `tailscaled`, `ssh` or `sshd`.
+  - `orca serve service protect status` shows the drop-in, the unit's values, the running
+    server's score, the user manager's floor and the system units' values;
+    `orca serve service unprotect` removes only the files protect wrote (they start with its
+    marker) and clears the memory values at once. Flags: `--memory-min`, `--memory-low`,
+    `--oom-score-adjust`, `--child-oom-score-adjust`, `--system-oom-score-adjust` (each takes
+    `off`), `--dry-run`. The drop-in itself holds the choice, per host.
+  - Code is in `src/shared/fork/serve-protect.ts`, `src/cli/fork/serve-protect*.ts` and
+    `src/main/fork/serve-protect/daemon-oom-score.ts`.
 
 ## Patch list
 
@@ -1369,7 +1416,8 @@ Apply these in this order. Each one is a single commit.
 102. `SLRM-2349 Chat visuals: show image files and take unquoted values, and servers --wait takes a separate value`
 103. `SLRM-2383 Worktree ports: a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1`
 104. `SLRM-2386 PR babysitter: send a pull request's chat fix requests when CI fails, merge on green when allowed`
-105. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
+105. `SLRM-2384 Keep main current and server memory protection: fetch and fast-forward default branches, orca serve service protect`
+106. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2067,6 +2115,22 @@ Upstream files only get short hooks, which keeps rebases small:
   - `installForkReady` and `installForkHeadlessHost` call `installForkPrBabysit(store)`. The
     Decision inbox (fork code) gains other sources' rows and a `babysit` call on its bridge; the
     five settings are in `src/shared/fork/pr-babysit.ts`, joined to `fork-global-settings.ts`.
+
+- Keep main current and server memory protection (SLRM-2384), from `src/shared/fork/main-sync.ts`,
+  `src/shared/fork/serve-protect.ts`, `src/main/fork/main-sync/`,
+  `src/main/fork/serve-protect/`, `src/cli/fork/main-sync-*.ts`, `src/cli/fork/serve-protect*.ts`
+  and `src/renderer/src/fork/main-sync/`:
+  - `startForkRuntimeSettleServices` calls `startForkMainSync(runtime)` (desktop, `orca serve`
+    and orcad).
+  - `rpc-method-registry.ts` spreads `FORK_MAIN_SYNC_METHODS`; `rpc-params-catalog.generated.ts`
+    is regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_MAIN_SYNC_COMMAND_SPECS` and
+    `FORK_SERVE_PROTECT_COMMAND_SPECS`; `fork-handler-groups.ts` adds the `fork-main-sync` and
+    `fork-serve-protect` groups; `cli-command-names.ts` lists `main-sync`.
+  - `src/main/daemon/daemon-entry.ts` awaits `forkRaiseDaemonOomScore()` right after naming the
+    process.
+  - The settings are in `fork-global-settings.ts` and `settings-rows-fork.generated.ts` is
+    regenerated; the card is in the fork's Settings pane and its search entry in the pane catalog.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

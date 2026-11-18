@@ -15,12 +15,14 @@ import {
   type ForkWorktreePortsRuntime
 } from './worktree-ports/worktree-ports-service'
 import { startForkAgentGuards } from './agent-guards/agent-guards-service'
+import { startForkMainSync, type ForkMainSyncRuntime } from './main-sync/main-sync-live'
 
 export function startForkRuntimeSettleServices(
   runtime: UnattendedResumeRuntime &
     LimitResumeServiceRuntime &
     ForkServersRuntime &
-    ForkWorktreePortsRuntime
+    ForkWorktreePortsRuntime &
+    ForkMainSyncRuntime
 ): void {
   // SLRM-2268: continue cut unattended work once per process.
   startForkUnattendedResume(runtime)
@@ -32,4 +34,6 @@ export function startForkRuntimeSettleServices(
   void startForkWorktreePorts(runtime)
   // SLRM-2385: warn and pause agents stuck in a failure loop or past their spend cap.
   startForkAgentGuards(runtime)
+  // SLRM-2384: fetch and fast-forward each local project's default branch, when on.
+  startForkMainSync(runtime)
 }
