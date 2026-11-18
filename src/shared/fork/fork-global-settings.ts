@@ -6,11 +6,15 @@ import type { ForkAgentColorState } from './agent-state-color'
 import type { ForkMcpProfileSettings } from './mcp-profiles'
 import type { ForkUsageLedgerSettings } from './usage-ledger'
 import type { ForkAutoPlacementSettings } from './auto-placement'
+import type { ForkPooledLimitsSettings } from './pooled-limits'
 import type { ForkWorktreeMoveSettings } from './worktree-move/worktree-move-settings'
 import type { ForkApfsCloneSettings } from './apfs-clone'
 import type { ForkWebhookSettings } from './webhooks'
 import type { ForkServerHealthSettings } from './server-health'
 import type { ForkServerUpdateSettings } from './server-update'
+import type { ForkWorktreePortsSettings } from './worktree-ports'
+import type { ForkPrBabysitSettings } from './pr-babysit'
+import type { ForkMainSyncSettings } from './main-sync'
 import type { ForkBranchClashSettings } from './branch-clashes'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
@@ -21,12 +25,20 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkUsageLedgerSettings &
   /** Fork (SLRM-2266): per-machine placement and auto placement when no machine is named. */
   ForkAutoPlacementSettings &
+  /** Fork (SLRM-2392): usage limits pooled across every account on this machine and its paired servers. */
+  ForkPooledLimitsSettings &
   /** Fork (SLRM-2270): APFS clones for new worktrees on macOS. */
   ForkApfsCloneSettings &
   /** Fork (SLRM-2311): paired server health alerts and this host's heartbeat. */
   ForkServerHealthSettings &
   /** Fork (SLRM-2310): update paired servers from this desktop, and take updates as a server. */
   ForkServerUpdateSettings &
+  /** Fork (SLRM-2383): a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1. */
+  ForkWorktreePortsSettings &
+  /** Fork (SLRM-2386): the PR babysitter; off unless a repo is listed. */
+  ForkPrBabysitSettings &
+  /** Fork (SLRM-2384): keep each local project's default branch current. */
+  ForkMainSyncSettings &
   /** Fork (SLRM-2394): warn when parallel worktree branches change the same files. */
   ForkBranchClashSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */

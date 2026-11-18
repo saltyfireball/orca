@@ -10,9 +10,18 @@ import {
   type LimitResumeServiceRuntime
 } from './limit-resume/limit-resume-service'
 import { startForkServerUpdate, type ForkServersRuntime } from './server-update/servers-live'
+import {
+  startForkWorktreePorts,
+  type ForkWorktreePortsRuntime
+} from './worktree-ports/worktree-ports-service'
+import { startForkMainSync, type ForkMainSyncRuntime } from './main-sync/main-sync-live'
 
 export function startForkRuntimeSettleServices(
-  runtime: UnattendedResumeRuntime & LimitResumeServiceRuntime & ForkServersRuntime
+  runtime: UnattendedResumeRuntime &
+    LimitResumeServiceRuntime &
+    ForkServersRuntime &
+    ForkWorktreePortsRuntime &
+    ForkMainSyncRuntime
 ): void {
   // SLRM-2268: continue cut unattended work once per process.
   startForkUnattendedResume(runtime)
@@ -20,4 +29,8 @@ export function startForkRuntimeSettleServices(
   startForkLimitResume(runtime)
   // SLRM-2310: settle this host's own update (the watchdog waits on it); auto-update servers.
   startForkServerUpdate(runtime)
+  // SLRM-2383: release port blocks of workspaces gone while closed, then follow removals.
+  void startForkWorktreePorts(runtime)
+  // SLRM-2384: fetch and fast-forward each local project's default branch, when on.
+  startForkMainSync(runtime)
 }

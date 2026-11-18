@@ -76,7 +76,7 @@ export async function answerDecisionInboxChat(
     return false
   }
   try {
-    const { result } = await bridge.answer({ chatId: item.chatId, text })
+    const { result } = await bridge.answer({ chatId: item.chatId, text, source: item.source })
     if (result === 'sent') {
       toast.success(
         translate('fork.decisionInbox.toast.sent', 'Answer sent to {{title}}.', {
@@ -107,7 +107,7 @@ export async function setDecisionInboxChatPaused(
     return
   }
   try {
-    const result = await bridge.pause({ chatId: item.chatId, paused })
+    const result = await bridge.pause({ chatId: item.chatId, paused, source: item.source })
     if (!result.saved) {
       toast.error(
         translate(

@@ -91,6 +91,14 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Also read Claude Code and Codex terminal agents for limit stops; unset is on.","o":true}',
   forkLostWork:
     '{"t":{"k":"object","fields":{"checks":{"k":"record","of":{"k":"boolean"},"keys":["finishedWorktrees","missingFolders","pullRequests","stashes","unmergedBranches","unmergedWorktrees","untrackedWorktrees"],"optional":true},"defaultBranches":{"k":"record","of":{"k":"string"},"optional":true},"archiveFolder":{"k":"string","optional":true},"squashLookback":{"k":"number","optional":true},"pullRequestLimit":{"k":"number","optional":true},"pullRequestTimeoutSeconds":{"k":"number","optional":true},"projectConcurrency":{"k":"number","optional":true},"itemConcurrency":{"k":"number","optional":true},"inUse":{"k":"object","fields":{"activeWorkspace":{"k":"boolean","optional":true},"liveTerminals":{"k":"boolean","optional":true},"openChats":{"k":"boolean","optional":true},"runningAgents":{"k":"boolean","optional":true},"sleepingChats":{"k":"boolean","optional":true}},"optional":true}}},"d":"The lost work scan\'s checks, base branches and archive folder.","o":true}',
+  forkMainSync:
+    '{"t":{"k":"boolean"},"d":"Fetch each local project\'s default branch on a timer and fast-forward it when it is clean and behind; off unless true.","o":true}',
+  forkMainSyncMinutes:
+    '{"t":{"k":"number"},"d":"Main sync: minutes between two passes (5 to 1440); unset is 15.","o":true}',
+  forkMainSyncProjects:
+    '{"t":{"k":"array","of":{"k":"string"}},"d":"Main sync: projects it keeps current, by name, id or path; unset or empty is every local git project.","o":true}',
+  forkMainSyncSkipInUse:
+    '{"t":{"k":"boolean"},"d":"Main sync: leave a default branch alone while its checkout has live terminals or a working agent; unset is on.","o":true}',
   forkMcpDefaultBackground:
     '{"t":{"k":"string"},"d":"MCP profiles: profile for automation runs; unset is \\"all\\".","o":true}',
   forkMcpDefaultInteractive:
@@ -112,6 +120,20 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"record","of":{"k":"enum","values":["less","manual","normal","prefer"]}},"d":"Auto placement: per machine (\'local\' or \'runtime:<environment id>\'), how willingly it takes automatically placed work; unset machines are \'normal\'.","o":true}',
   forkPlacementAutoWhenUnnamed:
     '{"t":{"k":"boolean"},"d":"Auto placement: when no machine is named and more than one could take the work, pick one as `auto` would. Off unless true.","o":true}',
+  forkPooledLimits:
+    '{"t":{"k":"boolean"},"d":"Pooled usage limits in the usage popover, /usage-limits and `orca limits usage`; this machine shares its numbers with paired desktops. Unset is on.","o":true}',
+  forkPooledLimitsServers:
+    '{"t":{"k":"boolean"},"d":"Pooled limits also ask every paired server; unset is on.","o":true}',
+  forkPrBabysitAutoMerge:
+    '{"t":{"k":"boolean"},"d":"PR babysitter: merge a babysat pull request once every check is green, no change is requested and GitHub reports it mergeable. Off unless true.","o":true}',
+  forkPrBabysitMaxRounds:
+    '{"t":{"k":"number"},"d":"PR babysitter: fix requests sent for one pull request before it stops and asks you (1 to 10); unset is 3.","o":true}',
+  forkPrBabysitMergeMethod:
+    '{"t":{"k":"enum","values":["merge","rebase","repo","squash"]},"d":"PR babysitter: \'repo\' uses the repository\'s default merge method; unset is \'repo\'.","o":true}',
+  forkPrBabysitRepos:
+    '{"t":{"k":"array","of":{"k":"string"}},"d":"PR babysitter (SLRM-2386): owner/repo names whose pull requests are babysat, \\"*\\" for every repo; unset is none (off).","o":true}',
+  forkPrBabysitWaitMinutes:
+    '{"t":{"k":"number"},"d":"PR babysitter: minutes to wait for a new CI result after a fix request before it stops and asks you; unset is 120.","o":true}',
   forkServerHealth:
     '{"t":{"k":"boolean"},"d":"Watch the paired remote servers this desktop is connected to and alert when one stops answering; unset is on.","o":true}',
   forkServerHealthAlertCommand:
@@ -201,5 +223,13 @@ export const FORK_SETTINGS_ROWS_FORK = {
   forkWorkerCleanupOnMerged:
     '{"t":{"k":"boolean"},"d":"Worker cleanup: clean up once the worker\'s branch is merged; unset is off.","o":true}',
   forkWorktreeMove:
-    '{"t":{"k":"object","fields":{"menu":{"k":"boolean","optional":true},"whenBusy":{"k":"enum","values":["ask","refuse"],"optional":true},"uncommitted":{"k":"enum","values":["leave","patch","refuse"],"optional":true},"push":{"k":"boolean","optional":true},"chats":{"k":"boolean","optional":true},"rewriteHome":{"k":"boolean","optional":true},"markSource":{"k":"boolean","optional":true},"maxTotalMb":{"k":"number","optional":true}}},"d":"Moving a workspace and its chats to another host; unset keys take the defaults.","o":true}'
+    '{"t":{"k":"object","fields":{"menu":{"k":"boolean","optional":true},"whenBusy":{"k":"enum","values":["ask","refuse"],"optional":true},"uncommitted":{"k":"enum","values":["leave","patch","refuse"],"optional":true},"push":{"k":"boolean","optional":true},"chats":{"k":"boolean","optional":true},"rewriteHome":{"k":"boolean","optional":true},"markSource":{"k":"boolean","optional":true},"maxTotalMb":{"k":"number","optional":true}}},"d":"Moving a workspace and its chats to another host; unset keys take the defaults.","o":true}',
+  forkWorktreePorts:
+    '{"t":{"k":"boolean"},"d":"Each workspace gets a block of ports, exported as ORCA_PORT and ORCA_PORT_0..N-1 to its terminals, agents and setup scripts; unset is on.","o":true}',
+  forkWorktreePortsCount:
+    '{"t":{"k":"number"},"d":"Ports in each workspace\'s block (1 to 100); a change applies to new blocks; unset is 10.","o":true}',
+  forkWorktreePortsFrom:
+    '{"t":{"k":"number"},"d":"First port blocks are taken from (1024 to 65535); unset is 20000.","o":true}',
+  forkWorktreePortsTo:
+    '{"t":{"k":"number"},"d":"Last port blocks are taken from (1024 to 65535); unset is 29999.","o":true}'
 }

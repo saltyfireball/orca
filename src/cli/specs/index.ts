@@ -54,6 +54,8 @@ import { FORK_SNOOZE_COMMAND_SPECS } from '../fork/snooze-specs'
 import { FORK_BRANCH_CLASHES_COMMAND_SPECS } from '../fork/branch-clashes-specs'
 import { FORK_LIMITS_COMMAND_SPECS } from '../fork/limits-specs'
 import { FORK_SERVERS_COMMAND_SPECS } from '../fork/servers-specs'
+import { FORK_MAIN_SYNC_COMMAND_SPECS } from '../fork/main-sync-specs'
+import { FORK_SERVE_PROTECT_COMMAND_SPECS } from '../fork/serve-protect-specs'
 import {
   FORK_AUTO_PLACEMENT_COMMAND_SPECS,
   withForkAutoPlacementNotes
@@ -117,6 +119,8 @@ export const COMMAND_SPECS: CommandSpec[] = withForkAutoPlacementNotes(
     ...FORK_SERVER_HEALTH_COMMAND_SPECS,
     ...FORK_LIMITS_COMMAND_SPECS,
     ...FORK_SERVERS_COMMAND_SPECS,
+    ...FORK_MAIN_SYNC_COMMAND_SPECS,
+    ...FORK_SERVE_PROTECT_COMMAND_SPECS,
     ...FORK_BRANCH_CLASHES_COMMAND_SPECS
   ])
 )

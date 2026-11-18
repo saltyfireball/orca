@@ -23,8 +23,10 @@ import { ForkAgentQueueSetting } from '../agent-queue/ForkAgentQueueSetting'
 import { ForkLaunchDefaultsSetting } from '../launch-defaults/ForkLaunchDefaultsSetting'
 import { ForkMemorySettings } from '../memory-truth/ForkMemorySettings'
 import { ForkIdleRecoverySetting } from '../idle-recovery/ForkIdleRecoverySetting'
+import { ForkPrBabysitSetting } from '../pr-babysit/ForkPrBabysitSetting'
 import { ForkAccountChipSetting } from '../claude-account-chip/ForkAccountChipSetting'
 import { ForkUsageReportSettings } from '../usage-report/ForkUsageReportSettings'
+import { ForkPooledLimitsSetting } from '../pooled-limits/ForkPooledLimitsSetting'
 import { ForkLostWorkSettings } from '../lost-work/ForkLostWorkSettings'
 import { ForkSyncNoticeSetting } from '../sync-status/ForkSyncNoticeSetting'
 import { ForkAutoPlacementSetting } from '../auto-placement/ForkAutoPlacementSetting'
@@ -32,6 +34,7 @@ import { ForkEndpointFailoverSetting } from '../endpoint-failover/ForkEndpointFa
 import { ForkWorktreeMoveSettings } from '../worktree-move/ForkWorktreeMoveSettings'
 import { ForkApfsCloneSetting } from '../apfs-clone/ForkApfsCloneSetting'
 import { ForkSnoozeSetting } from '../snooze/ForkSnoozeSetting'
+import { ForkMainSyncSetting } from '../main-sync/ForkMainSyncSetting'
 import { ForkBranchClashesSetting } from '../branch-clashes/ForkBranchClashesSetting'
 import { ForkDeviceApprovalSetting } from '../device-approval/ForkDeviceApprovalSetting'
 import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
@@ -75,15 +78,20 @@ const SECTION_CARDS: Record<
     ['memory', ForkMemorySettings],
     ['auto-placement', ForkAutoPlacementSetting]
   ],
-  'idle-recovery': [['idle-recovery', ForkIdleRecoverySetting]],
+  'idle-recovery': [
+    ['idle-recovery', ForkIdleRecoverySetting],
+    ['pr-babysit', ForkPrBabysitSetting]
+  ],
   usage: [
     ['account-chip', ForkAccountChipSetting],
-    ['usage-report', ForkUsageReportSettings]
+    ['usage-report', ForkUsageReportSettings],
+    ['pooled-limits', ForkPooledLimitsSetting]
   ],
   projects: [
     ['lost-work', ForkLostWorkSettings],
     ['worktree-move', ForkWorktreeMoveSettings],
     ['apfs-clone', ForkApfsCloneSetting],
+    ['main-sync', ForkMainSyncSetting],
     ['snooze', ForkSnoozeSetting],
     ['branch-clashes', ForkBranchClashesSetting],
     ['project-settings-list', ForkProjectSettingsList]
