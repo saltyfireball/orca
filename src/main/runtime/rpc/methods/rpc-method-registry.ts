@@ -77,6 +77,7 @@ import { FORK_IDLE_RECOVERY_RPC_METHODS } from './fork/fork-idle-recovery'
 import { FORK_MCP_PROFILE_METHODS } from './fork/fork-mcp-profiles'
 import { FORK_USAGE_REPORT_METHODS } from './fork/fork-usage-report'
 import { FORK_AUTO_PLACEMENT_METHODS } from './fork/fork-auto-placement'
+import { FORK_SERVER_SETUP_METHODS } from './fork/fork-server-setup'
 import { FORK_BATCH_START_METHODS } from './fork/fork-batch-start'
 import { FORK_ENDPOINT_ADDRESSES_METHODS } from './fork/fork-endpoint-addresses'
 import { FORK_WORKTREE_MOVE_METHODS } from './fork/fork-worktree-move'
@@ -217,6 +218,8 @@ export const ALL_RPC_METHODS = [
   ...FORK_SETTINGS_METHODS,
   // SLRM-2266: the load probe and pick behind --on auto and --host auto (FORK.md).
   ...FORK_AUTO_PLACEMENT_METHODS,
+  // SLRM-2312: set a project up on a paired server on demand (FORK.md).
+  ...FORK_SERVER_SETUP_METHODS,
   // SLRM-2395: batch start, a prompt per worktree and model from the composer (FORK.md).
   ...FORK_BATCH_START_METHODS,
   // SLRM-2265: each host's half of `orca worktree move` (FORK.md).

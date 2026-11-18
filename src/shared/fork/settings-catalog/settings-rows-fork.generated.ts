@@ -190,6 +190,12 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"number"},"d":"Server heartbeat: seconds between two calls of the heartbeat address; unset is 60.","o":true}',
   forkServerHeartbeatUrl:
     '{"t":{"k":"string"},"d":"Server heartbeat (SLRM-2311): an http(s) address this host calls every few seconds so an outside monitor sees it is alive; unset is none.","o":true}',
+  forkServerSetupOffer:
+    '{"t":{"k":"boolean"},"d":"Set up on a server: the new-workspace host picker offers \\"Set up on SERVER...\\" for a paired server that lacks the project; unset is on.","o":true}',
+  forkServerSetupParent:
+    '{"t":{"k":"string"},"d":"Set up on a server: folder on the server the project is cloned into, as NAME under it. `~` is that server\'s home; unset is ~/development.","o":true}',
+  forkServerSetupReadiness:
+    '{"t":{"k":"boolean"},"d":"Set up on a server: after the clone, list the tools and direnv functions the project needs that the server lacks; unset is on.","o":true}',
   forkServerUpdateAccept:
     '{"t":{"k":"boolean"},"d":"Server updates: this host takes update and rollback requests from paired desktops (host-admin); unset is on.","o":true}',
   forkServerUpdateAuto:
