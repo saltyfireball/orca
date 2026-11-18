@@ -4,6 +4,11 @@ import type { SettingsSearchEntry } from '@/components/settings/search/settings-
 import { translate } from '@/i18n/i18n'
 import type { Translate } from '@/i18n/use-translate'
 
+/** Search keywords: setting keys and plain English terms, the same in every language. */
+function words(...terms: string[]): string[] {
+  return terms
+}
+
 export function serverSetupSearchEntry(t: Translate = translate): SettingsSearchEntry {
   return {
     title: t('fork.serverSetup.title', 'Set up on a server'),
@@ -11,7 +16,7 @@ export function serverSetupSearchEntry(t: Translate = translate): SettingsSearch
       'fork.settingsPane.search.serverSetup',
       'Clone a project onto a paired server that lacks it, from the host picker or --setup-missing.'
     ),
-    keywords: [
+    keywords: words(
       'clone',
       'server',
       'remote',
@@ -21,6 +26,6 @@ export function serverSetupSearchEntry(t: Translate = translate): SettingsSearch
       'forkServerSetupOffer',
       'forkServerSetupParent',
       'forkServerSetupReadiness'
-    ]
+    )
   }
 }

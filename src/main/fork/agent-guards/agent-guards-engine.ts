@@ -46,6 +46,12 @@ export type {
   AgentGuardSpend
 } from './agent-guards-types'
 
+/** Spend since the last resume or cap change set a baseline. */
+const spentSince = (record: AgentGuardRecord | undefined, spend: AgentGuardSpend): number =>
+  Math.max(0, (spend.totalUsd ?? 0) - (record?.baselineUsd ?? 0))
+
+const BARE_CHAT: AgentGuardAgentMeta = { kind: 'chat', agent: '', title: '', worktreeId: null }
+
 export class AgentGuardEngine {
   private readonly tracks = new Map<string, AgentGuardLoopTrack>()
   private readonly warned = new Map<string, AgentGuardWarned>()
@@ -71,7 +77,7 @@ export class AgentGuardEngine {
 
   /** What is known of an agent, its names cleaned; a bare chat when nothing is. */
   private metaOf(id: string): AgentGuardAgentMeta {
-    return this.meta.get(id) ?? { kind: 'chat', agent: '', title: '', worktreeId: null }
+    return this.meta.get(id) ?? BARE_CHAT
   }
 
   noteMeta(id: string, raw: AgentGuardAgentMeta): void {
@@ -247,35 +253,28 @@ export class AgentGuardEngine {
     }
   }
 
-  private capOf(sessionId: string, spend: AgentGuardSpend): number | null {
-    return agentGuardCapFor(
-      this.deps.records.get(sessionId)?.capUsd,
-      spend.isWorker,
-      this.deps.settings()
-    )
-  }
-
-  private spentSinceCap(sessionId: string, spend: AgentGuardSpend): number {
-    const baseline = this.deps.records.get(sessionId)?.baselineUsd ?? 0
-    return Math.max(0, (spend.totalUsd ?? 0) - baseline)
+  /** A chat's cap and its spend since the cap began, or null when no cap covers it or no spend. */
+  private capState(
+    id: string,
+    spend: AgentGuardSpend
+  ): { capUsd: number; spentUsd: number } | null {
+    const record = this.deps.records.get(id)
+    const cap = agentGuardCapFor(record?.capUsd, spend.isWorker, this.deps.settings())
+    return cap === null || spend.totalUsd === null
+      ? null
+      : { capUsd: cap, spentUsd: roundUsd(spentSince(record, spend)) }
   }
 
   /** Between turns: pause a chat whose spend reached its cap. */
   private async checkSpend(sessionId: string): Promise<void> {
-    const spend = this.deps.spend(sessionId)
-    const cap = this.capOf(sessionId, spend)
-    if (cap === null || spend.totalUsd === null || this.deps.ports.chatInTurn(sessionId)) {
-      return
-    }
-    const spent = this.spentSinceCap(sessionId, spend)
-    if (spent < cap) {
+    const state = this.capState(sessionId, this.deps.spend(sessionId))
+    if (!state || state.spentUsd < state.capUsd || this.deps.ports.chatInTurn(sessionId)) {
       return
     }
     await this.pause(sessionId, this.metaOf(sessionId), {
       reason: 'spend',
       at: this.deps.now(),
-      spentUsd: roundUsd(spent),
-      capUsd: cap
+      ...state
     })
   }
 
@@ -318,10 +317,9 @@ export class AgentGuardEngine {
     pruneAgentGuardRecords(this.deps.records, this.deps.now())
     await this.deps.save()
     this.deps.changed()
-    const spend = this.deps.spend(sessionId)
     return {
       capUsd: record.capUsd ?? null,
-      spentUsd: roundUsd(this.spentSinceCap(sessionId, spend))
+      spentUsd: roundUsd(spentSince(record, this.deps.spend(sessionId)))
     }
   }
 
@@ -331,13 +329,7 @@ export class AgentGuardEngine {
       records: this.deps.records,
       warned: this.warned,
       meta: this.meta,
-      cap: (id) => {
-        const spend = this.deps.spend(id)
-        const cap = this.capOf(id, spend)
-        return cap === null || spend.totalUsd === null
-          ? null
-          : { capUsd: cap, spentUsd: roundUsd(this.spentSinceCap(id, spend)) }
-      }
+      cap: (id) => this.capState(id, this.deps.spend(id))
     })
   }
 

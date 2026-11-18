@@ -32,7 +32,10 @@ describe('ForkBestOfStore', () => {
     await store.record({ prompt: 'One', attempts })
     await expect(store.record({ prompt: 'Two', attempts })).rejects.toThrow(/one best-of run/)
     await expect(
-      store.record({ prompt: 'Three', attempts: [attempts[0], { ...attempts[1], dispatchId: 'd2' }] })
+      store.record({
+        prompt: 'Three',
+        attempts: [attempts[0], { ...attempts[1], dispatchId: 'd2' }]
+      })
     ).rejects.toThrow(/one best-of run/)
   })
 

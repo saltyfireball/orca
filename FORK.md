@@ -1277,36 +1277,6 @@ named Orca Fork until SLRM-1367. `main` is always
   - Settings > Blackfish > Projects, Set up on a server: offer the picker rows
     (`forkServerSetupOffer`, on by default), the folder to clone into (`forkServerSetupParent`,
     default `~/development`) and the readiness check (`forkServerSetupReadiness`, on by default).
-  - **Not covered yet:** the mobile new-workspace sheet (its run-target list shows only hosts that
-    already have the project, with no stock set-up rows to extend); a server too old to answer
-    `fork.serverSetup.plan` gets a message to update it or use Set project location.
-- **Batch start (SLRM-2395).** Send prompt after prompt from the new-workspace composer, on the
-  desktop and the phone; each prompt becomes one worktree plus agent per chosen model. Ideas from
-  Conductor's "create more" switch and T3 Code's start-in-the-background and multi-model pick.
-  - A Batch switch under the composer's title (desktop) or under Project and Run target (phone)
-    swaps the single-workspace form for the batch box: project, prompt, models (multi-select, at
-    most 6, one task each), Auto machine and Keep open. The composer's own project and run target
-    are reused; switching Batch off brings the stock form back as it was.
-  - Each prompt goes to `fork.batchStart.start`. With Auto machine on, the desktop (or the phone's
-    paired desktop) ranks itself and its paired servers as `--host auto` does (SLRM-2266) and runs
-    the batch there; a picked server gets the batch forwarded and resolves the project against its
-    own setups. Off, the composer's run target takes it (a paired server over its own RPC). Every
-    model starts through `agent.launch` with a new worktree, so the agent launch queue (SLRM-2098)
-    gates it like any launch.
-  - A prompt is acknowledged before the box clears: the answer names the machine and each
-    worktree, with its queue place when it waits. Anything that failed stays in the box with the
-    failed models still picked, so sending again starts no duplicates. Started prompts are listed
-    under the box.
-  - Start follows Keep open (clear for the next prompt, or close the composer once acknowledged);
-    Cmd+Enter (Ctrl+Enter elsewhere) always starts in the background and leaves a fresh draft.
-  - Worktree names are the prompt's first words, the agent and a random tail; the display name is
-    the prompt's first line. Folder (non-git) projects and folder workspaces are not offered.
-  - Settings > Blackfish > Agents and workers, Batch start: `forkBatchStart` (show the switch, on),
-    `forkBatchStartKeepOpen` (on) and `forkBatchStartAutoHost` (on). The phone reads its paired
-    host's values.
-  - Not covered: a picked server running stock Orca or an older Blackfish refuses (turn Auto
-    machine off to use the run target); the stock form's linked items, base branch, setup choice
-    and attachments do not apply to batch prompts.
   - Phone (SLRM-2406): the new-workspace sheet's Run on list adds "Set up on SERVER..." rows after
     its run targets, one per paired server the phone reaches whose own repo list has answered
     without the project, when the paired host's `forkServerSetupOffer` is on and the project's
@@ -1426,55 +1396,6 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/main/runtime/rpc/methods/fork/fork-best-of.ts`, `src/renderer/src/fork/best-of/` and
     `src/cli/fork/best-of-*`.
 
-- **Agents on the iPhone Lock Screen (SLRM-2387).** The iOS app shows running agents from every
-  paired server as one Live Activity (Lock Screen and Dynamic Island, ActivityKit) and in an
-  Agents widget (WidgetKit: small, medium and large on the Home Screen; circular, rectangular and
-  inline on the Lock Screen). Android is not covered.
-  - **What shows.** Agents that need you (yellow), failed (red), are working (blue, with a
-    counting timer) or finished (green), in that order, with the server and workspace; idle
-    agents are left out. A finished agent stays for 15 minutes (5, 15, 30 or 60), counted from
-    when the phone saw it finish, then leaves: the widget's timeline has an entry at that time,
-    and the open app updates the Live Activity then (a backgrounded app cannot, so the Live
-    Activity drops it at the next update). Counts cover every agent; the Live Activity lists four,
-    the large widget eight. Tapping either opens the app's Home. When nothing is left, the Live
-    Activity ends.
-  - **Where the state comes from.** Home's own reads of every paired server (the Agents tab's
-    list, `AgentListInput`), folded by `foldLiveAgents`: a server read live replaces its rows, a
-    server not connected keeps what it last showed. Home stays mounted under other screens, so
-    this runs whenever the app is open. The rows are kept in AsyncStorage across launches, and
-    iOS gets a new state only when the content changed.
-  - **No push updates.** The app updates both surfaces while it runs; iOS can only start a Live
-    Activity while the app is in front. Push cannot update them: upstream's push gateway
-    (`cloud/apps/push`, run by Orca at push.onorca.dev for `com.stably.orca.mobile`) sends only
-    alert pushes (no `content-available`, so no background wake on an alert) and has no
-    ActivityKit push type. A Live Activity not updated for 30 minutes turns stale and says when
-    it was last updated. ActivityKit push would need a gateway that sends `liveactivity` pushes
-    with the app's APNs key and the activity's push token.
-  - **Dismissal.** A Live Activity the user swipes away stays away until an agent it did not
-    show starts or needs them.
-  - **Settings** (phone only, Settings > Notifications > Lock Screen, in AsyncStorage
-    `blackfish:agentLiveActivitySettings`): running agents on the Lock Screen (on), Agents
-    widget (on), keep finished agents (15 minutes). Turning one off ends the Live Activity or
-    empties the widget; with both off the stored rows are deleted too. They are not desktop
-    settings, so the fork settings catalog does not list them.
-  - **Privacy.** Like any Live Activity, it shows agent titles, server and workspace names on the
-    Lock Screen without unlocking; turn it off above to keep them off. The rectangular Lock
-    Screen widget marks titles `privacySensitive`, so iOS redacts them while the phone is
-    locked. Text from servers is cut to 60 characters before it reaches iOS.
-  - **Build.** `mobile/plugins/fork/ios-agent-live-activity.js` (listed in `app.json`) adds, at
-    `expo prebuild`, the `BlackfishWidgets` widget extension target (bundle id
-    `<app bundle id>.BlackfishWidgets`, iOS 16.4, signed with the app's team and signing style,
-    embedded through an "Embed Foundation Extensions" phase), `NSSupportsLiveActivities`, and an
-    App Group `group.<app bundle id>.blackfish` on both targets for the widget's snapshot. The
-    fork does not build or sign the iOS app in CI (upstream's `mobile-ios-release.yml` stays
-    off); a local build with automatic signing registers the extension and App Group on its own.
-    Upstream's Fastfile signs manually with one profile, so a release built that way needs a
-    second profile for the extension, or `BLACKFISH_IOS_WIDGETS=0` at prebuild, which leaves the
-    project as upstream builds it.
-  - Code is in `mobile/src/components/fork/live-activity/` (model, publisher, hook, settings),
-    `mobile/modules/fork-live-activity/` (the `BlackfishLiveActivity` Expo module; `ios/shared`
-    is compiled into the app and the extension, `widget/` only into the extension) and
-    `mobile/plugins/fork/`.
 - **Worktree ports (SLRM-2383).** Each workspace holds a block of ports on the host that runs it,
   so many workers on one machine stop fighting over dev-server ports (Conductor gives each
   workspace 10 ports the same way). Stock Orca only finds ports once something listens on them.
@@ -1562,6 +1483,53 @@ named Orca Fork until SLRM-1367. `main` is always
     the spend a resume set aside; a record with nothing left is dropped, any after 30 days.
   - Code is in `src/shared/fork/agent-guards*.ts`, `src/main/fork/agent-guards/`,
     `src/cli/fork/guards-*` and `src/renderer/src/fork/agent-guards/`.
+- **Keep main current (SLRM-2384).** Off by default. Each host (the desktop app, `orca serve` and
+  orcad on a headless server) fetches the default branch of each of its local git projects on a
+  timer and fast-forwards it, so new worktrees start from current main.
+  - The branch is the project's Lost work default branch override, else the remote's `HEAD`, else
+    `main`, `master`, `trunk` or `develop`; the remote and its branch are the branch's upstream,
+    else the remote `HEAD` came from. The fetch is `git fetch --no-tags --no-write-fetch-head
+    <remote> <branch>` through the app's own git runner, so credentials and SSH set up for git
+    apply and nothing prompts.
+  - It moves the branch only by a fast-forward: in the main checkout with `git merge --ff-only
+    --no-autostash` when the checkout is clean (untracked files aside), no merge, rebase,
+    cherry-pick, revert, bisect or index lock is under way, HEAD is still the branch at the commit
+    it read, and (unless `forkMainSyncSkipInUse` is false) no terminal or working agent is live in
+    it; checked out nowhere, with a compare-and-swap `git update-ref`. A branch checked out in a
+    linked worktree, a diverged branch and a branch with commits the remote lacks are never moved.
+  - Each move, and each new reason a project was left alone, is logged as `[fork-main-sync]`.
+  - Settings (Settings > Blackfish > Projects, or `orca settings`): `forkMainSync` (off),
+    `forkMainSyncMinutes` (15, from 5 to 1440), `forkMainSyncProjects` (names, ids or paths;
+    empty is every local git project), `forkMainSyncSkipInUse` (on). The settings are read
+    before every pass and a change to them brings the next pass forward, with no restart.
+  - CLI: `orca main-sync [--json]` prints the last result per project and `orca main-sync run
+    [--repo <name|id|path>]` runs a pass now (even while off), over `fork.mainSync.status` and
+    `fork.mainSync.run`; add `--environment` for a paired server.
+  - Code is in `src/shared/fork/main-sync.ts`, `src/main/fork/main-sync/`,
+    `src/main/runtime/rpc/methods/fork/fork-main-sync.ts`, `src/cli/fork/main-sync-*.ts` and
+    `src/renderer/src/fork/main-sync/`.
+- **Server memory protection (SLRM-2384).** `orca serve service protect` (Linux) keeps an always-on
+  server reachable when agents use up memory. It works on the orca-serve user unit that
+  `orca serve service install` or the dotfiles `orca-server` installer wrote (the same names).
+  - It writes `50-blackfish-protect.conf` drop-ins beside the unit (never the unit itself) and for
+    its slice: `MemoryMin` (256M) and `MemoryLow` (1G), applied at once with `systemctl --user
+    set-property --runtime`; `OOMScoreAdjust` (`auto`: the user manager's own score, the lowest
+    an unprivileged unit may take); and `ORCA_FORK_CHILD_OOM_SCORE_ADJ` (300). The terminal
+    daemon, which the server starts and which starts every agent, raises its own score to that
+    value at start, so the kernel kills agents before the server. The scores apply at the next
+    start of the service and of the daemon; protect restarts nothing.
+  - Root steps are printed, never run, and only the ones still needed: `systemctl set-property`
+    of the same memory values on `user.slice`, `user-<uid>.slice` and `user@<uid>.service`
+    (protection reaches a unit only through its parents), and an `OOMScoreAdjust` drop-in (-500)
+    plus a live write for `tailscaled`, `ssh` or `sshd`.
+  - `orca serve service protect status` shows the drop-in, the unit's values, the running
+    server's score, the user manager's floor and the system units' values;
+    `orca serve service unprotect` removes only the files protect wrote (they start with its
+    marker) and clears the memory values at once. Flags: `--memory-min`, `--memory-low`,
+    `--oom-score-adjust`, `--child-oom-score-adjust`, `--system-oom-score-adjust` (each takes
+    `off`), `--dry-run`. The drop-in itself holds the choice, per host.
+  - Code is in `src/shared/fork/serve-protect.ts`, `src/cli/fork/serve-protect*.ts` and
+    `src/main/fork/serve-protect/daemon-oom-score.ts`.
 - **Branch clashes (SLRM-2394).** Warns when parallel worktree branches of one project change
   the same files, and when a branch falls far behind the default branch. On by default; it only
   reads git (no fetch, no checkout, no diff drivers or textconv, no file contents).
@@ -1645,6 +1613,118 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/main/runtime/rpc/methods/fork/fork-review-guide.ts`,
     `src/preload/fork/review-guide-bridge.ts`, `src/renderer/src/fork/review-guide/`,
     `src/cli/fork/review-guide-*` and `mobile/src/components/fork/review-guide/`.
+- **Agents on the iPhone Lock Screen (SLRM-2387).** The iOS app shows running agents from every
+  paired server as one Live Activity (Lock Screen and Dynamic Island, ActivityKit) and in an
+  Agents widget (WidgetKit: small, medium and large on the Home Screen; circular, rectangular and
+  inline on the Lock Screen). Android is not covered.
+  - **What shows.** Agents that need you (yellow), failed (red), are working (blue, with a
+    counting timer) or finished (green), in that order, with the server and workspace; idle
+    agents are left out. A finished agent stays for 15 minutes (5, 15, 30 or 60), counted from
+    when the phone saw it finish, then leaves: the widget's timeline has an entry at that time,
+    and the open app updates the Live Activity then (a backgrounded app cannot, so the Live
+    Activity drops it at the next update). Counts cover every agent; the Live Activity lists four,
+    the large widget eight. Tapping either opens the app's Home. When nothing is left, the Live
+    Activity ends.
+  - **Where the state comes from.** Home's own reads of every paired server (the Agents tab's
+    list, `AgentListInput`), folded by `foldLiveAgents`: a server read live replaces its rows, a
+    server not connected keeps what it last showed. Home stays mounted under other screens, so
+    this runs whenever the app is open. The rows are kept in AsyncStorage across launches, and
+    iOS gets a new state only when the content changed.
+  - **No push updates.** The app updates both surfaces while it runs; iOS can only start a Live
+    Activity while the app is in front. Push cannot update them: upstream's push gateway
+    (`cloud/apps/push`, run by Orca at push.onorca.dev for `com.stably.orca.mobile`) sends only
+    alert pushes (no `content-available`, so no background wake on an alert) and has no
+    ActivityKit push type. A Live Activity not updated for 30 minutes turns stale and says when
+    it was last updated. ActivityKit push would need a gateway that sends `liveactivity` pushes
+    with the app's APNs key and the activity's push token.
+  - **Dismissal.** A Live Activity the user swipes away stays away until an agent it did not
+    show starts or needs them.
+  - **Settings** (phone only, Settings > Notifications > Lock Screen, in AsyncStorage
+    `blackfish:agentLiveActivitySettings`): running agents on the Lock Screen (on), Agents
+    widget (on), keep finished agents (15 minutes). Turning one off ends the Live Activity or
+    empties the widget; with both off the stored rows are deleted too. They are not desktop
+    settings, so the fork settings catalog does not list them.
+  - **Privacy.** Like any Live Activity, it shows agent titles, server and workspace names on the
+    Lock Screen without unlocking; turn it off above to keep them off. The rectangular Lock
+    Screen widget marks titles `privacySensitive`, so iOS redacts them while the phone is
+    locked. Text from servers is cut to 60 characters before it reaches iOS.
+  - **Build.** `mobile/plugins/fork/ios-agent-live-activity.js` (listed in `app.json`) adds, at
+    `expo prebuild`, the `BlackfishWidgets` widget extension target (bundle id
+    `<app bundle id>.BlackfishWidgets`, iOS 16.4, signed with the app's team and signing style,
+    embedded through an "Embed Foundation Extensions" phase), `NSSupportsLiveActivities`, and an
+    App Group `group.<app bundle id>.blackfish` on both targets for the widget's snapshot. The
+    fork does not build or sign the iOS app in CI (upstream's `mobile-ios-release.yml` stays
+    off); a local build with automatic signing registers the extension and App Group on its own.
+    Upstream's Fastfile signs manually with one profile, so a release built that way needs a
+    second profile for the extension, or `BLACKFISH_IOS_WIDGETS=0` at prebuild, which leaves the
+    project as upstream builds it.
+  - Code is in `mobile/src/components/fork/live-activity/` (model, publisher, hook, settings),
+    `mobile/modules/fork-live-activity/` (the `BlackfishLiveActivity` Expo module; `ios/shared`
+    is compiled into the app and the extension, `widget/` only into the extension) and
+    `mobile/plugins/fork/`.
+- **Small extras (SLRM-2397): approval triage, workspace tags with archive on merge, prompt stash,
+  saved prompts.** Four small features from ccdeck's approvals, roster hygiene and composer
+  shortcuts and T3 Code's prompt stash, each its own setting, built from stock styles only.
+  - Approval triage (`forkApprovalRisk`, off unless true). A native chat's own approval card and
+    each worker approval pinned in its coordinator's chat show a stock Badge, Low, Medium or High
+    risk, and the reason in a few words. The grade (`src/shared/fork/approval-risk*.ts`) reads the
+    card's title and the tool's input against the folder the agent works in (the chat's folder;
+    a worker's own workspace when the window knows it, else unknown). Low is only a plain chain of
+    known read-only programs on files inside that folder (`ls`, `cat`, `rg`, `git status`,
+    `git diff` and the like), a Read, Grep or Glob inside it, or an edit of an ordinary file in it.
+    High: git writes and fetches (push, commit, reset, checkout, config, remote and the rest),
+    every `gh` command that is not a view or list, deleting (`rm`), `sudo`, `ssh` and its family,
+    process control, nested shells and piping into one, `xargs`, `eval`, package publishing and
+    global installs, uploads with `curl`, a write outside the folder, anything touching
+    credentials, `.env`, `.ssh`, `.claude` or `.git/config` and hooks, a call asking to leave the
+    sandbox, an MCP tool whose name sends or changes something, and a command too long to read.
+    Medium is everything else, including the network, running code (tests, builds, interpreters,
+    package managers), reading outside the folder, and anything with expansion, redirection,
+    globs or characters it cannot read, any flag not on that program's allow-list
+    (`approval-risk-flags.ts`, exact names only, so `sort --out` and `grep -r` are medium), `cd`
+    with a flag, and a program named by a path outside the system bin folders. Any word naming a
+    credential, a flag's value or `HEAD:.env` too, is high. Paths are read as text: a symlink inside
+    the folder that points out of it still counts as inside, and git history (`git log -p`) counts
+    as the workspace's own files, so the grade is advice, not a sandbox. An unknown folder makes
+    every absolute path outside. A plan review, a sign-in page and a startup dialog are not graded.
+    On a high risk card Claude's "Allow for this session" is disabled, so a rule never covers a
+    high risk call.
+  - Allow low risk (`forkApprovalBulkAllowLow`, off unless true, needs the grade on). Over a
+    coordinator's pinned worker prompts, "N low risk approvals" with Allow low risk. The click
+    grades every prompt again from what it says then and allows only those still open, still
+    offering Allow and still low; medium and high stay one at a time. Both keys are agent-limit
+    keys: `orca settings` refuses to write them.
+  - Workspace tags (`forkWorkspaceTagsEnabled`, unset is on). "Tags..." in the workspace menu
+    sets up to 8 short words (`forkWorkspaceTags`, keyed by workspace id and host). A card shows
+    two after its title as stock reference-label badges and +N for the rest. A click on a tag
+    shows only its workspaces, a second hides them, a third clears the filter
+    (`forkWorkspaceTagFilter`); a line over the list says "Only x" or "Hiding x" with Clear.
+  - Archive on merge (`forkArchiveOnMerge`, off unless true; an agent-limit key). A workspace
+    whose pull request shows as merged is archived through the stock `worktree.archive` RPC,
+    which keeps its branch and record and refuses a checkout with uncommitted or unpushed work.
+    It leaves the open workspace, one with an agent not done, the main checkout and one snoozed
+    until merge alone (that snooze settles first, so its settle command still finds the folder;
+    snooze itself never archives). A refused try is said once and retried after 30 minutes. The
+    toast offers Undo, and an "Archived (N)" row at the bottom of the sidebar, built from the
+    Snoozed row's styles, lists archived workspaces with Restore (`worktree.restore`, the
+    project's own setup choice). It reads the merge from the review cache the cards already
+    keep; it asks GitHub for nothing more.
+    A pull request the PR babysitter (SLRM-2386) merges is archived the same way when this is on;
+    the babysitter itself never archives, and agent guards (SLRM-2385) never answer approvals.
+  - Prompt stash (`forkPromptStash`, unset is on). Cmd+S (Ctrl+S on Windows and Linux) in a chat
+    message box with a draft sets it aside with its attachments (by their kept paths), pasted
+    text files and pills, and empties the box; in an empty box it brings the newest back. The
+    stock Save shortcut acts only in an editor and its workspace fallback skips text inputs, so
+    Cmd+S was free in the message box. Up to 20 drafts, newest first, in the window's local
+    storage. Files held only in a web client's memory cannot be stashed, and a queued message's
+    edit box is left alone.
+  - Saved prompts (`forkSavedPromptsEnabled`, unset is on; `forkSavedPrompts`, an agent-limit
+    key). A menu beside Attach on the message box lists them; a pick puts its text in the box at
+    the caret, nothing is sent. The same menu lists the stashed drafts (a pick restores one, x
+    drops it). The list is edited in Settings > Blackfish > Chats, "Saved prompts".
+  - Code is in `src/shared/fork/approval-risk*.ts`, `workspace-tags.ts`, `prompt-stash.ts`,
+    `saved-prompts.ts`, and `src/renderer/src/fork/approval-triage/`, `workspace-tags/`,
+    `prompt-stash/` and `saved-prompts/`.
 
 - **Letters and the board (SLRM-2389).** On by default (`forkLetters`, `forkBoard`, Settings >
   Blackfish > Chats). From John's archived ccdeck (its letters and Board); only the idea is ported.
@@ -1693,67 +1773,6 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/letters*.ts`, `src/main/fork/letters/`,
     `src/main/runtime/rpc/methods/fork/fork-letters.ts`, `src/preload/fork/letters-bridge.ts`,
     `src/cli/fork/letters-*.ts` and `src/renderer/src/fork/letters/`.
-
-- **Small extras (SLRM-2397): approval triage, workspace tags with archive on merge, prompt stash,
-  saved prompts.** Four small features from ccdeck's approvals, roster hygiene and composer
-  shortcuts and T3 Code's prompt stash, each its own setting, built from stock styles only.
-  - Approval triage (`forkApprovalRisk`, off unless true). A native chat's own approval card and
-    each worker approval pinned in its coordinator's chat show a stock Badge, Low, Medium or High
-    risk, and the reason in a few words. The grade (`src/shared/fork/approval-risk*.ts`) reads the
-    card's title and the tool's input against the folder the agent works in (the chat's folder;
-    a worker's own workspace when the window knows it, else unknown). Low is only a plain chain of
-    known read-only programs on files inside that folder (`ls`, `cat`, `rg`, `git status`,
-    `git diff` and the like), a Read, Grep or Glob inside it, or an edit of an ordinary file in it.
-    High: git writes and fetches (push, commit, reset, checkout, config, remote and the rest),
-    every `gh` command that is not a view or list, deleting (`rm`), `sudo`, `ssh` and its family,
-    process control, nested shells and piping into one, `xargs`, `eval`, package publishing and
-    global installs, uploads with `curl`, a write outside the folder, anything touching
-    credentials, `.env`, `.ssh`, `.claude` or `.git/config` and hooks, a call asking to leave the
-    sandbox, an MCP tool whose name sends or changes something, and a command too long to read.
-    Medium is everything else, including the network, running code (tests, builds, interpreters,
-    package managers), reading outside the folder, and anything with expansion, redirection,
-    globs or characters it cannot read, any flag not on that program's allow-list
-    (`approval-risk-flags.ts`, exact names only, so `sort --out` and `grep -r` are medium), `cd`
-    with a flag, and a program named by a path outside the system bin folders. Any word naming a
-    credential, a flag's value or `HEAD:.env` too, is high. Paths are read as text: a symlink inside the folder that points
-    out of it still counts as inside, and git history (`git log -p`) counts as
-    the workspace's own files, so the grade is advice, not a sandbox. An unknown folder
-    makes every absolute path outside. A plan review, a sign-in page and a startup dialog are not graded. On a high risk card Claude's
-    "Allow for this session" is disabled, so a rule never covers a high risk call.
-  - Allow low risk (`forkApprovalBulkAllowLow`, off unless true, needs the grade on). Over a
-    coordinator's pinned worker prompts, "N low risk approvals" with Allow low risk. The click
-    grades every prompt again from what it says then and allows only those still open, still
-    offering Allow and still low; medium and high stay one at a time. Both keys are agent-limit
-    keys: `orca settings` refuses to write them.
-  - Workspace tags (`forkWorkspaceTagsEnabled`, unset is on). "Tags..." in the workspace menu
-    sets up to 8 short words (`forkWorkspaceTags`, keyed by workspace id and host). A card shows
-    two after its title as stock reference-label badges and +N for the rest. A click on a tag
-    shows only its workspaces, a second hides them, a third clears the filter
-    (`forkWorkspaceTagFilter`); a line over the list says "Only x" or "Hiding x" with Clear.
-  - Archive on merge (`forkArchiveOnMerge`, off unless true; an agent-limit key). A workspace
-    whose pull request shows as merged is archived through the stock `worktree.archive` RPC,
-    which keeps its branch and record and refuses a checkout with uncommitted or unpushed work.
-    It leaves the open workspace, one with an agent not done, the main checkout and one snoozed
-    until merge alone (that snooze settles first, so its settle command still finds the folder;
-    snooze itself never archives). A refused try is said once and retried after 30 minutes. The
-    toast offers Undo, and an "Archived (N)" row at the bottom of the sidebar, built from the
-    Snoozed row's styles, lists archived workspaces with Restore (`worktree.restore`, the
-    project's own setup choice). It reads the merge from the review cache the cards already
-    keep; it asks GitHub for nothing more.
-  - Prompt stash (`forkPromptStash`, unset is on). Cmd+S (Ctrl+S on Windows and Linux) in a chat
-    message box with a draft sets it aside with its attachments (by their kept paths), pasted
-    text files and pills, and empties the box; in an empty box it brings the newest back. The
-    stock Save shortcut acts only in an editor and its workspace fallback skips text inputs, so
-    Cmd+S was free in the message box. Up to 20 drafts, newest first, in the window's local
-    storage. Files held only in a web client's memory cannot be stashed, and a queued message's
-    edit box is left alone.
-  - Saved prompts (`forkSavedPromptsEnabled`, unset is on; `forkSavedPrompts`, an agent-limit
-    key). A menu beside Attach on the message box lists them; a pick puts its text in the box at
-    the caret, nothing is sent. The same menu lists the stashed drafts (a pick restores one, x
-    drops it). The list is edited in Settings > Blackfish > Chats, "Saved prompts".
-  - Code is in `src/shared/fork/approval-risk*.ts`, `workspace-tags.ts`, `prompt-stash.ts`,
-    `saved-prompts.ts`, and `src/renderer/src/fork/approval-triage/`, `workspace-tags/`,
-    `prompt-stash/` and `saved-prompts/`.
 
 ## Patch list
 
@@ -1861,36 +1880,26 @@ Apply these in this order. Each one is a single commit.
 100. `SLRM-2310 Server updates: update every paired server from the desktop over its own RPC, with a rollback`
 101. `SLRM-2316 Follow upstream 1.4.262's moved modules and native provider launch in fork code`
 102. `SLRM-2349 Chat visuals: show image files and take unquoted values, and servers --wait takes a separate value`
-103. `SLRM-2387 Agents on the iPhone Lock Screen: a Live Activity and an Agents widget`
-103. `SLRM-2386 PR babysitter: send a pull request's chat fix requests when CI fails, merge on green when allowed`
 103. `SLRM-2383 Worktree ports: a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1`
-103. `SLRM-2312 Set up on a server: clone a project onto a paired server that lacks it from the host picker or --setup-missing`
-103. `SLRM-2395 Batch start: a prompt per worktree and model from the composer, placed with auto placement`
-103. `SLRM-2390 Row status: spend, context, pull request checks and a fix button on agent rows`
-103. `SLRM-2392 Pooled limits: Claude and Codex usage limits pooled across every account and paired server`
-103. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
-103. `SLRM-2394 Branch clashes: warn when parallel worktree branches change the same files, across paired servers`
 104. `SLRM-2386 PR babysitter: send a pull request's chat fix requests when CI fails, merge on green when allowed`
 105. `SLRM-2384 Keep main current and server memory protection: fetch and fast-forward default branches, orca serve service protect`
 106. `SLRM-2392 Pooled limits: Claude and Codex usage limits pooled across every account and paired server`
 107. `SLRM-2390 Row status: spend, context, pull request checks and a fix button on agent rows`
 108. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
      Follow-up: an inbox answer to a guard-paused agent lifts the pause only once the send is taken.
-103. `SLRM-2393 Best of N: one task to 2 to 4 agents in their own worktrees, compared and picked`
 109. `SLRM-2394 Branch clashes: warn when parallel worktree branches change the same files, across paired servers`
 110. `SLRM-2395 Batch start: a prompt per worktree and model from the composer, placed with auto placement`
 111. `SLRM-2393 Best of N: one task to 2 to 4 agents in their own worktrees, compared and picked`
 112. `SLRM-2312 Set up on a server: clone a project onto a paired server that lacks it from the host picker or --setup-missing`
-113. `SLRM-2396 Review guides: an agent-written tour of a pull request in a Guide tab, on the phone and in orca review-guide`
-112. `SLRM-2391 Chat handoff: hand a chat from Claude to Codex or back with a budgeted history`
 113. `SLRM-2391 Chat handoff: hand a chat from Claude to Codex or back with a budgeted history`
 114. `SLRM-2396 Review guides: an agent-written tour of a pull request in a Guide tab, on the phone and in orca review-guide`
 115. `SLRM-2387 Agents on the iPhone Lock Screen: a Live Activity and an Agents widget`
-116. `SLRM-2406 Set up on a server from the phone and from batch start's Auto machine`
-115. `SLRM-2389 Letters and the board: chats message each other between turns, and agents file asks for the user`
-113. `SLRM-2388 Digest: what finished, failed, merged and cost, and what waits on you, across this host and its paired servers`
-112. `SLRM-2405 Typecheck caps: environment variables for parallel projects and tsrs checker threads`
-103. `SLRM-2397 Small extras: approval triage by risk, workspace tags and archive on merge, prompt stash, saved prompts`
+116. `SLRM-2405 Typecheck caps: environment variables for parallel projects and tsrs checker threads`
+117. `SLRM-2388 Digest: what finished, failed, merged and cost, and what waits on you, across this host and its paired servers`
+118. `SLRM-2397 Small extras: approval triage by risk, workspace tags and archive on merge, prompt stash, saved prompts`
+119. `SLRM-2389 Letters and the board: chats message each other between turns, and agents file asks for the user`
+120. `SLRM-2406 Set up on a server from the phone and from batch start's Auto machine`
+121. `SLRM-2408 Follow upstream 1.4.263's moved modules in fork code`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2156,7 +2165,8 @@ Upstream files only get short hooks, which keeps rebases small:
   returns the stall hooks too, so `workspace-process-listing.ts` is unchanged; like
   `keepAwake`, they reach the sweep through the untyped spread of `idleSweep` (the host deps
   type picks only `intervalMs` and `idleMs`, and that file is over the line budget).
-  `src/main/index.ts` calls `installForkChatStallBridge()` after the chat sleep bridge;
+  `src/main/index.ts` calls `installForkChatStallBridge()` through `installForkChatBridges()`
+  (`src/main/fork/chat-bridges-app-hooks.ts`, SLRM-2408) after the chat sleep bridge;
   `src/preload/index.ts` adds `forkChatStall` and `api-types.ts` types it as optional;
   `AdvancedPane.tsx` renders `ForkChatStallSetting`. The marks render inside `ForkTabTitle` and
   `ForkClaudeAccountAgentRowChip`. The account move's `stopTurn` moved to
@@ -2191,7 +2201,7 @@ Upstream files only get short hooks, which keeps rebases small:
   (`src/renderer/src/app-shell/appearance/use-app-theme-paint.ts`, so pop-out windows paint it
   too) calls `useForkCustomAppTheme`, which takes precedence over the plugin and Match Terminal
   paint and does not wait for the plugin list; its `appTheme` type admits the custom paint.
-  `useDocumentAppearance` (`src/renderer/src/app-shell/use-document-appearance.ts`) calls
+  `useDocumentAppearance` (`src/renderer/src/app-shell/appearance/use-document-appearance.ts`) calls
   `useForkCustomAppThemeExtras` last for the radius and UI font.
   `usePluginAppThemeSync` (`plugin-themes.ts`) prefers `activeCustomAppThemePaintId`, so the
   startup cache of a custom theme is not cleared before the plugin list loads.
@@ -2292,8 +2302,8 @@ Upstream files only get short hooks, which keeps rebases small:
     `forkWorkerCleanup` changes too.
   - `WorkerAutoReleaseActivity.apply` calls `noteForkWorkerTurn(paneKey, working)` first, so the
     sweep knows when a worker was used after it reported.
-  - `src/main/index.ts` calls `installForkWorkerCleanupBridge()` after
-    `installForkChatSleepBridge()`. `src/preload/index.ts` adds `forkWorkerCleanup`
+  - `src/main/index.ts` calls `installForkWorkerCleanupBridge()` through
+    `installForkChatBridges()` after `installForkChatSleepBridge()`. `src/preload/index.ts` adds `forkWorkerCleanup`
     (`src/preload/fork/worker-cleanup-bridge.ts`) and `api-types.ts` types it as optional.
   - `AppRootSurfaces.tsx` mounts `ForkWorkerCleanupReporter` and `AdvancedPane.tsx` renders
     `ForkWorkerCleanupSetting`. The held mark renders inside the existing `ForkTabTitle` and
@@ -2355,7 +2365,8 @@ Upstream files only get short hooks, which keeps rebases small:
   - `structured-agent-session-usage-limit-continue.ts`: the chain cap reads
     `forkUsageLimitChainLimit()` (two places), and the sweep and the send's `beforeRun` also skip
     a chat while `forkUsageLimitHeld(id)`.
-  - `src/main/index.ts` calls `installForkLimitResumeBridge()`, `src/preload/index.ts` adds
+  - `src/main/index.ts` calls `installForkLimitResumeBridge()` through
+    `installForkChatBridges()`, `src/preload/index.ts` adds
     `forkLimitResume` (`src/preload/fork/limit-resume-bridge.ts`) and `api-types.ts` types it.
   - `rpc-method-registry.ts` spreads `FORK_LIMIT_RESUME_METHODS`, `src/cli/specs/index.ts` spreads
     `FORK_LIMITS_COMMAND_SPECS` and `cli-command-names.ts` lists `limits`.
@@ -2434,14 +2445,16 @@ Upstream files only get short hooks, which keeps rebases small:
     `forkAgentGuardsObserveHook(source, body, accepted)` before the plugin hooks answer.
   - `startForkRuntimeSettleServices` (`runtime-settle-hooks.ts`) also starts the guards, so they
     run in the desktop app and on a headless server.
-  - `src/main/index.ts` calls `installForkAgentGuardsBridge()`, `src/preload/index.ts` adds
+  - `src/main/index.ts` calls `installForkAgentGuardsBridge()` through
+    `installForkChatBridges()`, `src/preload/index.ts` adds
     `forkAgentGuards` (`src/preload/fork/agent-guards-bridge.ts`) and `api-types.ts` types it.
   - `rpc-method-registry.ts` spreads `FORK_AGENT_GUARDS_METHODS`, `src/cli/specs/index.ts` spreads
     `FORK_GUARDS_COMMAND_SPECS` and `cli-command-names.ts` lists `guards`.
   - Fork files only: the usage ledger tells turn starts and ends (`onForkUsageLedgerTurn`) and
     its chat names moved to `usage-ledger-meta.ts`; `installForkHeadlessHost` starts the ledger
-    on a server; the Decision inbox lists, answers and resumes guard rows (its item's `verdict`
-    takes `guard`); idle recovery's candidates, limit resume (native and terminal) and unattended
+    on a server; the Decision inbox lists, answers and resumes guard rows (idle recovery's
+    service is wrapped in `withForkAgentGuardInbox`, its item's `verdict` takes `guard`, and the
+    inbox shows while a guard holds an agent); idle recovery's candidates, limit resume (native and terminal) and unattended
     resume skip held agents (`isForkAgentGuardHeld`); the marks render in `ForkTabTitle` and
     `ForkClaudeAccountAgentRowChip`, and the card in the fork's Settings pane.
 
@@ -2611,7 +2624,7 @@ Upstream files only get short hooks, which keeps rebases small:
     regenerated with it.
   - `src/cli/specs/index.ts` adds `FORK_SNOOZE_COMMAND_SPECS`, `fork-handler-groups.ts` adds the
     `fork-snooze` group and `cli-command-names.ts` lists `snooze`.
-  - `src/main/index.ts` calls `installForkSnoozeApp`; `preload/index.ts` and `api-types.ts` add
+  - `src/main/index.ts` calls `installForkSnoozeApp` through `installForkProjectApps` (SLRM-2394); `preload/index.ts` and `api-types.ts` add
     `forkSnooze` (`src/preload/fork/snooze-bridge.ts`).
   - `use-visible-worktrees.ts` reads `useForkSnoozedWorktreeKeys()` and passes its list through
     `forkWithoutSnoozedWorktrees`; `WorktreeCardAgents.tsx` passes its root keys through
@@ -2622,20 +2635,6 @@ Upstream files only get short hooks, which keeps rebases small:
     in the fork's Settings pane and `forkSnoozeSettleCommand` is a runs-command key in
     `settings-access.ts`.
 
-- PR babysitter (SLRM-2386), from `src/shared/fork/pr-babysit*.ts`, `src/main/fork/pr-babysit/`,
-  `src/main/fork/idle-recovery/idle-recovery-sources.ts`, `src/cli/fork/babysit-*` and
-  `src/renderer/src/fork/pr-babysit/`:
-  - `pr-watch-runtime.ts` passes the watcher's deps through `forkPrBabysitAttach(...)`, which
-    returns them unchanged and keeps `chatWorkspace` (the call wraps the object literal).
-  - `pr-event-delivery.ts` calls `forkPrBabysitLineDelivered(sessionId, delivery)` after each CI
-    line it appends. Both hooks are in `pr-babysit-slot.ts`, which loads no fork code at run time.
-  - `WorktreeCardReferenceRow.tsx` renders `ForkPrBabysitLine` under a pull request row.
-  - `cli-command-names.ts` lists `babysit`. The RPC methods (`fork.prBabysit.*`) are spread into
-    `FORK_IDLE_RECOVERY_RPC_METHODS` and the specs into `FORK_INBOX_COMMAND_SPECS`, so the upstream
-    registry and spec list need no line; `rpc-params-catalog.generated.ts` is regenerated.
-  - `installForkReady` and `installForkHeadlessHost` call `installForkPrBabysit(store)`. The
-    Decision inbox (fork code) gains other sources' rows and a `babysit` call on its bridge; the
-    five settings are in `src/shared/fork/pr-babysit.ts`, joined to `fork-global-settings.ts`.
 - Worktree ports (SLRM-2383), from `src/shared/fork/worktree-ports*.ts`,
   `src/main/fork/worktree-ports/` and `src/cli/fork/worktree-ports-cli.ts`:
   - `spawn-pane-env.ts` (`stampPtySpawnPaneEnv`, every desktop IPC and runtime terminal
@@ -2657,6 +2656,37 @@ Upstream files only get short hooks, which keeps rebases small:
     regenerated.
   - `config/main-sync-fs-baseline.txt` allows `worktree-port-registry.ts` its one synchronous
     read of the file, at first use (terminal env is built synchronously); writes are async.
+
+- PR babysitter (SLRM-2386), from `src/shared/fork/pr-babysit*.ts`, `src/main/fork/pr-babysit/`,
+  `src/main/fork/idle-recovery/idle-recovery-sources.ts`, `src/cli/fork/babysit-*` and
+  `src/renderer/src/fork/pr-babysit/`:
+  - `pr-watch-runtime.ts` passes the watcher's deps through `forkPrBabysitAttach(...)`, which
+    returns them unchanged and keeps `chatWorkspace` (the call wraps the object literal).
+  - `pr-event-delivery.ts` calls `forkPrBabysitLineDelivered(sessionId, delivery)` after each CI
+    line it appends. Both hooks are in `pr-babysit-slot.ts`, which loads no fork code at run time.
+  - `WorktreeCardReferenceRow.tsx` renders `ForkPrBabysitLine` under a pull request row.
+  - `cli-command-names.ts` lists `babysit`. The RPC methods (`fork.prBabysit.*`) are spread into
+    `FORK_IDLE_RECOVERY_RPC_METHODS` and the specs into `FORK_INBOX_COMMAND_SPECS`, so the upstream
+    registry and spec list need no line; `rpc-params-catalog.generated.ts` is regenerated.
+  - `installForkReady` and `installForkHeadlessHost` call `installForkPrBabysit(store)`. The
+    Decision inbox (fork code) gains other sources' rows and a `babysit` call on its bridge; the
+    five settings are in `src/shared/fork/pr-babysit.ts`, joined to `fork-global-settings.ts`.
+
+- Keep main current and server memory protection (SLRM-2384), from `src/shared/fork/main-sync.ts`,
+  `src/shared/fork/serve-protect.ts`, `src/main/fork/main-sync/`,
+  `src/main/fork/serve-protect/`, `src/cli/fork/main-sync-*.ts`, `src/cli/fork/serve-protect*.ts`
+  and `src/renderer/src/fork/main-sync/`:
+  - `startForkRuntimeSettleServices` calls `startForkMainSync(runtime)` (desktop, `orca serve`
+    and orcad).
+  - `rpc-method-registry.ts` spreads `FORK_MAIN_SYNC_METHODS`; `rpc-params-catalog.generated.ts`
+    is regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_MAIN_SYNC_COMMAND_SPECS` and
+    `FORK_SERVE_PROTECT_COMMAND_SPECS`; `fork-handler-groups.ts` adds the `fork-main-sync` and
+    `fork-serve-protect` groups; `cli-command-names.ts` lists `main-sync`.
+  - `src/main/daemon/daemon-entry.ts` awaits `forkRaiseDaemonOomScore()` right after naming the
+    process.
+  - The settings are in `fork-global-settings.ts` and `settings-rows-fork.generated.ts` is
+    regenerated; the card is in the fork's Settings pane and its search entry in the pane catalog.
 - Batch start (SLRM-2395), from `src/shared/fork/batch-start.ts`,
   `src/shared/fork/use-fork-batch-start.ts`, `src/main/fork/batch-start/`,
   `src/renderer/src/fork/batch-start/` and `mobile/src/components/fork/batch-start/`:
@@ -2672,20 +2702,6 @@ Upstream files only get short hooks, which keeps rebases small:
     (exported from `fork-server-setup.ts`) and `runForkServerSetupOnEnvironment`.
   - The settings are in `src/shared/fork/fork-global-settings.ts` and
     `settings-rows-fork.generated.ts` is regenerated; the card is in the fork's Settings pane.
-- Branch clashes (SLRM-2394), from `src/shared/fork/branch-clashes*.ts`,
-  `src/main/fork/branch-clashes/`, `src/cli/fork/branch-clashes-*.ts` and
-  `src/renderer/src/fork/branch-clashes/`:
-  - `rpc-method-registry.ts` spreads `FORK_BRANCH_CLASHES_METHODS`
-    (`src/main/runtime/rpc/methods/fork/fork-branch-clashes.ts`): `fork.clashes.local` and
-    `fork.clashes.scan`; `rpc-params-catalog.generated.ts` is regenerated with it.
-  - `src/cli/specs/index.ts` adds `FORK_BRANCH_CLASHES_COMMAND_SPECS`, `fork-handler-groups.ts`
-    adds the `fork-branch-clashes` group and `cli-command-names.ts` lists `clashes`.
-  - `src/main/index.ts` calls `installForkBranchClashesApp`; `preload/index.ts` and
-    `api-types.ts` add `forkClashes` (`src/preload/fork/branch-clashes-bridge.ts`).
-  - The chip renders inside the fork's `ForkClaudeAccountWorktreeChip` (the worktree row hook in
-    `card-identity-parts.tsx`), so it adds no upstream line of its own. The settings are in
-    `src/shared/fork/fork-global-settings.ts`, `settings-rows-fork.generated.ts` is regenerated,
-    and the card is in the fork's Settings pane.
 - Best of N (SLRM-2393), from `src/shared/fork/best-of/`, `src/main/fork/best-of/`,
   `src/cli/fork/best-of-*.ts` and `src/renderer/src/fork/best-of/`:
   - `rpc-method-registry.ts` spreads `FORK_BEST_OF_METHODS`
@@ -2713,6 +2729,42 @@ Upstream files only get short hooks, which keeps rebases small:
     `card-identity-parts.tsx`), so it adds no upstream line of its own. The settings are in
     `src/shared/fork/fork-global-settings.ts`, `settings-rows-fork.generated.ts` is regenerated,
     and the card is in the fork's Settings pane.
+- Small extras (SLRM-2397), from `src/shared/fork/approval-risk*.ts`, `workspace-tags.ts`,
+  `prompt-stash.ts`, `saved-prompts.ts` and `src/renderer/src/fork/{approval-triage,workspace-tags,prompt-stash,saved-prompts}/`:
+  - `NativeChatApprovalCard.tsx` takes `forkTriage`, renders `ForkApprovalRiskLine` under the
+    title and disables an option `forkApprovalOptionHeld` names.
+    `NativeChatStructuredPromptCard.tsx` passes the chat's folder and session options;
+    `use-structured-prompt-response-hold.ts` carries the folder (`NativeChatStructuredSession.tsx`
+    passes `fileLinkContext` on its existing line, the file being at its line budget).
+  - `NativeChatWorkerApprovals.tsx` renders `ForkApprovalBulkAllow` over the stack and gives
+    each card its worker's folder.
+  - `card-identity-parts.tsx` renders `ForkWorktreeTagChips` after the title;
+    `WorktreeContextMenuView.tsx` renders `ForkTagsWorktreeMenuItem` after the snooze item;
+    `use-visible-worktrees.ts` passes the list through `filterByTag`; `sidebar/index.tsx`
+    renders `ForkTagFilterBar` over the list and `ForkArchivedSection` under the Snoozed row.
+  - `NativeChatComposerPane.tsx` wraps its key handler in `forkWithPromptStashKey`;
+    `NativeChatComposerActions.tsx` adds `ForkSavedPromptsMenu` to the left controls.
+  - `ForkRootHosts.tsx` mounts `ForkWorkspaceTagsDialogHost` and `ForkArchiveOnMergeWatcher`; the
+    four cards are in the fork's Settings pane, and the four agent-limit keys are in
+    `settings-access.ts`.
+
+- Chat handoff (SLRM-2391), from `src/shared/fork/chat-handoff*.ts`,
+  `src/main/fork/chat-handoff/`, `src/cli/fork/chat-handoff-*.ts` and
+  `src/renderer/src/fork/chat-handoff/`. On unless `forkChatHandoff` is false:
+  - `rpc-method-registry.ts` spreads `FORK_CHAT_HANDOFF_METHODS`
+    (`src/main/runtime/rpc/methods/fork/fork-chat-handoff.ts`); `rpc-params-catalog.generated.ts`
+    is regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_CHAT_HANDOFF_COMMAND_SPECS` and `fork-handler-groups.ts`
+    adds the `fork-chat-handoff` group (`chat handoff`, `chat history`; `chat` is already listed
+    in `cli-command-names.ts`).
+  - `SortableTabContextMenu.tsx` renders `ForkChatHandoffTabMenuItems` after the account move
+    items. `ForkRootHosts.tsx` mounts `ForkChatHandoffLimitOffer`; the card is in the fork's
+    Settings pane.
+  - `runtime-settle-hooks.ts` (a fork file) calls `startForkChatHandoffOnLimit`, which listens to
+    limit resume's entries. A new chat goes through `createStructuredAgentSessionForWorktree`, the
+    create agent launches use, with the handoff as its first message.
+  - The settings are in `src/shared/fork/fork-global-settings.ts` and
+    `settings-rows-chat.generated.ts` is regenerated.
 
 - Review guides (SLRM-2396), from `src/shared/fork/review-guide*.ts`,
   `src/main/fork/review-guide/`, `src/cli/fork/review-guide-*.ts`,
@@ -2731,23 +2783,27 @@ Upstream files only get short hooks, which keeps rebases small:
   - The settings are in `src/shared/fork/review-guide.ts`, intersected in
     `fork-global-settings.ts`; `settings-rows-fork.generated.ts` is regenerated and the card is in
     the fork's Settings pane.
-- Chat handoff (SLRM-2391), from `src/shared/fork/chat-handoff*.ts`,
-  `src/main/fork/chat-handoff/`, `src/cli/fork/chat-handoff-*.ts` and
-  `src/renderer/src/fork/chat-handoff/`. On unless `forkChatHandoff` is false:
-  - `rpc-method-registry.ts` spreads `FORK_CHAT_HANDOFF_METHODS`
-    (`src/main/runtime/rpc/methods/fork/fork-chat-handoff.ts`); `rpc-params-catalog.generated.ts`
-    is regenerated with it.
-  - `src/cli/specs/index.ts` adds `FORK_CHAT_HANDOFF_COMMAND_SPECS` and `fork-handler-groups.ts`
-    adds the `fork-chat-handoff` group (`chat handoff`, `chat history`; `chat` is already listed
-    in `cli-command-names.ts`).
-  - `SortableTabContextMenu.tsx` renders `ForkChatHandoffTabMenuItems` after the account move
-    items. `ForkRootHosts.tsx` mounts `ForkChatHandoffLimitOffer`; the card is in the fork's
-    Settings pane.
-  - `runtime-settle-hooks.ts` (a fork file) calls `startForkChatHandoffOnLimit`, which listens to
-    limit resume's entries. A new chat goes through `createStructuredAgentSessionForWorktree`, the
-    create agent launches use, with the handoff as its first message.
-  - The settings are in `src/shared/fork/fork-global-settings.ts` and
-    `settings-rows-chat.generated.ts` is regenerated.
+- Typecheck caps (SLRM-2405), from `config/scripts/fork/typecheck-jobs.mjs`:
+  - `run-typecheck-projects-in-parallel.mjs` imports it, wraps the default of
+    `runTypecheckProjects`'s `parallelism` in `forkTypecheckParallelism(...)` and the `tsrs`
+    default checker count in `forkTypecheckCheckers(...)`.
+
+- Digest (SLRM-2388), from `src/shared/fork/digest*.ts`, `src/main/fork/digest/`,
+  `src/cli/fork/digest-*.ts`, `src/renderer/src/fork/digest/` and
+  `mobile/src/components/fork/digest/`. The daily send is off unless `forkDigest` is true:
+  - `rpc-method-registry.ts` spreads `FORK_DIGEST_METHODS` (`fork.digest.local`,
+    `fork.digest.collect`); `rpc-params-catalog.generated.ts` is regenerated with it.
+  - `src/cli/specs/index.ts` adds `FORK_DIGEST_COMMAND_SPECS`, `fork-handler-groups.ts` adds the
+    `fork-digest` group and `cli-command-names.ts` lists `digest`.
+  - `startForkRuntimeSettleServices` (`runtime-settle-hooks.ts`) also calls `startForkDigest`.
+  - Fork files only on the desktop: the palette entry rides on
+    `getForkUsageReportQuickActions()`, `ForkRootHosts` mounts `ForkDigestHost`, the card is in the
+    fork's Settings pane, and `forkDigestCommand` is a runs-command key in `settings-access.ts`.
+  - Mobile: `app/h/[hostId]/digest.tsx` (the shell route) and `digest.web.tsx` (the page) are new
+    route files with no strings; `host-stack-screens.ts` spreads `FORK_HOST_STACK_SCREENS` and
+    `host-screen-header.tsx` adds `forkDigestHostAction(...)` to the host menu.
+  - `runtime-rpc-mobile-paired-desktop-methods.ts` spreads `FORK_DIGEST_RPC_METHODS`
+    (`fork.digest.collect`), so a paired phone may call it and the relaying desktop answers.
 
 - Letters and the board (SLRM-2389), from `src/shared/fork/letters*.ts`,
   `src/main/fork/letters/`, `src/cli/fork/letters-*.ts` and `src/renderer/src/fork/letters/`:
@@ -2767,42 +2823,6 @@ Upstream files only get short hooks, which keeps rebases small:
   - The settings are in `src/shared/fork/letters.ts`, intersected in `fork-global-settings.ts`;
     `settings-rows-fork.generated.ts` is regenerated, the limits are `agent-limit` keys in
     `settings-access.ts`, and the card is in the fork's Settings pane (Chats).
-- Digest (SLRM-2388), from `src/shared/fork/digest*.ts`, `src/main/fork/digest/`,
-  `src/cli/fork/digest-*.ts`, `src/renderer/src/fork/digest/` and
-  `mobile/src/components/fork/digest/`. The daily send is off unless `forkDigest` is true:
-  - `rpc-method-registry.ts` spreads `FORK_DIGEST_METHODS` (`fork.digest.local`,
-    `fork.digest.collect`); `rpc-params-catalog.generated.ts` is regenerated with it.
-  - `src/cli/specs/index.ts` adds `FORK_DIGEST_COMMAND_SPECS`, `fork-handler-groups.ts` adds the
-    `fork-digest` group and `cli-command-names.ts` lists `digest`.
-  - `startForkRuntimeSettleServices` (`runtime-settle-hooks.ts`) also calls `startForkDigest`.
-  - Fork files only on the desktop: the palette entry rides on
-    `getForkUsageReportQuickActions()`, `ForkRootHosts` mounts `ForkDigestHost`, the card is in the
-    fork's Settings pane, and `forkDigestCommand` is a runs-command key in `settings-access.ts`.
-  - Mobile: `app/h/[hostId]/digest.tsx` (the shell route) and `digest.web.tsx` (the page) are new
-    route files with no strings; `host-stack-screens.ts` spreads `FORK_HOST_STACK_SCREENS` and
-    `host-screen-header.tsx` adds `forkDigestHostAction(...)` to the host menu.
-- Typecheck caps (SLRM-2405), from `config/scripts/fork/typecheck-jobs.mjs`:
-  - `run-typecheck-projects-in-parallel.mjs` imports it, wraps the default of
-    `runTypecheckProjects`'s `parallelism` in `forkTypecheckParallelism(...)` and the `tsrs`
-    default checker count in `forkTypecheckCheckers(...)`.
-- Small extras (SLRM-2397), from `src/shared/fork/approval-risk*.ts`, `workspace-tags.ts`,
-  `prompt-stash.ts`, `saved-prompts.ts` and `src/renderer/src/fork/{approval-triage,workspace-tags,prompt-stash,saved-prompts}/`:
-  - `NativeChatApprovalCard.tsx` takes `forkTriage`, renders `ForkApprovalRiskLine` under the
-    title and disables an option `forkApprovalOptionHeld` names.
-    `NativeChatStructuredPromptCard.tsx` passes the chat's folder and session options;
-    `use-structured-prompt-response-hold.ts` carries the folder (`NativeChatStructuredSession.tsx`
-    passes `fileLinkContext` on its existing line, the file being at its line budget).
-  - `NativeChatWorkerApprovals.tsx` renders `ForkApprovalBulkAllow` over the stack and gives
-    each card its worker's folder.
-  - `card-identity-parts.tsx` renders `ForkWorktreeTagChips` after the title;
-    `WorktreeContextMenuView.tsx` renders `ForkTagsWorktreeMenuItem` after the snooze item;
-    `use-visible-worktrees.ts` passes the list through `filterByTag`; `sidebar/index.tsx`
-    renders `ForkTagFilterBar` over the list and `ForkArchivedSection` under the Snoozed row.
-  - `NativeChatComposerPane.tsx` wraps its key handler in `forkWithPromptStashKey`;
-    `NativeChatComposerActions.tsx` adds `ForkSavedPromptsMenu` to the left controls.
-  - `ForkRootHosts.tsx` mounts `ForkWorkspaceTagsDialogHost` and `ForkArchiveOnMergeWatcher`; the
-    four cards are in the fork's Settings pane, and the four agent-limit keys are in
-    `settings-access.ts`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
