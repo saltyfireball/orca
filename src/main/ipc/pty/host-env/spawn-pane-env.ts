@@ -6,6 +6,7 @@ import {
 import { applyScrubSafeAgentEnvAliases } from '../../../../shared/agent-hook-listener/transport/agent-hook-scrub-safe-env'
 import { isTerminalLeafId, makePaneKey } from '../../../../shared/workspace-layout/stable-pane-id'
 import { isValidTerminalTabId } from '../../../../shared/workspace-layout/terminal-surfaces/terminal-tab-id'
+import { applyForkWorktreePortEnv } from '../../../fork/worktree-ports/worktree-ports-service'
 
 export type PtySpawnPane = {
   paneKey: string
@@ -44,6 +45,8 @@ export function stampPtySpawnPaneEnv(
     return
   }
   const { pane } = args
+  // Fork (SLRM-2383): the workspace's port block as ORCA_PORT and ORCA_PORT_0..N-1 (FORK.md).
+  applyForkWorktreePortEnv(env, pane?.worktreeId)
   if (!pane) {
     // Shell/hook identity must name this spawn's own pane, never an unproved renderer key.
     delete env.ORCA_PANE_KEY
