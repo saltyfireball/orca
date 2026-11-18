@@ -23,6 +23,8 @@ import type { ForkBranchClashSettings } from './branch-clashes'
 import type { ForkReviewGuideSettings } from './review-guide'
 import type { ForkLettersSettings } from './letters'
 import type { ForkDigestSettings } from './digest'
+import type { ForkWorkspaceTagFilter } from './workspace-tags'
+import type { ForkSavedPrompt } from './saved-prompts'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -215,6 +217,24 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkSnoozeEveningHour?: number
     /** Fork snooze: the idle days of the menu's until idle choice; unset is 3. */
     forkSnoozeIdleDays?: number
+    /** Fork approval triage (SLRM-2397): approval cards show a low, medium or high risk grade, and high risk cannot be allowed for the session. Off unless true. */
+    forkApprovalRisk?: boolean
+    /** Fork approval triage (SLRM-2397): a coordinator chat offers to allow every low risk worker approval at once. Off unless true. */
+    forkApprovalBulkAllowLow?: boolean
+    /** Fork workspace tags (SLRM-2397): tag workspaces and filter the sidebar by a tag; unset is on. */
+    forkWorkspaceTagsEnabled?: boolean
+    /** Fork workspace tags: each workspace's tags, keyed by workspace id and host; unset is none. Set them from the workspace menu. */
+    forkWorkspaceTags?: Record<string, string[]>
+    /** Fork workspace tags: the sidebar's tag filter, 'only' shows that tag and 'hide' hides it; unset is none. */
+    forkWorkspaceTagFilter?: ForkWorkspaceTagFilter | null
+    /** Fork archive on merge (SLRM-2397): archive a workspace once its pull request merges, through the stock archive. Off unless true. */
+    forkArchiveOnMerge?: boolean
+    /** Fork prompt stash (SLRM-2397): Cmd+S (Ctrl+S) in a chat's message box sets the draft and its attachments aside, and brings the last one back when the box is empty; unset is on. */
+    forkPromptStash?: boolean
+    /** Fork saved prompts (SLRM-2397): a saved prompts menu on the chat message box; unset is on. */
+    forkSavedPromptsEnabled?: boolean
+    /** Fork saved prompts: the saved prompts, each a label and its text; unset is none. */
+    forkSavedPrompts?: ForkSavedPrompt[]
     /** Fork snooze: a command run once when a snooze settles (its pull request merged or its idle days passed); unset is none. Set it in the Settings screen. */
     forkSnoozeSettleCommand?: string
     /** Fork best of N (SLRM-2393): `orca best-of` and the compare view; unset is on. */
