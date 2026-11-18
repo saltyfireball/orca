@@ -6,6 +6,7 @@ import {
   FORK_BOARD_NOTE_MAX_CHARS,
   FORK_BOARD_TITLE_MAX_CHARS,
   FORK_LETTER_MAX_CHARS,
+  FORK_LETTER_CHAT_ID,
   type ForkBoardAsk,
   type ForkLetter,
   type ForkLetterPartyKind
@@ -34,6 +35,7 @@ export const FORK_LETTERS_CHANNELS = {
 
 const Id = z.string().min(1).max(512)
 const LetterId = z.string().regex(/^[a-f0-9]{4,12}$/)
+const ChatId = z.string().regex(FORK_LETTER_CHAT_ID)
 
 /** Who runs the command, as its environment says; the host checks it against its own chats. */
 export const ForkLetterCaller = z
@@ -61,11 +63,11 @@ const PartyKind = z.enum(['chat', 'terminal', 'shell'])
 
 export const ForkLettersDeliverParams = z.object({
   id: z.string().regex(/^[a-f0-9]{12}$/),
-  to: Id,
+  to: ChatId,
   text: z.string().min(1).max(FORK_LETTER_MAX_CHARS),
   cite: LetterId.optional(),
   from: z.object({
-    chatId: Id,
+    chatId: ChatId,
     kind: PartyKind,
     title: z.string().max(200),
     agent: z.string().max(100)
