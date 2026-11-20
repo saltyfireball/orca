@@ -23,6 +23,7 @@ import { readTextOrFileFlag } from '../../arguments/command-body-input'
 import { refuseAgentServerRoute } from '../identity/agent-server-route'
 import { printForkQueuedLaunch, readForkQueuedLaunch } from '../../fork/agent-queue-launch-note'
 import { readForkMcpProfileFlag } from '../../fork/mcp-profile-flag'
+import { readForkCardFlag } from '../../fork/card-route-flag'
 
 export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler> = {
   'orchestration worker-start': async (ctx) => {
@@ -89,7 +90,9 @@ export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler>
       from: await resolveCoordinatorTerminalHandle(flags, cwd, client),
       devMode: isDevCliInvocation(),
       // Fork: --mcp-profile (FORK.md "MCP profiles").
-      ...readForkMcpProfileFlag(flags)
+      ...readForkMcpProfileFlag(flags),
+      // Fork (BAD-694): --card links a new workspace to its Linear card.
+      ...readForkCardFlag(flags)
     }).catch(async (error: unknown) => {
       throw await explainOlderRuntimeRunRequired(client, error)
     })

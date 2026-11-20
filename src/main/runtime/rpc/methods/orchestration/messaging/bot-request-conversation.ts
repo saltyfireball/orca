@@ -18,6 +18,7 @@ import {
 } from '../../../../../bots/bot-request-view'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import type { OrcaRuntimeService } from '../../../../orca-runtime'
+import { isCardChatSubject } from '../../../../../../shared/fork/card-routing'
 
 /** A teammate's request, or one sent with `--chat new`, runs in a conversation of its own in the bot's
  *  home, never in the owner's Chat; the conversation acts for whom the request is for. */
@@ -35,7 +36,8 @@ async function requestConversation(
     }
   })
   // A bot's own new chat is named for its subject alone; another sender's names who sent it.
-  const own = record.fromBotId === bot.id
+  // Fork (BAD-694): a card's chat is titled "KEY: summary" alone, so a search for the key finds it.
+  const own = record.fromBotId === bot.id || isCardChatSubject(subject)
   const title = (own ? subject : `${botRequestSenderName(record)}: ${subject}`).slice(0, 80)
   await (
     await requireStructuredHost(runtime)

@@ -29,9 +29,10 @@ export function readQuickTaskText(words: string[]): string {
 }
 
 export function formatQuickTaskResult(result: QuickTaskSubmitResult): string {
-  return [`Sent to ${result.botName}.`, result.note, result.chatId ? `Chat: ${result.chatId}` : '']
-    .filter(Boolean)
-    .join('\n')
+  const chat = result.chatId
+    ? `Chat: ${result.chatId}${result.machine ? ` on ${result.machine}` : ''}`
+    : ''
+  return [`Sent to ${result.botName}.`, result.note, chat].filter(Boolean).join('\n')
 }
 
 export const FORK_QUICK_TASK_HANDLERS: Record<string, CommandHandler> = {

@@ -85,6 +85,8 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Branch clashes: ask paired servers for their branches too; unset is on.","o":true}',
   forkBranchClashesUncommitted:
     '{"t":{"k":"boolean"},"d":"Branch clashes: count uncommitted changes in each worktree too; unset is on.","o":true}',
+  forkCardRoutes:
+    '{"t":{"k":"record","of":{"k":"string"}},"d":"Card routing (BAD-694): Linear project name or team key to the bot that takes its cards, e.g. {\\"Docs\\":\\"Writer\\"}; unset is no map. A card\'s `bot:<name>` label wins over it.","o":true}',
   forkChildTallyCountFinished:
     '{"t":{"k":"boolean"},"d":"Finished children count toward that total; unset is on.","o":true}',
   forkChildTallyCountTasks:

@@ -13,6 +13,7 @@ import { OWNER_ACTS_FOR } from '../../../shared/bots/bot-acts-for'
 import { folderWorkspaceKey } from '../../../shared/workspace/identity/workspace-scope'
 import type { QuickTaskSubmitResult } from '../../../shared/fork/quick-task-contract'
 import { readForkQuickTaskConfig } from '../../../shared/fork/quick-task'
+import { shortHostName } from '../card-routing/card-route-start'
 import {
   findQuickTaskRouter,
   QuickTaskError,
@@ -66,7 +67,8 @@ export function runtimeQuickTask(runtime: OrcaRuntimeService): {
           message: { text: message, clientMessageId: randomUUID() },
           actsFor: { actsFor: [...OWNER_ACTS_FOR] }
         }),
-      cli: BOT_ORCA_CLI
+      cli: BOT_ORCA_CLI,
+      machine: () => shortHostName()
     })
     services.set(runtime, service)
   }

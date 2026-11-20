@@ -31,6 +31,7 @@ import type { ForkInboxBotAsksSettings } from './inbox-bot-asks'
 import type { ForkBotRowAskJumpSettings } from './bot-row-ask-jump'
 import type { ForkBotRowBadgeSettings } from './bot-row-badges'
 import type { ForkBotChatListingSettings } from './bot-chat-listing'
+import type { ForkCardRoutingSettings } from './card-routing'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -81,7 +82,9 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   /** Fork (SLRM-2428): the quick task box, its shortcut and the router bot. */
   ForkQuickTaskSettings &
   /** Fork (SLRM-2459): the rules a new bot's SOUL.md starts with. */
-  ForkBotStartingRulesSettings & {
+  ForkBotStartingRulesSettings &
+  /** Fork (BAD-694): Linear project or team to the bot that takes its cards. */
+  ForkCardRoutingSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */
     forkLostWork?: LostWorkSettings
     /** Fork (SLRM-2265): moving a workspace and its chats to another host; unset keys take the defaults. */
