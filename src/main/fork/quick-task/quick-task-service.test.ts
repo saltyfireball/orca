@@ -148,6 +148,7 @@ describe('quickTaskRouterBrief', () => {
     expect(brief).toContain('--type handoff --chat new')
     expect(brief).toContain('[--on <server>]')
     expect(brief).toContain('bot create --offer')
+    expect(brief).toContain('When the task itself is to set up bots, the cards are the whole job')
     expect(brief).toContain('ask your owner here which one')
   })
 
