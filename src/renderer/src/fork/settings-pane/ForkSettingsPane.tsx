@@ -33,6 +33,7 @@ import { ForkUsageReportSettings } from '../usage-report/ForkUsageReportSettings
 import { ForkPooledLimitsSetting } from '../pooled-limits/ForkPooledLimitsSetting'
 import { ForkDigestSetting } from '../digest/ForkDigestSetting'
 import { ForkQuickTaskSetting } from '../quick-task/ForkQuickTaskSetting'
+import { ForkBotStartingRulesSetting } from '../bot-starting-rules/ForkBotStartingRulesSetting'
 import { ForkLostWorkSettings } from '../lost-work/ForkLostWorkSettings'
 import { ForkSyncNoticeSetting } from '../sync-status/ForkSyncNoticeSetting'
 import { ForkAutoPlacementSetting } from '../auto-placement/ForkAutoPlacementSetting'
@@ -87,7 +88,8 @@ const SECTION_CARDS: Record<
     ['prompt-stash', ForkPromptStashSetting],
     ['saved-prompts', ForkSavedPromptsSetting],
     ['letters', ForkLettersSetting],
-    ['quick-task', ForkQuickTaskSetting]
+    ['quick-task', ForkQuickTaskSetting],
+    ['bot-starting-rules', ForkBotStartingRulesSetting]
   ],
   agents: [
     ['child-tally', ForkChildTallySetting],

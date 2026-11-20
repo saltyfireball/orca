@@ -26,6 +26,7 @@ import type { ForkWorkspaceTagFilter } from './workspace-tags'
 import type { ForkSavedPrompt } from './saved-prompts'
 import type { ForkLettersSettings } from './letters'
 import type { ForkQuickTaskSettings } from './quick-task'
+import type { ForkBotStartingRulesSettings } from './bot-starting-rules'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -66,7 +67,9 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   /** Fork (SLRM-2389): letters between chats and the board of asks for the user. */
   ForkLettersSettings &
   /** Fork (SLRM-2428): the quick task box, its shortcut and the router bot. */
-  ForkQuickTaskSettings & {
+  ForkQuickTaskSettings &
+  /** Fork (SLRM-2459): the rules a new bot's SOUL.md starts with. */
+  ForkBotStartingRulesSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */
     forkLostWork?: LostWorkSettings
     /** Fork (SLRM-2265): moving a workspace and its chats to another host; unset keys take the defaults. */
