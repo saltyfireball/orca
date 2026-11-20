@@ -5,13 +5,21 @@ import type { CommandSpec } from '../discovery/command-spec'
 const HOST_NOTE =
   'Webhooks belong to the host that runs the automation; --environment <name> manages a paired server.'
 
+/** Upstream's specs without the `webhooks list` the fork's spec covers (SLRM-2445). */
+export function withForkWebhookList(specs: CommandSpec[]): CommandSpec[] {
+  return specs.filter(
+    (spec) => spec.path.join(' ') !== 'webhooks list' || FORK_WEBHOOK_COMMAND_SPECS.includes(spec)
+  )
+}
+
 export const FORK_WEBHOOK_COMMAND_SPECS: CommandSpec[] = [
   {
     path: ['webhooks', 'list'],
     summary: 'List webhooks, the automation each starts and its last delivery',
-    usage: 'orca webhooks list [--environment <name>] [--json]',
-    allowedFlags: [...GLOBAL_FLAGS],
+    usage: 'orca webhooks list [--bot <name>] [--environment <name>] [--json]',
+    allowedFlags: [...GLOBAL_FLAGS, 'bot'],
     notes: [
+      "With --bot, lists that bot's webhooks instead (upstream's bot webhooks, `orca webhooks show|calls|check`).",
       'Webhooks are off by default. Turn the listener on with `orca settings set forkWebhooks \'{"enabled":true}\'`; it binds 127.0.0.1:47390 unless forkWebhooks.bindHost and forkWebhooks.port say otherwise. Bind an address the sender can reach (a Tailscale address, or a reverse proxy in front).',
       'Secrets are never listed; `orca webhooks rotate` makes a new one.',
       HOST_NOTE

@@ -4,6 +4,19 @@ import type { HandlerGroup } from '../dispatch/handler-group-manifest'
  * The fork's CLI command groups, spread into `HANDLER_GROUPS` by one hook so the upstream
  * manifest stays under its line budget. A new fork command group is added here.
  */
+/** Keys an upstream group also registers, where the fork's handler serves both (SLRM-2445). */
+const FORK_SHARED_HANDLER_KEYS: ReadonlySet<string> = new Set(['webhooks list'])
+
+/** Upstream groups without the keys the fork's handlers take over. */
+export function withoutForkSharedHandlerKeys(
+  groups: readonly HandlerGroup[]
+): readonly HandlerGroup[] {
+  return groups.map((group) => ({
+    ...group,
+    keys: group.keys.filter((key) => !FORK_SHARED_HANDLER_KEYS.has(key))
+  }))
+}
+
 export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
   // SLRM-1503: move Claude chats between accounts (FORK.md).
   {
