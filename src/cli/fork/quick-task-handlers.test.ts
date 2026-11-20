@@ -19,5 +19,8 @@ describe('orca quick-task', () => {
         note: 'Dispatcher is routing it.'
       })
     ).toBe('Sent to Dispatcher.\nDispatcher is routing it.\nChat: c1')
+    expect(
+      formatQuickTaskResult({ botName: 'Dispatcher', chatId: 'c1', note: 'n', machine: 'desk' })
+    ).toBe('Sent to Dispatcher.\nn\nChat: c1 on desk')
   })
 })

@@ -2060,6 +2060,39 @@ named Orca Fork until SLRM-1367. `main` is always
     server that can't be read leaves the host's record and upstream's mark as they were.
   - Code is in `src/shared/fork/bot-server-worker.ts` and `src/renderer/src/fork/bot-server-worker/`.
 
+- **Card routing (BAD-694).** A Linear card reaches the bot that takes it without a "which bot?"
+  question, and the work it starts can be found from the card.
+  - `orca card route <KEY> [--hand-off] [--bot <name>] [--label-only] [--json]` reads the card
+    through this Orca's Linear (`linear.issueContext`), the bots of this computer and its paired
+    servers (`bots.roster`) and the settings (`fork.settings.get`). A `bot:<name>` (or `bot/<name>`)
+    label wins; then the card's project, then its team key, in `forkCardRoutes` (a map such as
+    `{"Docs":"Writer"}`, matched in any case; unset is no map). The quick task router bot never
+    takes a card, and a paused bot or a label naming no bot does not count.
+  - `--hand-off` starts that bot in a new chat (`fork.cardRoute.start`, on the bot's own paired
+    server for a bot there) acting for the owner, as a quick task does, titled "KEY: summary". Its
+    first message is the card, its description fenced as content, and how to keep work on it: start
+    workers with `--card KEY` and comment the PR link on the card. The card gets the comment
+    "<Bot> bot on it, chat <id>, machine <m>", and the command prints the chat id and machine (a
+    failed comment is reported, not fatal).
+  - When neither names a bot it offers 2 or 3: the ones whose name and purpose share most words
+    with the card's title, project, team and labels, then the rest in roster order. From a bot's
+    chat, `--hand-off` posts them as a Needs you item with tap choices (`bots.items.add`, then
+    `.set` with the ask); anywhere else it starts the router bot on the card, which posts the
+    choice from its own chat. The answer is handed off with `--bot <choice>`.
+  - `--label-only` acts only when a `bot:` label decides: for an automation on new cards
+    (`linear.issue_created`), so a card made with that label goes to its bot in one step.
+  - Every bot's tools name `card route` and `worker-start --card`, and the quick task router's
+    brief sends a task naming a card key to `card route` first.
+  - `orchestration worker-start --card <KEY>` links a new workspace (new-child or new-top-level)
+    to the card (`linkedLinearIssue`, the field `worktree ps` lists), so its agent lists under the
+    card; the param (`forkCard`) is in the start's schema, so it reaches a paired server. An
+    existing workspace is left as it is.
+  - A `--chat new` handoff whose subject starts with a card key ("BAD-12: ...") is titled with the
+    subject alone, not "<Sender>: ...", so a search for the key finds it.
+  - `quickTask.submit` also returns the `machine` its chat runs on; `orca quick-task` prints it.
+  - Code is in `src/shared/fork/card-routing.ts`, `src/main/fork/card-routing/` and
+    `src/cli/fork/card-route*`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -2200,6 +2233,7 @@ Apply these in this order. Each one is a single commit.
 133. `BAD-658 Bot row: needs-you and working badges, an idle look and a color per bot`
 134. `BAD-658 Bot chats: list a handed-off chat under its bot, open it from the row's line and from the handoff card`
 135. `BAD-669 Worker archive: remove finished workers' own workspaces when safe, stop idle terminals, hide and close bot chats`
+136. `BAD-694 Card routing: a Linear card goes to its bot by label or project map, and its work carries the card`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3244,6 +3278,22 @@ Upstream files only get short hooks, which keeps rebases small:
     `windowMs` above 0, so the rule can carry hidden chats while the window is off.
   - The settings are in `fork-global-settings.ts` and `bot-chat-listing.ts`
     (`ForkBotChatListingSettings`); `settings-rows-*.generated.ts` is regenerated.
+
+- Card routing (BAD-694), from `src/shared/fork/card-routing.ts`, `src/main/fork/card-routing/`
+  and `src/cli/fork/card-route*`:
+  - `src/cli/specs/index.ts` wraps the spec list in `withForkCardFlag` (`--card` on
+    `orchestration worker-start`) and adds `FORK_CARD_ROUTE_COMMAND_SPECS`;
+    `fork-handler-groups.ts` adds the `fork-card-route` group and `cli-command-names.ts` lists
+    `card`. `worker-launch-handler.ts` spreads `readForkCardFlag(flags)` into its params.
+  - `orchestration-worker-start-params.ts` gains `forkCard`, and `worker-worktree-creation.ts`
+    passes it to `createManagedWorktree` as `linkedLinearIssue`.
+  - `bot-request-conversation.ts` titles a request whose subject `isCardChatSubject` with the
+    subject alone.
+  - `bot-preamble.ts` adds `forkCardToolLine(BOT_ORCA_CLI)` after the Linear tools line.
+  - `FORK_QUICK_TASK_METHODS` (`fork-quick-task.ts`) also defines `fork.cardRoute.start`, so
+    `rpc-method-registry.ts` is untouched; `rpc-params-catalog.generated.ts` is regenerated.
+  - `forkCardRoutes` is intersected in `fork-global-settings.ts`; `settings-rows-*.generated.ts`
+    is regenerated.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

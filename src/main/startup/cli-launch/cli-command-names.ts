@@ -15,6 +15,7 @@ export const CLI_COMMAND_NAMES = [
   'browser',
   'calendar',
   'capture',
+  'card',
   'chat',
   'check',
   'claude-teams',

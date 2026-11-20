@@ -220,5 +220,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-bot-connect',
     keys: ['bot connect'],
     load: async () => (await import('./bot-connect-handlers.js')).FORK_BOT_CONNECT_HANDLERS
+  },
+  // BAD-694: a Linear card goes to the bot that takes it (FORK.md "Card routing").
+  {
+    name: 'fork-card-route',
+    keys: ['card route'],
+    load: async () => (await import('./card-route-handlers.js')).FORK_CARD_ROUTE_HANDLERS
   }
 ]

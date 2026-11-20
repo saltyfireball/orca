@@ -734,6 +734,19 @@ describe('mail to a bot', () => {
     } finally {
       warn.mockRestore()
     }
+})
+
+  it("titles another bot's card handoff with the card alone ", async () => {
+    const cardChat = '66666666-6666-4666-8666-666666666666'
+    startBotSession.mockResolvedValueOnce(cardChat)
+    journals[RANGER_CHAT] = [message('ask')]
+    await sent(RANGER_CHAT, {
+      to: 'bot:Docs',
+      type: 'handoff',
+      chat: 'new',
+      subject: 'ABC-12: Fix the docs'
+    })
+    expect(setUserConversationName).toHaveBeenCalledWith(cardChat, 'ABC-12: Fix the docs', 'rename')
   })
 
   it('refuses --chat new on mail that is no handoff or question', async () => {

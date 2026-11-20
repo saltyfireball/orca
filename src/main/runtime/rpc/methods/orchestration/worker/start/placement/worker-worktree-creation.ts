@@ -130,6 +130,7 @@ export async function createWorkerWorktree(args: {
     comment?: string
     setup?: 'run' | 'skip' | 'inherit'
     from: string
+    forkCard?: string
   }
   agent: TuiAgent
   /** Structured creation skips startup agent and TUI trust presets: no PTY menu can consume its first paste. Setup/default tabs still run, matching renderer chat creates. */
@@ -161,6 +162,8 @@ export async function createWorkerWorktree(args: {
     displayName: params.displayName,
     ...(params.displayName !== undefined ? { displayNameKind: 'user' as const } : {}),
     comment: params.comment,
+    // Fork (BAD-694): `--card` links the new workspace to its Linear card.
+    ...(params.forkCard ? { linkedLinearIssue: params.forkCard.toUpperCase() } : {}),
     // setupDecision runs setup without the legacy runHooks activation side effect.
     runHooks: false,
     setupDecision,
