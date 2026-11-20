@@ -58,6 +58,7 @@ import {
   ForkBestOfSettleParams,
   ForkBestOfShowParams
 } from '../fork/best-of/best-of-wire'
+import { ForkBotChatCloseParams } from '../fork/bot-chat-hide'
 import { ForkClashesLocalParams, ForkClashesScanParams } from '../fork/branch-clashes-wire'
 import { ForkChatHandoffStartParams, ForkChatHistoryParams } from '../fork/chat-handoff-wire'
 import {
@@ -132,6 +133,11 @@ import {
   ForkWebhookListParams,
   ForkWebhookTargetParams
 } from '../fork/webhooks'
+import {
+  ForkWorkerArchiveFocusParams,
+  ForkWorkerArchiveStatusParams,
+  ForkWorkerCleanupRunParams
+} from '../fork/worker-archive'
 import {
   ForkWorktreeMoveExportParams,
   ForkWorktreeMoveImportParams,
@@ -1649,6 +1655,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.board.add': ForkBoardAddParams,
   'fork.board.close': ForkBoardCloseParams,
   'fork.board.list': ForkBoardListParams,
+  'fork.botChat.close': ForkBotChatCloseParams,
   'fork.chatHandoff.history': ForkChatHistoryParams,
   'fork.chatHandoff.start': ForkChatHandoffStartParams,
   'fork.clashes.local': ForkClashesLocalParams,
@@ -1719,6 +1726,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.webhooks.list': ForkWebhookListParams,
   'fork.webhooks.remove': ForkWebhookTargetParams,
   'fork.webhooks.rotate': ForkWebhookTargetParams,
+  'fork.workerCleanup.focus': ForkWorkerArchiveFocusParams,
+  'fork.workerCleanup.run': ForkWorkerCleanupRunParams,
+  'fork.workerCleanup.status': ForkWorkerArchiveStatusParams,
   'fork.worktreeMove.export': ForkWorktreeMoveExportParams,
   'fork.worktreeMove.import': ForkWorktreeMoveImportParams,
   'fork.worktreeMove.inspect': ForkWorktreeMoveInspectParams,

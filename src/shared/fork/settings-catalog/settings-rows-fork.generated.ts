@@ -55,6 +55,8 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"string"},"d":"Best of N: default machines of the attempts, auto, here or server names, comma separated and cycled; unset is auto.","o":true}',
   forkBotChatRecentMinutes:
     '{"t":{"k":"number"},"d":"Minutes a bot\'s chat with no open tab stays listed under it after its last activity (a running or new one always lists); unset is 60, 0 lists only chats with an open tab.","o":true}',
+  forkBotHiddenChats:
+    '{"t":{"k":"record","of":{"k":"number"}},"d":"Chats the owner hid from the sidebar, by chat id and when; one that needs the owner again lists again.","o":true}',
   forkBotRowAskJump:
     '{"t":{"k":"boolean"},"d":"Clicking a bot row that has items waiting on you also opens the first on its Home tab, and a second click the next; unset is on.","o":true}',
   forkBotRowBadges:

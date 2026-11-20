@@ -23,6 +23,8 @@ import {
 } from '../../../../shared/bots/bot-sidebar-tree'
 import type { Worktree } from '../../../../shared/worktree/types'
 import { BotChatStatusSlot, useBotChatLabel } from './BotChatOriginIcon'
+import { useForkBotHiddenChats } from '@/fork/bot-chat-hide/use-fork-bot-hidden-chats'
+import { ForkBotChatHideButton } from '@/fork/bot-chat-hide/ForkBotChatRowMenu'
 import { BotChatPaging, BotChatRowEnd, useBotChatPress } from './BotChatRowControls'
 import type { BotChatTree } from './use-bot-chat-tree'
 import { BotChatContextMenu, BotChatMoreButton, botChatHasMenu } from './BotChatRowMenu'
@@ -58,9 +60,11 @@ export function BotSidebarChats({
   // Fork (BAD-658): a chat ages out of the window by the minute.
   const forkMinutes = useAppStore((s) => s.settings?.forkBotChatRecentMinutes)
   const now = useNow(60_000)
+  // BAD-669: chats the owner hid stay out until they need the owner again.
+  const forkHidden = useForkBotHiddenChats(chats)
   const recent = useMemo(
-    () => forkBotChatRecent({ forkBotChatRecentMinutes: forkMinutes }, now),
-    [forkMinutes, now]
+    () => forkBotChatRecent({ forkBotChatRecentMinutes: forkMinutes }, now, forkHidden),
+    [forkMinutes, now, forkHidden]
   )
   const listed = useMemo(() => botSidebarListedChats(chats, recent), [chats, recent])
   const foldKeys = useMemo(
@@ -222,6 +226,7 @@ function BotSidebarChat({
           >
             {title}
           </span>
+          <ForkBotChatHideButton chat={chat} />
           <BotChatRowEnd
             text={trailing}
             fold={foldable ? { open, name: title, onToggle: () => toggle(open) } : null}

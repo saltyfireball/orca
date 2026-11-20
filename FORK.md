@@ -147,6 +147,63 @@ named Orca Fork until SLRM-1367. `main` is always
   - In the sending chat, the "Handed to <bot> · <subject>" and "Asked ..." line is one dotted
     underlined link to the chat the request went to (the bot's name alone was the link before).
   - The setting is in Settings > Blackfish > Agents and workers > Bot row badges and colors.
+- **Worker workspace archive (BAD-669).** A worker started in a workspace of its own
+  (`worker-start --worktree new-child` or `new-top-level`) kept that workspace, its terminals and
+  its build output (often several GB) after it reported done, until someone removed them by hand.
+  A sweep that runs every minute (on the desktop, `orca serve` and orcad, each for its own
+  workspaces) now removes such a workspace the way `orca worktree rm` does (terminals stopped,
+  checkout removed) and always keeps the git branch. It acts only on a workspace
+  `listWorkerCreatedWorktrees` proves a worker start created; never on a user's own workspace, a
+  bot's home folder, the main checkout, `workspace: current` or a workspace made later at the same
+  path.
+  - Removed once all hold: every dispatch that used it is succeeded, failed or abandoned
+    (`stopped` and running ones hold it); the archive delay has passed since the newest finished;
+    nothing is uncommitted or untracked (ignored output does not count); every commit on its
+    branch is on a base branch by ancestry or by patch (`git cherry`, so cherry-picks and
+    resyncs count), or the branch has no commits of its own; and the user did not keep it.
+    "Base branch" is any remote's default branch, the project's default and the branch the
+    workspace was created from, so a fork next to its upstream works.
+  - Kept on purpose, so left alone: Keep open (`worker-keep-open`, `--keep-open`), a terminal the
+    user took over, a pinned workspace, a turn started after the report (someone typed into the
+    chat or terminal or sent it more work) or activity stamped more than a minute after it, and a
+    workspace a window shows now (windows report it through `fork.workerCleanup.focus` about every
+    minute; a report that stops lapses after 3 minutes).
+  - A workspace left alone shows why on its sidebar row ("unmerged commits", "uncommitted
+    changes", "kept open", ...) with one click to "Remove anyway", which asks first and forces
+    the removal of that one workspace. A running worker cannot be forced.
+  - Idle terminal stop: a finished worker's agent and terminal stop `forkWorkerTerminalStopMinutes`
+    (unset is 15) after its report, even when the workspace stays, through the stock release path
+    that Worker cleanup uses (a chat keeps its history and opens read-only; `orchestration send`
+    reopens the worker). It skips a worker kept open, in a turn, with a question open, or used
+    again after it reported.
+  - Manual: "Clean up finished workers" on a bot row's menu and in a bot's Chats tab opens a
+    dialog listing what it will remove and what it leaves with the reason, on this machine and
+    every paired server, and runs it with the delay waived.
+    `orca orchestration worker-cleanup [--bot <name>] [--dry-run] [--include-remote]` does the
+    same from a shell; it never forces.
+  - Servers: each server runs the sweep for its own workspaces. `--include-remote` and the dialog
+    ask every paired server for its own pass (`fork.workerCleanup.run` with `includeRemote`
+    false) and list what each answered; one that does not answer, or runs an older build, is
+    listed as such. The sidebar's held reasons are read from this machine only.
+  - Settings (Settings > Blackfish > Agents and workers > Finished worker workspaces):
+    `forkWorkerArchive` (unset is on), `forkWorkerArchiveDelayMinutes` (unset is 120) and
+    `forkWorkerTerminalStopMinutes` (unset is 15). The delay waits for the report and applies to
+    failed and abandoned workers too.
+  - Code is in `src/shared/fork/worker-archive*.ts`, `src/main/fork/worker-archive/`,
+    `src/main/runtime/rpc/methods/fork/fork-worker-cleanup.ts`,
+    `src/renderer/src/fork/worker-archive/` and `src/cli/fork/worker-cleanup-*`.
+- **Hide and close bot chats (BAD-669).** Since BAD-658 a chat with no tab lists under its bot
+  while it runs, waits or is new, or within `forkBotChatRecentMinutes`, and there was no way to
+  dismiss one. A side chat's row in a bot's sidebar section now has a right-click menu and a hover
+  x: Hide from sidebar keeps it running and in the bot's Chats tab; Close chat ends it the way an
+  ended session is closed (`fork.botChat.close`, after a confirm when it is running or waiting)
+  and its history stays in Chats. The bot row's menu has Hide finished chats for every idle side
+  chat. A hidden chat lists again, and its hide is dropped, when after it was hidden it needs the
+  owner: a question or needs-you state, a worker waiting on them, or a reply they have not read.
+  Never offered on the Home Chat, a closed chat or an automation run listed as a chat. Hidden
+  chats are `forkBotHiddenChats` (chat id to time, newest 500); the rule is
+  `src/shared/fork/bot-chat-hide.ts`. Code is in `src/renderer/src/fork/bot-chat-hide/` and
+  `src/main/fork/bot-chat-close/`.
 - **Lost work (SLRM-2096).** A Lost work button in the workspace cleanup dialog opens a scan of
   every local git project for work an agent worktree could lose. Nothing runs until you press
   Scan; the scan only reads git and can be stopped.
@@ -2142,6 +2199,7 @@ Apply these in this order. Each one is a single commit.
 132. `BAD-642 Bot items: open and show a worker that runs on a paired server`
 133. `BAD-658 Bot row: needs-you and working badges, an idle look and a color per bot`
 134. `BAD-658 Bot chats: list a handed-off chat under its bot, open it from the row's line and from the handoff card`
+135. `BAD-669 Worker archive: remove finished workers' own workspaces when safe, stop idle terminals, hide and close bot chats`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3165,6 +3223,27 @@ Upstream files only get short hooks, which keeps rebases small:
     `NativeChatBotRequestCard.tsx` puts the subject inside the bot-name button.
   - The settings are intersected in `fork-global-settings.ts`, `settings-rows-*.generated.ts` is
     regenerated, and the card is in the fork's Settings pane (Agents and workers).
+
+- Worker workspace archive and bot chat hide (BAD-669):
+  - `installForkWorkerCleanup` (fork) also calls `installForkWorkerArchive(runtime)`, so no new
+    line in `orchestration-database-binding.ts`; `worker-cleanup-release.ts` holds the release
+    helpers `worker-cleanup-service.ts` used to define.
+  - `FORK_LOST_WORK_METHODS` (`fork-lost-work.ts`) also spreads `FORK_WORKER_ARCHIVE_METHODS`
+    (`fork.workerCleanup.run`, `.status`, `.focus`, `fork.botChat.close`), so
+    `rpc-method-registry.ts`, over its line budget, is untouched; `rpc-params-catalog.generated.ts`
+    is regenerated.
+  - CLI: `src/cli/specs/index.ts` adds `FORK_WORKER_CLEANUP_COMMAND_SPECS` and
+    `fork-handler-groups.ts` the `fork-worker-cleanup` group (`orchestration worker-cleanup`).
+  - `card-identity-parts.tsx` renders `ForkWorkerArchiveRowNote` after the Claude account chip;
+    `BotRow.tsx` adds `ForkBotHideFinishedMenuItem` and `ForkBotCleanupMenuItem` to the bot menu;
+    `BotChatsPanel.tsx` renders `ForkBotCleanupButton`; `ForkRootHosts.tsx` mounts
+    `ForkWorkerArchiveReporter` and `ForkWorkerCleanupDialogHost`.
+  - `BotSidebarChats.tsx` calls `useForkBotHiddenChats`, passes the hidden set to
+    `forkBotChatRecent` and wraps the chat row in `ForkBotChatRowMenu` with `ForkBotChatHideButton`.
+    `botSidebarListedChats` skips `recent.hidden`, and `forkListsTablessBotChat` needs a
+    `windowMs` above 0, so the rule can carry hidden chats while the window is off.
+  - The settings are in `fork-global-settings.ts` and `bot-chat-listing.ts`
+    (`ForkBotChatListingSettings`); `settings-rows-*.generated.ts` is regenerated.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
