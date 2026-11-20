@@ -111,7 +111,7 @@ export function proposalCreateParams(
 
 const oneLine = (text: string): string => text.replace(/\s+/g, ' ').trim()
 
-const READ_ONLY_START =
+export const READ_ONLY_START =
   '- Change anything (comments, labels, pull requests, posts anywhere but here) until my owner says I can. I start by reading and reporting only.'
 
 /** SOUL.md for a bot made from a proposal: the purpose first, then how it works; it starts read-only. */
