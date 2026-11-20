@@ -14,6 +14,7 @@ import {
   rankBotWorkspacesByLive,
   type BotSidebarLineNote
 } from './bot-sidebar-chat-groups'
+import type { ForkBotChatRecent } from '../fork/bot-chat-listing'
 
 /** What a chat row's right edge says: a folded chat's live counts, else its time; nothing while it replies. */
 export type BotSidebarChatTrailing =
@@ -74,8 +75,15 @@ export function buildBotSidebarTree<T extends { id: string }>(input: {
   /** "Show more" steps taken per chat id. */
   stepsOf: (chatId: string) => number
   activeLineId: string | null
+  /** Fork (BAD-658): also lists a recent or going chat with no open tab. */
+  recent?: ForkBotChatRecent | null
 }): BotSidebarTree<T> {
-  const groups = groupBotWorkspacesByChat(input.chats, input.workspaces, input.workspaceChats)
+  const groups = groupBotWorkspacesByChat(
+    input.chats,
+    input.workspaces,
+    input.workspaceChats,
+    input.recent ?? null
+  )
   const liveIds = botLiveWorkspaceIds(input.chats)
   const chats = groups.map(({ chat, workspaces }): BotSidebarChatView<T> => {
     const foldable = workspaces.length > 0
