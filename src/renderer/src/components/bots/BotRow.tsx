@@ -44,6 +44,7 @@ import { revealBotUpNext } from './bot-up-next-reveal'
 import { useDeleteBot } from './use-delete-bot'
 import { setBotPurpose } from './bot-purpose-cache'
 import { botSidebarEntryKey } from './bot-sidebar-entry-keys'
+import { forkOpenBotRow } from '@/fork/bot-asks/bot-row-ask-jump'
 
 type BotRowFold = {
   folded: boolean
@@ -95,7 +96,7 @@ export function BotRow({
   // Opening never unfolds; only the chevron folds. A double-click's second click renames, a held key repeats.
   const open = (event: { detail: number; repeat?: boolean }): void => {
     if (!(event.detail > 1 || event.repeat)) {
-      openBotFromSidebar(bot, onOpen)
+      forkOpenBotRow(bot, () => openBotFromSidebar(bot, onOpen))
     }
   }
   const run = (work: Promise<unknown>): void => {
