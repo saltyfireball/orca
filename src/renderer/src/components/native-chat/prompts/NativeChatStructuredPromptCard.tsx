@@ -36,7 +36,10 @@ export function NativeChatStructuredPromptCard({
         onCancel={onCancel}
         shouldFocus={shouldFocus}
         // SLRM-2397: fork hook (FORK.md "Approval triage")
-        forkTriage={{ cwd: promptResponse.forkCwd, sessionSends: forkSessionSends(prompt.body) }}
+        forkTriage={{
+          cwd: promptResponse.forkCwd ?? null,
+          sessionSends: forkSessionSends(prompt.body)
+        }}
       />
     )
   }

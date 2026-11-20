@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { ProjectHostSetupOption } from '@/lib/workspace/creation/project-host-setup-options'
 import { buildRunTargetRows } from '@/components/new-workspace/run-target/run-target-options'
+import { translate } from '@/i18n/i18n'
+import { forkServerSetupCandidates } from './server-setup-rows'
+import { forkServerSetupHostOptions } from './use-fork-server-setup-host-options'
+import type { ForkServerSetupState } from './use-fork-server-setup'
 
 function needsSetup(
   hostId: string,
@@ -30,46 +34,88 @@ const READY: ProjectHostSetupOption = {
   path: '/code/repo'
 }
 
-describe('buildRunTargetRows with fork server setup (SLRM-2312)', () => {
-  const hostOptions = [
-    READY,
-    needsSetup('runtime:env-a'),
-    needsSetup('runtime:env-b', false),
-    needsSetup('ssh:box')
-  ]
+const HOST_OPTIONS = [
+  READY,
+  needsSetup('runtime:env-a'),
+  needsSetup('runtime:env-b', false),
+  needsSetup('ssh:box')
+]
 
-  it('adds one "Set up on" row per available paired server, after the host rows', () => {
-    const { rows } = buildRunTargetRows({
-      hostOptions,
-      recipes: [],
-      query: '',
-      hasAddHost: true,
-      forkServerSetup: true
-    })
-    expect(rows.map((row) => row.kind)).toEqual([
-      'ready',
-      'needs-setup',
-      'needs-setup',
-      'needs-setup',
-      'fork-setup',
-      'add-host'
+function setupState(overrides: Partial<ForkServerSetupState> = {}): ForkServerSetupState {
+  return {
+    offered: true,
+    parent: '~/development',
+    progress: new Map(),
+    errors: new Map(),
+    start: vi.fn(),
+    ...overrides
+  }
+}
+
+describe('fork server setup rows (SLRM-2312)', () => {
+  it('offers only paired servers that lack the project and could set it up', () => {
+    expect(forkServerSetupCandidates(HOST_OPTIONS).map((option) => option.hostId)).toEqual([
+      'runtime:env-a'
     ])
-    expect(rows.find((row) => row.kind === 'fork-setup')?.key).toBe('fork-setup:runtime:env-a')
+  })
+
+  it('makes one "Set up on" host option per candidate that starts the setup', () => {
+    const setup = setupState()
+    const options = forkServerSetupHostOptions(HOST_OPTIONS, setup, translate)
+    expect(options.map((option) => option.id)).toEqual(['fork-setup:runtime:env-a'])
+    expect(options[0].keepOpen).toBe(true)
+    options[0].onSelect?.()
+    expect(setup.start).toHaveBeenCalledWith(HOST_OPTIONS[1])
   })
 
   it('adds none when the offer is off', () => {
-    const { rows } = buildRunTargetRows({ hostOptions, recipes: [], query: '', hasAddHost: false })
-    expect(rows.some((row) => row.kind === 'fork-setup')).toBe(false)
+    expect(
+      forkServerSetupHostOptions(HOST_OPTIONS, setupState({ offered: false }), translate)
+    ).toEqual([])
   })
 
-  it('follows the search like its host row', () => {
-    const { rows } = buildRunTargetRows({
-      hostOptions,
+  it('shows a running setup and the last error', () => {
+    const running = forkServerSetupHostOptions(
+      HOST_OPTIONS,
+      setupState({
+        progress: new Map([['runtime:env-a', { stage: 'cloning', folder: '/srv/repo' }]])
+      }),
+      translate
+    )
+    expect(running[0].detail).toContain('/srv/repo')
+    const failed = forkServerSetupHostOptions(
+      HOST_OPTIONS,
+      setupState({ errors: new Map([['runtime:env-a', 'no remote']]) }),
+      translate
+    )
+    expect(failed[0].detail).toBe('no remote')
+  })
+
+  it('lists the rows with the ready hosts and follows the search like its host row', () => {
+    const extra = forkServerSetupHostOptions(HOST_OPTIONS, setupState(), translate)
+    const all = [
+      {
+        id: 's1',
+        hostId: 'local' as const,
+        label: 'This computer',
+        detail: '',
+        available: true
+      },
+      ...extra
+    ]
+    const listed = buildRunTargetRows({
+      hostOptions: all,
+      recipes: [],
+      query: '',
+      hasAddHost: false
+    }).rows
+    expect(listed.map((row) => row.key)).toContain('host:fork-setup:runtime:env-a')
+    const searched = buildRunTargetRows({
+      hostOptions: all,
       recipes: [],
       query: 'env-b',
-      hasAddHost: false,
-      forkServerSetup: true
+      hasAddHost: false
     })
-    expect(rows.some((row) => row.kind === 'fork-setup')).toBe(false)
+    expect(searched.rows.some((row) => row.key.includes('fork-setup'))).toBe(false)
   })
 })

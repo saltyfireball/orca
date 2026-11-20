@@ -44,7 +44,7 @@ export const FORK_SETTINGS_ROWS_AGENTS = {
   agentsSidebarMigratedFromExperimental:
     '{"t":{"k":"boolean"},"d":"True when the profile previously opted into the legacy Agents view.","o":true}',
   antigravityChatAuth:
-    '{"t":{"k":"union","of":[{"k":"object","fields":{"method":{"k":"enum","values":["oauth-personal"]},"gcpProject":{"k":"string","optional":true},"gcpLocation":{"k":"string","optional":true}}},{"k":"object","fields":{"method":{"k":"enum","values":["oauth-business"]},"gcpProject":{"k":"string"},"gcpLocation":{"k":"string"}}}]},"d":"How Antigravity chat signs in; set through its account setup.","o":true}',
+    '{"t":{"k":"union","of":[{"k":"object","fields":{"method":{"k":"enum","values":["oauth-personal"]},"gcpProject":{"k":"string","optional":true},"gcpLocation":{"k":"string","optional":true}}},{"k":"object","fields":{"method":{"k":"enum","values":["oauth-business"]},"gcpProject":{"k":"string"},"gcpLocation":{"k":"string"}}},{"k":"object","fields":{"method":{"k":"enum","values":["gemini-api-key"]},"gcpProject":{"k":"string","optional":true},"gcpLocation":{"k":"string","optional":true}}},{"k":"object","fields":{"method":{"k":"enum","values":["agent-platform"]},"gcpProject":{"k":"string","optional":true},"gcpLocation":{"k":"string","optional":true}}}]},"d":"How Antigravity chat signs in; set through its account setup.","o":true}',
   claudeAccountSwitchRunningSessions:
     '{"t":{"k":"enum","values":["ask","keep","restart"]},"d":"Absent means \'ask\'.","o":true}',
   claudeAgentTeamsDefaultDisabledMigrated:

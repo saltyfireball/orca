@@ -58,8 +58,9 @@ describe('fork localization', () => {
       const kept = (await collectSourceFiles(repoRoot, join(repoRoot, dir))).map((file) =>
         relative(repoRoot, file).split('\\').join('/')
       )
-      expect(kept).toEqual(
-        UPSTREAM_SOURCES_IN_FORK_DIRS.filter((file) => file.startsWith(`${dir}/`))
+      // readdir order is the file system's: sorted on APFS, hashed on the Linux runner's ext4.
+      expect(kept.sort()).toEqual(
+        UPSTREAM_SOURCES_IN_FORK_DIRS.filter((file) => file.startsWith(`${dir}/`)).sort()
       )
     }
   })

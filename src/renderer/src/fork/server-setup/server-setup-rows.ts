@@ -1,30 +1,19 @@
-// Set up on a server (FORK.md, SLRM-2312): the "Set up on SERVER..." rows the new-workspace host
-// picker adds after its host rows. Pure, so the picker's row builder can call it.
-import type { NeedsSetupProjectHostOption } from '@/lib/workspace/creation/project-host-setup-options'
-import type { RunTargetRowModel } from '@/components/new-workspace/run-target/run-target-options'
+// Set up on a server (FORK.md, SLRM-2312): which hosts of the new-workspace host picker get a
+// "Set up on SERVER..." row. Pure, so it is tested without the picker.
+import type {
+  NeedsSetupProjectHostOption,
+  ProjectHostSetupOption
+} from '@/lib/workspace/creation/project-host-setup-options'
 
-/** The run-target row kind these rows use. */
-export const FORK_SERVER_SETUP_ROW_KIND = 'fork-setup'
+/** The id prefix of these rows in the picker's host list. */
+export const FORK_SERVER_SETUP_ROW_PREFIX = 'fork-setup:'
 
-export type ForkServerSetupRowModel = {
-  key: string
-  kind: typeof FORK_SERVER_SETUP_ROW_KIND
-  option: NeedsSetupProjectHostOption
-}
-
-/** One row per paired server shown as lacking the project, when it could set it up now. */
-export function forkServerSetupRows(rows: readonly RunTargetRowModel[]): ForkServerSetupRowModel[] {
-  return rows.flatMap((row): ForkServerSetupRowModel[] =>
-    row.kind === 'needs-setup' &&
-    row.option.canSetLocation &&
-    row.option.hostId.startsWith('runtime:')
-      ? [
-          {
-            key: `fork-setup:${row.option.hostId}`,
-            kind: FORK_SERVER_SETUP_ROW_KIND,
-            option: row.option
-          }
-        ]
-      : []
+/** Each paired server shown as lacking the project, when it could set it up now. */
+export function forkServerSetupCandidates(
+  hostOptions: readonly ProjectHostSetupOption[]
+): NeedsSetupProjectHostOption[] {
+  return hostOptions.filter(
+    (option): option is NeedsSetupProjectHostOption =>
+      option.kind === 'needs-setup' && option.canSetLocation && option.hostId.startsWith('runtime:')
   )
 }
