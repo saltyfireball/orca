@@ -30,6 +30,7 @@ import { useBotOwnChats } from '@/lib/bot-own-chats'
 import type { NamedUsageLimitStop } from '../../../../shared/bots/bot-usage-limit-stop'
 import { useBotUsageLimitStops } from './use-bot-usage-limit-stops'
 import { usageLimitStopText } from './BotUsageLimitMark'
+import { forkBotRowCounts, type ForkBotRowCounts } from '../../../../shared/fork/bot-row-badges'
 
 /** A chat, worker or run stopped on its usage limit, said while nothing of the bot's works or
  *  waits on the owner; those still speak first. */
@@ -44,7 +45,14 @@ export function useBotRowLine(
   bot: Bot,
   home: FolderWorkspace,
   needsYou?: number
-): { line: BotRowLine | null; limit: BotRowLimit | null; now: number; needsYou: boolean } {
+): {
+  line: BotRowLine | null
+  limit: BotRowLimit | null
+  now: number
+  needsYou: boolean
+  /** Fork (BAD-658): the counts the row's badges show. */
+  counts: ForkBotRowCounts
+} {
   const t = useTranslate()
   const links = home.externalConversations ?? NO_LINKS
   const chats = useBotOwnChats(bot.paused ? null : bot)
@@ -152,7 +160,20 @@ export function useBotRowLine(
           stop
         }
       : null
-  return { line, limit, now, needsYou: hasNeedsYou }
+  const counts = useMemo(() => {
+    const live = bot.paused ? [] : rows.filter((row) => row.rowSource !== 'subagent')
+    const asking = live.filter((row) => row.state === 'blocked' || row.state === 'waiting')
+    return forkBotRowCounts({
+      rowsAsking: asking.length,
+      rowsWorking: live.filter((row) => row.state === 'working').length,
+      workerPermission: workers.permission,
+      workerWorking: workers.working,
+      published: published ?? null,
+      listedItems: listedItems ?? null,
+      homeWorking: homeStatus === 'working'
+    })
+  }, [bot.paused, rows, workers, published, listedItems, homeStatus])
+  return { line, limit, now, needsYou: hasNeedsYou, counts }
 }
 
 /** Lines about live work or the owner, which a stop never covers; a past activity or a wait can be. */

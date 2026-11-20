@@ -29,6 +29,7 @@ import type { ForkQuickTaskSettings } from './quick-task'
 import type { ForkBotStartingRulesSettings } from './bot-starting-rules'
 import type { ForkInboxBotAsksSettings } from './inbox-bot-asks'
 import type { ForkBotRowAskJumpSettings } from './bot-row-ask-jump'
+import type { ForkBotRowBadgeSettings } from './bot-row-badges'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -72,6 +73,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkInboxBotAsksSettings &
   /** Fork (SLRM-2472): a bot row's click shows its first waiting ask. */
   ForkBotRowAskJumpSettings &
+  /** Fork (BAD-658): bot row count badges, an idle look, and a color per bot. */
+  ForkBotRowBadgeSettings &
   /** Fork (SLRM-2428): the quick task box, its shortcut and the router bot. */
   ForkQuickTaskSettings &
   /** Fork (SLRM-2459): the rules a new bot's SOUL.md starts with. */

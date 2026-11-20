@@ -116,6 +116,24 @@ named Orca Fork until SLRM-1367. `main` is always
   plus a 14% wash). A manual tab color always wins: that tab and its row show only the manual
   color (SLRM-1966's tint). Sub-agent rows stay plain. Code is in
   `src/shared/fork/agent-state-color.ts` and `src/renderer/src/fork/agent-state-color/`.
+- **Bot row badges and colors (BAD-658).** A bot's sidebar row says its state at a glance.
+  - A Needs you pill (the attention color, with the count) and a Working pill (the working
+    spinner, with the count) sit beside the bot's name, so a bot that waits on you shows it
+    whether its chats are folded or not. The counts are the ones the row's own second line
+    reads: its agent rows asking or working, its workers' workspaces, and the Needs you count
+    its panel or Items badge publishes (else the items its host's list counted), so the pill and
+    the "N needs you" line always agree. Paused and disconnected bots show no pill.
+  - A bot with nothing working and nothing waiting is idle: its picture is dimmed and slightly
+    desaturated. A bot stopped on a usage limit keeps its picture at full strength (the limit
+    gauge on its corner says why), and paused and disconnected rows keep their own dimming.
+  - The folded Bots header adds a Needs you pill after its faces: how many bots need you.
+  - Right-click a bot, Color: eight palette colors, a custom color or None. The color draws a
+    2px left edge bar and a faint wash on the row and a ring around the picture. Default is none,
+    which looks as before. Colors are kept in `forkBotRowColors` (by `<host>/<bot id>`) in this
+    desktop's settings, so they persist and never change the bot's own record or host.
+  - Settings > Blackfish > Agents and workers > Bot row badges and colors: `forkBotRowBadges`
+    (on by default) and Clear all colors. Code is in `src/shared/fork/bot-row-badges.ts` and
+    `src/renderer/src/fork/bot-row-badges/`.
 - **Lost work (SLRM-2096).** A Lost work button in the workspace cleanup dialog opens a scan of
   every local git project for work an agent worktree could lose. Nothing runs until you press
   Scan; the scan only reads git and can be stopped.
@@ -2109,6 +2127,7 @@ Apply these in this order. Each one is a single commit.
 130. `BAD-641 Bot ask answers: one typed answer may be as long as an item comment, 8,000 characters`
 131. `BAD-640 Bot connect: orca bot connect links connected Linear and GitHub to one bot or all`
 132. `BAD-642 Bot items: open and show a worker that runs on a paired server`
+133. `BAD-658 Bot row: needs-you and working badges, an idle look and a color per bot`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3117,6 +3136,16 @@ Upstream files only get short hooks, which keeps rebases small:
     `forkServerWorkerOpen(bot, worker)` first when it gives one.
   - `BotItemHeader.tsx` passes the item's links through `useForkServerWorkerLinks(bot, links)`, and
     `BotItemLinkChips.tsx` renders `ForkServerWorkerNote` in the worker chip and its hover card.
+
+- Bot row badges and colors (BAD-658), from `src/shared/fork/bot-row-badges.ts` and
+  `src/renderer/src/fork/bot-row-badges/`:
+  - `useBotRowLine` (`BotRowActivityLine.tsx`) also returns `counts`, from `forkBotRowCounts`.
+  - `BotRow.tsx` calls `useForkBotRowDecor`, passes it to `BotSidebarRow` as `forkDecor` and adds
+    `ForkBotColorMenu` to the context menu; `BotSidebarRow.tsx` renders the tint, the picture's
+    ring and dim, and `ForkBotRowPills` from it.
+  - `BotCollapsedPreview.tsx` renders `ForkBotHeaderRollup` after the faces.
+  - The settings are intersected in `fork-global-settings.ts`, `settings-rows-*.generated.ts` is
+    regenerated, and the card is in the fork's Settings pane (Agents and workers).
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
