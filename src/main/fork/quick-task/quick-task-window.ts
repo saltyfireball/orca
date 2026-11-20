@@ -10,6 +10,7 @@ import {
   requestSystemMediaAccess
 } from '../../browser/site-settings/permissions/browser-media-access'
 import { FORK_QUICK_TASK_CHANNELS } from '../../../shared/fork/quick-task'
+import { installQuickTaskEditKeys } from './quick-task-edit-keys'
 
 const WIDTH = 620
 const HEIGHT = 168
@@ -60,6 +61,7 @@ function create(): BrowserWindow {
   })
   window.setAlwaysOnTop(true, 'floating')
   installPrivilegedWindowNavigationPolicy(window.webContents)
+  installQuickTaskEditKeys(window.webContents)
   // The microphone for dictation, nothing else. The system's microphone prompt takes focus, so
   // the box stays open while it is up and takes focus back after.
   let asking = false
