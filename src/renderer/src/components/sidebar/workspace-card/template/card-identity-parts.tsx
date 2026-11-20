@@ -30,6 +30,7 @@ import {
 } from '../surface/worktree-card-title-status'
 import { cardElement } from './card-template-compiler'
 import { ForkClaudeAccountWorktreeChip } from '@/fork/claude-account-chip/ForkClaudeAccountChips'
+import { ForkWorkerArchiveRowNote } from '@/fork/worker-archive/ForkWorkerArchiveRowNote'
 import { ForkWorktreeTagChips } from '@/fork/workspace-tags/ForkWorktreeTagChips'
 
 type Card = WorktreeCardController
@@ -109,6 +110,7 @@ export const CARD_IDENTITY_PARTS = {
     <>
       <CardTitle props={props} card={card} />
       <ForkClaudeAccountWorktreeChip worktreeId={card.worktree.id} />
+      <ForkWorkerArchiveRowNote worktreeId={card.worktree.id} name={card.worktree.displayName} />
       <ForkWorktreeTagChips worktreeId={card.worktree.id} hostId={card.worktree.hostId} />
     </>
   )),

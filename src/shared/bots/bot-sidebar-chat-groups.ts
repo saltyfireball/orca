@@ -11,6 +11,7 @@ export function botSidebarListedChats(
   return chats.filter(
     (chat) =>
       !chat.closed &&
+      recent?.hidden?.has(chat.chatId) !== true &&
       (chat.tab !== false || (recent !== null && forkListsTablessBotChat(chat, recent)))
   )
 }

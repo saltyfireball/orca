@@ -49,6 +49,7 @@ import { WORKSPACE_CLEANUP_COMMAND_SPECS } from './workspace-cleanup'
 // SLRM-1503: orca account which / move (FORK.md).
 import { FORK_ACCOUNT_MOVE_COMMAND_SPECS } from '../fork/account-move-specs'
 import { FORK_LOST_WORK_COMMAND_SPECS } from '../fork/lost-work-specs'
+import { FORK_WORKER_CLEANUP_COMMAND_SPECS } from '../fork/worker-cleanup-specs'
 import { FORK_AGENT_QUEUE_COMMAND_SPECS } from '../fork/agent-queue-specs'
 import { FORK_LAUNCH_DEFAULTS_COMMAND_SPECS } from '../fork/launch-defaults-specs'
 import { FORK_SLEEPERS_COMMAND_SPECS } from '../fork/sleepers-specs'
@@ -135,6 +136,7 @@ export const COMMAND_SPECS: CommandSpec[] = withForkAutoPlacementNotes(
       ...PAIR_COMMAND_SPECS,
       ...FORK_ACCOUNT_MOVE_COMMAND_SPECS,
       ...FORK_LOST_WORK_COMMAND_SPECS,
+      ...FORK_WORKER_CLEANUP_COMMAND_SPECS,
       ...FORK_AGENT_QUEUE_COMMAND_SPECS,
       ...FORK_LAUNCH_DEFAULTS_COMMAND_SPECS,
       ...FORK_SLEEPERS_COMMAND_SPECS,
