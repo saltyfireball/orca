@@ -4,6 +4,7 @@
 import type { SettingsSearchEntry } from '@/components/settings/search/settings-search'
 import type { Translate } from '@/i18n/use-translate'
 import { quickTaskSearchEntry } from '../quick-task/quick-task-search-entry'
+import { botStartingRulesSearchEntry } from '../bot-starting-rules/bot-starting-rules-search-entry'
 
 /** Search keywords: setting keys and plain English terms, the same in every language. */
 function words(...terms: string[]): string[] {
@@ -126,6 +127,7 @@ export function getForkChatsSearchEntries(t: Translate): SettingsSearchEntry[] {
         'forkBoard'
       )
     },
-    quickTaskSearchEntry(t)
+    quickTaskSearchEntry(t),
+    botStartingRulesSearchEntry(t)
   ]
 }
