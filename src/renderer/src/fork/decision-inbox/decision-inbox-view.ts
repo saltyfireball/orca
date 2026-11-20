@@ -42,6 +42,18 @@ export function oldestWaitingChat(
   return decisionInboxSections(items).waiting[0] ?? null
 }
 
+/**
+ * The button's "waiting on you" count: chats waiting, agents a guard paused (SLRM-2385), the
+ * board's open asks (SLRM-2389) and bot asks (SLRM-2453). Stalled and paused rows are not in it.
+ */
+export function decisionInboxWaitingCount(
+  sections: Pick<DecisionInboxSections, 'waiting' | 'guarded'>,
+  boardAsks: number,
+  botAsks: number
+): number {
+  return sections.waiting.length + sections.guarded.length + boardAsks + botAsks
+}
+
 /** What a count badge shows: the number, capped so the toolbar keeps its width. */
 export function decisionInboxBadgeText(count: number): string {
   return count > 99 ? '99+' : String(count)
