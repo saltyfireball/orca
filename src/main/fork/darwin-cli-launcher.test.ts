@@ -14,6 +14,15 @@ const itOnUnix = process.platform === 'win32' ? it.skip : it
 
 let root: string
 
+// Since 1.4.266 the launcher hands off to the CLI an Orca session names, so a run inside an Orca
+// terminal would reach the real app: run it as from a plain shell.
+function runLauncher(launcher: string, args: string[]) {
+  const env = { ...process.env }
+  delete env.ORCA_CLI_COMMAND
+  delete env.ORCA_CLI_HANDOFF
+  return execFileAsync(launcher, args, { env })
+}
+
 beforeEach(async () => {
   // The launcher resolves the bundle with cd -P, so compare against the real path (/private/var on macOS).
   root = await realpath(await mkdtemp(join(tmpdir(), 'fork-cli-launcher-')))
@@ -52,17 +61,17 @@ async function stageApp(bundle: string, executable: string, plistExecutable: str
 describe('darwin CLI launcher', () => {
   itOnMac("runs the executable Info.plist names, so Blackfish's CLI works", async () => {
     const { launcher, cli } = await stageApp('Blackfish.app', 'Blackfish', 'Blackfish')
-    const { stdout } = await execFileAsync(launcher, ['status'])
+    const { stdout } = await runLauncher(launcher, ['status'])
     expect(stdout.trim()).toBe(`Blackfish 1 ${cli} status`)
   })
 
   itOnUnix('falls back to Orca without a usable CFBundleExecutable', async () => {
     const { launcher, cli } = await stageApp('Orca.app', 'Orca', null)
-    expect((await execFileAsync(launcher, ['status'])).stdout.trim()).toBe(`Orca 1 ${cli} status`)
+    expect((await runLauncher(launcher, ['status'])).stdout.trim()).toBe(`Orca 1 ${cli} status`)
   })
 
   itOnMac('ignores an executable name that would leave Contents/MacOS', async () => {
     const { launcher, cli } = await stageApp('Orca.app', 'Orca', '../Resources/bin/orca')
-    expect((await execFileAsync(launcher, ['status'])).stdout.trim()).toBe(`Orca 1 ${cli} status`)
+    expect((await runLauncher(launcher, ['status'])).stdout.trim()).toBe(`Orca 1 ${cli} status`)
   })
 })
