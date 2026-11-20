@@ -196,5 +196,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
       'board back'
     ],
     load: async () => (await import('./letters-handlers.js')).FORK_LETTERS_HANDLERS
+  },
+  // SLRM-2428: hand a task to the router bot (FORK.md "Quick task").
+  {
+    name: 'fork-quick-task',
+    keys: ['quick-task'],
+    load: async () => (await import('./quick-task-handlers.js')).FORK_QUICK_TASK_HANDLERS
   }
 ]

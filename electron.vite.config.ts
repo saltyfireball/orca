@@ -294,6 +294,8 @@ export const electronViteConfig: UserConfig = {
           index: resolve('src/renderer/index.html'),
           popout: resolve('src/renderer/popout.html'),
           space: resolve('src/renderer/space.html'),
+          // Fork (SLRM-2428): the quick task box window.
+          'quick-task': resolve('src/renderer/quick-task.html'),
           web: resolve('src/renderer/web-index.html')
         }
       }

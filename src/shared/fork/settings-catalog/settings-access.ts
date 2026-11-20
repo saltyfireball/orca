@@ -57,7 +57,9 @@ const AGENT_LIMITS: SettingsKey[] = [
   'forkLettersFromPaired',
   'forkBoardMaxOpenPerChat',
   // SLRM-2411: continuing a person's own chats after a restart answers the restart offer for them.
-  'forkUnattendedResumeInteractive'
+  'forkUnattendedResumeInteractive',
+  // SLRM-2428: the bot every quick task goes to first; an agent must not redirect the owner's tasks.
+  'forkQuickTaskRouterBot'
 ]
 
 const ACCOUNTS: SettingsKey[] = [
@@ -80,6 +82,8 @@ const RUNS_COMMAND: SettingsKey[] = [
   'forkServerHealthAlertCommand',
   // SLRM-2388: whether the daily digest runs the notification command.
   'forkDigestCommand',
+  // SLRM-2428: the command the quick task router runs to rank machines.
+  'forkQuickTaskPlacementCommand',
   // SLRM-2309: the text typed into every terminal agent resumed after a usage limit.
   'forkLimitResumeMessage',
   // SLRM-2310: where a server downloads new code from, and whose signature it accepts.
