@@ -16,6 +16,7 @@ import type { HomeBotRow } from '../bots/home-bot-rows'
 import { MobileHomeTasksSection } from '../MobileHomeTasksSection'
 import type { MobileHomeData } from '../use-mobile-home-data'
 import { MobileHomeTabHeader, MobileHomeTabHeaderButton } from './MobileHomeTabHeader'
+import { MobileQuickTaskButton } from '../../components/fork/quick-task/MobileQuickTaskButton'
 
 /** Home's first tab: bots, agents that need you or are working, the desktops, and Tasks. */
 export function MobileHomeFeedTab(props: {
@@ -39,11 +40,14 @@ export function MobileHomeFeedTab(props: {
     <MobileHomeTabHeader
       title={t('home.tabs.feed', 'Feed')}
       trailing={
-        <MobileHomeTabHeaderButton
-          icon={Settings}
-          accessibilityLabel={t('common.settings', 'Settings')}
-          onPress={props.onOpenSettings}
-        />
+        <>
+          <MobileQuickTaskButton connectedHosts={data.connectedHosts} />
+          <MobileHomeTabHeaderButton
+            icon={Settings}
+            accessibilityLabel={t('common.settings', 'Settings')}
+            onPress={props.onOpenSettings}
+          />
+        </>
       }
     />
   )
