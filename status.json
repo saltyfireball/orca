@@ -1,15 +1,13 @@
 {
   "schema": 1,
-  "state": "conflict",
-  "reason": "Rebasing the fork commits onto v1.4.266 stopped on conflicts.",
+  "state": "in-sync",
+  "reason": null,
   "upstreamVersion": "1.4.266",
   "upstreamSha": "903c91e80fbe7bbcaffe6ac767c49eac91e98a64",
-  "forkBaseVersion": "1.4.214",
-  "forkBaseSha": "039503ca0abe4ceafd56f7316b3f1511faf79f02",
-  "conflicts": [
-    "src/renderer/src/components/native-chat/tools/tasks/NativeChatStructuredSessionStatus.tsx"
-  ],
-  "since": "2026-11-19T18:27:42.187Z",
-  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/44697560908",
-  "checkedAt": "2026-11-20T07:50:11.932Z"
+  "forkBaseVersion": "1.4.266",
+  "forkBaseSha": "903c91e80fbe7bbcaffe6ac767c49eac91e98a64",
+  "conflicts": [],
+  "since": null,
+  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/44698397883",
+  "checkedAt": "2026-11-20T08:16:47.171Z"
 }
