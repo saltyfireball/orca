@@ -117,6 +117,10 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"number"},"d":"Idle recovery: longest wait, in minutes, a verdict may ask for before the next look; unset is 60.","o":true}',
   forkIdleSweepWorkers:
     '{"t":{"k":"enum","values":["include","skip"]},"d":"Idle recovery: \'skip\' leaves orchestration workers alone, \'include\' judges them too; unset is \'skip\'.","o":true}',
+  forkInboxBotAsks:
+    '{"t":{"k":"boolean"},"d":"List the items bots set to Needs you in the Decision inbox, count them on its button and tell its notify targets of each new one; unset is on.","o":true}',
+  forkInboxBotAsksPhone:
+    '{"t":{"k":"boolean"},"d":"Also push a new bot ask to the phones paired with this desktop, under the app\'s notifications switch; unset is on.","o":true}',
   forkInboxNotifyCommand:
     '{"t":{"k":"string"},"d":"Decision inbox: a command run when a chat starts waiting on you; unset is none. Set it in the Settings screen.","o":true}',
   forkInboxNotifyDesktop:
