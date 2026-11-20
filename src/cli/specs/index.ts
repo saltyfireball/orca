@@ -74,6 +74,7 @@ import { FORK_DIGEST_COMMAND_SPECS } from '../fork/digest-specs'
 import { FORK_LETTERS_COMMAND_SPECS } from '../fork/letters-specs'
 import { FORK_QUICK_TASK_COMMAND_SPECS } from '../fork/quick-task-specs'
 import { FORK_BOT_SET_COMMAND_SPECS } from '../fork/bot-set-specs'
+import { FORK_BOT_CONNECT_COMMAND_SPECS } from '../fork/bot-connect-specs'
 import {
   FORK_AUTO_PLACEMENT_COMMAND_SPECS,
   withForkAutoPlacementNotes
@@ -159,7 +160,8 @@ export const COMMAND_SPECS: CommandSpec[] = withForkAutoPlacementNotes(
       ...FORK_DIGEST_COMMAND_SPECS,
       ...FORK_LETTERS_COMMAND_SPECS,
       ...FORK_QUICK_TASK_COMMAND_SPECS,
-      ...FORK_BOT_SET_COMMAND_SPECS
+      ...FORK_BOT_SET_COMMAND_SPECS,
+      ...FORK_BOT_CONNECT_COMMAND_SPECS
     ])
   )
 )
