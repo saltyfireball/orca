@@ -1,5 +1,6 @@
 // Idle recovery and the Decision inbox (FORK.md): the Settings search entry of its card, bot asks
-// (SLRM-2453) included. The title matches ForkIdleRecoverySetting.
+// (SLRM-2453) and the bot row's ask jump (SLRM-2472) included. The title matches
+// ForkIdleRecoverySetting.
 import type { SettingsSearchEntry } from '@/components/settings/search/settings-search'
 import { translate } from '@/i18n/i18n'
 import type { Translate } from '@/i18n/use-translate'
@@ -25,7 +26,9 @@ export function idleRecoverySearchEntry(t: Translate = translate): SettingsSearc
       'bot asks',
       'needs you',
       'forkIdleSweepMode',
-      'forkInboxBotAsks'
+      'forkInboxBotAsks',
+      'bot row',
+      'forkBotRowAskJump'
     )
   }
 }

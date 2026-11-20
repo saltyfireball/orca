@@ -607,6 +607,15 @@ named Orca Fork until SLRM-1367. `main` is always
       `agentNeedsInput` and bot notices cover the bot's chats and runs, not items.
     - Code is in `src/shared/fork/inbox-bot-asks.ts`, `src/main/fork/bot-asks/` and
       `src/renderer/src/fork/bot-asks/`.
+  - **Bot row jumps to its ask (SLRM-2472).** Clicking a bot's sidebar row while its host counts
+    items waiting on you (the row's "N needs you") opens the bot as upstream does and also shows
+    the oldest waiting item on its Home tab, the way the inbox's Open does: the right panel
+    switches to Home with the item open (its 1/N pager on it) and its WAITING ON YOU card
+    scrolled into view. A click while that ask still shows moves to the next, wrapping. With
+    nothing waiting the click is upstream's alone. `forkBotRowAskJump` (on; Settings >
+    Blackfish, Idle recovery) turns it off. The asks come from the inbox's live copy when it
+    holds them, else one `bots.items.owner.list` read of that bot, so it works with bot asks
+    off. Code is in `src/renderer/src/fork/bot-asks/bot-row-ask-jump.ts`.
   - **CLI.** `orca inbox list [--json]`, `orca inbox answer <id> <text>`,
     `orca inbox pause <id> [--resume]`. Ids may be given by prefix. Works on any paired host.
     `orca settings` cannot write the classifier command, the notification command or the
@@ -2035,6 +2044,7 @@ Apply these in this order. Each one is a single commit.
 125. `SLRM-2428 Quick task: a shortcut box hands a typed or spoken task to the bot that owns it`
 126. `SLRM-2459 Bot starting rules: a setting for the rules a new bot's SOUL.md starts with`
 127. `SLRM-2453 Decision inbox: bot asks listed, answered, counted and told once`
+128. `SLRM-2472 Bot row: clicking a bot that needs you shows its first waiting ask`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2459,6 +2469,8 @@ Upstream files only get short hooks, which keeps rebases small:
     spreads `FORK_INBOX_COMMAND_SPECS` and `cli-command-names.ts` lists `inbox`.
   - `quick-actions.ts` spreads `getForkDecisionInboxQuickActions()` and `SidebarToolbar.tsx`
     renders `ForkDecisionInboxButton`; both give nothing while the mode is off.
+  - The bot row's ask jump (SLRM-2472): `BotRow.tsx`'s click wraps upstream's
+    `openBotFromSidebar(bot, onOpen)` in `forkOpenBotRow(bot, ...)` (one import, one call).
   - Bot asks (SLRM-2453) add no upstream hook: `ForkRootHosts` mounts `ForkBotAsksWatcher`, the
     window bridge gains `reportBotAsks` (`fork:idleRecovery:botAsks`), and the main side reads
     idle recovery's settings and runtime (`forkIdleRecoveryHostReaders`).
