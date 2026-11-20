@@ -6,6 +6,7 @@ import {
   forkBotAskLine,
   forkBotAskNotice,
   forkBotAsksOf,
+  forkBotRowAskPick,
   forkBotsWithAsks
 } from './bot-asks-view'
 
@@ -150,5 +151,31 @@ describe('forkBotsWithAsks', () => {
         (entry) => entry.id
       )
     ).toEqual(['a'])
+  })
+})
+
+describe('forkBotRowAskPick', () => {
+  const asks = forkBotAsksOf(
+    [
+      {
+        bot: bot('a'),
+        items: [1, 2, 3].map((n) =>
+          makeTestBotItem(n, { status: 'needs_you', lastActivityAt: NOW - 10 + n })
+        )
+      }
+    ],
+    NOW
+  )
+
+  it('picks the first with none shown, and nothing with none waiting', () => {
+    expect(forkBotRowAskPick(asks, null)?.item.uid).toBe('uid-1')
+    expect(forkBotRowAskPick([], null)).toBeNull()
+    expect(forkBotRowAskPick([], 'uid-1')).toBeNull()
+  })
+
+  it('moves to the next ask after the shown one, wrapping, and starts over for an answered one', () => {
+    expect(forkBotRowAskPick(asks, 'uid-1')?.item.uid).toBe('uid-2')
+    expect(forkBotRowAskPick(asks, 'uid-3')?.item.uid).toBe('uid-1')
+    expect(forkBotRowAskPick(asks, 'uid-gone')?.item.uid).toBe('uid-1')
   })
 })

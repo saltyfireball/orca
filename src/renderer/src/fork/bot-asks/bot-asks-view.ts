@@ -80,3 +80,18 @@ export function forkBotsWithAsks(
 ): Bot[] {
   return bots.filter((bot) => (countOf(bot) ?? 0) > 0)
 }
+
+/**
+ * Which of one bot's asks a click on its sidebar row shows (SLRM-2472): the first, or the one after
+ * `shownUid` (wrapping) when the click lands while that ask is shown. Null with none waiting.
+ */
+export function forkBotRowAskPick(
+  asks: readonly ForkBotAsk[],
+  shownUid: string | null
+): ForkBotAsk | null {
+  if (asks.length === 0) {
+    return null
+  }
+  const at = shownUid === null ? -1 : asks.findIndex((ask) => ask.item.uid === shownUid)
+  return asks[(at + 1) % asks.length] ?? null
+}
