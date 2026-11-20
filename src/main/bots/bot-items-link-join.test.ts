@@ -99,3 +99,16 @@ it("keeps a server attempt's report empty when a local retry of its Task reporte
   expect(reads.get('ctx_1')?.report).toEqual({ subject: 'Local result', body: null })
   expect(reads.get('ctx_srv')?.report).toBeNull()
 })
+
+it('marks a worker its server runs as its own with that server, and only that worker (BAD-642)', () => {
+  const dispatch = link('dispatch', 'ctx_own')
+  const owned: BotWorkWorker = { ...serverAttempt, serverOwned: true, worktreeId: null }
+  const read = {
+    worker: owned,
+    pr: { shown: false as const, reason: 'server' as const },
+    report: null
+  }
+  expect(join.linkView(dispatch, read)).toMatchObject({ server: { environmentId: 'env-1' } })
+  expect(join.linkView(dispatch, { ...read, worker: serverAttempt })).not.toHaveProperty('server')
+  expect(join.linkView(dispatch, { ...read, worker })).not.toHaveProperty('server')
+})

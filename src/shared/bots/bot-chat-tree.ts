@@ -1,5 +1,6 @@
 // A bot's chats with the workers each one started nested under it: the Activity panel's and sidebar's one list.
 import { isBotGroupMemberSession } from './bot-group'
+import type { ForkBotItemServerWorker } from '../fork/bot-server-worker'
 
 /** What a chat row's icon shows: Home Chat, an outside thread's mark, an automation or a side chat. */
 export type BotChatOrigin = 'home' | 'slack' | 'linear' | 'github' | 'automation' | 'side'
@@ -23,6 +24,8 @@ export type BotChatTreeWorker = {
   summary?: string
   /** A terminal-only automation run, opened as a run rather than a pane. */
   run?: { automationId: string; runId: string }
+  /** BAD-642 (fork): a bot item's worker a paired server runs as its own. */
+  forkServer?: ForkBotItemServerWorker
 }
 
 export type BotChatTreeChat = {
