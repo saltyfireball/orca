@@ -1937,6 +1937,21 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/launch-defaults/launch-defaults-bot.ts` and
     `src/cli/fork/bot-set-*`.
 
+- **Bot connect from the CLI (BAD-640).** Linear and GitHub keep the owner's link once per
+  computer, but each bot is turned on for them one at a time in its Connectors setup.
+  - `orca bot connect (--bot <name> | --all) [--linear] [--github] [--json]` links what is already
+    connected on the host to the bots that lack it, through the calls the setup's Turn on makes:
+    `bots.linear.state` and `bots.github.state` read the host's links, and `bots.update` saves the
+    bot's `linearWorkspaces` (every linked workspace where Orca's Linear app is installed, after the
+    bot's own) and `github: {}` (once the account is linked and the Orca app installed somewhere).
+    Without `--linear` or `--github` it links both. It prints each bot with what it linked and why
+    anything was not: already linked, not connected, not installed, or a host that could not be read.
+  - It never starts a sign-in (`bots.connect.*`): a connector not connected on that computer is
+    connected once from any bot in Orca. Slack stays per bot, since each bot is its own Slack app.
+  - `--all` is the bots of the computer asked only (`bots.list`), so a paired server's bots never
+    get this computer's accounts; `--environment` links that server's bots with its own accounts.
+  - Code is in `src/cli/fork/bot-connect-*`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -2071,6 +2086,7 @@ Apply these in this order. Each one is a single commit.
 127. `SLRM-2453 Decision inbox: bot asks listed, answered, counted and told once`
 128. `SLRM-2472 Bot row: clicking a bot that needs you shows its first waiting ask`
 129. `BAD-635 Bot model: orca bot set for one bot or all, and a launch default for new bots`
+130. `BAD-640 Bot connect: orca bot connect links connected Linear and GitHub to one bot or all`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3062,6 +3078,9 @@ Upstream files only get short hooks, which keeps rebases small:
     `fork-bot-set` group (`bot` is already in `cli-command-names.ts`).
   - `FORK_LAUNCH_KINDS` gains `bot`, so the Launch defaults card, `orca launch-defaults` and the
     generated settings rows list it.
+
+- Bot connect from the CLI (BAD-640), from `src/cli/fork/bot-connect-*`: `src/cli/specs/index.ts`
+  adds `FORK_BOT_CONNECT_COMMAND_SPECS` and `fork-handler-groups.ts` the `fork-bot-connect` group.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
