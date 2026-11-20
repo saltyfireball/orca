@@ -20,6 +20,7 @@ import {
 } from '../../shared/rpc-contract/bots-params'
 import type { RuntimeStore } from '../runtime/construction/runtime-store-contract'
 import { proposalSoul } from '../../shared/bots/bot-proposal'
+import { forkBotStartingSoul } from '../../shared/fork/bot-starting-rules'
 import { botOfferCreation } from './bot-offer-creation'
 import { assertBotOwnsHome, type BotHomeFilesystem, botHomeFolder, writeBotHome } from './bot-home'
 import { type BotMemoryRecord, hostBotMemoryRecord } from './bot-memory-record'
@@ -182,7 +183,12 @@ export class BotController {
             this.deps.filesystem,
             path,
             { ...draft, folder, folderWorkspaceId: '' },
-            input.seed ? proposalSoul(name, input.seed) : undefined
+            input.seed
+              ? forkBotStartingSoul(
+                  proposalSoul(name, input.seed),
+                  this.deps.getStore()?.getSettings()
+                )
+              : undefined
           )
       ))
     }

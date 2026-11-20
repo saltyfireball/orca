@@ -53,6 +53,8 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"enum","values":["archive","keep","remove"]},"d":"Best of N: what a pick does with the worktrees of the attempts that lost; unset is \'archive\'.","o":true}',
   forkBestOfPlacement:
     '{"t":{"k":"string"},"d":"Best of N: default machines of the attempts, auto, here or server names, comma separated and cycled; unset is auto.","o":true}',
+  forkBotStartingRules:
+    '{"t":{"k":"string"},"d":"Bot starting rules (SLRM-2459): Markdown a new bot\'s SOUL.md gets in place of the default \\"## Never\\" block that keeps it read-only until its owner says otherwise; unset or empty keeps that default. Set it in the Settings screen.","o":true}',
   forkBoundaryCompactIdleSeconds:
     '{"t":{"k":"number"},"d":"Boundary compaction: seconds a chat rests after its turn before it may be compacted; unset is 120.","o":true}',
   forkBoundaryCompactMaxWaitMinutes:

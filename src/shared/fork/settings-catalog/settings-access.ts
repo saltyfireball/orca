@@ -59,7 +59,9 @@ const AGENT_LIMITS: SettingsKey[] = [
   // SLRM-2411: continuing a person's own chats after a restart answers the restart offer for them.
   'forkUnattendedResumeInteractive',
   // SLRM-2428: the bot every quick task goes to first; an agent must not redirect the owner's tasks.
-  'forkQuickTaskRouterBot'
+  'forkQuickTaskRouterBot',
+  // SLRM-2459: the rules every new bot starts with; an agent must not loosen them for the bots it makes.
+  'forkBotStartingRules'
 ]
 
 const ACCOUNTS: SettingsKey[] = [
