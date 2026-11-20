@@ -12,7 +12,7 @@ export const BOT_ITEM_ASK_LIMITS = {
   prompt: 500,
   label: 150,
   detail: 500,
-  answer: 2_000
+  answer: BOT_ITEM_LIMITS.text
 } as const
 
 const L = BOT_ITEM_ASK_LIMITS
@@ -67,7 +67,7 @@ export type BotItemAskQuestion = BotItemAsk['questions'][number]
 /** One decision's answer: its picked options (indexes), or the owner's own words instead. */
 export const BotItemAnswerSchema = z.object({
   picks: z.array(z.number().int().min(0)).max(L.options).default([]),
-  // A transport cap only: answer validation holds words to 2,000 after trimming.
+  // A transport cap only: answer validation holds words to the answer limit after trimming.
   text: z.string().max(BOT_ITEM_LIMITS.text).optional()
 })
 
@@ -178,7 +178,7 @@ function shapeProblem(ask: BotItemAsk | null, answers: readonly BotItemAnswer[])
 
 /** Why these answers can't answer this question, or null: the one admission rule the card's Submit and
  *  the host's write both apply. All decisions go in one answer, each answered; words are
- *  up to 2,000 characters each, and the answer as text up to the item comment limit. */
+ *  up to the item comment limit each, and the answer as text up to the item comment limit. */
 export function botItemAnswerProblem(
   ask: BotItemAsk | null,
   answers: readonly BotItemAnswer[]
