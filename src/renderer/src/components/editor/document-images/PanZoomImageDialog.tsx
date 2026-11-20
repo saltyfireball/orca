@@ -38,6 +38,8 @@ type PanZoomImageDialogProps = Omit<
    *  omitted for a lone image, which shows no arrows. */
   onPrevious?: (() => void) | null
   onNext?: (() => void) | null
+  /** In a set of images: the shown image's place, for the "n / m" counter. */
+  position?: { index: number; total: number }
 }
 
 async function copyImageAsPng(
@@ -88,6 +90,7 @@ export function PanZoomImageDialog({
   toolbarActions,
   onPrevious,
   onNext,
+  position,
   onCloseAutoFocus,
   onKeyDown,
   busy,
@@ -112,6 +115,8 @@ export function PanZoomImageDialog({
             !event.ctrlKey
           ) {
             event.preventDefault()
+            // Keep the arrows from reaching the chat composer behind the dialog.
+            event.stopPropagation()
             step()
           }
         }}
@@ -156,6 +161,7 @@ export function PanZoomImageDialog({
           toolbarActions={toolbarActions}
           onPrevious={onPrevious}
           onNext={onNext}
+          position={position}
           onClose={() => onOpenChange(false)}
           closeOnBackdrop={!busy}
         />
@@ -174,6 +180,7 @@ function PanZoomImageCanvas({
   toolbarActions,
   onPrevious,
   onNext,
+  position,
   onClose,
   closeOnBackdrop
 }: Pick<
@@ -187,6 +194,7 @@ function PanZoomImageCanvas({
   | 'toolbarActions'
   | 'onPrevious'
   | 'onNext'
+  | 'position'
 > & { onClose: () => void; closeOnBackdrop: boolean }): React.JSX.Element {
   const t = useTranslate()
   const [loaded, setLoaded] = useState<{ src: string; size: PanZoomSize } | null>(null)
@@ -233,6 +241,14 @@ function PanZoomImageCanvas({
               className="pointer-events-auto min-w-0 truncate rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground shadow-xs"
             >
               {title}
+            </span>
+          ) : null}
+          {position && position.total > 1 ? (
+            <span
+              data-testid="pan-zoom-image-counter"
+              className="shrink-0 rounded-md border border-border bg-background px-2 py-1 text-sm tabular-nums text-muted-foreground shadow-xs"
+            >
+              {position.index + 1} / {position.total}
             </span>
           ) : null}
           <div className="pointer-events-auto ml-auto flex shrink-0 items-center gap-0.5 rounded-md border border-border bg-background p-0.5 shadow-xs">
