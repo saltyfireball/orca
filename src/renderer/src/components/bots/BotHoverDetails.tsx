@@ -27,8 +27,8 @@ export function useBotRowDetails(bot: Bot, home: FolderWorkspace) {
   const hostLabel = useBotHostLabel(bot.hostId)
   const offline = useBotHostOffline(bot.hostId)
   const description = useBotSoulDescription({ bot, folderPath: home.folderPath })
-  const { line, limit, now } = useBotRowLine(bot, home)
-  return { workspaceId, status, hostLabel, offline, description, line, limit, now }
+  const { line, limit, now, counts } = useBotRowLine(bot, home)
+  return { workspaceId, status, hostLabel, offline, description, line, limit, now, counts }
 }
 
 export function BotHoverDetails({
