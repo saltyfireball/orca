@@ -149,6 +149,13 @@ describe('BotController', () => {
     expect(soul).toContain('Keeps a list of questions nobody has answered.')
   })
 
+  it('starts a proposed bot with the fork starting rules when they are set', async () => {
+    store.updateSettings({ forkBotStartingRules: '## Never\n\n- Force-push.' })
+    await bots.create({ name: 'Milo', seed: { purpose: 'Keeps a list.' } })
+    const soul = readFileSync(join(botsRoot(), 'milo', 'SOUL.md'), 'utf8')
+    expect(soul).toBe('# Milo\n\nKeeps a list.\n\n## Never\n\n- Force-push.\n')
+  })
+
   it('creates one bot per card even when two accepts of it race', async () => {
     const atlas = await bots.create({ name: 'Atlas' })
     const fromOffer = { botId: atlas.id, offerId: 'offer-1' }

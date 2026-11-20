@@ -1859,6 +1859,22 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/cli/fork/quick-task-*.ts`, `src/renderer/quick-task.html` and
     `src/renderer/src/fork/quick-task/`.
 
+- **Bot starting rules (SLRM-2459).** Upstream writes every new bot's SOUL.md with a `## Never`
+  block that keeps it read-only ("Change anything ... until my owner says I can. I start by
+  reading and reporting only."), so a new bot asks before every action. `forkBotStartingRules`
+  (Settings > Blackfish > Chats > Bot starting rules, a multi-line field) holds the Markdown a
+  new bot's SOUL.md gets in place of that block; it may hold any sections. Unset or empty keeps
+  upstream's exact text, and a soul without the block (upstream reworded it) is left as written.
+  - It applies wherever a bot is made from a seed, which all go through the bot controller: the
+    New bot dialog, `bot create --offer` cards, built-in templates and the quick task router's
+    first-use Dispatcher. A bot with no seed keeps upstream's starter line. Bots already made
+    keep their SOUL.md.
+  - The text is trimmed and capped at 4000 characters. `orca settings` cannot write it
+    (`agent-limit`): it sets what new bots may do, and an agent must not loosen that for the bots
+    it makes.
+  - Code is in `src/shared/fork/bot-starting-rules.ts` and
+    `src/renderer/src/fork/bot-starting-rules/`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -1989,6 +2005,7 @@ Apply these in this order. Each one is a single commit.
 123. `SLRM-2411 Unattended resume: continue interactive chats a restart cut, unless stopped, asking, guarded or waiting on a limit`
 124. `SLRM-2428 Quick task on the phone: a Feed button and sheet that send a typed or dictated task to the paired computer's router`
 125. `SLRM-2428 Quick task: a shortcut box hands a typed or spoken task to the bot that owns it`
+126. `SLRM-2459 Bot starting rules: a setting for the rules a new bot's SOUL.md starts with`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2953,6 +2970,18 @@ Upstream files only get short hooks, which keeps rebases small:
     the 10 s status limit as unreachable; an update or rollback run fails that server and goes on.
     The digest, branch clashes, letters, pooled limits and auto placement wire their
     `callEnvironment` through it too.
+
+- Bot starting rules (SLRM-2459), from `src/shared/fork/bot-starting-rules.ts` and
+  `src/renderer/src/fork/bot-starting-rules/`:
+  - `src/main/bots/bot-controller.ts` passes a seeded bot's `proposalSoul` through
+    `forkBotStartingSoul(soul, settings)` (one import, one call); `bot-controller.test.ts` adds one
+    test for it.
+  - `src/shared/bots/bot-proposal.ts` exports `READ_ONLY_START` (was a private const), so the fork
+    replaces exactly upstream's block and the card shows it as the placeholder.
+  - The setting is intersected in `fork-global-settings.ts`, `settings-rows-fork.generated.ts` is
+    regenerated, `forkBotStartingRules` is an `agent-limit` key in `settings-access.ts`, and the
+    card is in the fork's Settings pane (Chats); its search entry is in
+    `fork-settings-pane-catalog-chats.ts`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
