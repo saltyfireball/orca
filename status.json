@@ -3,11 +3,11 @@
   "state": "in-sync",
   "reason": null,
   "upstreamVersion": "1.4.267",
-  "upstreamSha": "1916a8a6c5af7972ec1f4c4893c8196f2804f761",
+  "upstreamSha": "baf9c2c328fa95c0ba9c25fda4836b479162d232",
   "forkBaseVersion": "1.4.267",
-  "forkBaseSha": "1916a8a6c5af7972ec1f4c4893c8196f2804f761",
+  "forkBaseSha": "baf9c2c328fa95c0ba9c25fda4836b479162d232",
   "conflicts": [],
   "since": null,
-  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/44799136687",
-  "checkedAt": "2026-11-20T19:27:12.654Z"
+  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/44827476014",
+  "checkedAt": "2026-11-20T22:39:26.680Z"
 }
