@@ -208,5 +208,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-bot-set',
     keys: ['bot set'],
     load: async () => (await import('./bot-set-handlers.js')).FORK_BOT_SET_HANDLERS
+  },
+  // BAD-640: link connected Linear and GitHub to one bot or all (FORK.md "Bot connect from the CLI").
+  {
+    name: 'fork-bot-connect',
+    keys: ['bot connect'],
+    load: async () => (await import('./bot-connect-handlers.js')).FORK_BOT_CONNECT_HANDLERS
   }
 ]
