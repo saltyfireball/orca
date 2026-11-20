@@ -579,6 +579,34 @@ named Orca Fork until SLRM-1367. `main` is always
     once: a desktop notification (`forkInboxNotifyDesktop`), a POST of the items as JSON
     (`forkInboxNotifyWebhookUrl`), and a command given the same JSON on stdin
     (`forkInboxNotifyCommand`). All off by default. A failing target stops nothing else.
+  - **Bot asks (SLRM-2453).** The items a bot set to Needs you (upstream's own rule: Needs you,
+    not stale, not snoozed; the "N needs you" on the bot's row and the WAITING ON YOU cards on its
+    Home tab) are listed under "Bot asks", from this computer and every paired server whose bots
+    the sidebar lists, oldest first. `forkInboxBotAsks` (on) turns it on, whatever idle
+    recovery's mode; with it off nothing is read. Only bots whose host counts Needs you items are
+    read (`bots.items.owner.list`), again when their items change or the count moves.
+    - **Answer in place.** An ask that gave decisions, on a host that records answers, has Answer,
+      which opens upstream's own question card (`BotItemAskCard`) in the row; any ask has Open,
+      which shows the item on its bot's Home tab.
+    - **Counted.** The inbox button's waiting count includes them, and the button and dialog show
+      while one waits even when idle recovery and the board are off.
+    - **Told once.** Each window reports the asks it reads to the main process, which tells the
+      notify targets above of each new one once: the same desktop, webhook and command targets
+      and payload shape (`count`, `items` with `id`, `title`, `kind` `bot-ask`, `question`). An
+      ask is its host, bot, item and question event, so a new question on the same item is new.
+      Told asks are kept in `fork-bot-asks.json` (mode 0600) in the data folder, so a second
+      window, a re-read or a restart never tells one again; an ask not seen for a week is
+      forgotten. The first report after the feature is on tells every ask then waiting.
+    - **Focus.** The fork's notifier shows its banner whatever upstream's
+      `notifications.suppressWhenFocused` says, like a chat that starts waiting; the banner is left
+      out only when the reporting window is focused and shows the ask (the open inbox, or the
+      ask's bot on the Home tab). The webhook, command and phone still run.
+    - **Phone.** With `forkInboxBotAsksPhone` (on) and the app's notifications on, each new ask is
+      pushed to the phones paired with this desktop through upstream's owner notice (the push a
+      bot's failed run uses). Upstream itself sends nothing when an item turns Needs you: its
+      `agentNeedsInput` and bot notices cover the bot's chats and runs, not items.
+    - Code is in `src/shared/fork/inbox-bot-asks.ts`, `src/main/fork/bot-asks/` and
+      `src/renderer/src/fork/bot-asks/`.
   - **CLI.** `orca inbox list [--json]`, `orca inbox answer <id> <text>`,
     `orca inbox pause <id> [--resume]`. Ids may be given by prefix. Works on any paired host.
     `orca settings` cannot write the classifier command, the notification command or the
@@ -1989,6 +2017,7 @@ Apply these in this order. Each one is a single commit.
 123. `SLRM-2411 Unattended resume: continue interactive chats a restart cut, unless stopped, asking, guarded or waiting on a limit`
 124. `SLRM-2428 Quick task on the phone: a Feed button and sheet that send a typed or dictated task to the paired computer's router`
 125. `SLRM-2428 Quick task: a shortcut box hands a typed or spoken task to the bot that owns it`
+126. `SLRM-2453 Decision inbox: bot asks listed, answered, counted and told once`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2413,6 +2442,9 @@ Upstream files only get short hooks, which keeps rebases small:
     spreads `FORK_INBOX_COMMAND_SPECS` and `cli-command-names.ts` lists `inbox`.
   - `quick-actions.ts` spreads `getForkDecisionInboxQuickActions()` and `SidebarToolbar.tsx`
     renders `ForkDecisionInboxButton`; both give nothing while the mode is off.
+  - Bot asks (SLRM-2453) add no upstream hook: `ForkRootHosts` mounts `ForkBotAsksWatcher`, the
+    window bridge gains `reportBotAsks` (`fork:idleRecovery:botAsks`), and the main side reads
+    idle recovery's settings and runtime (`forkIdleRecoveryHostReaders`).
   - `orca settings` cannot write the classifier command, the notification command or the
     webhook address (`settings-access.ts`, kind `runs-command`); the Settings screen can.
 

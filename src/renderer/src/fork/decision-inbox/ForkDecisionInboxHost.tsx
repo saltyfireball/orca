@@ -21,6 +21,7 @@ import {
 import {
   closeForkDecisionInbox,
   useForkDecisionInbox,
+  useForkDecisionInboxBotAsks,
   useForkDecisionInboxOn,
   useForkDecisionInboxOpen,
   useForkIdleRecoveryMode
@@ -32,6 +33,7 @@ import {
   ForkDecisionInboxLettersLink
 } from '../letters/ForkDecisionInboxAsks'
 import { useForkBoard, useForkBoardEnabled } from '../letters/board-store'
+import { ForkDecisionInboxBotAsks } from '../bot-asks/ForkDecisionInboxBotAsks'
 
 /** How often an open dialog redraws its ages. A clock tick only: it reads nothing. */
 const AGE_TICK_MS = 30_000
@@ -85,6 +87,8 @@ function Body({ recovery, board }: { recovery: boolean; board: boolean }): React
   const result = recovery ? read : { now: 0, mode: 'off' as const, items: [] }
   const boardView = useForkBoard(board).view
   const asks = boardView?.asks ?? []
+  // SLRM-2453: the items bots set to Needs you, from the watcher's live copy.
+  const botAsks = useForkDecisionInboxBotAsks()
   const [localNow, setLocalNow] = useState(() => Date.now())
   useEffect(
     () =>
@@ -116,11 +120,13 @@ function Body({ recovery, board }: { recovery: boolean; board: boolean }): React
       waiting.length === 0 &&
       stalled.length === 0 &&
       paused.length === 0 &&
-      asks.length === 0 ? (
+      asks.length === 0 &&
+      botAsks.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">
           {t('fork.decisionInbox.empty', 'Nothing is waiting on you.')}
         </p>
       ) : null}
+      <ForkDecisionInboxBotAsks asks={botAsks} now={localNow} />
       <ForkDecisionInboxAsks asks={asks} now={boardView?.now ?? 0} />
       <Section
         title={t('fork.decisionInbox.guardedTitle', 'Paused by a guard')}
@@ -144,8 +150,9 @@ export function ForkDecisionInboxHost(): React.JSX.Element | null {
   const board = useForkBoardEnabled()
   const isOpen = useForkDecisionInboxOpen()
   const recovery = useForkDecisionInboxOn()
-  // SLRM-2389: the board alone keeps the inbox on.
-  const off = !recovery && !board
+  const botAsks = useForkDecisionInboxBotAsks().length
+  // SLRM-2389: the board alone keeps the inbox on; SLRM-2453: so does a waiting bot ask.
+  const off = !recovery && !board && botAsks === 0
   useEffect(() => {
     // Switched off while open: close, so turning it on again does not pop the dialog back up.
     if (off && isOpen) {
@@ -168,25 +175,30 @@ export function ForkDecisionInboxHost(): React.JSX.Element | null {
         <DialogHeader>
           <DialogTitle>{t('fork.decisionInbox.title', 'Decision inbox')}</DialogTitle>
           <DialogDescription>
-            {!recovery
+            {!recovery && !board
               ? t(
-                  'fork.decisionInbox.descriptionBoard',
-                  'Asks agents filed for you. Mark one done, or throw it back with a note the chat gets after its turn.'
+                  'fork.decisionInbox.descriptionBotAsks',
+                  'Questions bots asked you. Answer here or open the item on its bot.'
                 )
-              : mode === 'wake'
+              : !recovery
                 ? t(
-                    'fork.decisionInbox.descriptionWake',
-                    'Chats whose last turn ended on a question for you, and stalled chats idle recovery will wake. Answer here or go to the chat.'
+                    'fork.decisionInbox.descriptionBoard',
+                    'Asks agents filed for you. Mark one done, or throw it back with a note the chat gets after its turn.'
                   )
-                : mode === 'off'
+                : mode === 'wake'
                   ? t(
-                      'fork.decisionInbox.descriptionBabysit',
-                      'Pull requests the PR babysitter stopped on. Tell the agent how to go on, or go to the chat.'
+                      'fork.decisionInbox.descriptionWake',
+                      'Chats whose last turn ended on a question for you, and stalled chats idle recovery will wake. Answer here or go to the chat.'
                     )
-                  : t(
-                      'fork.decisionInbox.descriptionInbox',
-                      'Chats whose last turn ended on a question for you, and chats that stalled on work they could do now. Answer here or go to the chat.'
-                    )}
+                  : mode === 'off'
+                    ? t(
+                        'fork.decisionInbox.descriptionBabysit',
+                        'Pull requests the PR babysitter stopped on. Tell the agent how to go on, or go to the chat.'
+                      )
+                    : t(
+                        'fork.decisionInbox.descriptionInbox',
+                        'Chats whose last turn ended on a question for you, and chats that stalled on work they could do now. Answer here or go to the chat.'
+                      )}
           </DialogDescription>
         </DialogHeader>
         <Body recovery={recovery} board={board} />

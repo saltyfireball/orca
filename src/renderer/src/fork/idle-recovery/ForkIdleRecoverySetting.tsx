@@ -22,6 +22,7 @@ import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { ForkNumberInput } from '../cache-cold/ForkNumberInput'
 import { ForkIdleRecoveryPausedList } from './ForkIdleRecoveryPausedList'
 import { ForkTextSetting as TextSetting } from './ForkTextSetting'
+import { readForkInboxBotAsksSettings } from '../../../../shared/fork/inbox-bot-asks'
 
 type Props = {
   settings: GlobalSettings
@@ -45,6 +46,9 @@ export function ForkIdleRecoverySetting({ settings, updateSettings }: Props): Re
   const modeId = useId()
   const current = readIdleRecoverySettings(settings)
   const off = current.mode === 'off'
+  // SLRM-2453: bot asks use the same notify targets, so they stay editable while bot asks are on.
+  const botAsks = readForkInboxBotAsksSettings(settings)
+  const targetsOff = off && !botAsks.enabled
   const noWake = current.mode !== 'wake'
   const idleLabel = t('fork.idleRecovery.idleLabel', 'Idle time before a look (seconds)')
   const timeoutLabel = t('fork.idleRecovery.timeoutLabel', 'Classifier time limit (seconds)')
@@ -169,13 +173,32 @@ export function ForkIdleRecoverySetting({ settings, updateSettings }: Props): Re
         }
       />
       <SettingsSwitchRow
+        label={t('fork.botAsks.settingLabel', 'Bot asks in the Decision inbox')}
+        description={t(
+          'fork.botAsks.settingHelp',
+          'List the items bots set to Needs you, here and on paired servers, count them on the inbox button, and tell the notify targets below of each new one. Works with idle recovery off.'
+        )}
+        checked={botAsks.enabled}
+        onChange={() => updateSettings({ forkInboxBotAsks: !botAsks.enabled })}
+      />
+      <SettingsSwitchRow
+        label={t('fork.botAsks.phoneLabel', 'Push new bot asks to my phone')}
+        description={t(
+          'fork.botAsks.phoneHelp',
+          'Phones paired with this computer get each new bot ask, while notifications are on.'
+        )}
+        checked={botAsks.phone}
+        disabled={!botAsks.enabled}
+        onChange={() => updateSettings({ forkInboxBotAsksPhone: !botAsks.phone })}
+      />
+      <SettingsSwitchRow
         label={t('fork.idleRecovery.notifyDesktopLabel', 'Notify when a chat waits on me')}
         description={t(
           'fork.idleRecovery.notifyDesktopHelp',
           'A desktop notification when a chat starts waiting on you.'
         )}
         checked={current.notifyDesktop}
-        disabled={off}
+        disabled={targetsOff}
         onChange={() => updateSettings({ forkInboxNotifyDesktop: !current.notifyDesktop })}
       />
       <TextSetting
@@ -187,7 +210,7 @@ export function ForkIdleRecoverySetting({ settings, updateSettings }: Props): Re
           'fork.idleRecovery.webhookHelp',
           'An http or https address that gets a POST with the waiting chats as JSON, questions included. Empty: none.'
         )}
-        disabled={off}
+        disabled={targetsOff}
       />
       <TextSetting
         settings={settings}
@@ -198,7 +221,7 @@ export function ForkIdleRecoverySetting({ settings, updateSettings }: Props): Re
           'fork.idleRecovery.notifyCommandHelp',
           'Runs with your rights when a chat starts waiting on you, with the same JSON on standard input. Empty: none.'
         )}
-        disabled={off}
+        disabled={targetsOff}
       />
       <ForkIdleRecoveryPausedList settings={settings} updateSettings={updateSettings} />
     </section>

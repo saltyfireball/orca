@@ -22,6 +22,7 @@ import { reviewGuideSearchEntry } from '../review-guide/review-guide-search-entr
 import { digestSearchEntry } from '../digest/digest-search-entry'
 import { serverUpdateSearchEntry } from '../server-update/server-update-search-entry'
 import { prBabysitSearchEntry } from '../pr-babysit/pr-babysit-search-entry'
+import { idleRecoverySearchEntry } from '../idle-recovery/idle-recovery-search-entry'
 import { mainSyncSearchEntry } from '../main-sync/main-sync-search-entry'
 import { rowStatusSearchEntry } from '../row-status/row-status-search-entry'
 import {
@@ -163,24 +164,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
         'fork.settingsPane.idleRecovery.description',
         'Judge how an idle chat ended its turn, list the ones waiting on you, and babysit pull requests.'
       ),
-      [
-        {
-          title: t('fork.idleRecovery.title', 'Idle recovery (experimental)'),
-          description: t(
-            'fork.settingsPane.search.idleRecovery',
-            'Judge how an idle chat ended: finished, waiting on you, or stalled.'
-          ),
-          keywords: words(
-            'decision inbox',
-            'inbox',
-            'classifier',
-            'webhook',
-            'notification',
-            'forkIdleSweepMode'
-          )
-        },
-        prBabysitSearchEntry(t)
-      ]
+      [idleRecoverySearchEntry(t), prBabysitSearchEntry(t)]
     ),
     section(
       'usage',

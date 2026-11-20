@@ -26,6 +26,7 @@ import type { ForkWorkspaceTagFilter } from './workspace-tags'
 import type { ForkSavedPrompt } from './saved-prompts'
 import type { ForkLettersSettings } from './letters'
 import type { ForkQuickTaskSettings } from './quick-task'
+import type { ForkInboxBotAsksSettings } from './inbox-bot-asks'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -65,6 +66,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkDigestSettings &
   /** Fork (SLRM-2389): letters between chats and the board of asks for the user. */
   ForkLettersSettings &
+  /** Fork (SLRM-2453): bot asks in the Decision inbox, and their notice. */
+  ForkInboxBotAsksSettings &
   /** Fork (SLRM-2428): the quick task box, its shortcut and the router bot. */
   ForkQuickTaskSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */

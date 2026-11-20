@@ -5,6 +5,7 @@ import { z } from 'zod'
 import type { IdleRecoveryChatKind, IdleRecoveryVerdictKind } from './idle-recovery'
 import type { IdleRecoveryMode } from './idle-recovery-settings'
 import type { ForkPrBabysitListResult } from './pr-babysit-wire'
+import type { ForkBotAsksReportRequest, ForkBotAsksReportResult } from './inbox-bot-asks'
 
 export const FORK_IDLE_RECOVERY_METHODS = {
   /** Chats waiting on the user or stalled, oldest first. */
@@ -25,6 +26,8 @@ export const FORK_IDLE_RECOVERY_CHANNELS = {
   status: 'fork:idleRecovery:status',
   /** The PR babysitter's pull requests, for their status lines (SLRM-2386). */
   babysit: 'fork:idleRecovery:babysit',
+  /** The bot asks a window reads (SLRM-2453), so new ones reach the notify targets once. */
+  botAsks: 'fork:idleRecovery:botAsks',
   /** main -> renderer: the inbox changed; read it again. */
   changed: 'fork:idleRecovery:changed'
 } as const
@@ -124,5 +127,7 @@ export type ForkIdleRecoveryApi = {
   status: () => Promise<ForkIdleRecoveryStatusResult>
   /** The PR babysitter's pull requests on this host (SLRM-2386); absent in older builds. */
   babysit?: () => Promise<ForkPrBabysitListResult>
+  /** The bot asks this window reads now (SLRM-2453); the main process tells new ones once. */
+  reportBotAsks?: (request: ForkBotAsksReportRequest) => Promise<ForkBotAsksReportResult>
   onChanged: (listener: () => void) => () => void
 }

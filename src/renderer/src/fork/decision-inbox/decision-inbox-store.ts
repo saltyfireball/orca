@@ -18,6 +18,13 @@ import type {
   ForkIdleRecoveryInboxResult
 } from '../../../../shared/fork/idle-recovery-wire'
 import { forkBoardEnabled } from '../letters/board-store'
+import {
+  forkBotAsksEnabled,
+  readForkBotAsks,
+  setForkBotAsksInboxOpenReader,
+  useForkBotAsks,
+  useForkBotAsksEnabled
+} from '../bot-asks/bot-asks-store'
 
 export type DecisionInboxSnapshot = {
   result: ForkIdleRecoveryInboxResult | null
@@ -68,15 +75,21 @@ export function useForkDecisionInboxOn(): boolean {
 
 /**
  * True when the inbox can be shown: it is on and this build has the bridge, or the board is on
- * (SLRM-2389: its asks are listed here too).
+ * (SLRM-2389: its asks are listed here too), or a bot asks something (SLRM-2453).
  */
 export function forkDecisionInboxAvailable(): boolean {
   return (
     ((forkDecisionInboxOn(useAppStore.getState().settings as InboxSettings) ||
       forkAgentGuardPausedCount() > 0) &&
       forkIdleRecoveryBridge() !== null) ||
-    forkBoardEnabled()
+    forkBoardEnabled() ||
+    (forkBotAsksEnabled() && readForkBotAsks().length > 0)
   )
+}
+
+/** The bot asks the inbox lists and counts (SLRM-2453); none while they are off. */
+export function useForkDecisionInboxBotAsks(): ReturnType<typeof useForkBotAsks>['asks'] {
+  return useForkBotAsks(useForkBotAsksEnabled()).asks
 }
 
 function publish(next: DecisionInboxSnapshot): void {
@@ -164,6 +177,9 @@ export function openForkDecisionInbox(): void {
 export function closeForkDecisionInbox(): void {
   setOpen(false)
 }
+
+// The open inbox shows every bot ask, so one that arrives then is on screen (SLRM-2453).
+setForkBotAsksInboxOpenReader(() => open)
 
 export function useForkDecisionInboxOpen(): boolean {
   return useSyncExternalStore(subscribeOpen, () => open)
