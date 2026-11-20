@@ -108,7 +108,7 @@ describe('selectBotRowLine', () => {
       ])
     ).toMatchObject({
       kind: 'activity',
-      place: { source: 'slack', label: '#releases' },
+      place: { source: 'slack', label: '#releases', paneKey: expect.any(String) },
       text: 'Cut v1.4.231'
     })
     // A link from before places were kept: its service's name, or a Linear key from its title.
@@ -242,7 +242,7 @@ describe('selectBotRowLine', () => {
     const replyingLine = line([run, replying], { chats })
     expect(replyingLine).toEqual({
       kind: 'replying',
-      place: { source: null, label: 'Plan the launch' }
+      place: { source: null, label: 'Plan the launch', paneKey: expect.any(String) }
     })
     expect(line([run], { chats })).toEqual({ kind: 'workingElsewhere', count: 1 })
   })
@@ -256,7 +256,7 @@ describe('selectBotRowLine', () => {
     })
     expect(line([working, asking], { chats })).toEqual({
       kind: 'activity',
-      place: { source: null, label: 'Plan the launch' },
+      place: { source: null, label: 'Plan the launch', paneKey: expect.any(String) },
       text: 'Ship it?',
       at: expect.any(Number)
     })
@@ -303,17 +303,20 @@ describe('selectBotRowLine', () => {
       session(sessionId, { state: 'working', updatedAt: NOW - MIN, prompt: 'hi' })
     expect(line([working('slack-thread')])).toEqual({
       kind: 'replying',
-      place: { source: 'slack', label: '#releases' }
+      place: { source: 'slack', label: '#releases', paneKey: expect.any(String) }
     })
     expect(line([working('linear-thread')])).toEqual({
       kind: 'replying',
-      place: { source: 'linear', label: 'ENG-42' }
+      place: { source: 'linear', label: 'ENG-42', paneKey: expect.any(String) }
     })
     expect(
       line([working('github-thread')], {
         links: [link('github-thread', 'github', { place: '#3412' })]
       })
-    ).toEqual({ kind: 'replying', place: { source: 'github', label: '#3412' } })
+    ).toEqual({
+      kind: 'replying',
+      place: { source: 'github', label: '#3412', paneKey: expect.any(String) }
+    })
     expect(line([working('chat')])).toEqual({ kind: 'replying', place: null })
     // A finished turn that said nothing has no line rather than the agent's name.
     expect(line([session('chat', { state: 'done', updatedAt: NOW - MIN })])).toBeNull()

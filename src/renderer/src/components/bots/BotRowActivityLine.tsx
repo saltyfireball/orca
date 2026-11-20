@@ -199,7 +199,8 @@ export function BotRowLineView({
   now,
   disconnected = false,
   leading = null,
-  trailing = null
+  trailing = null,
+  onOpenPlace
 }: {
   line: BotRowLine | null
   /** Said in place of a quiet line. */
@@ -213,6 +214,8 @@ export function BotRowLineView({
   /** Before the text: a paired server's host pill, as a remote workspace's second line has. */
   leading?: React.ReactNode
   trailing?: React.ReactNode
+  /** Fork (BAD-658): opens the chat a place names. */
+  onOpenPlace?: (paneKey: string) => void
 }): React.JSX.Element {
   return (
     <div className="flex min-w-0 items-center gap-1.5 text-xs leading-4 text-muted-foreground">
@@ -225,6 +228,7 @@ export function BotRowLineView({
           fallback={fallback}
           now={now}
           disconnected={disconnected}
+          onOpenPlace={onOpenPlace}
         />
       </span>
       {trailing}
@@ -238,7 +242,8 @@ export function BotRowLineText({
   limit = null,
   fallback = null,
   now,
-  disconnected = false
+  disconnected = false,
+  onOpenPlace
 }: {
   line: BotRowLine | null
   limit?: BotRowLimit | null
@@ -246,6 +251,7 @@ export function BotRowLineText({
   fallback?: string | null
   now: number
   disconnected?: boolean
+  onOpenPlace?: (paneKey: string) => void
 }): React.JSX.Element {
   const t = useTranslate()
   if (disconnected) {
@@ -267,14 +273,14 @@ export function BotRowLineText({
   if (line?.kind === 'activity' && line.place) {
     return (
       <>
-        <BotRowPlaceLabel place={line.place} />
+        <BotRowPlaceLabel place={line.place} onOpen={onOpenPlace} />
         {' · '}
         {line.text}
       </>
     )
   }
   if (line?.kind === 'replying' && line.place) {
-    return <ReplyingAtLabel place={line.place} />
+    return <ReplyingAtLabel place={line.place} onOpen={onOpenPlace} />
   }
   return <>{line ? lineText(line, now) : (fallback ?? '')}</>
 }
@@ -304,10 +310,29 @@ export function BotHoverLatestLine({
   )
 }
 
-function BotRowPlaceLabel({ place }: { place: BotRowPlace }): React.JSX.Element {
+function BotRowPlaceLabel({
+  place,
+  onOpen
+}: {
+  place: BotRowPlace
+  onOpen?: (paneKey: string) => void
+}): React.JSX.Element {
   const SourceIcon = place.source ? CONNECTOR_SOURCE_ICONS[place.source] : undefined
+  const paneKey = place.paneKey
+  const open = onOpen && paneKey ? () => onOpen(paneKey) : null
   return (
-    <span className="font-medium text-foreground">
+    <span
+      className={cn('font-medium text-foreground', open && 'cursor-pointer hover:underline')}
+      // The row's own click opens the bot; the chat's name opens the chat.
+      onClick={
+        open
+          ? (event) => {
+              event.stopPropagation()
+              open()
+            }
+          : undefined
+      }
+    >
       {SourceIcon ? <SourceIcon className="mr-1 inline-block size-3 align-[-2px]" /> : null}
       {place.label}
     </span>
@@ -316,12 +341,18 @@ function BotRowPlaceLabel({ place }: { place: BotRowPlace }): React.JSX.Element 
 
 const PLACE_SLOT = '\u0000'
 
-function ReplyingAtLabel({ place }: { place: BotRowPlace }): React.JSX.Element {
+function ReplyingAtLabel({
+  place,
+  onOpen
+}: {
+  place: BotRowPlace
+  onOpen?: (paneKey: string) => void
+}): React.JSX.Element {
   const [before = '', after = ''] = botRowReplyingAt(translate, place, PLACE_SLOT).split(PLACE_SLOT)
   return (
     <>
       {before}
-      <BotRowPlaceLabel place={place} />
+      <BotRowPlaceLabel place={place} onOpen={onOpen} />
       {after}
     </>
   )
