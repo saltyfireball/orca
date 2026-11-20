@@ -34,6 +34,8 @@ export function quickTaskRouterBrief(input: QuickTaskBriefInput): string {
     ? quickTaskPlacementCommand(input.placementCommand, cli)
     : null
   const steps = [
+    // BAD-694: a card routes by its label or the owner's map, so the router does not guess.
+    `If the task names a Linear card by its key (such as ABC-12), run \`${cli} card route <KEY> --hand-off\` and do only what it prints; skip the steps below.`,
     `Run \`${cli} bot list\`. It lists the bots on this computer and on every paired server, what each is for, and the exact \`--on\`/\`--to\` that reaches each one.`,
     'Pick the one bot whose purpose owns this task (its project, its repos, its profile). A bot on a paired server counts the same as one here.',
     placement

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { OptionalFiniteNumber, OptionalString, requiredString } from '../rpc-param-primitives'
 import { CrossStoreParentRefSchema } from '../workspaces/cross-store-parent-params'
+import { FORK_CARD_KEY_PATTERN } from '../../fork/card-routing'
 
 export const OptionalWorkerLaunchPreference = z
   .string()
@@ -36,6 +37,8 @@ export const WorkerStartParams = z
     /** What the creator started this worker for (`bot-item:<uid>`), checked by its owner before the
      *  start and kept on the Dispatch; opaque to orchestration. */
     origin: OptionalString,
+    /** Fork (BAD-694): the Linear card a new workspace is linked to, so its agent lists under the card. */
+    forkCard: z.string().regex(FORK_CARD_KEY_PATTERN).optional(),
     /** Only from the paired Orca coordinating this Run: its own ID for the Task this start creates or reopens. */
     adoptTaskId: OptionalString,
     /** Only from the paired Orca coordinating this Run: its own workspace, the parent of a new-child here. */

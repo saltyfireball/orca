@@ -32,6 +32,8 @@ export type QuickTaskServiceDeps<B extends QuickTaskBot = QuickTaskBot> = {
   startChat: (bot: B, message: string) => Promise<string>
   /** The orca command as a bot's shell runs it. */
   cli: string
+  /** BAD-694: this computer's name, so the caller knows where the chat runs. */
+  machine?: () => string
 }
 
 export class QuickTaskError extends Error {}
@@ -102,7 +104,8 @@ export function quickTaskService<B extends QuickTaskBot>(deps: QuickTaskServiceD
     return {
       botName: bot.name,
       chatId,
-      note: `${bot.name} is finding the bot that owns it${config.placementCommand ? ' and a machine to run it on' : ''}.`
+      note: `${bot.name} is finding the bot that owns it${config.placementCommand ? ' and a machine to run it on' : ''}.`,
+      ...(deps.machine ? { machine: deps.machine() } : {})
     }
   }
 
