@@ -46,6 +46,20 @@ export const FORK_SETTINGS_ROWS_FORK_MORE = {
     '{"t":{"k":"number"},"d":"PR babysitter: minutes to wait for a new CI result after a fix request before it stops and asks you; unset is 120.","o":true}',
   forkPromptStash:
     '{"t":{"k":"boolean"},"d":"Prompt stash (SLRM-2397): Cmd+S (Ctrl+S) in a chat\'s message box sets the draft and its attachments aside, and brings the last one back when the box is empty; unset is on.","o":true}',
+  forkQuickTask:
+    '{"t":{"k":"boolean"},"d":"The quick task box, its global shortcut and `orca quick-task`; unset is on.","o":true}',
+  forkQuickTaskPlacement:
+    '{"t":{"k":"boolean"},"d":"Quick task: the router suggests a machine for code work; unset is on.","o":true}',
+  forkQuickTaskPlacementCommand:
+    '{"t":{"k":"string"},"d":"Quick task: the command the router runs to rank machines (its output is read by the router); unset is the built-in `orca placement --json`. Set it in the Settings screen.","o":true}',
+  forkQuickTaskRouterAgent:
+    '{"t":{"k":"string"},"d":"Quick task: the agent a new router bot runs on; unset is claude.","o":true}',
+  forkQuickTaskRouterBot:
+    '{"t":{"k":"string"},"d":"Quick task: the bot that routes each task, made on first use; unset is Dispatcher.","o":true}',
+  forkQuickTaskRouterModel:
+    '{"t":{"k":"string"},"d":"Quick task: the model a new router bot runs on; unset is haiku for claude and the agent\'s default otherwise, empty is the agent\'s default.","o":true}',
+  forkQuickTaskShortcut:
+    '{"t":{"k":"string"},"d":"Quick task: the global shortcut that opens the box, as an Electron accelerator; unset or empty is CommandOrControl+Alt+Shift+Space, none is no shortcut.","o":true}',
   forkReviewGuideAutoWrite:
     '{"t":{"k":"boolean"},"d":"Review guides: write a guide by itself when a pull request without one is opened (each guide costs agent usage); unset is off.","o":true}',
   forkReviewGuideInstructions:

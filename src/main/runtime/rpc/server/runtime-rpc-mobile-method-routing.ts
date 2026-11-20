@@ -3,6 +3,7 @@ import { PAIRED_DESKTOP_METHODS } from './runtime-rpc-mobile-paired-desktop-meth
 import { MOBILE_BOT_RPC_METHODS } from './runtime-rpc-mobile-bot-methods'
 import { DEFAULT_SCOPE_HOST_METHODS } from './runtime-rpc-mobile-tracker-methods'
 import { FORK_REVIEW_GUIDE_RPC_METHODS } from '../../../../shared/fork/review-guide-wire'
+import { QUICK_TASK_SUBMIT_METHOD } from '../../../../shared/fork/quick-task-contract'
 
 // Execution-host routes follow the configured target; paired-desktop routes stay with the relaying Mac;
 // default-scope-host routes follow the target, else the Mac's default host. This table also defines mobile allowlisting.
@@ -299,5 +300,7 @@ export const EXECUTION_HOST_METHODS = [
 export const MOBILE_RPC_METHOD_ROUTES: ReadonlyMap<string, MobileRpcMethodRoute> = new Map([
   ...PAIRED_DESKTOP_METHODS.map((method) => [method, 'paired-desktop'] as const),
   ...DEFAULT_SCOPE_HOST_METHODS.map((method) => [method, 'default-scope-host'] as const),
-  ...EXECUTION_HOST_METHODS.map((method) => [method, 'execution-host'] as const)
+  ...EXECUTION_HOST_METHODS.map((method) => [method, 'execution-host'] as const),
+  // Fork (SLRM-2428): the relaying desktop's router bot sees every paired server's bots.
+  [QUICK_TASK_SUBMIT_METHOD, 'paired-desktop'] as const
 ])

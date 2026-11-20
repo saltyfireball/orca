@@ -106,6 +106,7 @@ import type { ForkSnoozeApi } from '../shared/fork/snooze-wire'
 import type { ForkClashesApi } from '../shared/fork/branch-clashes-wire'
 import type { ForkReviewGuideApi } from '../shared/fork/review-guide-wire'
 import type { ForkLettersApi } from '../shared/fork/letters-wire'
+import type { ForkQuickTaskApi } from '../shared/fork/quick-task'
 import type { ForkSyncStatusApi } from '../shared/fork/fork-sync-status'
 import type { ForkWorkerCleanupApi } from '../shared/fork/worker-cleanup'
 import type { ForkMcpProfilesApi } from '../shared/fork/mcp-profiles'
@@ -209,6 +210,8 @@ export type PreloadApi = {
   forkReviewGuide?: ForkReviewGuideApi
   /** Fork letters and the board (SLRM-2389); desktop only. */
   forkLetters?: ForkLettersApi
+  /** Fork quick task box (SLRM-2428); desktop only. */
+  forkQuickTask?: ForkQuickTaskApi
   notebook: FilesystemApi['notebook']
   docPreview: DocPreviewApi['docPreview']
   stats: StatsApi
