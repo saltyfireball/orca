@@ -58,6 +58,8 @@ export const FORK_SETTINGS_ROWS_TERMINAL = {
     '{"t":{"k":"string"},"d":"Color of the line between terminal panes in light mode."}',
   terminalDividerThicknessPx:
     '{"t":{"k":"number"},"d":"Thickness in pixels of the line between terminal panes."}',
+  terminalDroppedImagesPreview:
+    '{"t":{"k":"boolean"},"d":"Show a preview of images dropped onto a terminal pane.","o":true}',
   terminalFastScrollSensitivity:
     '{"t":{"k":"number"},"d":"Scroll speed multiplier while the fast-scroll key is held."}',
   terminalFocusFollowsMouse:

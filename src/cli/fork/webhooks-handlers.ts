@@ -84,6 +84,11 @@ async function secretCall(ctx: HandlerContext, method: string, params: unknown):
 
 export const FORK_WEBHOOK_HANDLERS: Record<string, CommandHandler> = {
   'webhooks list': async (ctx) => {
+    // SLRM-2445: upstream 1.4.266 lists a bot's webhooks here too; --bot keeps its list.
+    if (ctx.flags.has('bot')) {
+      const { WEBHOOK_HANDLERS } = await import('../webhooks/webhooks.js')
+      return WEBHOOK_HANDLERS['webhooks list'](ctx)
+    }
     const result = await ctx.client
       .call<ForkWebhookListResult>('fork.webhooks.list', {})
       .catch(incompatible)
