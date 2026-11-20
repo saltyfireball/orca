@@ -14,7 +14,7 @@ export function useStructuredPromptResponseHold(
 ): {
   respond: Respond
   holds: (item: PromptItem) => boolean
-  forkCwd: string | null
+  forkCwd?: string | null
 } {
   const [heldKey, setHeldKey] = useState<string | null>(null)
   const holdingRespond = useCallback<Respond>(

@@ -8,6 +8,7 @@ import type { ExecutionHostId } from '../../../../../shared/execution-host/execu
 import RunTargetCombobox from './RunTargetCombobox'
 import { ConnectHostButton, NeedsSetupHostIcon, SetLocationButton } from './RunTargetRowActions'
 import type { EphemeralVmRecipeOption, RunTargetHostOption } from './run-target-options'
+import { useForkServerSetupHostOptions } from '@/fork/server-setup/use-fork-server-setup-host-options'
 
 export default function WorkspaceRunTargetCombobox({
   hostOptions,
@@ -35,6 +36,16 @@ export default function WorkspaceRunTargetCombobox({
   )
   const isSelected = (option: { id: string; hostId: ExecutionHostId }): boolean =>
     option.id === hostValue && (!hostExecutionHostId || option.hostId === hostExecutionHostId)
+  // Fork (SLRM-2312): "Set up on SERVER..." rows clone the project there, then pick that server.
+  const forkSetupOptions = useForkServerSetupHostOptions(
+    hostOptions,
+    onHostChange
+      ? (key) => {
+          onHostChange(key)
+          picker.onRecipeChange?.(null)
+        }
+      : null
+  )
   const ready = hostOptions.filter((option) => option.kind === 'ready')
   const selected =
     ready.find(isSelected) ?? ready.find((option) => option.aliasSetups?.some(isSelected))
@@ -96,7 +107,7 @@ export default function WorkspaceRunTargetCombobox({
   return (
     <RunTargetCombobox
       {...picker}
-      hostOptions={options}
+      hostOptions={[...options, ...forkSetupOptions]}
       selectedHostId={selected ? getProjectHostSetupSelectionKey(selected) : null}
     />
   )
