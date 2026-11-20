@@ -15,6 +15,7 @@ import type { Translate } from '../i18n/mobile-i18n'
 import { useMobileTranslation } from '../i18n/use-mobile-translation'
 import { SettingsScreen, SettingsSection } from './settings-screen-frame'
 import { UiLanguageSettingsSection } from './ui-language-settings-section'
+import { ForkQuickTaskSettings } from '../components/fork/quick-task/ForkQuickTaskSettings'
 
 function appearanceOptions(t: Translate): { value: MobileAppearancePreference; label: string }[] {
   return [
@@ -83,6 +84,7 @@ export default function AppearanceSettingsScreen() {
       </SettingsSection>
 
       <UiLanguageSettingsSection />
+      <ForkQuickTaskSettings />
     </SettingsScreen>
   )
 }

@@ -1681,6 +1681,25 @@ named Orca Fork until SLRM-1367. `main` is always
     `mobile/modules/fork-live-activity/` (the `BlackfishLiveActivity` Expo module; `ios/shared`
     is compiled into the app and the extension, `widget/` only into the extension) and
     `mobile/plugins/fork/`.
+- **Quick task on the phone (SLRM-2428).** A Quick task button in the Feed tab's header opens a
+  sheet with one box and the phone's own dictation (the session composer's mic, meter, cancel and
+  retry). Send hands the task to a paired computer, which gives it to the bot that owns the
+  project (the router is the desktop half of SLRM-2428).
+  - **Which computer.** The one connected computer, or the one picked from the same list Tasks
+    uses when several are connected. The button is off while none is connected.
+  - **The call.** `quickTask.submit` with `{ text, source: 'mobile' }`, named in
+    `src/shared/fork/quick-task-contract.ts`, which the desktop, the phone and the CLI share. The
+    text is trimmed, an empty one is refused and the box stops at `QUICK_TASK_TEXT_MAX` (8000)
+    characters, dictation included. The phone checks the reply itself (`botName`, `chatId`,
+    `note`), so it needs no entry in the generated params catalog.
+  - **After Send.** A taken task shows "Sent to <bot>" and the router's note, then the sheet
+    closes after 2.5 s. A refusal keeps the text and shows the host's reason. A computer whose
+    Blackfish predates quick tasks (`method_not_found`, or an older mobile allowlist's
+    `forbidden`) gets "Update Blackfish on this computer."
+  - **Settings** (phone only, Settings > Appearance > Quick task, in AsyncStorage
+    `blackfish:quickTaskSettings`): Quick task button (on). Not a desktop setting, so the fork
+    settings catalog does not list it.
+  - Code is in `mobile/src/components/fork/quick-task/`.
 - **Small extras (SLRM-2397): approval triage, workspace tags with archive on merge, prompt stash,
   saved prompts.** Four small features from ccdeck's approvals, roster hygiene and composer
   shortcuts and T3 Code's prompt stash, each its own setting, built from stock styles only.
@@ -1921,6 +1940,7 @@ Apply these in this order. Each one is a single commit.
 121. `SLRM-2408 Follow upstream 1.4.263's moved modules in fork code`
 122. `SLRM-2411 Chat survive: an Orca env key only one launch has does not refuse adoption, say why in the start error`
 123. `SLRM-2411 Unattended resume: continue interactive chats a restart cut, unless stopped, asking, guarded or waiting on a limit`
+124. `SLRM-2428 Quick task on the phone: a Feed button and sheet that send a typed or dictated task to the paired computer's router`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2041,6 +2061,9 @@ Upstream files only get short hooks, which keeps rebases small:
   (`useForkAgentLiveActivity`), an import and one element in `mobile/app/notifications.tsx`
   (`ForkLiveActivitySettings`), one plugin line in `mobile/app.json` and one extra source in
   `mobile/fingerprint.config.js` (the widget Swift, so a change rebuilds the dev client).
+- Quick task on the phone (SLRM-2428): an import and one element (`MobileQuickTaskButton`) before
+  the Settings button in the Feed header's `trailing` fragment in `MobileHomeFeedTab.tsx`, and an
+  import and one element (`ForkQuickTaskSettings`) in `appearance-settings-screen.tsx`.
 - One element and a `relative` class in `worktree-card-compact-agent-row.tsx` for the row
   tint, and an import, one element and a `relative` class on the strip icon in
   `worktree-card-compact-agents.tsx` for the icon ring (SLRM-1966). Since upstream 1.4.261 a
