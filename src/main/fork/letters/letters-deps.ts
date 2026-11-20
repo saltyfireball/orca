@@ -24,6 +24,7 @@ import {
 import { forkSleeperChatFacts } from '../sleepers/sleepers-host'
 import { forkLetterChatsFromSources } from './letters-parties'
 import { forkLettersStore, type ForkLettersStore } from './letters-store'
+import { boundedForkPairedCall } from '../paired-server-call/paired-server-call'
 
 export type ForkLettersRuntime = IdleRecoveryTerminalRuntime &
   Pick<OrcaRuntimeService, 'getWorktreePs' | 'requireStore' | 'callOrchestrationWorkerServer'>
@@ -114,12 +115,13 @@ export function liveForkLetters(): ForkLettersDeps {
         id: env.id,
         name: env.name
       })),
-    callEnvironment: async (environmentId, method, params, timeoutMs) => {
+    // Bounded by its own deadline: a server stuck connecting is not waited on (SLRM-2447).
+    callEnvironment: boundedForkPairedCall(async (environmentId, method, params, timeoutMs) => {
       if (!runtimeSlot) {
         throw new Error('This host cannot reach its paired servers yet.')
       }
       return runtimeSlot.callOrchestrationWorkerServer(environmentId, method, params, timeoutMs)
-    },
+    }),
     hostName: () => hostname(),
     now: Date.now,
     newId: newForkLetterId,
