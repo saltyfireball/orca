@@ -113,6 +113,14 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
           keywords: words('color', 'tint', 'tab', 'working', 'waiting', 'forkAgentStateColors')
         },
         {
+          title: t('fork.botRowBadges.title', 'Bot row badges and colors'),
+          description: t(
+            'fork.settingsPane.search.botRowBadges',
+            'Count badges for what needs you and what is working on each bot row, an idle look, and a color per bot.'
+          ),
+          keywords: words('bots', 'sidebar', 'needs you', 'idle', 'color', 'forkBotRowBadges')
+        },
+        {
           title: t('fork.workerCleanup.title', 'Finished worker cleanup (experimental)'),
           description: t(
             'fork.settingsPane.search.workerCleanup',

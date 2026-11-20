@@ -45,6 +45,8 @@ import { useDeleteBot } from './use-delete-bot'
 import { setBotPurpose } from './bot-purpose-cache'
 import { botSidebarEntryKey } from './bot-sidebar-entry-keys'
 import { forkOpenBotRow } from '@/fork/bot-asks/bot-row-ask-jump'
+import { useForkBotRowDecor } from '@/fork/bot-row-badges/ForkBotRowBadges'
+import { ForkBotColorMenu } from '@/fork/bot-row-badges/ForkBotColorMenu'
 
 type BotRowFold = {
   folded: boolean
@@ -81,7 +83,8 @@ export function BotRow({
   const offline = useBotHostOffline(bot.hostId)
   const isUnread = home.isUnread && !offline
   const upNextNew = useBotUpNextUnseen(bot)
-  const { line, limit, now } = useBotRowLine(bot, home)
+  const { line, limit, now, counts } = useBotRowLine(bot, home)
+  const forkDecor = useForkBotRowDecor(bot, { counts, offline, stopped: limit !== null })
   const age = offline ? null : botRowLineAge(line, now)
   const hostPill = hostLabel ? <BotRowHostIcon label={hostLabel} /> : null
   // With no recent activity the line falls back to what the bot is for, so the row never shows a blank line.
@@ -122,6 +125,7 @@ export function BotRow({
       isActive={isActive}
       expanded={fold ? !fold.folded : undefined}
       dimmed={bot.paused || offline}
+      forkDecor={forkDecor}
       actionsDisabled={offline}
       dragHandle={dragHandle}
       onOpen={open}
@@ -191,6 +195,7 @@ export function BotRow({
             {bot.paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
             {bot.paused ? t('bots.row.resume', 'Resume bot') : t('bots.row.pause', 'Pause bot')}
           </ContextMenuItem>
+          <ForkBotColorMenu bot={bot} />
           <ContextMenuSeparator />
           <ContextMenuItem onSelect={() => window.api.ui.writeClipboardText(home.folderPath)}>
             <Copy className="size-3.5" />

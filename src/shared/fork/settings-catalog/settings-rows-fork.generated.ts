@@ -55,6 +55,10 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"string"},"d":"Best of N: default machines of the attempts, auto, here or server names, comma separated and cycled; unset is auto.","o":true}',
   forkBotRowAskJump:
     '{"t":{"k":"boolean"},"d":"Clicking a bot row that has items waiting on you also opens the first on its Home tab, and a second click the next; unset is on.","o":true}',
+  forkBotRowBadges:
+    '{"t":{"k":"boolean"},"d":"Count badges for what needs you and what is working on a bot\'s sidebar row, an idle look, and the folded header\'s total; unset is on.","o":true}',
+  forkBotRowColors:
+    '{"t":{"k":"record","of":{"k":"string"}},"d":"A color per bot row, keyed by `<host>/<bot id>`, as a `#rrggbb` hex; a bot with none looks as before.","o":true}',
   forkBotStartingRules:
     '{"t":{"k":"string"},"d":"Bot starting rules (SLRM-2459): Markdown a new bot\'s SOUL.md gets in place of the default \\"## Never\\" block that keeps it read-only until its owner says otherwise; unset or empty keeps that default. Set it in the Settings screen.","o":true}',
   forkBoundaryCompactIdleSeconds:
