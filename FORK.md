@@ -1952,6 +1952,26 @@ named Orca Fork until SLRM-1367. `main` is always
     get this computer's accounts; `--environment` links that server's bots with its own accounts.
   - Code is in `src/cli/fork/bot-connect-*`.
 
+- **Bot items: workers on a paired server (BAD-642).** A bot that starts a worker with
+  `orchestration worker-start --on <server>` links it to its item, but its host knows that worker
+  only by its own record, so upstream's item chip could not open it ("Orca can't find where ... is
+  running") and showed "PR not shown for server work yet".
+  - The item marks such a link with the server that runs it (`server.environmentId` on the
+    dispatch link view). Clicking the worker, as a chip or as a row behind "+N", asks that server to
+    find its Dispatch and opens the server's workspace on the worker's pane in this window, as the
+    sidebar opens a server workspace.
+  - While the item is open, the desktop reads each such worker from its server
+    (`orchestration.workerShow`, then `worktree.show`), every 15 s while it may still be working or
+    its server did not answer. The chip takes the server's live state and shows the server and its
+    last activity (`m2mac-server · 13 s ago`; its hover card says `Working on m2mac-server · 13 s
+    ago`).
+  - Its PR replaces upstream's "PR not shown" mark: the PR this window's workspace card shows for
+    the server's workspace, with its state, else the workspace's `linkedPR` (its URL from the
+    server's `github.repoSlug`) as a plain PR link. A worker with neither shows no PR mark.
+  - Only for bots on this desktop: a server's own bot names servers by that server's pairings. A
+    server that can't be read leaves the host's record and upstream's mark as they were.
+  - Code is in `src/shared/fork/bot-server-worker.ts` and `src/renderer/src/fork/bot-server-worker/`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -2088,6 +2108,7 @@ Apply these in this order. Each one is a single commit.
 129. `BAD-635 Bot model: orca bot set for one bot or all, and a launch default for new bots`
 130. `BAD-641 Bot ask answers: one typed answer may be as long as an item comment, 8,000 characters`
 131. `BAD-640 Bot connect: orca bot connect links connected Linear and GitHub to one bot or all`
+132. `BAD-642 Bot items: open and show a worker that runs on a paired server`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3085,6 +3106,17 @@ Upstream files only get short hooks, which keeps rebases small:
 
 - Bot connect from the CLI (BAD-640), from `src/cli/fork/bot-connect-*`: `src/cli/specs/index.ts`
   adds `FORK_BOT_CONNECT_COMMAND_SPECS` and `fork-handler-groups.ts` the `fork-bot-connect` group.
+
+- Bot items: workers on a paired server (BAD-642), from `src/shared/fork/bot-server-worker.ts` and
+  `src/renderer/src/fork/bot-server-worker/`:
+  - `BotWorkWorker` (`bot-work-types.ts`) gains `serverOwned?: true`, which
+    `readServerOwnedWorker` sets; `BotItemLinkJoin.linkView` adds `server: { environmentId }` to
+    such a worker's dispatch link, typed in `bot-items.ts` (`server?: ForkBotItemServerWorker`).
+  - `BotChatTreeWorker` (`bot-chat-tree.ts`) gains `forkServer?`; `botItemWorkerRow` spreads
+    `forkServerWorkerRow(link)` last, and `botChatTreeWorkerOpen` returns
+    `forkServerWorkerOpen(bot, worker)` first when it gives one.
+  - `BotItemHeader.tsx` passes the item's links through `useForkServerWorkerLinks(bot, links)`, and
+    `BotItemLinkChips.tsx` renders `ForkServerWorkerNote` in the worker chip and its hover card.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

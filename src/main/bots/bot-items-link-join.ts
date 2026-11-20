@@ -179,7 +179,8 @@ export class BotItemLinkJoin {
           startedAt: worker?.startedAt ?? null,
           settledAt: worker?.settledAt ?? null,
           report: read?.report ?? null,
-          pr: read?.pr ?? null
+          pr: read?.pr ?? null,
+          ...(worker?.serverOwned ? { server: { environmentId: worker.host } } : {})
         }
       }
       case 'pr':

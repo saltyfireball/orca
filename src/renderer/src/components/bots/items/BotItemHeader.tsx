@@ -25,6 +25,7 @@ import {
   type BotItemStatus
 } from '../../../../../shared/bots/bot-items'
 import { BotItemLinkChips } from './BotItemLinkChips'
+import { useForkServerWorkerLinks } from '@/fork/bot-server-worker/use-fork-server-worker-links'
 import { BotItemStatusIcon } from './BotItemStatusIcon'
 import { BotItemSnoozeMenuItems, type BotItemSnoozing } from './BotItemSnooze'
 import { formatBotItemSnoozeTime } from './bot-item-snooze-time'
@@ -56,6 +57,7 @@ export function BotItemHeader({
   useScrollPaddingBelow(scrollRef, header)
   const now = useNow(60_000)
   const snoozed = isBotItemSnoozed(item, now)
+  const links = useForkServerWorkerLinks(bot, item.links)
   return (
     <div
       ref={header}
@@ -101,7 +103,7 @@ export function BotItemHeader({
           </div>
         ) : null}
       </div>
-      <BotItemLinkChips bot={bot} links={item.links} chat={chatTitle} />
+      <BotItemLinkChips bot={bot} links={links} chat={chatTitle} />
     </div>
   )
 }
