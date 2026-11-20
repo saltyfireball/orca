@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { ForkServerUpdateStatus } from '../../../shared/fork/server-update-wire'
 import { listForkServers, runForkServers, type ForkServersDeps } from './servers-fleet'
 
@@ -124,5 +124,67 @@ describe('runForkServers', () => {
     expect(calls.findIndex((call) => call.startsWith('m2mac'))).toBeGreaterThan(
       calls.lastIndexOf('kif fork.serverUpdate.status')
     )
+  })
+})
+
+describe('a paired server that never answers (SLRM-2447)', () => {
+  // wsl-work: an SSH-managed server whose SSH target sits in "connecting", so the call never settles.
+  function deps(asked: string[] = []): ForkServersDeps {
+    return {
+      listEnvironments: async () => [
+        { id: 'kif', name: 'kif' },
+        { id: 'wsl', name: 'wsl-work', connectionDependency: 'ssh-tunnel' },
+        { id: 'm2mac', name: 'm2mac' }
+      ],
+      call: async (id) => {
+        asked.push(id)
+        return id === 'wsl' ? await new Promise<never>(() => {}) : status('1.4.262001')
+      },
+      localVersion: () => '1.4.262001',
+      turnWaitMinutes: () => 30,
+      now: () => 0,
+      sleep: async () => undefined
+    }
+  }
+
+  it('costs the list exactly the status limit, asks every server at once, and shows it unreachable', async () => {
+    vi.useFakeTimers()
+    try {
+      const asked: string[] = []
+      let settled = false
+      const list = listForkServers(deps(asked)).finally(() => {
+        settled = true
+      })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(asked).toEqual(['kif', 'wsl', 'm2mac'])
+      await vi.advanceTimersByTimeAsync(9_999)
+      expect(settled).toBe(false)
+      await vi.advanceTimersByTimeAsync(1)
+      expect((await list).servers.map((row) => [row.name, row.error ?? null, row.versus])).toEqual([
+        ['kif', null, 0],
+        ['wsl-work', 'unreachable', null],
+        ['m2mac', null, 0]
+      ])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('fails that server in an update run after the limit and goes on to the next', async () => {
+    vi.useFakeTimers()
+    try {
+      const run = runForkServers(deps(), {
+        kind: 'update',
+        version: '1.4.262001',
+        servers: ['wsl-work', 'kif']
+      })
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect((await run).map((row) => [row.name, row.outcome, row.message ?? ''])).toEqual([
+        ['wsl-work', 'failed', 'it did not answer'],
+        ['kif', 'current', '']
+      ])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

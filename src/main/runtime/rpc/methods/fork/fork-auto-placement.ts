@@ -19,6 +19,7 @@ import {
   readLocalMachineLoad,
   type ForkPlacementDeps
 } from '../../../../fork/auto-placement/auto-placement-probe'
+import { boundedForkPairedCall } from '../../../../fork/paired-server-call/paired-server-call'
 
 function projectReady(ctx: RpcContext, project: string): boolean {
   try {
@@ -72,8 +73,10 @@ export function forkPlacementDeps(ctx: RpcContext): ForkPlacementDeps {
     settings: () => settings(ctx),
     listEnvironments: () => listEnvironments(getAppEnvironment().getPath('userData')),
     localLoad: (repo, project) => localLoad(ctx, repo, project),
-    callEnvironment: (environmentId, method, params, timeoutMs) =>
+    // Bounded by its own deadline: a server stuck connecting is not waited on (SLRM-2447).
+    callEnvironment: boundedForkPairedCall((environmentId, method, params, timeoutMs) =>
       ctx.runtime.callOrchestrationWorkerServer(environmentId, method, params, timeoutMs)
+    )
   }
 }
 

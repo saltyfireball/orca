@@ -20,6 +20,7 @@ import {
   claudeStateFileAsync,
   readClaudeFolderLoginAsync
 } from '../../../../claude-accounts/sign-in/claude-account-folder'
+import { boundedForkPairedCall } from '../../../../fork/paired-server-call/paired-server-call'
 
 function deps(ctx: RpcContext): PooledLimitsDeps {
   return {
@@ -43,8 +44,10 @@ function deps(ctx: RpcContext): PooledLimitsDeps {
     defaultClaudeLogin: async () =>
       readClaudeFolderLoginAsync(await claudeStateFileAsync(process.env.CLAUDE_CONFIG_DIR)),
     listEnvironments: () => listEnvironments(getAppEnvironment().getPath('userData')),
-    callEnvironment: (environmentId, method, params, timeoutMs) =>
+    // Bounded by its own deadline: a server stuck connecting is not waited on (SLRM-2447).
+    callEnvironment: boundedForkPairedCall((environmentId, method, params, timeoutMs) =>
       ctx.runtime.callOrchestrationWorkerServer(environmentId, method, params, timeoutMs)
+    )
   }
 }
 
