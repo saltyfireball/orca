@@ -9,7 +9,7 @@ import { SERVE_PAIRING_HANDLER_GROUPS } from '../server/serve-pairing-handler-gr
 import { PLUGIN_HANDLER_GROUPS } from '../plugins/plugin-handler-groups'
 import { HOST_HANDLER_GROUPS } from '../hosts/host-handler-groups'
 import { WORKTREE_HANDLER_GROUPS } from '../workspaces/worktree-handler-groups'
-import { FORK_HANDLER_GROUPS } from '../fork/fork-handler-groups'
+import { FORK_HANDLER_GROUPS, withoutForkSharedHandlerKeys } from '../fork/fork-handler-groups'
 
 export type HandlerGroup = {
   name: string
@@ -231,7 +231,8 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     keys: ['chat rename'],
     load: async () => (await import('../agents/chat.js')).CHAT_HANDLERS
   },
-  ...BOT_HANDLER_GROUPS,
+  // Fork (SLRM-2445): `webhooks list` is the fork's, and passes --bot on to the bot list.
+  ...withoutForkSharedHandlerKeys(BOT_HANDLER_GROUPS),
   {
     name: 'profile-state',
     keys: ['profile state exports', 'profile state rollback'],

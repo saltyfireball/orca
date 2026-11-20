@@ -7,6 +7,10 @@ export const FORK_SETTINGS_ROWS_GENERAL = {
     '{"t":{"k":"boolean"},"d":"Capability gate for public artifact publishing; on for new profiles, enforced in main, not just the UI.","o":true}',
   artifactsEnabled:
     '{"t":{"k":"boolean"},"d":"Deprecated: Artifacts are always available. Use showArtifactsButton for sidebar visibility.","o":true}',
+  automaticUpdates:
+    '{"t":{"k":"boolean"},"d":"Download and install updates on their own; off by default.","o":true}',
+  botsEnabled:
+    '{"t":{"k":"boolean"},"d":"Bots (Settings Bots), on unless turned off. Off hides every bot surface and skips bot runs; bot folders stay on disk.","o":true}',
   deleteChatHistoryWithWorkspace:
     '{"t":{"k":"boolean"},"d":"Workspace cleanup also deletes agent chat history whose Orca workspace folder is gone. Absent means off.","o":true}',
   keybindings:
@@ -23,6 +27,8 @@ export const FORK_SETTINGS_ROWS_GENERAL = {
     '{"t":{"k":"enum","values":["default","minimal","off","reduced"]},"d":"Timed PR/review/checks refresh cadence on this host; absent means \'default\'.","o":true}',
   searchKeybindingSeed:
     '{"t":{"k":"enum","values":["done","legacy","pending"]},"d":"The original Mac search/clear rollout cohort.","o":true}',
+  skipNewHomeChatConfirm:
+    '{"t":{"k":"boolean"},"d":"New Home Chat starts without asking, once the owner ticked Don\'t ask again.","o":true}',
   tabSwitchKeybindingSeed:
     '{"t":{"k":"enum","values":["done","legacy","pending"]},"d":"Profile-owned defaults; legacy profiles keep their shortcuts without writing the shared file.","o":true}',
   voice:

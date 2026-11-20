@@ -15,8 +15,6 @@ export const FORK_SETTINGS_ROWS_EXPERIMENTAL = {
     '{"t":{"k":"boolean"},"d":"Experimental: automatically sleep completed, resumable background agent terminals.","o":true}',
   experimentalCompactWorktreeCards:
     '{"t":{"k":"boolean"},"d":"Legacy persisted key from the Experimental rollout; new writes use compactWorktreeCards.","o":true}',
-  experimentalConnectors:
-    '{"t":{"k":"boolean"},"d":"Experimental, no UI: lets connectors (Slack and others) drive agents on this host.","o":true}',
   experimentalEphemeralVms:
     '{"t":{"k":"boolean"},"d":"Experimental: per-workspace on-demand environment recipes and setup surface.","o":true}',
   experimentalNewWorktreeCardStyle:

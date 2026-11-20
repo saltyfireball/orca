@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Why: upstream keeps this file at the 300-line limit, and the fork's account pin and MCP profile hooks (FORK.md, SLRM-1503, SLRM-2101) add seven lines to the one launch they shape. */
 import { claudeBotSessionOptions } from './claude-bot-session-options'
 import { withBotLaunchToolsEnv } from '../../../bots/bot-launch-tools'
 import type { ClaudeAccountRecipe } from '../../../../shared/agent-session/lifecycle/accounts/agent-session-acquired-account'
@@ -312,7 +313,7 @@ export function claudeStructuredLaunchPart(
             ...thinkingDisplayArgs,
             ...chromeArgs,
             // Fork (FORK.md "MCP profiles"): the chat's MCP profile, when it narrows the servers.
-            ...(await forkMcpClaudeExtraArgs(record, cwd, launchHome, env, configured.extraArgs))
+            ...(await forkMcpClaudeExtraArgs(record, cwd, launchHome, env, discovery.extraArgs))
           },
           // Claude owns where a resumed conversation continues; the stored leaf is Orca's bookkeeping.
           ...(resumesTranscript
