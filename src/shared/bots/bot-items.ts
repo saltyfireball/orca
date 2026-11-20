@@ -1,6 +1,7 @@
 // Bot items: what a bot is doing for its owner and what it needs from them. One list per host; each
 // item belongs to one bot and one of its chats. The host's store is the truth; this is the wire shape.
 import type { BotItemAsk } from './bot-item-ask'
+import type { ForkBotItemServerWorker } from '../fork/bot-server-worker'
 
 export const BOT_ITEM_STATUSES = ['planned', 'working', 'needs_you', 'done', 'canceled'] as const
 export type BotItemStatus = (typeof BOT_ITEM_STATUSES)[number]
@@ -108,6 +109,8 @@ export type BotItemLinkView =
       /** The report the worker ended with: its result. */
       report: { subject: string; body: string | null } | null
       pr: BotItemPullRequest | null
+      /** BAD-642 (fork): a paired server runs it as its own; absent for every other worker. */
+      server?: ForkBotItemServerWorker
     }
   | { kind: 'pr'; ref: string; pr: BotItemPullRequest | null }
   /** `issue`: a GitHub issue link the host's issue cache has read. */
