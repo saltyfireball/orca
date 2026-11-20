@@ -1,6 +1,7 @@
 // Decision inbox (FORK.md "Idle recovery"), item E2: the sidebar toolbar button that opens the
 // dialog, with the count of chats waiting on the user.
-// Contract: returns null while `forkIdleSweepMode` is 'off', so the toolbar is unchanged.
+// Contract: returns null while `forkIdleSweepMode` is 'off', the board is off and no bot asks
+// anything, so the toolbar is unchanged.
 import React from 'react'
 import { Inbox } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,18 +11,32 @@ import {
   forkIdleRecoveryBridge,
   openForkDecisionInbox,
   useForkDecisionInbox,
+  useForkDecisionInboxBotAsks,
   useForkDecisionInboxOn
 } from './decision-inbox-store'
-import { decisionInboxBadgeText, decisionInboxSections } from './decision-inbox-view'
+import {
+  decisionInboxBadgeText,
+  decisionInboxSections,
+  decisionInboxWaitingCount
+} from './decision-inbox-view'
 import { useForkBoard, useForkBoardEnabled } from '../letters/board-store'
 
-function Counted({ recovery, board }: { recovery: boolean; board: boolean }): React.JSX.Element {
+function Counted({
+  recovery,
+  board,
+  botAsks
+}: {
+  recovery: boolean
+  board: boolean
+  botAsks: number
+}): React.JSX.Element {
   const t = useTranslate()
   const { result } = useForkDecisionInbox(recovery)
   const sections = decisionInboxSections(result?.items)
-  // Agents a guard paused wait on the user too (SLRM-2385), and the board's open asks (SLRM-2389).
+  // Agents a guard paused wait on the user too (SLRM-2385), the board's open asks (SLRM-2389)
+  // and bot asks (SLRM-2453).
   const asks = useForkBoard(board).view?.asks.length ?? 0
-  const waiting = sections.waiting.length + sections.guarded.length + asks
+  const waiting = decisionInboxWaitingCount(sections, asks, botAsks)
   const stalled = sections.stalled.length
   const label =
     waiting === 0 && stalled === 0
@@ -76,6 +91,10 @@ export function ForkDecisionInboxButton(): React.JSX.Element | null {
   const on = useForkDecisionInboxOn()
   const board = useForkBoardEnabled()
   const recovery = on && forkIdleRecoveryBridge() !== null
+  // Bot asks are read by the always-mounted watcher; the button shows while any waits (SLRM-2453).
+  const botAsks = useForkDecisionInboxBotAsks().length
   // The counts are read only inside `Counted`, so nothing is read while the inbox and the board are off.
-  return recovery || board ? <Counted recovery={recovery} board={board} /> : null
+  return recovery || board || botAsks > 0 ? (
+    <Counted recovery={recovery} board={board} botAsks={botAsks} />
+  ) : null
 }

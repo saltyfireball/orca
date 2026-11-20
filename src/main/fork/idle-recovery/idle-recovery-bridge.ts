@@ -8,6 +8,9 @@ import {
   ForkIdleRecoveryAnswerParams,
   ForkIdleRecoveryPauseParams
 } from '../../../shared/fork/idle-recovery-wire'
+import { ForkBotAsksReportParams } from '../../../shared/fork/inbox-bot-asks'
+import { reportForkBotAsks } from '../bot-asks/bot-asks-notify'
+import { mainProcessState } from '../../startup/main-process-state'
 import {
   answerIdleRecoveryChat,
   listIdleRecoveryInbox,
@@ -29,6 +32,13 @@ export function installForkIdleRecoveryBridge(): void {
   ipcMain.handle(CHANNELS.inbox, () => listIdleRecoveryInbox())
   ipcMain.handle(CHANNELS.status, () => readIdleRecoveryStatus())
   ipcMain.handle(CHANNELS.babysit, () => listForkPrBabysit())
+  // SLRM-2453: bot asks a window reads; new ones go to the notify targets once.
+  ipcMain.handle(CHANNELS.botAsks, (_event, request: unknown) =>
+    reportForkBotAsks(ForkBotAsksReportParams.parse(request), {
+      settings: () => mainProcessState.store?.getSettings(),
+      runtime: () => mainProcessState.runtime
+    })
+  )
   ipcMain.handle(CHANNELS.answer, (_event, request: unknown) =>
     answerIdleRecoveryChat(ForkIdleRecoveryAnswerParams.parse(request))
   )

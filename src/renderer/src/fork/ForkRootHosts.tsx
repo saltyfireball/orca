@@ -16,6 +16,7 @@ import { ForkChatHandoffLimitOffer } from './chat-handoff/ForkChatHandoffLimitOf
 import { ForkWorkspaceTagsDialogHost } from './workspace-tags/ForkWorkspaceTagsDialog'
 import { ForkArchiveOnMergeWatcher } from './workspace-tags/ForkArchiveOnMergeWatcher'
 import { ForkLettersDialogHost } from './letters/ForkLettersDialog'
+import { ForkBotAsksWatcher } from './bot-asks/ForkDecisionInboxBotAsks'
 
 /**
  * The fork's always-mounted hosts, behind one hook in `AppRootSurfaces.tsx` so that upstream
@@ -42,6 +43,7 @@ export function ForkRootHosts(): React.JSX.Element {
       <ForkWorkspaceTagsDialogHost />
       <ForkArchiveOnMergeWatcher />
       <ForkLettersDialogHost />
+      <ForkBotAsksWatcher />
     </>
   )
 }
