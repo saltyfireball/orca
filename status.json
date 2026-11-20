@@ -2,12 +2,12 @@
   "schema": 1,
   "state": "in-sync",
   "reason": null,
-  "upstreamVersion": "1.4.266",
-  "upstreamSha": "903c91e80fbe7bbcaffe6ac767c49eac91e98a64",
-  "forkBaseVersion": "1.4.266",
-  "forkBaseSha": "903c91e80fbe7bbcaffe6ac767c49eac91e98a64",
+  "upstreamVersion": "1.4.267",
+  "upstreamSha": "1916a8a6c5af7972ec1f4c4893c8196f2804f761",
+  "forkBaseVersion": "1.4.267",
+  "forkBaseSha": "1916a8a6c5af7972ec1f4c4893c8196f2804f761",
   "conflicts": [],
   "since": null,
-  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/44776955677",
-  "checkedAt": "2026-11-20T17:07:58.943Z"
+  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/44787339987",
+  "checkedAt": "2026-11-20T18:16:58.153Z"
 }
