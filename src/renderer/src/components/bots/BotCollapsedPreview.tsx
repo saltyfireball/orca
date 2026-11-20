@@ -32,6 +32,7 @@ import { openBotHomePanelFromSidebar } from './BotRow'
 import { botErrorMessage } from './bot-presentation'
 import { botSidebarEntryKey } from './bot-sidebar-entry-keys'
 import { useBotHomeWorkers } from './use-bot-sidebar-arrangement'
+import { ForkBotHeaderRollup } from '@/fork/bot-row-badges/ForkBotRowBadges'
 
 export function useBotPreviewFacts(rows: { bot: Bot; home: FolderWorkspace }[]) {
   const homes = useMemo(() => rows.map(({ home }) => home), [rows])
@@ -232,6 +233,7 @@ export function BotCollapsedPreview({
             </TooltipContent>
           </Tooltip>
         ) : null}
+        <ForkBotHeaderRollup count={preview.attention} />
       </span>
     </span>
   )
