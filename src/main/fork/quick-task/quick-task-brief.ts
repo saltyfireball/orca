@@ -40,7 +40,7 @@ export function quickTaskRouterBrief(input: QuickTaskBriefInput): string {
       ? `If the task is code work, run \`${placement}\`${input.placementCommand === FORK_QUICK_TASK_BUILT_IN_PLACEMENT ? ' (add `--repo <project>` when you know the project)' : ` (when it takes a repo, as its \`-h\` says, add \`--repo\` with the project's path from \`${cli} repo list\`)`} and read its top suggestion: the machine, and the \`--on\` and \`--repo\` values for \`${cli} orchestration worker-start\`. Do not start the worker yourself.`
       : 'Do not suggest a machine; the receiving bot picks one.',
     `Hand it off: \`${cli} orchestration send [--on <server>] --to bot:<name> --type handoff --chat new --subject "<short title>" --body "<the task word for word${placement ? ', then a line such as: Placement: <machine> has the most room, start the worker there with --on <x> --repo <y>' : ''}>"\`.`,
-    `If no bot fits, propose one with \`${cli} bot create --offer --name "<name>" --purpose "<one sentence naming the repos it owns>"\`, then tell your owner here to press Create bot and that you will hand the task over once it exists.`,
+    `If no bot fits, propose one with \`${cli} bot create --offer --name "<name>" --purpose "<one sentence naming the repos it owns>"\`, then tell your owner here to press Create bot and that you will hand the task over once it exists. When the task itself is to set up bots, the cards are the whole job: list the cards you posted and stop, with no handoff and no question.`,
     'If two or three bots could own it and you cannot tell which, do not guess: ask your owner here which one, naming those bots, and hand off once they answer.',
     'After the handoff, reply with one line: which bot took it and on which machine. Then stop.'
   ]
