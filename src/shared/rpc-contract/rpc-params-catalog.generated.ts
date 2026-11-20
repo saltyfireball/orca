@@ -93,6 +93,7 @@ import {
   ForkPrBabysitStartParams,
   ForkPrBabysitStopParams
 } from '../fork/pr-babysit-wire'
+import { QuickTaskSubmitParamsSchema } from '../fork/quick-task'
 import {
   ForkReviewGuideCancelParams,
   ForkReviewGuideGetParams,
@@ -2113,6 +2114,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'projectHostSetup.list': null,
   'projectHostSetup.setupExistingFolder': ProjectHostSetupExistingFolder,
   'projectHostSetup.update': ProjectHostSetupUpdate,
+  'quickTask.submit': QuickTaskSubmitParamsSchema,
   'reference.find': ReferenceFind,
   'reference.list': ReferenceList,
   'repo.add': RepoPath,
