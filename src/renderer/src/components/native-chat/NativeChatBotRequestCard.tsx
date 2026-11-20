@@ -143,17 +143,21 @@ function KnownBotRequestCard({
     >
       {view.heading}{' '}
       {view.sent ? (
+        // The bot and the subject open the chat the request went to.
         <button
           type="button"
           onClick={openChat}
-          className="rounded-sm text-chat-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="rounded-sm text-chat-foreground underline decoration-dotted underline-offset-2 hover:decoration-solid focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {bot.name}
+          {subject ? ` · ${subject}` : null}
         </button>
       ) : (
-        <span className="text-chat-foreground">{bot.name}</span>
+        <span className="text-chat-foreground">
+          {bot.name}
+          {subject ? ` · ${subject}` : null}
+        </span>
       )}
-      {subject ? ` · ${subject}` : null}
     </NativeChatEventRow>
   )
 }
