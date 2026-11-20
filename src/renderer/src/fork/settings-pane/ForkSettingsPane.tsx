@@ -22,6 +22,7 @@ import { ForkLettersSetting } from '../letters/ForkLettersSetting'
 import { ForkChildTallySetting } from '../agent-child-tally/ForkChildTallySetting'
 import { ForkRowStatusSetting } from '../row-status/ForkRowStatusSetting'
 import { ForkAgentStateColorSetting } from '../agent-state-color/ForkAgentStateColorSetting'
+import { ForkBotRowBadgesSetting } from '../bot-row-badges/ForkBotRowBadgesSetting'
 import { ForkWorkerCleanupSetting } from '../worker-cleanup/ForkWorkerCleanupSetting'
 import { ForkAgentQueueSetting } from '../agent-queue/ForkAgentQueueSetting'
 import { ForkLaunchDefaultsSetting } from '../launch-defaults/ForkLaunchDefaultsSetting'
@@ -95,6 +96,7 @@ const SECTION_CARDS: Record<
     ['child-tally', ForkChildTallySetting],
     ['row-status', ForkRowStatusSetting],
     ['agent-state-color', ForkAgentStateColorSetting],
+    ['bot-row-badges', ForkBotRowBadgesSetting],
     ['worker-cleanup', ForkWorkerCleanupSetting],
     ['agent-queue', ForkAgentQueueSetting],
     ['launch-defaults', ForkLaunchDefaultsSetting],

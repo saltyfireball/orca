@@ -20,6 +20,14 @@ import {
   botAvatarBadgeCutout,
   useBotAvatarBadgeSleeping
 } from './bot-avatar-status-badge'
+import {
+  ForkBotRowPills,
+  ForkBotRowTint,
+  forkBotRowAvatarClassName,
+  forkBotRowRingClassName,
+  forkBotRowRingStyle,
+  type ForkBotRowDecor
+} from '@/fork/bot-row-badges/ForkBotRowBadges'
 
 /** One row of the Bots section, a bot's or a group's: picture, name and time, then its newest line. */
 export type BotSidebarRowProps = {
@@ -36,6 +44,8 @@ export type BotSidebarRowProps = {
   isUnread: boolean
   isActive: boolean
   dimmed?: boolean
+  /** Fork (BAD-658): count badges, the idle look and the bot's color. */
+  forkDecor?: ForkBotRowDecor | null
   /** Its host is disconnected: Rename and Mark Read/Unread are off, as the caller's items are. */
   actionsDisabled?: boolean
   /** The Bots section's reorder: this row is where a drag starts. */
@@ -68,6 +78,7 @@ export function BotSidebarRow({
   isActive,
   expanded,
   dimmed = false,
+  forkDecor = null,
   actionsDisabled = false,
   dragHandle = false,
   onOpen,
@@ -119,9 +130,16 @@ export function BotSidebarRow({
             }
           }}
         >
+          <ForkBotRowTint color={forkDecor?.color} />
           {/* The status sits on the picture's corner, the same in both card styles. */}
-          <span className="relative mr-2 shrink-0">
-            <span className="flex" style={botAvatarBadgeCutout(badge)}>
+          <span
+            className={cn('relative mr-2 shrink-0', forkBotRowRingClassName())}
+            style={forkBotRowRingStyle(forkDecor?.color)}
+          >
+            <span
+              className={cn('flex', forkBotRowAvatarClassName(forkDecor))}
+              style={botAvatarBadgeCutout(badge)}
+            >
               {avatar}
             </span>
             <BotAvatarStatusBadge {...badge} />
@@ -149,6 +167,7 @@ export function BotSidebarRow({
                       beginEditing={renameRequested}
                       onBeginEditingConsumed={() => setRenameRequested(false)}
                     />
+                    {forkDecor ? <ForkBotRowPills decor={forkDecor} /> : null}
                     {age ? (
                       <span className="ml-auto shrink-0 text-xs leading-4 text-muted-foreground tabular-nums">
                         {age}
