@@ -21,6 +21,7 @@ import {
 import type { RuntimeStore } from '../runtime/construction/runtime-store-contract'
 import { proposalSoul } from '../../shared/bots/bot-proposal'
 import { forkBotStartingSoul } from '../../shared/fork/bot-starting-rules'
+import { withForkBotDefaultLaunch } from '../../shared/fork/launch-defaults/launch-defaults-bot'
 import { botOfferCreation } from './bot-offer-creation'
 import { assertBotOwnsHome, type BotHomeFilesystem, botHomeFolder, writeBotHome } from './bot-home'
 import { type BotMemoryRecord, hostBotMemoryRecord } from './bot-memory-record'
@@ -169,7 +170,13 @@ export class BotController {
     origin: BotOrigin = {}
   ): Promise<Bot> {
     const name = freeBotName(store.getBots(), input.name)
-    const draft = { ...newBotRecord({ ...input, name }, Date.now()), ...origin }
+    const draft = {
+      ...newBotRecord(
+        withForkBotDefaultLaunch({ ...input, name }, this.deps.getStore()?.getSettings()),
+        Date.now()
+      ),
+      ...origin
+    }
     const bot: Bot = {
       ...draft,
       ...(await makeBotsHome(

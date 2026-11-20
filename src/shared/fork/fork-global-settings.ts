@@ -159,7 +159,7 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkWorkerCleanupOnDone?: boolean
     /** Fork worker cleanup: clean up once the worker's branch is merged; unset is off. */
     forkWorkerCleanupOnMerged?: boolean
-    /** Fork launch defaults: model and effort per launch kind and agent; empty is stock. */
+    /** Fork launch defaults: model and effort per launch kind (cli, worker, automation, bot for new bots) and agent; empty is stock. */
     forkLaunchDefaults?: ForkLaunchDefaultsSettings
     /** Fork sleepers: native chat session ids that never auto-sleep; unset is none. */
     forkSleepersPinned?: string[]

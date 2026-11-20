@@ -156,6 +156,19 @@ describe('BotController', () => {
     expect(soul).toBe('# Milo\n\nKeeps a list.\n\n## Never\n\n- Force-push.\n')
   })
 
+  it('starts a new bot on the fork bot launch default unless it brings its own', async () => {
+    store.updateSettings({
+      forkLaunchDefaults: { bot: { claude: { model: 'opus', effort: 'medium' } } }
+    })
+    expect(await bots.create({ name: 'Milo' })).toMatchObject({
+      launch: { model: 'opus', options: { effort: 'medium' } }
+    })
+    expect(await bots.create({ name: 'Router', launch: { model: 'haiku' } })).toMatchObject({
+      launch: { model: 'haiku' }
+    })
+    expect(await bots.create({ name: 'Coder', agent: 'codex' })).not.toHaveProperty('launch')
+  })
+
   it('creates one bot per card even when two accepts of it race', async () => {
     const atlas = await bots.create({ name: 'Atlas' })
     const fromOffer = { botId: atlas.id, offerId: 'offer-1' }

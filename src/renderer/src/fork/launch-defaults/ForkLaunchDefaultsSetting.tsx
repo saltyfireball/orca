@@ -61,6 +61,14 @@ function kindText(kind: ForkLaunchKind, t: Translate = translate): { label: stri
           'Scheduled and run-now automations that name no model.'
         )
       }
+    case 'bot':
+      return {
+        label: t('fork.launchDefaults.bot', 'New bots'),
+        help: t(
+          'fork.launchDefaults.botHelp',
+          'A bot made without its own model. Bots already made keep theirs; orca bot set changes them.'
+        )
+      }
   }
 }
 
