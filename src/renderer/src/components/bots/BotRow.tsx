@@ -29,6 +29,7 @@ import { useDeleteBot } from './use-delete-bot'
 import { setBotPurpose } from './bot-purpose-cache'
 import { botSidebarEntryKey } from './bot-sidebar-entry-keys'
 import { forkOpenBotRow } from '@/fork/bot-asks/bot-row-ask-jump'
+import { forkOpenBotPlace } from '@/fork/bot-row-badges/fork-open-bot-place'
 import { useForkBotRowDecor } from '@/fork/bot-row-badges/ForkBotRowBadges'
 import { ForkBotColorMenu } from '@/fork/bot-row-badges/ForkBotColorMenu'
 
@@ -118,6 +119,7 @@ export function BotRow({
             now={now}
             disconnected={offline}
             leading={hostPill}
+            onOpenPlace={(paneKey) => forkOpenBotPlace(bot, paneKey)}
             trailing={
               upNextNew > 0 && !offline ? (
                 <BotUpNextCount

@@ -1,6 +1,6 @@
 // Bot row badges and colors (FORK.md "Bot row badges and colors") settings. On by default: the
 // badges only add counts the row already knows. Colors are set per bot from its context menu.
-import React from 'react'
+import React, { useId } from 'react'
 import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import { forkBotRowBadgesEnabled } from '../../../../shared/fork/bot-row-badges'
 import {
@@ -9,16 +9,33 @@ import {
   SettingsSwitchRow
 } from '../../components/settings/form-controls/SettingsFormControls'
 import { Button } from '../../components/ui/button'
-import { useTranslate } from '@/i18n/use-translate'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '../../components/ui/select'
+import { FORK_BOT_CHAT_RECENT_DEFAULT_MINUTES } from '../../../../shared/fork/bot-chat-listing'
+import { formatMinutesDuration } from '@/i18n/ui-intl-formatters'
+import { useIntlLocale, useTranslate } from '@/i18n/use-translate'
 
 type Props = {
   settings: GlobalSettings
   updateSettings: (updates: Partial<GlobalSettings>) => void
 }
 
+const RECENT_CHOICES = [0, 15, 60, 240, 1440]
+
 export function ForkBotRowBadgesSetting({ settings, updateSettings }: Props): React.JSX.Element {
   const t = useTranslate()
   const enabled = forkBotRowBadgesEnabled(settings)
+  const intlLocale = useIntlLocale()
+  const recentId = useId()
+  const recent = settings.forkBotChatRecentMinutes ?? FORK_BOT_CHAT_RECENT_DEFAULT_MINUTES
+  const recentChoices = RECENT_CHOICES.includes(recent)
+    ? RECENT_CHOICES
+    : [...RECENT_CHOICES, recent].sort((a, b) => a - b)
   const colored = Object.keys(settings.forkBotRowColors ?? {}).length
   return (
     <section className="space-y-3">
@@ -47,6 +64,33 @@ export function ForkBotRowBadgesSetting({ settings, updateSettings }: Props): Re
           >
             {t('fork.botRowBadges.clearColors', 'Clear all')}
           </Button>
+        }
+      />
+      <SettingsRow
+        label={t('fork.botRowBadges.recentLabel', 'Keep chats without a tab listed for')}
+        description={t(
+          'fork.botRowBadges.recentHelp',
+          'A bot chat nobody opened, such as one another bot started, stays listed under its bot this long after its last activity. A chat that is running or waiting on you always lists. None lists only chats with an open tab.'
+        )}
+        labelId={recentId}
+        control={
+          <Select
+            value={String(recent)}
+            onValueChange={(value) => updateSettings({ forkBotChatRecentMinutes: Number(value) })}
+          >
+            <SelectTrigger size="sm" className="min-w-32" aria-labelledby={recentId}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {recentChoices.map((choice) => (
+                <SelectItem key={choice} value={String(choice)}>
+                  {choice === 0
+                    ? t('fork.botRowBadges.recentNone', 'None')
+                    : formatMinutesDuration(choice, intlLocale)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         }
       />
     </section>

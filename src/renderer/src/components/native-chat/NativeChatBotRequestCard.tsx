@@ -147,6 +147,7 @@ function KnownBotRequestCard({
     >
       <span className="shrink-0">{view.heading}</span>
       {view.sent ? (
+        // The bot and the subject open the chat the request went to.
         <button
           type="button"
           onClick={openChat}
@@ -164,7 +165,14 @@ function KnownBotRequestCard({
         </span>
       )}
       {subject ? (
-        <span className="min-w-0 max-w-max grow basis-0 truncate" title={subject}>
+        <span
+          className={cn(
+            'min-w-0 max-w-max grow basis-0 truncate',
+            view.sent && 'cursor-pointer hover:underline'
+          )}
+          title={subject}
+          onClick={view.sent ? openChat : undefined}
+        >
           · {subject}
         </span>
       ) : null}
