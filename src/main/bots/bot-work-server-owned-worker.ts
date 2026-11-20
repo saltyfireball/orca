@@ -70,6 +70,7 @@ export async function readServerOwnedWorker(
     startFailed: record.worker_state === null && record.status === 'failed',
     host: record.environment_id,
     hostName: await remoteServerName(runtime, record.environment_id, link?.server_name),
+    serverOwned: true,
     // The workspace is the server's; this Orca's record doesn't name it.
     worktreeId: null,
     startedAt: epochMs(record.created_at) ?? Date.now(),
