@@ -103,6 +103,7 @@ import { FORK_BEST_OF_METHODS } from './fork/fork-best-of'
 import { FORK_CHAT_HANDOFF_METHODS } from './fork/fork-chat-handoff'
 import { FORK_REVIEW_GUIDE_METHODS } from './fork/fork-review-guide'
 import { FORK_DIGEST_METHODS } from './fork/fork-digest'
+import { FORK_QUICK_TASK_METHODS } from './fork/fork-quick-task'
 import { AGENT_SESSION_METHODS } from './terminal/agent-session'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-sessions/structured-agent-session'
 import { STRUCTURED_AGENT_SESSION_ATTACHMENT_METHODS } from './structured-sessions/attachments/structured-agent-session-attachments'
@@ -338,7 +339,9 @@ const SERVICE_RPC_METHODS = [
   // SLRM-2388: the digest across this host and its paired servers, behind `orca digest` (FORK.md).
   ...FORK_DIGEST_METHODS,
   // SLRM-2389: letters between chats and the board of asks, behind `orca letter` and `orca board` (FORK.md).
-  ...FORK_LETTERS_RPC_METHODS
+  ...FORK_LETTERS_RPC_METHODS,
+  // SLRM-2428: hand a quick task to the router bot, behind `orca quick-task` and the phone (FORK.md).
+  ...FORK_QUICK_TASK_METHODS
 ] as const
 
 type ConcatMethods<A extends readonly unknown[], B extends readonly unknown[]> = readonly [

@@ -72,6 +72,7 @@ import { FORK_CHAT_HANDOFF_COMMAND_SPECS } from '../fork/chat-handoff-specs'
 import { FORK_REVIEW_GUIDE_COMMAND_SPECS } from '../fork/review-guide-specs'
 import { FORK_DIGEST_COMMAND_SPECS } from '../fork/digest-specs'
 import { FORK_LETTERS_COMMAND_SPECS } from '../fork/letters-specs'
+import { FORK_QUICK_TASK_COMMAND_SPECS } from '../fork/quick-task-specs'
 import {
   FORK_AUTO_PLACEMENT_COMMAND_SPECS,
   withForkAutoPlacementNotes
@@ -155,7 +156,8 @@ export const COMMAND_SPECS: CommandSpec[] = withForkAutoPlacementNotes(
       ...FORK_CHAT_HANDOFF_COMMAND_SPECS,
       ...FORK_REVIEW_GUIDE_COMMAND_SPECS,
       ...FORK_DIGEST_COMMAND_SPECS,
-      ...FORK_LETTERS_COMMAND_SPECS
+      ...FORK_LETTERS_COMMAND_SPECS,
+      ...FORK_QUICK_TASK_COMMAND_SPECS
     ])
   )
 )

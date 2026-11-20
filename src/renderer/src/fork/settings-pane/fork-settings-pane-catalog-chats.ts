@@ -3,6 +3,7 @@
 // rule holds: each title is the text its card renders (the pane test checks it).
 import type { SettingsSearchEntry } from '@/components/settings/search/settings-search'
 import type { Translate } from '@/i18n/use-translate'
+import { quickTaskSearchEntry } from '../quick-task/quick-task-search-entry'
 
 /** Search keywords: setting keys and plain English terms, the same in every language. */
 function words(...terms: string[]): string[] {
@@ -124,6 +125,7 @@ export function getForkChatsSearchEntries(t: Translate): SettingsSearchEntry[] {
         'forkLetters',
         'forkBoard'
       )
-    }
+    },
+    quickTaskSearchEntry(t)
   ]
 }

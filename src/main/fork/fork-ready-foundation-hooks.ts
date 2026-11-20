@@ -6,6 +6,7 @@ import { watchForkUsageRetention } from './usage-ledger/usage-ledger-service'
 import { installForkVisualFallbackSettings } from './visual-image/visual-image-settings'
 import { installForkWorktreePorts } from './worktree-ports/worktree-ports-service'
 import { installForkPrBabysit } from './pr-babysit/pr-babysit-hooks'
+import { installForkQuickTask } from './quick-task/quick-task-app'
 
 export { forkPostReadyAppName } from './app-name'
 
@@ -20,5 +21,7 @@ export async function installForkReady(
   installForkVisualFallbackSettings(store)
   installForkWorktreePorts(store)
   installForkPrBabysit(store)
+  // SLRM-2428: the quick task box and its global shortcut.
+  installForkQuickTask(store)
   await installForkChatSurvive(store)
 }

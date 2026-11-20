@@ -32,6 +32,7 @@ import { ForkAccountChipSetting } from '../claude-account-chip/ForkAccountChipSe
 import { ForkUsageReportSettings } from '../usage-report/ForkUsageReportSettings'
 import { ForkPooledLimitsSetting } from '../pooled-limits/ForkPooledLimitsSetting'
 import { ForkDigestSetting } from '../digest/ForkDigestSetting'
+import { ForkQuickTaskSetting } from '../quick-task/ForkQuickTaskSetting'
 import { ForkLostWorkSettings } from '../lost-work/ForkLostWorkSettings'
 import { ForkSyncNoticeSetting } from '../sync-status/ForkSyncNoticeSetting'
 import { ForkAutoPlacementSetting } from '../auto-placement/ForkAutoPlacementSetting'
@@ -85,7 +86,8 @@ const SECTION_CARDS: Record<
     ['approval-triage', ForkApprovalTriageSetting],
     ['prompt-stash', ForkPromptStashSetting],
     ['saved-prompts', ForkSavedPromptsSetting],
-    ['letters', ForkLettersSetting]
+    ['letters', ForkLettersSetting],
+    ['quick-task', ForkQuickTaskSetting]
   ],
   agents: [
     ['child-tally', ForkChildTallySetting],
