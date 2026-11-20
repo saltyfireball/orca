@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import type { BotRosterEntry, BotRosterServer } from '../../shared/bot-roster'
 import { BOT_AGENTS } from '../../shared/bot-types'
+import { withTimeoutResult } from '../../shared/concurrency/promise-timeout-fallback'
 
 const ROSTER_READ_TIMEOUT_MS = 4_000
 
@@ -44,15 +45,22 @@ export async function readPairedBotRosters(
       const server = { name, on: serverSelector(servers, environmentId, name) }
       try {
         // Asked without allComputers, so the server lists only its own bots and asks no one else,
-        // and without chats, which this list drops.
-        const answer = PairedRoster.parse(
-          await runtime.callOrchestrationWorkerServer(
+        // and without chats, which this list drops. The transport's timeout covers only the send:
+        // a server behind an SSH tunnel still connecting never answers, so the read has its own
+        // deadline (SLRM-2428).
+        const read = await withTimeoutResult(
+          runtime.callOrchestrationWorkerServer(
             environmentId,
             'bots.roster',
             { withoutChats: true },
             ROSTER_READ_TIMEOUT_MS
-          )
+          ),
+          ROSTER_READ_TIMEOUT_MS
         )
+        if (!read.ok) {
+          return { environmentId, server, unreachable: true }
+        }
+        const answer = PairedRoster.parse(read.value)
         const bots = answer.bots.flatMap((value) => {
           const entry = PairedRosterEntry.safeParse(value)
           return entry.success ? [{ ...entry.data, server }] : []

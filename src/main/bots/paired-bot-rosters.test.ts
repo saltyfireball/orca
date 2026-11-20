@@ -86,3 +86,32 @@ it('answers from the last read without waiting, reads again behind it, and keeps
   const requested = runtime.callOrchestrationWorkerServer.mock.calls.map(([id]) => id)
   expect(new Set(requested)).toEqual(air)
 })
+
+it('marks a server whose call never settles unreachable after the per-server timeout (SLRM-2428)', async () => {
+  vi.useFakeTimers()
+  try {
+    const runtime = servers({ 'env-air': { bots: [] }, 'env-box': { bots: [] } })
+    // A paired server behind an SSH tunnel still connecting: the transport never settles the call.
+    runtime.callOrchestrationWorkerServer.mockImplementation(async (environmentId: string) =>
+      environmentId === 'env-box-2' ? await new Promise<never>(() => {}) : { bots: [] }
+    )
+    let settled = false
+    const read = readPairedBotRosters(runtime).finally(() => {
+      settled = true
+    })
+    await vi.advanceTimersByTimeAsync(3_999)
+    expect(settled).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(await read).toEqual([
+      { environmentId: 'env-air', server: { name: 'm4 air', on: 'm4 air' }, bots: [] },
+      { environmentId: 'env-box', server: { name: 'Build Box', on: 'env-box' }, bots: [] },
+      {
+        environmentId: 'env-box-2',
+        server: { name: 'Build Box', on: 'env-box-2' },
+        unreachable: true
+      }
+    ])
+  } finally {
+    vi.useRealTimers()
+  }
+})
