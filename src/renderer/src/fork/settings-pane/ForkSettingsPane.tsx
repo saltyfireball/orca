@@ -24,6 +24,7 @@ import { ForkRowStatusSetting } from '../row-status/ForkRowStatusSetting'
 import { ForkAgentStateColorSetting } from '../agent-state-color/ForkAgentStateColorSetting'
 import { ForkBotRowBadgesSetting } from '../bot-row-badges/ForkBotRowBadgesSetting'
 import { ForkWorkerCleanupSetting } from '../worker-cleanup/ForkWorkerCleanupSetting'
+import { ForkWorkerArchiveSetting } from '../worker-archive/ForkWorkerArchiveSetting'
 import { ForkAgentQueueSetting } from '../agent-queue/ForkAgentQueueSetting'
 import { ForkLaunchDefaultsSetting } from '../launch-defaults/ForkLaunchDefaultsSetting'
 import { ForkMemorySettings } from '../memory-truth/ForkMemorySettings'
@@ -97,6 +98,7 @@ const SECTION_CARDS: Record<
     ['row-status', ForkRowStatusSetting],
     ['agent-state-color', ForkAgentStateColorSetting],
     ['bot-row-badges', ForkBotRowBadgesSetting],
+    ['worker-archive', ForkWorkerArchiveSetting],
     ['worker-cleanup', ForkWorkerCleanupSetting],
     ['agent-queue', ForkAgentQueueSetting],
     ['launch-defaults', ForkLaunchDefaultsSetting],

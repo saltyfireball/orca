@@ -1,6 +1,7 @@
 // SLRM-2096 (FORK.md "Lost work"): `orca lost-work` reads the same read-only scan as the desktop's
 // Lost work dialog. Only the desktop app installs the scan host, so a host without it says so.
 import { defineMethod, type RpcContext } from '../../core'
+import { FORK_WORKER_ARCHIVE_METHODS } from './fork-worker-methods'
 import {
   ForkLostWorkScanParams,
   resolveLostWorkSettings,
@@ -33,7 +34,10 @@ async function withUse(result: LostWorkScanResult, ctx: RpcContext): Promise<Los
   }
 }
 
+// BAD-669: the worker archive methods ride in this list, so rpc-method-registry.ts (over its line
+// budget) needs no new line.
 export const FORK_LOST_WORK_METHODS = [
+  ...FORK_WORKER_ARCHIVE_METHODS,
   defineMethod({
     name: 'fork.lostWork.scan',
     permission: 'workspace',
