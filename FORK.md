@@ -1824,6 +1824,8 @@ named Orca Fork until SLRM-1367. `main` is always
     dictation is set up). After sending it shows which bot took the task with Open chat, and
     closes 2.5 s later unless the pointer is on it. It is its own renderer entry
     (`quick-task.html`) with the main preload, its own session, and only microphone access.
+    Because the panel leaves Blackfish inactive, the Edit menu's keys never reach it, so the box
+    runs Cmd (elsewhere Ctrl) C, V, X, A, Z and Shift+Z itself (`quick-task-edit-keys.ts`).
   - **Shortcut** (`forkQuickTaskShortcut`): an Electron accelerator, default
     `CommandOrControl+Alt+Shift+Space` (no macOS or Orca default uses it); empty is the default,
     `none` turns it off, and anything that is not one key with Command, Control or Alt is refused.
