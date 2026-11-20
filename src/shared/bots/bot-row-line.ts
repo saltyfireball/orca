@@ -12,7 +12,12 @@ import { newestBotActivity } from './bot-row-activity'
 import type { BotWorkspaceLiveCounts } from './bot-sidebar-workspaces'
 
 /** Where a turn is: a thread's service and place as people name it, or (no service) a side chat's title. */
-export type BotRowPlace = { source: ConnectorSource | null; label: string }
+export type BotRowPlace = {
+  source: ConnectorSource | null
+  label: string
+  /** Fork (BAD-658): the chat's pane, so a click on the place opens that chat. */
+  paneKey?: string
+}
 
 export type BotRowLine =
   | { kind: 'paused' }
@@ -112,9 +117,12 @@ export function selectBotRowLine<R>(
       candidates.unshift({ row, place: null })
     } else if (link) {
       // A turn begun in Orca (typed, another chat's mail, an automation) is not the thread's, as Slack agrees.
-      candidates.push({ row, place: link.lastTurn === 'conversation' ? threadPlace(link) : null })
+      candidates.push({
+        row,
+        place: link.lastTurn === 'conversation' ? { ...threadPlace(link), paneKey } : null
+      })
     } else if (sideChat) {
-      candidates.push({ row, place: { source: null, label: sideChat.title } })
+      candidates.push({ row, place: { source: null, label: sideChat.title, paneKey } })
     } else {
       others.push(row)
     }

@@ -134,6 +134,19 @@ named Orca Fork until SLRM-1367. `main` is always
   - Settings > Blackfish > Agents and workers > Bot row badges and colors: `forkBotRowBadges`
     (on by default) and Clear all colors. Code is in `src/shared/fork/bot-row-badges.ts` and
     `src/renderer/src/fork/bot-row-badges/`.
+- **Bot chats listed without a tab (BAD-658).** Upstream lists under a bot only the chats whose tab is
+  open on its host, so a chat another bot or a handoff started in a new chat, which nobody opened,
+  showed only as the bot row's subtitle and could not be found. A side chat or thread with no open
+  tab, not ended, now also lists under its bot while it is running or waiting on the owner, is new
+  to the owner, or was active within `forkBotChatRecentMinutes` (unset is 60, 0 lists only chats
+  with an open tab). A chat the owner closed the tab of and that is idle for longer than the window
+  drops off again. The rule is `src/shared/fork/bot-chat-listing.ts`, used by
+  `botSidebarListedChats`.
+  - The chat a bot row's second line names (`Dotfiles` row: "<chat title> · status") opens that
+    chat when clicked, as its sidebar chat row does.
+  - In the sending chat, the "Handed to <bot> · <subject>" and "Asked ..." line is one dotted
+    underlined link to the chat the request went to (the bot's name alone was the link before).
+  - The setting is in Settings > Blackfish > Agents and workers > Bot row badges and colors.
 - **Lost work (SLRM-2096).** A Lost work button in the workspace cleanup dialog opens a scan of
   every local git project for work an agent worktree could lose. Nothing runs until you press
   Scan; the scan only reads git and can be stopped.
@@ -2128,6 +2141,7 @@ Apply these in this order. Each one is a single commit.
 131. `BAD-640 Bot connect: orca bot connect links connected Linear and GitHub to one bot or all`
 132. `BAD-642 Bot items: open and show a worker that runs on a paired server`
 133. `BAD-658 Bot row: needs-you and working badges, an idle look and a color per bot`
+134. `BAD-658 Bot chats: list a handed-off chat under its bot, open it from the row's line and from the handoff card`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3144,6 +3158,11 @@ Upstream files only get short hooks, which keeps rebases small:
     `ForkBotColorMenu` to the context menu; `BotSidebarRow.tsx` renders the tint, the picture's
     ring and dim, and `ForkBotRowPills` from it.
   - `BotCollapsedPreview.tsx` renders `ForkBotHeaderRollup` after the faces.
+  - Bot chats listed without a tab: `botSidebarListedChats`, `groupBotWorkspacesByChat` and
+    `buildBotSidebarTree` take an optional `recent` (`bot-chat-listing.ts`), `BotSidebarChats.tsx`
+    passes it; `BotRowPlace` (`bot-row-line.ts`) gains an optional `paneKey`, which
+    `BotRowActivityLine.tsx` makes clickable and `BotRow.tsx` opens with `forkOpenBotPlace`;
+    `NativeChatBotRequestCard.tsx` puts the subject inside the bot-name button.
   - The settings are intersected in `fork-global-settings.ts`, `settings-rows-*.generated.ts` is
     regenerated, and the card is in the fork's Settings pane (Agents and workers).
 

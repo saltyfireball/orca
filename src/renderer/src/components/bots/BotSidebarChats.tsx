@@ -6,12 +6,14 @@ import { openBotHomeTab } from '@/lib/bot-catalog'
 import { formatShortTimeAgo } from '@/lib/time-format/short-time-ago'
 import { cn } from '@/lib/class-names'
 import { useAppStore } from '@/store'
+import { useNow } from '@/lib/window-activity/use-now'
 import type { Bot } from '../../../../shared/bot-types'
 import {
   botChatFoldKey,
   chatFoldSummary,
   type BotChatTreeChat
 } from '../../../../shared/bots/bot-chat-tree'
+import { forkBotChatRecent } from '../../../../shared/fork/bot-chat-listing'
 import { botSidebarListedChats } from '../../../../shared/bots/bot-sidebar-chat-groups'
 import {
   botSidebarWorkerPagingLabel,
@@ -53,7 +55,14 @@ export function BotSidebarChats({
   const { chats, workspaceChats } = tree
   // Only this bot's chats' folds, so a fold anywhere else re-renders nothing here.
   // Only the chats it lists, keyed once per chat list, not on every store write the selector runs for.
-  const listed = useMemo(() => botSidebarListedChats(chats), [chats])
+  // Fork (BAD-658): a chat ages out of the window by the minute.
+  const forkMinutes = useAppStore((s) => s.settings?.forkBotChatRecentMinutes)
+  const now = useNow(60_000)
+  const recent = useMemo(
+    () => forkBotChatRecent({ forkBotChatRecentMinutes: forkMinutes }, now),
+    [forkMinutes, now]
+  )
+  const listed = useMemo(() => botSidebarListedChats(chats, recent), [chats, recent])
   const foldKeys = useMemo(
     () => listed.map((chat) => botChatFoldKey(bot.hostId, bot.id, chat.chatId)),
     [listed, bot.hostId, bot.id]
@@ -67,9 +76,10 @@ export function BotSidebarChats({
       workspaceChats,
       foldOf: (chatId) => foldById.get(chatId),
       stepsOf: (chatId) => steps[chatId] ?? 0,
-      activeLineId: activeLine?.id ?? null
+      activeLineId: activeLine?.id ?? null,
+      recent
     })
-  }, [chats, listed, workspaceChats, workspaces, folds, steps, activeLine])
+  }, [chats, listed, workspaceChats, workspaces, folds, steps, activeLine, recent])
   // A reveal of a worker line under a folded chat opens that chat, once per request.
   const reveal = useBotsRevealRequest(botSidebarEntryKey(bot))
   const revealWorker = reveal?.target.hostDown ? undefined : reveal?.target.worker
