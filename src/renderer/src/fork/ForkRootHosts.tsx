@@ -6,6 +6,8 @@ import { ForkSleepersDialogHost } from './sleepers/ForkSleepersDialog'
 import { ForkUsageReportHost } from './usage-report/ForkUsageReportDialog'
 import { ForkDigestHost } from './digest/ForkDigestDialog'
 import { ForkWorkerCleanupReporter } from './worker-cleanup/ForkWorkerCleanup'
+import { ForkWorkerArchiveReporter } from './worker-archive/ForkWorkerArchiveReporter'
+import { ForkWorkerCleanupDialogHost } from './worker-archive/ForkWorkerCleanupDialog'
 import { ForkWorktreeMoveDialogHost } from './worktree-move/ForkWorktreeMoveDialog'
 import { ForkSnoozeCustomDialogHost } from './snooze/ForkSnoozeCustomDialog'
 import { ForkSnoozeWatcher } from './snooze/ForkSnoozeWatcher'
@@ -28,6 +30,8 @@ export function ForkRootHosts(): React.JSX.Element {
       <ForkChatSleepReporter />
       <ForkBoundaryCompactionReporter />
       <ForkWorkerCleanupReporter />
+      <ForkWorkerArchiveReporter />
+      <ForkWorkerCleanupDialogHost />
       <ForkSleepersDialogHost />
       <ForkUsageReportHost />
       <ForkDigestHost />

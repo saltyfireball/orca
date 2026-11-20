@@ -14,22 +14,15 @@ import type { ForkGlobalSettings } from '../../../shared/fork/fork-global-settin
 import {
   forkWorkerCleanupEnabled,
   type ForkWorkerCleanupHeld,
-  type ForkWorkerCleanupItem,
   type ForkWorkerCleanupNotice
 } from '../../../shared/fork/worker-cleanup'
-import type { OrchestrationDb } from '../../runtime/orchestration/db/orchestration-db'
 import type { WorkerTerminalReleaseRuntime } from '../../runtime/orchestration/terminal-authority/release/worker-terminal-release-runtime'
-import { reconcileRequestedWorkerTerminalReleases } from '../../runtime/orchestration/terminal-authority/release/worker-terminal-release-reconciliation'
-import {
-  requireRunningStructuredWorker,
-  resolveStructuredWorkerIdentity
-} from '../../runtime/orchestration/terminal-authority/structured-sessions/structured-worker-authority'
 import { closeStructuredAgentSessionChild } from '../../runtime/agent-session/lifecycle/structured-agent-session-close'
-import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import type { LostWorkGit } from '../lost-work/lost-work-git'
 import { startForkBackoffTimer } from '../fork-backoff-timer'
-import { claimWorkerCleanupRelease, listWorkerCleanupCandidates } from './worker-cleanup-query'
-import type { WorkerCleanupCandidate } from './worker-cleanup-query'
+import { installForkWorkerArchive } from '../worker-archive/worker-archive-service'
+import { listWorkerCleanupCandidates } from './worker-cleanup-query'
+import { chatSessionOf, closeThroughStockRelease } from './worker-cleanup-release'
 import { forkWorkerTurnStartedAt } from './worker-cleanup-activity'
 import {
   isWorkerBranchMerged,
@@ -58,23 +51,6 @@ const git: LostWorkGit = async (args, options) =>
 const gh: WorkerCleanupGh = async (args, options) =>
   (await ghExecFileAsync(args, { cwd: options.cwd, signal: options.signal })).stdout
 
-/** True while worker cleanup owns finished workers, so the stock auto-release stands aside. */
-export function forkWorkerCleanupOwnsRelease(settings: unknown): boolean {
-  return forkWorkerCleanupEnabled(settings)
-}
-
-function chatSessionOf(handle: string, db: OrchestrationDb): string | null {
-  const identity = resolveStructuredWorkerIdentity(handle, db)
-  if (!identity) {
-    return null
-  }
-  try {
-    return requireRunningStructuredWorker(identity).sessionId
-  } catch {
-    return identity.sessionId
-  }
-}
-
 function localWorktreePath(store: WorkerCleanupStore, worktreeId: string | null): string | null {
   const parsed = worktreeId ? splitWorktreeId(worktreeId) : null
   const repo = parsed && store.getRepos().find((entry) => entry.id === parsed.repoId)
@@ -84,50 +60,9 @@ function localWorktreePath(store: WorkerCleanupStore, worktreeId: string | null)
   return getRepoExecutionHostId(repo) === LOCAL_EXECUTION_HOST_ID ? parsed.worktreePath : null
 }
 
-async function closeThroughStockRelease(
-  runtime: WorkerTerminalReleaseRuntime,
-  db: OrchestrationDb,
-  candidates: WorkerCleanupCandidate[]
-): Promise<ForkWorkerCleanupItem[]> {
-  const now = Date.now()
-  const claimed = candidates.flatMap((candidate) => {
-    // Read the chat before release: a closed session no longer resolves its successor.
-    const sessionId = chatSessionOf(candidate.terminalHandle, db)
-    return claimWorkerCleanupRelease(db, candidate.resourceId, now)
-      ? [{ candidate, sessionId }]
-      : []
-  })
-  if (claimed.length === 0) {
-    return []
-  }
-  await reconcileRequestedWorkerTerminalReleases(runtime)
-  const host = getStructuredAgentSessionHost()
-  return claimed.flatMap(({ candidate, sessionId }): ForkWorkerCleanupItem[] => {
-    const row = db.getWorkerTerminalResource(candidate.resourceId)
-    if (!row || row.release_state !== 'released' || !candidate.worktreeId) {
-      return []
-    }
-    if (sessionId) {
-      const agent = host?.sessionAgent(sessionId) ?? null
-      return agent
-        ? [
-            {
-              kind: 'chat-closed',
-              worktreeId: candidate.worktreeId,
-              sessionId,
-              agent
-            }
-          ]
-        : []
-    }
-    return [
-      {
-        kind: 'terminal-closed',
-        worktreeId: candidate.worktreeId,
-        handle: row.terminal_handle
-      }
-    ]
-  })
+/** True while worker cleanup owns finished workers, so the stock auto-release stands aside. */
+export function forkWorkerCleanupOwnsRelease(settings: unknown): boolean {
+  return forkWorkerCleanupEnabled(settings)
 }
 
 type Installed = {
@@ -175,6 +110,8 @@ export function installForkWorkerCleanup(
   if (!stopSweepTimer) {
     startSweepTimer()
   }
+  // BAD-669: the worker archive and the idle terminal stop run beside this sweep.
+  installForkWorkerArchive(runtime)
   if (store.onSettingsChanged && !storesWatched.has(store)) {
     storesWatched.add(store)
     // The backed-off wait starts over when the setting changes, so turning it on is seen within

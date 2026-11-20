@@ -165,6 +165,12 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkWorkerCleanupOnDone?: boolean
     /** Fork worker cleanup: clean up once the worker's branch is merged; unset is off. */
     forkWorkerCleanupOnMerged?: boolean
+    /** Fork worker archive (BAD-669): archive finished workers' own workspaces once they hold no unmerged or uncommitted work; unset is on. */
+    forkWorkerArchive?: boolean
+    /** Fork worker archive: minutes after a worker finishes before its workspace is archived; unset is 120. */
+    forkWorkerArchiveDelayMinutes?: number
+    /** Fork worker archive: minutes after a worker reports before its idle terminal or agent is stopped; unset is 15. */
+    forkWorkerTerminalStopMinutes?: number
     /** Fork launch defaults: model and effort per launch kind (cli, worker, automation, bot for new bots) and agent; empty is stock. */
     forkLaunchDefaults?: ForkLaunchDefaultsSettings
     /** Fork sleepers: native chat session ids that never auto-sleep; unset is none. */
