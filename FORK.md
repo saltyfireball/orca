@@ -2071,6 +2071,7 @@ Apply these in this order. Each one is a single commit.
 127. `SLRM-2453 Decision inbox: bot asks listed, answered, counted and told once`
 128. `SLRM-2472 Bot row: clicking a bot that needs you shows its first waiting ask`
 129. `BAD-635 Bot model: orca bot set for one bot or all, and a launch default for new bots`
+130. `BAD-641 Bot ask answers: one typed answer may be as long as an item comment, 8,000 characters`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2500,6 +2501,9 @@ Upstream files only get short hooks, which keeps rebases small:
   - Bot asks (SLRM-2453) add no upstream hook: `ForkRootHosts` mounts `ForkBotAsksWatcher`, the
     window bridge gains `reportBotAsks` (`fork:idleRecovery:botAsks`), and the main side reads
     idle recovery's settings and runtime (`forkIdleRecoveryHostReaders`).
+  - Ask answer cap (BAD-641): one upstream line, `BOT_ITEM_ASK_LIMITS.answer` in
+    `src/shared/bots/bot-item-ask.ts`, is `BOT_ITEM_LIMITS.text` (8,000) instead of 2,000, so a typed
+    answer to a decision may be as long as an item comment; the total cap is unchanged.
   - `orca settings` cannot write the classifier command, the notification command or the
     webhook address (`settings-access.ts`, kind `runs-command`); the Settings screen can.
 
