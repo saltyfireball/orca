@@ -28,6 +28,7 @@ import { readForkDigestLocal } from './digest-local'
 import { readForkDigestPullRequests, type ForkDigestRepo } from './digest-pull-requests'
 import { readForkDigestTasks, type ForkDigestTaskDb } from './digest-tasks'
 import { readForkDigestLastSentAt, runForkDigestTick } from './digest-schedule'
+import { boundedForkPairedCall } from '../paired-server-call/paired-server-call'
 
 export type ForkDigestRuntime = {
   requireStore: () => { getSettings: () => unknown; getRepos: () => Repo[] }
@@ -137,8 +138,10 @@ async function readForkDigestOn(
       now: Date.now,
       local: (asked) => readForkDigestLocalPart(runtime, asked),
       listEnvironments: () => listEnvironments(getCanonicalUserDataPath()),
-      callEnvironment: (environmentId, method, callParams, timeoutMs) =>
-        runtime.callOrchestrationWorkerServer(environmentId, method, callParams, timeoutMs),
+      // Bounded by its own deadline: a server stuck connecting is not waited on (SLRM-2447).
+      callEnvironment: boundedForkPairedCall((environmentId, method, callParams, timeoutMs) =>
+        runtime.callOrchestrationWorkerServer(environmentId, method, callParams, timeoutMs)
+      ),
       serversDown
     },
     local
