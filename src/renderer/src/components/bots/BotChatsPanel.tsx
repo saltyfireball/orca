@@ -39,6 +39,7 @@ import { useBotNeedsYouCount, useBotNow } from './use-bot-now'
 import { updateBotReporting } from './bot-update-reporting'
 import { useBotPictureSetting } from '../settings/bots/use-bot-picture-setting'
 import { BotChatsSkeleton } from './BotChatsSkeleton'
+import { ForkBotCleanupButton } from '@/fork/worker-archive/ForkWorkerCleanupActions'
 
 const useBotChatSearch = createBotChatSearchHook({ useCallback, useEffect, useMemo, useState })
 
@@ -180,6 +181,7 @@ function BotChatsTab({ bot }: { bot: Bot }): React.JSX.Element {
               <span className="@max-[240px]:hidden">{newChatLabel}</span>
             </Button>
           </div>
+          <ForkBotCleanupButton bot={bot} />
           {chats.length === 0 && tree.state !== 'ready' ? (
             tree.state === 'loading' ? (
               <BotChatsSkeleton />

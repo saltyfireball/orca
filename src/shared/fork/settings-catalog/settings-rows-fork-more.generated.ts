@@ -168,6 +168,10 @@ export const FORK_SETTINGS_ROWS_FORK_MORE = {
     '{"t":{"k":"number"},"d":"Largest image file ::orca-visual shows, in MiB (1 to 5); unset is 4.","o":true}',
   forkWebhooks:
     '{"t":{"k":"object","fields":{"enabled":{"k":"boolean","optional":true},"bindHost":{"k":"string","optional":true},"port":{"k":"number","optional":true},"maxBodyKb":{"k":"number","optional":true},"perHookPerMinute":{"k":"number","optional":true},"payloadMaxChars":{"k":"number","optional":true}}},"d":"Signed webhooks that start automation runs; off unless enabled is true.","o":true}',
+  forkWorkerArchive:
+    '{"t":{"k":"boolean"},"d":"Worker archive (BAD-669): archive finished workers\' own workspaces once they hold no unmerged or uncommitted work; unset is on.","o":true}',
+  forkWorkerArchiveDelayMinutes:
+    '{"t":{"k":"number"},"d":"Worker archive: minutes after a worker finishes before its workspace is archived; unset is 120.","o":true}',
   forkWorkerCleanup:
     '{"t":{"k":"boolean"},"d":"Worker cleanup: finished workers give up their agent, replacing the stock auto-release. Off unless true.","o":true}',
   forkWorkerCleanupAction:
@@ -178,6 +182,8 @@ export const FORK_SETTINGS_ROWS_FORK_MORE = {
     '{"t":{"k":"boolean"},"d":"Worker cleanup: clean up once the worker reports done; unset is on.","o":true}',
   forkWorkerCleanupOnMerged:
     '{"t":{"k":"boolean"},"d":"Worker cleanup: clean up once the worker\'s branch is merged; unset is off.","o":true}',
+  forkWorkerTerminalStopMinutes:
+    '{"t":{"k":"number"},"d":"Worker archive: minutes after a worker reports before its idle terminal or agent is stopped; unset is 15.","o":true}',
   forkWorkspaceTagFilter:
     '{"t":{"k":"object","fields":{"tag":{"k":"string"},"mode":{"k":"enum","values":["hide","only"]}},"nullable":true},"d":"Workspace tags: the sidebar\'s tag filter, \'only\' shows that tag and \'hide\' hides it; unset is none.","o":true}',
   forkWorkspaceTags:

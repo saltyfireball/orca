@@ -16,6 +16,7 @@ import { getForkRemoteSettingsSectionParts } from '../endpoint-failover/endpoint
 import { worktreeMoveSearchEntry } from '../worktree-move/worktree-move-search-entry'
 import { apfsCloneSearchEntry } from '../apfs-clone/apfs-clone-search-entry'
 import { snoozeSearchEntry } from '../snooze/snooze-search-entry'
+import { workerArchiveSearchEntry } from '../worker-archive/worker-archive-search-entry'
 import { serverSetupSearchEntry } from '../server-setup/server-setup-search-entry'
 import { branchClashesSearchEntry } from '../branch-clashes/branch-clashes-search-entry'
 import { reviewGuideSearchEntry } from '../review-guide/review-guide-search-entry'
@@ -120,6 +121,7 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
           ),
           keywords: words('bots', 'sidebar', 'needs you', 'idle', 'color', 'forkBotRowBadges')
         },
+        workerArchiveSearchEntry(t),
         {
           title: t('fork.workerCleanup.title', 'Finished worker cleanup (experimental)'),
           description: t(

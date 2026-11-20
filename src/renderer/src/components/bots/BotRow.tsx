@@ -32,6 +32,8 @@ import { forkOpenBotRow } from '@/fork/bot-asks/bot-row-ask-jump'
 import { forkOpenBotPlace } from '@/fork/bot-row-badges/fork-open-bot-place'
 import { useForkBotRowDecor } from '@/fork/bot-row-badges/ForkBotRowBadges'
 import { ForkBotColorMenu } from '@/fork/bot-row-badges/ForkBotColorMenu'
+import { ForkBotCleanupMenuItem } from '@/fork/worker-archive/ForkWorkerCleanupActions'
+import { ForkBotHideFinishedMenuItem } from '@/fork/bot-chat-hide/ForkBotHideFinishedMenuItem'
 
 type BotRowFold = {
   folded: boolean
@@ -157,6 +159,8 @@ export function BotRow({
             {bot.paused ? t('bots.row.resume', 'Resume bot') : t('bots.row.pause', 'Pause bot')}
           </ContextMenuItem>
           <ForkBotColorMenu bot={bot} />
+          <ForkBotHideFinishedMenuItem bot={bot} />
+          <ForkBotCleanupMenuItem bot={bot} />
           <ContextMenuSeparator />
           <ContextMenuItem onSelect={() => window.api.ui.writeClipboardText(home.folderPath)}>
             <Copy className="size-3.5" />
