@@ -13,6 +13,7 @@ export const forkIdleRecoveryApi: ForkIdleRecoveryApi = {
   pause: (request) => ipcRenderer.invoke(CHANNELS.pause, request),
   status: () => ipcRenderer.invoke(CHANNELS.status),
   babysit: () => ipcRenderer.invoke(CHANNELS.babysit),
+  reportBotAsks: (request) => ipcRenderer.invoke(CHANNELS.botAsks, request),
   onChanged: (listener) => {
     const handler = (): void => listener()
     ipcRenderer.on(CHANNELS.changed, handler)

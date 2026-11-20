@@ -4,6 +4,7 @@ import {
   decisionInboxBadgeText,
   decisionInboxNow,
   decisionInboxSections,
+  decisionInboxWaitingCount,
   oldestWaitingChat
 } from './decision-inbox-view'
 
@@ -75,5 +76,18 @@ describe('decisionInboxNow', () => {
   it("moves the host's clock by the time since the read, never backwards", () => {
     expect(decisionInboxNow({ now: 1000 }, 50, 80)).toBe(1030)
     expect(decisionInboxNow({ now: 1000 }, 50, 40)).toBe(1000)
+  })
+})
+
+describe('decisionInboxWaitingCount', () => {
+  it('counts waiting chats, guard pauses, board asks and bot asks, never stalled or paused (SLRM-2453)', () => {
+    const sections = decisionInboxSections([
+      inboxItem({ chatId: 'waiting' }),
+      inboxItem({ chatId: 'looping', verdict: 'guard' }),
+      inboxItem({ chatId: 'stalled', verdict: 'stalled' }),
+      inboxItem({ chatId: 'paused', paused: true })
+    ])
+    expect(decisionInboxWaitingCount(sections, 2, 3)).toBe(7)
+    expect(decisionInboxWaitingCount(decisionInboxSections([]), 0, 1)).toBe(1)
   })
 })
