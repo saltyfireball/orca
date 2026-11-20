@@ -16,6 +16,7 @@ import {
   parseExecutionHostId
 } from '../../../../shared/execution-host/execution-host'
 import { openBotAutomation } from './bot-automation-open'
+import { forkServerWorkerOpen } from '@/fork/bot-server-worker/fork-server-worker-open'
 import { useBotHostLabel } from './use-bot-host-label'
 import { WorkerActivityRow } from './WorkerActivityRow'
 import { useBotUsageLimitStopIndex } from './use-bot-usage-limit-stops'
@@ -119,6 +120,10 @@ export function botChatTreeWorkerOpen(
   bot: Bot,
   worker: BotChatTreeWorker
 ): (() => void) | undefined {
+  const forkOpen = forkServerWorkerOpen(bot, worker)
+  if (forkOpen) {
+    return forkOpen
+  }
   const { run, dispatchId, worktreeId } = worker
   if (run) {
     return () => openBotAutomation(run.automationId, run.runId)

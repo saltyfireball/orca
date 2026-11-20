@@ -20,6 +20,8 @@ export type BotWorkWorker = {
   host: BotWorkHost
   /** The paired server's name, for a remote worker. */
   hostName: string | null
+  /** BAD-642 (fork): the server runs it as its own (worker-start --on), so only it can open it. */
+  serverOwned?: true
   worktreeId: string | null
   startedAt: number
   /** When it last finished; null while it runs or when unread. */

@@ -15,6 +15,7 @@ import {
   botItemLinearKeyOfUrl,
   botItemUrlHost
 } from './bot-item-link-names'
+import { forkServerWorkerRow } from '../fork/bot-server-worker'
 
 export type BotItemLinkBrand = 'github' | 'linear' | 'slack'
 
@@ -233,6 +234,7 @@ export function botItemWorkerRow(
     ...(link.settledAt !== null ? { settledAt: link.settledAt } : {}),
     dispatchId: link.latest ?? link.ref,
     ...(link.host ? { hostId: link.host } : {}),
-    ...(link.report ? { summary: link.report.subject } : {})
+    ...(link.report ? { summary: link.report.subject } : {}),
+    ...forkServerWorkerRow(link)
   }
 }

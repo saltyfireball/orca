@@ -25,6 +25,7 @@ import {
 } from '../BotChatTreeWorkerRow'
 import { useWorkerStop, WorkerActivityDetails } from '../WorkerActivityRow'
 import { openBotItemFile, type BotItemFileContext } from './bot-item-file-open'
+import { ForkServerWorkerNote } from '@/fork/bot-server-worker/fork-server-worker-open'
 import {
   BotItemLinkRowList,
   checksLabel,
@@ -249,6 +250,11 @@ function WorkerChip({
               <WorkerStateIcon state={worker.state} />
             </span>
             <span className="min-w-0 truncate">{worker.title}</span>
+            <ForkServerWorkerNote
+              worker={worker}
+              compact
+              className="shrink-0 text-2xs tabular-nums text-muted-foreground"
+            />
           </button>
         </HoverCardTrigger>
         {canStop ? (
@@ -271,6 +277,10 @@ function WorkerChip({
         ) : null}
       </div>
       <HoverCardContent side="bottom" align="start" variant="workspace-details">
+        <ForkServerWorkerNote
+          worker={worker}
+          className="mb-1 block text-xs text-muted-foreground"
+        />
         <WorkerActivityDetails
           title={worker.title}
           agent={worker.agent}
