@@ -80,6 +80,7 @@ export const CLI_COMMAND_NAMES = [
   'ports',
   'profile',
   'project',
+  'quick-task',
   'reference',
   'reload',
   'repo',

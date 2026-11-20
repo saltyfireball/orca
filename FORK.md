@@ -1691,7 +1691,8 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/shared/fork/quick-task-contract.ts`, which the desktop, the phone and the CLI share. The
     text is trimmed, an empty one is refused and the box stops at `QUICK_TASK_TEXT_MAX` (8000)
     characters, dictation included. The phone checks the reply itself (`botName`, `chatId`,
-    `note`), so it needs no entry in the generated params catalog.
+    `note`) and sends the request raw; the desktop half registers the method and its params in
+    the generated params catalog.
   - **After Send.** A taken task shows "Sent to <bot>" and the router's note, then the sheet
     closes after 2.5 s. A refusal keeps the text and shows the host's reason. A computer whose
     Blackfish predates quick tasks (`method_not_found`, or an older mobile allowlist's
@@ -1811,6 +1812,50 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/letters*.ts`, `src/main/fork/letters/`,
     `src/main/runtime/rpc/methods/fork/fork-letters.ts`, `src/preload/fork/letters-bridge.ts`,
     `src/cli/fork/letters-*.ts` and `src/renderer/src/fork/letters/`.
+
+- **Quick task (SLRM-2428).** On by default (`forkQuickTask`, Settings > Blackfish > Chats >
+  Quick task). A global shortcut opens a small box over any app; a typed or dictated
+  task goes to a router bot, which hands it to the bot that owns it with a machine to run it on,
+  and the box closes. Needs Bots (upstream 1.4.265) on.
+  - **The box.** Frameless, always on top, centered on the display under the pointer; on macOS a
+    non-activating panel, so it opens over another app without raising the main window. One text
+    field (Enter sends, Shift+Enter adds a line, Esc closes, clicking elsewhere closes) and a mic
+    that uses the dictation model and microphone from Settings > Voice (greyed out until
+    dictation is set up). After sending it shows which bot took the task with Open chat, and
+    closes 2.5 s later unless the pointer is on it. It is its own renderer entry
+    (`quick-task.html`) with the main preload, its own session, and only microphone access.
+  - **Shortcut** (`forkQuickTaskShortcut`): an Electron accelerator, default
+    `CommandOrControl+Alt+Shift+Space` (no macOS or Orca default uses it); empty is the default,
+    `none` turns it off, and anything that is not one key with Command, Control or Alt is refused.
+    It is registered once settings load, re-registered when the setting changes (the old one is
+    unregistered first), and unregistered at quit. If another app holds it, the box has no
+    shortcut until another is set (logged).
+  - **One path.** The box (over IPC, only from its own window), `orca quick-task <text>` and the
+    phone all call `quickTask.submit` (`src/shared/fork/quick-task-contract.ts`, shared with the
+    phone). The CLI refuses to run inside an agent chat: agents hand off with
+    `orchestration send`.
+  - **Routing.** The task starts a new chat on the router bot (`forkQuickTaskRouterBot`, default
+    Dispatcher), acting for the owner as the owner's own new chat does. A bot with that name is
+    reused; with none, it is made on first use like the owner's New bot (purpose "Routes quick
+    tasks to the bot that owns them." in SOUL.md, no greeting turn) on `forkQuickTaskRouterAgent`
+    (claude) and `forkQuickTaskRouterModel` (haiku on claude). One task at a time, so two at once
+    make one router. The first message tells the router to run `bot list` (which lists the bots
+    on every paired server too, with the `--on` that reaches each), pick the owning bot, run the
+    placement command for code work, and hand off with `orchestration send [--on <server>] --to
+    bot:<name> --type handoff --chat new`, putting the machine and the `--on`/`--repo` values for
+    `worker-start` in the body; when two or three bots could own it, ask the owner in its chat
+    naming them; then stop. A bot cannot create a bot, so when none fits the router proposes one
+    (`bot create --offer`) and the owner presses Create bot.
+  - **Placement** (`forkQuickTaskPlacement`, on; `forkQuickTaskPlacementCommand`): empty runs the
+    built-in ranking (`orca placement --json` with the session's own orca); any other command
+    runs as typed in the router's shell and the router reads its output. `orca settings` cannot
+    write the command (`runs-command`) or the router name (`agent-limit`).
+  - **Phone.** `quickTask.submit` routes to the paired desktop (`runtime-rpc-mobile-method-routing.ts`),
+    whose router sees every paired server's bots.
+  - Code is in `src/shared/fork/quick-task*.ts`, `src/main/fork/quick-task/`,
+    `src/main/runtime/rpc/methods/fork/fork-quick-task.ts`, `src/preload/fork/quick-task-bridge.ts`,
+    `src/cli/fork/quick-task-*.ts`, `src/renderer/quick-task.html` and
+    `src/renderer/src/fork/quick-task/`.
 
 ## Patch list
 
@@ -1941,6 +1986,7 @@ Apply these in this order. Each one is a single commit.
 122. `SLRM-2411 Chat survive: an Orca env key only one launch has does not refuse adoption, say why in the start error`
 123. `SLRM-2411 Unattended resume: continue interactive chats a restart cut, unless stopped, asking, guarded or waiting on a limit`
 124. `SLRM-2428 Quick task on the phone: a Feed button and sheet that send a typed or dictated task to the paired computer's router`
+125. `SLRM-2428 Quick task: a shortcut box hands a typed or spoken task to the bot that owns it`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2877,6 +2923,23 @@ Upstream files only get short hooks, which keeps rebases small:
   - The settings are in `src/shared/fork/letters.ts`, intersected in `fork-global-settings.ts`;
     `settings-rows-fork.generated.ts` is regenerated, the limits are `agent-limit` keys in
     `settings-access.ts`, and the card is in the fork's Settings pane (Chats).
+
+- Quick task (SLRM-2428), from `src/shared/fork/quick-task*.ts`, `src/main/fork/quick-task/`,
+  `src/cli/fork/quick-task-*.ts` and `src/renderer/src/fork/quick-task/`:
+  - `electron.vite.config.ts` adds the `quick-task` renderer input (`src/renderer/quick-task.html`).
+  - `fork-ready-foundation-hooks.ts` calls `installForkQuickTask(store)` (the shortcut, the box's
+    IPC and the quit unregister).
+  - `rpc-method-registry.ts` spreads `FORK_QUICK_TASK_METHODS` (`quickTask.submit`);
+    `rpc-params-catalog.generated.ts` is regenerated with it. `runtime-rpc-mobile-method-routing.ts`
+    routes `quickTask.submit` to the paired desktop.
+  - `src/cli/specs/index.ts` adds `FORK_QUICK_TASK_COMMAND_SPECS`, `fork-handler-groups.ts` adds the
+    `fork-quick-task` group and `cli-command-names.ts` lists `quick-task`.
+  - `preload/index.ts` and `api-types.ts` add `forkQuickTask` (`src/preload/fork/quick-task-bridge.ts`).
+  - The settings are in `src/shared/fork/quick-task.ts`, intersected in `fork-global-settings.ts`;
+    the generated settings rows are regenerated, `forkQuickTaskPlacementCommand` is a
+    `runs-command` key and `forkQuickTaskRouterBot` an `agent-limit` key in `settings-access.ts`,
+    and the card is in the fork's Settings pane (Chats); its search entry is in
+    `fork-settings-pane-catalog-chats.ts`.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
