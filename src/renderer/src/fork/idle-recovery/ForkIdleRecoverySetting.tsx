@@ -23,6 +23,7 @@ import { ForkNumberInput } from '../cache-cold/ForkNumberInput'
 import { ForkIdleRecoveryPausedList } from './ForkIdleRecoveryPausedList'
 import { ForkTextSetting as TextSetting } from './ForkTextSetting'
 import { readForkInboxBotAsksSettings } from '../../../../shared/fork/inbox-bot-asks'
+import { readForkBotRowAskJump } from '../../../../shared/fork/bot-row-ask-jump'
 
 type Props = {
   settings: GlobalSettings
@@ -49,6 +50,8 @@ export function ForkIdleRecoverySetting({ settings, updateSettings }: Props): Re
   // SLRM-2453: bot asks use the same notify targets, so they stay editable while bot asks are on.
   const botAsks = readForkInboxBotAsksSettings(settings)
   const targetsOff = off && !botAsks.enabled
+  // SLRM-2472: a bot row's click shows its first waiting ask.
+  const botRowAskJump = readForkBotRowAskJump(settings)
   const noWake = current.mode !== 'wake'
   const idleLabel = t('fork.idleRecovery.idleLabel', 'Idle time before a look (seconds)')
   const timeoutLabel = t('fork.idleRecovery.timeoutLabel', 'Classifier time limit (seconds)')
@@ -190,6 +193,15 @@ export function ForkIdleRecoverySetting({ settings, updateSettings }: Props): Re
         checked={botAsks.phone}
         disabled={!botAsks.enabled}
         onChange={() => updateSettings({ forkInboxBotAsksPhone: !botAsks.phone })}
+      />
+      <SettingsSwitchRow
+        label={t('fork.botRowAskJump.settingLabel', 'Clicking a bot that needs you shows its ask')}
+        description={t(
+          'fork.botRowAskJump.settingHelp',
+          'A bot row with items waiting on you also opens the first on its Home tab, and a second click the next. Off: the click only opens the bot.'
+        )}
+        checked={botRowAskJump}
+        onChange={() => updateSettings({ forkBotRowAskJump: !botRowAskJump })}
       />
       <SettingsSwitchRow
         label={t('fork.idleRecovery.notifyDesktopLabel', 'Notify when a chat waits on me')}

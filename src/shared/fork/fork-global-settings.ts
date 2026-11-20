@@ -28,6 +28,7 @@ import type { ForkLettersSettings } from './letters'
 import type { ForkQuickTaskSettings } from './quick-task'
 import type { ForkBotStartingRulesSettings } from './bot-starting-rules'
 import type { ForkInboxBotAsksSettings } from './inbox-bot-asks'
+import type { ForkBotRowAskJumpSettings } from './bot-row-ask-jump'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -69,6 +70,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkLettersSettings &
   /** Fork (SLRM-2453): bot asks in the Decision inbox, and their notice. */
   ForkInboxBotAsksSettings &
+  /** Fork (SLRM-2472): a bot row's click shows its first waiting ask. */
+  ForkBotRowAskJumpSettings &
   /** Fork (SLRM-2428): the quick task box, its shortcut and the router bot. */
   ForkQuickTaskSettings &
   /** Fork (SLRM-2459): the rules a new bot's SOUL.md starts with. */
