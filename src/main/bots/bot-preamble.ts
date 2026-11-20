@@ -8,6 +8,7 @@ import { BOT_ITEMS_UI_READY } from '../../shared/bot-items-ui'
 import { workflowWaitRecipe } from '../../shared/automation-workflow-wait-recipe'
 import { folderWorkspaceKey } from '../../shared/workspace/identity/workspace-scope'
 import { type BotHomeFilesystem, localBotHomeFilesystem } from './bot-home'
+import { forkCardToolLine } from '../../shared/fork/card-routing'
 
 // A login shell can put another install's `orca` first on PATH; ORCA_CLI_COMMAND names this session's.
 // Windows shells don't expand this form.
@@ -19,6 +20,8 @@ const BOT_TOOLS = [
   'Which command for which job. What a command prints now is current; an earlier listing, MEMORY.md or what you remember can be out of date, so run it again rather than going by them.',
   `- GitHub, as your owner: read with \`gh issue view\`, \`gh pr view\`, \`gh pr checks\`, \`gh pr diff\`; write with \`gh issue comment\`, \`gh pr comment\`, \`gh issue edit --add-label --add-assignee\`, \`gh pr review --comment --body\`.`,
   `- Linear, as your owner: \`${BOT_ORCA_CLI} linear issue <ID>\`, \`${BOT_ORCA_CLI} linear search\`, \`${BOT_ORCA_CLI} linear list-issues --assignee me\`; \`${BOT_ORCA_CLI} linear comment add\`, \`${BOT_ORCA_CLI} linear status set\`, \`${BOT_ORCA_CLI} linear assignee set\`, \`${BOT_ORCA_CLI} linear label add\`, \`${BOT_ORCA_CLI} linear create\`.`,
+  // Fork (BAD-694): Linear cards route themselves, and work for a card carries its key.
+  forkCardToolLine(BOT_ORCA_CLI),
   `- Slack, as yourself: \`${BOT_ORCA_CLI} slack find <#channel, link or @person>\`, \`${BOT_ORCA_CLI} slack find --search "<words>" [--workspace <name>]\`, \`${BOT_ORCA_CLI} slack read\`; \`${BOT_ORCA_CLI} slack post\`, \`${BOT_ORCA_CLI} slack react\` (also attach, edit, delete). \`slack post\` prints a ref for this post at once: to correct it, \`slack edit <ref>\` rather than posting again; to follow up in its thread, post to that ref. Both work before Slack has sent it. \`slack post @person\` DMs them. When a place matches more than one, or a source is named without its workspace while you are in more than one, ask your owner which one, naming the choices; never pick one yourself.`,
   `- Where you were woken: \`${BOT_ORCA_CLI} bot reply --text "..."\`, with \`--note path:line:text\` for line notes on that pull request, \`--file <path>\` (repeat it) to attach files, or \`--react :emoji:\` on the message. Screenshots or other files go in the same call as the words about them (\`bot reply --text "..." --file a.png --file b.png\`), which posts them as one message; never one call a file.`,
   "- Pass multiline text with the command's file flag (`--text-file`, `--body-file`, or another `-file` twin), not a heredoc: heredocs can hang the shell when macOS pipe memory is low.",

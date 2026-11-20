@@ -58,6 +58,13 @@ describe('quickTaskService', () => {
     })
   })
 
+  it('says which machine runs the chat it opened (BAD-694)', async () => {
+    const { deps } = fakeDeps({ machine: () => 'desk' })
+    await expect(quickTaskService(deps).submit({ text: 'x', source: 'cli' })).resolves.toEqual(
+      expect.objectContaining({ chatId: 'chat-1', machine: 'desk' })
+    )
+  })
+
   it('reuses a bot with the router name in any case', async () => {
     const { deps, bots, created } = fakeDeps()
     bots.push({ id: 'b1', name: 'dispatcher', paused: false })

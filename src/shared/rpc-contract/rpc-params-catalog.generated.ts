@@ -60,6 +60,7 @@ import {
 } from '../fork/best-of/best-of-wire'
 import { ForkBotChatCloseParams } from '../fork/bot-chat-hide'
 import { ForkClashesLocalParams, ForkClashesScanParams } from '../fork/branch-clashes-wire'
+import { ForkCardRouteStartParams } from '../fork/card-routing'
 import { ForkChatHandoffStartParams, ForkChatHistoryParams } from '../fork/chat-handoff-wire'
 import {
   ForkClaudeAccountCancelParams,
@@ -1656,6 +1657,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.board.close': ForkBoardCloseParams,
   'fork.board.list': ForkBoardListParams,
   'fork.botChat.close': ForkBotChatCloseParams,
+  'fork.cardRoute.start': ForkCardRouteStartParams,
   'fork.chatHandoff.history': ForkChatHistoryParams,
   'fork.chatHandoff.start': ForkChatHandoffStartParams,
   'fork.clashes.local': ForkClashesLocalParams,
