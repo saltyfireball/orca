@@ -158,7 +158,8 @@ describe('quickTaskRouterBrief', () => {
       placementCommand: 'server-pick --json',
       cli: 'orca'
     })
-    expect(custom).toContain('run `server-pick --json` and read its top suggestion')
+    expect(custom).toContain('run `server-pick --json` (when it takes a repo')
+    expect(custom).toContain("add `--repo` with the project's path from `orca repo list`")
     expect(custom).not.toContain('--repo <project>`)')
     const none = quickTaskRouterBrief({
       text: 'x',
