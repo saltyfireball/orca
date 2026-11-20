@@ -365,6 +365,8 @@ named Orca Fork until SLRM-1367. `main` is always
   them, and `orca launch-defaults [--agent <agent>] [--json]` prints what each kind resolves to.
   Not covered: desktop and mobile launches, `--terminal` reuse, automation `reuseSession` sends,
   the legacy `worktree.create` startup agent on old hosts, and paired hosts that run stock Orca.
+  A fourth kind, New bots (`bot`, BAD-635), is the model and effort a bot is made with when it
+  brings none; see Bot model from the CLI.
 
 - **Sleepers: one place to see and manage sleeping and idle agents (SLRM-2094).** A dialog,
   opened from the moon button in the sidebar's bottom toolbar or the Sleepers... quick action,
@@ -1912,6 +1914,29 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/bot-starting-rules.ts` and
     `src/renderer/src/fork/bot-starting-rules/`.
 
+- **Bot model from the CLI, and a model for new bots (BAD-635).** A bot with no model of its own
+  starts every chat on the native chat defaults (the last model picked in any chat), and changing
+  that meant opening each bot's settings.
+  - `orca bot set (--bot <name> | --all [--agent <agent>]) [--model <id>] [--effort <level>]
+    [--clear] [--json]` saves the same launch the bot's settings save, through `bots.list` and
+    `bots.update` (`updates.launch`; effort is the `effort` option, as the picker writes it). It
+    prints each bot changed with what its new chats start on. `--effort` alone keeps the bot's
+    model; a new `--model` without `--effort` drops the old options, as the picker does;
+    `--clear` puts the bot back on the native chat defaults. `--all --model` needs every chosen bot
+    on one agent (`--agent` narrows it), since a model belongs to its agent. Every launch is
+    checked before any is saved. With `--environment` it sets the bots of that paired server, and
+    it works against any host whose `bots.update` takes `launch` (upstream 1.4.265 on).
+  - Agents may run it. A model is a cost choice, not a limit on what a bot may do, and upstream's
+    `bots.update` already lets an agent's CLI change a launch while it keeps members and
+    permissions owner-only.
+  - New bots: the `bot` kind of `forkLaunchDefaults` (Settings > Blackfish > Launch defaults, New
+    bots row; e.g. `{"bot":{"claude":{"model":"opus","effort":"medium"}}}`) is the launch a bot is
+    made with when its create brings none: the New bot dialog, offer cards, templates and imports.
+    A launch the create brings wins, so the quick task router keeps `forkQuickTaskRouterModel`.
+    Unset keeps upstream. Bots already made keep theirs.
+  - Code is in `src/shared/fork/launch-defaults/launch-defaults-bot.ts` and
+    `src/cli/fork/bot-set-*`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -2045,6 +2070,7 @@ Apply these in this order. Each one is a single commit.
 126. `SLRM-2459 Bot starting rules: a setting for the rules a new bot's SOUL.md starts with`
 127. `SLRM-2453 Decision inbox: bot asks listed, answered, counted and told once`
 128. `SLRM-2472 Bot row: clicking a bot that needs you shows its first waiting ask`
+129. `BAD-635 Bot model: orca bot set for one bot or all, and a launch default for new bots`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3026,6 +3052,16 @@ Upstream files only get short hooks, which keeps rebases small:
     regenerated, `forkBotStartingRules` is an `agent-limit` key in `settings-access.ts`, and the
     card is in the fork's Settings pane (Chats); its search entry is in
     `fork-settings-pane-catalog-chats.ts`.
+
+- Bot model from the CLI (BAD-635), from `src/shared/fork/launch-defaults/launch-defaults-bot.ts`
+  and `src/cli/fork/bot-set-*`:
+  - `src/main/bots/bot-controller.ts` passes a new bot's create params through
+    `withForkBotDefaultLaunch(input, settings)` before `newBotRecord` (one import, one call),
+    beside the starting rules hook; `bot-controller.test.ts` adds one test for it.
+  - `src/cli/specs/index.ts` adds `FORK_BOT_SET_COMMAND_SPECS` and `fork-handler-groups.ts` the
+    `fork-bot-set` group (`bot` is already in `cli-command-names.ts`).
+  - `FORK_LAUNCH_KINDS` gains `bot`, so the Launch defaults card, `orca launch-defaults` and the
+    generated settings rows list it.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

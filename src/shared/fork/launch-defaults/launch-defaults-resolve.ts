@@ -113,6 +113,8 @@ export function forkLaunchKindLabel(kind: string | undefined): string {
       return 'orchestration workers'
     case 'automation':
       return 'automation runs'
+    case 'bot':
+      return 'new bots'
     case 'interactive':
       return 'interactive launches'
     case undefined:
