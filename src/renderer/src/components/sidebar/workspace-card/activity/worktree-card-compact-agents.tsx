@@ -3,7 +3,6 @@ import { formatAgentTypeLabel } from '../../../../../../shared/agent-status/pres
 import React, { useCallback, useRef } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { AgentStateDot } from '@/components/agent/status/AgentStateDot'
-import { IconStack } from '@/components/IconStack'
 import type { DashboardAgentRow as DashboardAgentRowData } from '@/components/dashboard/rows/dashboard-agent-row'
 import { AgentTypeIcon } from '@/components/agent/icons/agent-type-icon'
 import { cn } from '@/lib/class-names'

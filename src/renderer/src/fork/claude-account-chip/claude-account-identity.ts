@@ -7,7 +7,8 @@ import type {
 import {
   isClaudePaneOnAccount,
   resolveClaudePaneFolder
-} from '@/lib/agent-session/accounts/claude/claude-pane-account-folder'
+} from '../../../../shared/agent-accounts/claude/claude-pane-account-folder'
+import { getRendererAppPlatform } from '@/app-shell/platform/renderer-app-platform'
 import { signedInClaudeAccountCount } from '@/components/status-bar/accounts/status-bar-claude-accounts'
 import { translate } from '@/i18n/i18n'
 
@@ -150,7 +151,7 @@ export function resolveAccountFromConfigPath(
     (transcriptOrHome.home
       ? `${transcriptOrHome.home.replace(/[\\/]+$/, '')}/projects/chat`
       : undefined)
-  const folder = resolveClaudePaneFolder(path, owner.saved, owner.host)
+  const folder = resolveClaudePaneFolder(path, owner.saved, owner.host, getRendererAppPlatform())
   const unknown: ForkClaudeAccountResolution = {
     kind: 'unknown',
     ownerKey: owner.ownerKey,

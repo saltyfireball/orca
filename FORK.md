@@ -1030,7 +1030,9 @@ named Orca Fork until SLRM-1367. `main` is always
     address the sender reaches (a Tailscale address) or put a TLS reverse proxy in front.
   - **Hooks.** `orca webhooks add --name N --automation ID [--event workflow_run]
     [--when workflow_run.conclusion=failure]` prints the URL and a secret once;
-    `orca webhooks list|rotate|remove`. Hooks and secrets are kept in `fork-webhooks.json`
+    `orca webhooks list|rotate|remove`. Upstream 1.4.266 put bot webhooks under the same
+    command (`orca webhooks list --bot N`, `show`, `calls`, `check`): `orca webhooks list`
+    with `--bot` gives upstream's list, without it the fork's. Hooks and secrets are kept in `fork-webhooks.json`
     (mode 0600), not in settings, so a settings export carries no secret.
   - **Checks.** Every request needs `X-Hub-Signature-256` (or `X-Blackfish-Signature-256`):
     `sha256=` and the HMAC-SHA256 of the raw body under the hook's secret, compared in constant
@@ -2489,7 +2491,12 @@ Upstream files only get short hooks, which keeps rebases small:
     `attachForkDeviceApproval(this, options)` and `attachForkWebhooks(options)`.
   - `runtime-rpc-websocket-dispatch.ts` asks `forkDeviceApprovalWait(...)` once a request's
     device is known and replies `device_approval_pending` when it returns a message.
-  - `automation-dispatch-request.ts` passes the automation through `withForkWebhookPayload`.
+  - `automation-dispatch-request.ts` passes the automation through `withForkWebhookPayload`
+    in upstream's `launchInMain`, so bot and repo targets both get it.
+  - `webhooks list` is one command for both (SLRM-2445): `handler-group-manifest.ts` spreads
+    `withoutForkSharedHandlerKeys(BOT_HANDLER_GROUPS)` so the fork's handler owns the key and
+    passes `--bot` on to upstream's, and `src/cli/specs/index.ts` wraps its list in
+    `withForkWebhookList`, which drops upstream's hidden spec for the fork's.
   - `rpc-method-registry.ts` spreads `FORK_DEVICE_APPROVAL_METHODS` and `FORK_WEBHOOK_METHODS`;
     `cli-command-names.ts` adds `devices` and `webhooks`; `src/cli/specs/index.ts` spreads their
     specs.
@@ -2624,10 +2631,11 @@ Upstream files only get short hooks, which keeps rebases small:
   - `rpc-method-registry.ts` spreads `FORK_SERVER_SETUP_METHODS`
     (`src/main/runtime/rpc/methods/fork/fork-server-setup.ts`): `fork.serverSetup.plan`,
     `.readiness` and `.run`; `rpc-params-catalog.generated.ts` is regenerated with it.
-  - `run-target-options.ts` adds the `fork-setup` row kind to `RunTargetRowModel` and, with
-    `forkServerSetup`, appends `forkServerSetupRows`; `RunTargetCombobox.tsx` calls
-    `useForkServerSetup`, passes the flag and starts a `fork-setup` row on Enter;
-    `RunTargetRowList.tsx` renders `ForkServerSetupRow`.
+  - `WorkspaceRunTargetCombobox.tsx` appends the rows from `useForkServerSetupHostOptions`
+    (`use-fork-server-setup-host-options.tsx`) to the host options it hands upstream's
+    run-target picker: each is a `RunTargetHostOption` listed with the ready hosts that keeps
+    the picker open and starts the setup (SLRM-2445, after upstream 1.4.266 rebuilt the picker
+    around generic host rows).
   - The auto placement files carry `--setup-missing`: `withForkAutoPlacementNotes` also adds the
     flag to `worktree create`'s allowed flags, and `fork.placement.load` and `.pick` take
     `setupMissing`.
