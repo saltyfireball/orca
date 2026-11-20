@@ -202,5 +202,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-quick-task',
     keys: ['quick-task'],
     load: async () => (await import('./quick-task-handlers.js')).FORK_QUICK_TASK_HANDLERS
+  },
+  // BAD-635: a bot's model and effort, for one bot or all (FORK.md "Bot model from the CLI").
+  {
+    name: 'fork-bot-set',
+    keys: ['bot set'],
+    load: async () => (await import('./bot-set-handlers.js')).FORK_BOT_SET_HANDLERS
   }
 ]

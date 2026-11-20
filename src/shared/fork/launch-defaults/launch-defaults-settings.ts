@@ -4,8 +4,9 @@ import type { TuiAgent } from '../../agent-launch/catalog/tui-agent'
 import { forkLaunchDefaultAgents } from './launch-defaults-choices'
 
 /** Launch kinds the host can tell apart at its launch points. UI and mobile launches are
- *  "interactive": they already seed from the app-wide default in Settings > Agents. */
-export const FORK_LAUNCH_KINDS = ['cli', 'worker', 'automation'] as const
+ *  "interactive": they already seed from the app-wide default in Settings > Agents. "bot" is the
+ *  launch a new bot is made with when it brings none (BAD-635). */
+export const FORK_LAUNCH_KINDS = ['cli', 'worker', 'automation', 'bot'] as const
 export type ForkLaunchKind = (typeof FORK_LAUNCH_KINDS)[number]
 /** The kinds the report lists; interactive is shown read-only from the stock default. */
 export type ForkLaunchReportKind = 'interactive' | ForkLaunchKind

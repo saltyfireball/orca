@@ -19,7 +19,13 @@ describe('orca launch-defaults', () => {
       agentLaunchChoices: { claude: { model: 'app-model', options: { effort: 'app-effort' } } }
     })
     const claude = report.rows.filter((row) => row.agent === 'claude')
-    expect(claude.map((row) => row.kind)).toEqual(['interactive', 'cli', 'worker', 'automation'])
+    expect(claude.map((row) => row.kind)).toEqual([
+      'interactive',
+      'cli',
+      'worker',
+      'automation',
+      'bot'
+    ])
     expect(claude.find((row) => row.kind === 'worker')).toEqual({
       kind: 'worker',
       agent: 'claude',
