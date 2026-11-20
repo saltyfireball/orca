@@ -2940,6 +2940,11 @@ Upstream files only get short hooks, which keeps rebases small:
     `runs-command` key and `forkQuickTaskRouterBot` an `agent-limit` key in `settings-access.ts`,
     and the card is in the fork's Settings pane (Chats); its search entry is in
     `fork-settings-pane-catalog-chats.ts`.
+  - Upstream fix (upstream has the same bug in 1.4.266): `src/main/bots/paired-bot-rosters.ts`
+    bounds each paired server's `bots.roster` read with its own 4 s deadline. The transport's
+    `timeoutMs` covers only the send, not the SSH tunnel preparation before it, so a server whose
+    SSH target sat in "connecting" held `bot list` (and the router) until the CLI's 60 s timeout.
+    That server now shows as not reachable after 4 s.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
