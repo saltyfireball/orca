@@ -15,6 +15,11 @@ export type ForkTextSettingKey =
   | 'forkInboxNotifyCommand'
   | 'forkInboxNotifyWebhookUrl'
   | 'forkServerHeartbeatUrl'
+  | 'forkQuickTaskShortcut'
+  | 'forkQuickTaskRouterBot'
+  | 'forkQuickTaskRouterAgent'
+  | 'forkQuickTaskRouterModel'
+  | 'forkQuickTaskPlacementCommand'
 
 export function ForkTextSetting({
   settings,
@@ -22,12 +27,15 @@ export function ForkTextSetting({
   settingKey,
   label,
   description,
-  disabled
+  disabled,
+  placeholder
 }: Props & {
   settingKey: ForkTextSettingKey
   label: string
   description: string
   disabled: boolean
+  /** Shown while empty: what an empty value means. */
+  placeholder?: string
 }): React.JSX.Element {
   const saved = settings[settingKey] ?? ''
   const [draft, setDraft] = useState<string | null>(null)
@@ -47,6 +55,7 @@ export function ForkTextSetting({
           className="w-56"
           aria-label={label}
           disabled={disabled}
+          placeholder={placeholder}
           value={draft ?? saved}
           onChange={(event) => setDraft(event.target.value)}
           onBlur={commit}
