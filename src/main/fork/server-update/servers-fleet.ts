@@ -1,6 +1,7 @@
 // Server updates (FORK.md, SLRM-2310): the desktop side. Lists this desktop's paired servers with
 // their versions, and updates (or rolls back) them one at a time over each server's own RPC, so no
-// SSH is needed. One that fails or does not answer is reported and the rest go on.
+// SSH is needed. One that fails or does not answer (SLRM-2447: within each call's own limit) is
+// reported and the rest go on.
 import { compareForkVersions, isForkReleaseVersion } from '../../../shared/fork/server-update'
 import type {
   ForkServerRow,
@@ -14,6 +15,7 @@ import {
   isForkServerUpdateStartResult,
   isForkServerUpdateStatus
 } from '../../../shared/fork/server-update-wire'
+import { boundedForkPairedCall } from '../paired-server-call/paired-server-call'
 
 const STATUS_TIMEOUT_MS = 10_000
 const START_TIMEOUT_MS = 30_000
@@ -56,12 +58,15 @@ function message(error: unknown): string {
   return (error instanceof Error ? error.message : String(error)).slice(0, 400)
 }
 
+/** Each call within its own limit (SLRM-2447): a server stuck connecting is not waited on. */
+const bounded = (deps: ForkServersDeps): ForkServersDeps['call'] => boundedForkPairedCall(deps.call)
+
 async function readStatus(
   deps: ForkServersDeps,
   id: string
 ): Promise<ForkServerUpdateStatus | { error: 'unreachable' | 'no-support' }> {
   try {
-    const reply = await deps.call(id, 'fork.serverUpdate.status', {}, STATUS_TIMEOUT_MS)
+    const reply = await bounded(deps)(id, 'fork.serverUpdate.status', {}, STATUS_TIMEOUT_MS)
     return isForkServerUpdateStatus(reply) ? reply : { error: 'no-support' }
   } catch (error) {
     return { error: code(error) === 'method_not_found' ? 'no-support' : 'unreachable' }
@@ -81,11 +86,11 @@ function isSshManaged(
 
 export async function listForkServers(deps: ForkServersDeps): Promise<ForkServersListResult> {
   const version = deps.localVersion()
-  const servers: ForkServerRow[] = []
-  for (const environment of await deps.listEnvironments()) {
-    const status = await readStatus(deps, environment.id)
-    servers.push(
-      'error' in status
+  // Every server at once: one that never answers costs the list its status limit and no more.
+  const servers = await Promise.all(
+    (await deps.listEnvironments()).map(async (environment): Promise<ForkServerRow> => {
+      const status = await readStatus(deps, environment.id)
+      return 'error' in status
         ? {
             id: environment.id,
             name: environment.name,
@@ -100,8 +105,8 @@ export async function listForkServers(deps: ForkServersDeps): Promise<ForkServer
             versus: compareForkVersions(status.version, version),
             ...(isSshManaged(environment, status) ? { sshManaged: true } : {})
           }
-    )
-  }
+    })
+  )
   return { version, servers }
 }
 
@@ -211,7 +216,7 @@ async function runOne(
   onChange()
   let started: unknown
   try {
-    started = await deps.call(
+    started = await bounded(deps)(
       row.id,
       request.kind === 'update' ? 'fork.serverUpdate.apply' : 'fork.serverUpdate.rollback',
       request.kind === 'update'

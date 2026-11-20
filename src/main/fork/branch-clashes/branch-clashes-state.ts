@@ -10,6 +10,7 @@ import type { RuntimeStore } from '../../runtime/construction/runtime-store-cont
 import { getCanonicalUserDataPath } from '../../persistence/loading-store/user-data-path'
 import { gatherForkClashes, type ForkClashFleetDeps } from './branch-clashes-fleet'
 import { scanForkClashesHere } from './branch-clashes-host'
+import { boundedForkPairedCall } from '../paired-server-call/paired-server-call'
 
 export type ForkClashRuntime = {
   requireStore: () => RuntimeStore
@@ -26,8 +27,10 @@ export function forkClashFleetDeps(runtime: ForkClashRuntime): ForkClashFleetDep
     config: () => readForkBranchClashConfig(runtime.requireStore().getSettings()),
     localReport: (project) => scanForkClashesHere(runtime.requireStore(), project),
     listEnvironments: () => listEnvironments(getCanonicalUserDataPath()),
-    callEnvironment: (environmentId, method, params, timeoutMs) =>
-      runtime.callOrchestrationWorkerServer(environmentId, method, params, timeoutMs),
+    // Bounded by its own deadline: a server stuck connecting is not waited on (SLRM-2447).
+    callEnvironment: boundedForkPairedCall((environmentId, method, params, timeoutMs) =>
+      runtime.callOrchestrationWorkerServer(environmentId, method, params, timeoutMs)
+    ),
     now: Date.now
   }
 }
