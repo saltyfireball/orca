@@ -2947,6 +2947,12 @@ Upstream files only get short hooks, which keeps rebases small:
     `timeoutMs` covers only the send, not the SSH tunnel preparation before it, so a server whose
     SSH target sat in "connecting" held `bot list` (and the router) until the CLI's 60 s timeout.
     That server now shows as not reachable after 4 s.
+  - Same fix for the fork's own fan-outs (SLRM-2447): `src/main/fork/paired-server-call/` wraps a
+    paired server call so it rejects with `runtime_timeout` once its own `timeoutMs` passes.
+    `orca servers list` (`servers-fleet.ts`) asks every server at once with it and lists one past
+    the 10 s status limit as unreachable; an update or rollback run fails that server and goes on.
+    The digest, branch clashes, letters, pooled limits and auto placement wire their
+    `callEnvironment` through it too.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
