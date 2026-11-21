@@ -1,10 +1,14 @@
 // Card routing (BAD-694, FORK.md): what `orca card route <KEY>` does, over calls the handler binds to
 // the runtime, so the order of reads and writes is tested without one. A card goes to the bot its
 // `bot:<name>` label or the owner's map names, in a chat titled "KEY: summary", and the card gets a
-// comment naming the bot, chat and machine. When neither names one, the owner gets a tap choice.
+// comment naming the bot, its own chat and machine. When neither names one, the configured default bot (or
+// the bot that ran the route, or the router) takes it (BAD-715); the owner gets a tap choice only when
+// there is no such bot or forkCardAskOwner is on.
 import {
   cardChatSubject,
   cardStartComment,
+  readForkCardAskOwner,
+  readForkCardDefaultBot,
   readForkCardRoutes,
   resolveCardRoute,
   type CardFacts,
@@ -50,7 +54,7 @@ export type CardRouteRequest = {
   bot?: string
 }
 
-type Via = 'label' | 'project' | 'team' | 'chosen'
+type Via = 'label' | 'project' | 'team' | 'default' | 'chosen'
 
 export type CardRouteOutcome =
   | {
@@ -82,11 +86,12 @@ const VIA_WORDS: Record<Via, string> = {
   label: 'its bot: label',
   project: "your owner's project map",
   team: "your owner's team map",
+  default: 'the default bot',
   chosen: "your owner's choice"
 }
 
 /** The first message of the bot's chat: the card, its text as data, and how work on it is kept. */
-export function cardHandOffMessage(issue: CardIssue, via: Via): string {
+export function cardHandOffMessage(issue: CardIssue, via: Via, from?: string): string {
   const key = issue.key.toUpperCase()
   const description = issue.description?.trim()
   return [
@@ -97,7 +102,7 @@ export function cardHandOffMessage(issue: CardIssue, via: Via): string {
       ? ['', untrustedContent(`the card's description`, description.slice(0, DESCRIPTION_MAX))]
       : []),
     '',
-    `Work this card through. Start any worker for it with \`worker-start ... --card ${key}\`, so its workspace lists under ${key}. When its pull request opens, comment the link on the card (\`linear comment add ${key} --body "PR: <url>"\`), and one line when it merges or closes.`
+    `Finish this card end to end; nobody waits on your owner for it. Start any worker for it with \`worker-start ... --card ${key}\`, so its workspace lists under ${key}. Open the pull request and comment the link on the card (\`linear comment add ${key} --body "PR: <url>"\`). When its checks pass and nothing is unresolved, merge it yourself in a repository you own; then deploy or release as that repository's own process says, and move the card. A decision goes to ${from ? `${from}, who handed you this card (\`orchestration send --to bot:${botArgument(from)} --type question\`)` : 'the bot or coordinator that gave you this card'} first; take it to your owner only for a hard gate: sending to other people, secrets or sign-ins, deleting data, physical-security devices, force pushes, spending money, or a real security or data-loss risk. When it is done, report the result in one line to ${from ? from : 'the bot that handed it off, or its coordinator'} (\`orchestration send --to bot:<name> --type status\`) and in a card comment.`
   ].join('\n')
 }
 
@@ -135,9 +140,18 @@ export async function runCardRoute(
     calls.settings()
   ])
   const router = readForkQuickTaskConfig(settings).routerBot
+  const self = roster.find((bot) => bot.self)
+  // The router only routes: it takes a card itself as the last resort, never because it ran the route.
+  const fallbacks = readForkCardAskOwner(settings)
+    ? []
+    : [
+        readForkCardDefaultBot(settings),
+        self && self.name.toLowerCase() !== router.toLowerCase() ? self.name : null,
+        router
+      ].filter((name): name is string => Boolean(name))
   const route = request.bot
     ? chosenRoute(roster, request.bot)
-    : resolveCardRoute(issue, roster, readForkCardRoutes(settings), [router])
+    : resolveCardRoute(issue, roster, readForkCardRoutes(settings), [router], fallbacks)
   const via: Via | null = request.bot ? 'chosen' : route.kind === 'bot' ? route.via : null
   if (request.labelOnly && via !== 'label' && via !== 'chosen') {
     return { kind: 'skipped', key, why: `${key} has no bot: label naming a running bot.` }
@@ -168,12 +182,12 @@ export async function runCardRoute(
   const started = await calls.start(route.bot.server, {
     bot: route.bot.name,
     subject,
-    message: cardHandOffMessage(issue, via!)
+    message: cardHandOffMessage(issue, via!, self?.name)
   })
   const machine = route.bot.server?.name ?? started.machine
   let commentError: string | undefined
   try {
-    await calls.comment(key, cardStartComment(started.bot, started.chatId, machine))
+    await calls.comment(key, cardStartComment(started.bot, started.chatId, machine, subject))
   } catch (error) {
     commentError = error instanceof Error ? error.message : String(error)
   }
@@ -223,7 +237,7 @@ async function choose(
             }
           : {})
       })),
-      context: `${issue.url}\nNo bot: label, and no project map entry for ${issue.project ?? 'its project'}.`
+      context: `${issue.url}\nNo bot: label, no project map entry for ${issue.project ?? 'its project'}, and no default bot.`
     })
     return { kind: 'choose', key, choices: names, item, next }
   }
@@ -233,7 +247,8 @@ async function choose(
   }
   const started = await calls.start(router.server, {
     bot: router.name,
-    subject: cardChatSubject(issue),
+    // Not the card's own title: the receiving bot's chat is the one titled "KEY: summary".
+    subject: `Routing ${cardChatSubject(issue)}`.slice(0, 80),
     message: `Route Linear card ${key}: run \`orca card route ${key} --hand-off\` and do only what it prints.`
   })
   return { kind: 'choose', key, choices: names, item: null, router: started, next }
@@ -244,7 +259,7 @@ export function formatCardRouteOutcome(outcome: CardRouteOutcome): string {
     case 'started':
       return [
         `${outcome.bot} took ${outcome.key} (by ${VIA_WORDS[outcome.via]}${outcome.source ? `: ${outcome.source}` : ''}).`,
-        `Chat: ${outcome.chatId} on ${outcome.machine}, titled "${outcome.subject}".`,
+        `${outcome.bot} chat id: ${outcome.chatId} (machine ${outcome.machine}, titled "${outcome.subject}").`,
         outcome.commented
           ? 'Commented on the card.'
           : `Could not comment on the card: ${outcome.commentError}`
@@ -256,11 +271,11 @@ export function formatCardRouteOutcome(outcome: CardRouteOutcome): string {
       ].join('\n')
     case 'choose':
       return [
-        `Neither a bot: label nor the project map names a bot for ${outcome.key}. Could be: ${outcome.choices.join(', ')}.`,
+        `No bot: label, project map entry or default bot names a bot for ${outcome.key}. Could be: ${outcome.choices.join(', ')}.`,
         outcome.item !== null
           ? `Posted the choice to your owner as item ${outcome.item}. When they answer, run: ${outcome.next}`
           : outcome.router
-            ? `${outcome.router.bot} posts the choice from chat ${outcome.router.chatId} on ${outcome.router.machine}.`
+            ? `Router ${outcome.router.bot} posts the choice from its own routing chat ${outcome.router.chatId} on ${outcome.router.machine}; the card's chat starts once a bot is chosen.`
             : `--hand-off posts the choice to your owner; or pick one: ${outcome.next}`
       ].join('\n')
     case 'skipped':

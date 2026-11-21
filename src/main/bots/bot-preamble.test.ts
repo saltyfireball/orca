@@ -68,7 +68,7 @@ describe('buildBotPreamble', () => {
     )
   })
 
-  it('waits on a pull request until it is ready to merge, merged or closed', () => {
+  it('waits on a pull request until it is merged by the owning bot, or closed', () => {
     const preamble = buildBotPreamble({
       name: 'Reviewer',
       agent: 'claude',
@@ -78,7 +78,24 @@ describe('buildBotPreamble', () => {
     for (const event of ['ci_passed', 'ci_failed', 'pr_conflicted', 'pr_merged', 'pr_closed']) {
       expect(preamble).toContain(`--on "github.${event} subject=<owner/repo#n>"`)
     }
-    expect(preamble).toContain('say once in this chat that it is ready to merge, with its link')
+    expect(preamble).toContain('merge it (`gh pr merge`) when you own the repository')
+    expect(preamble).toContain('where you may not merge, say once that it is ready to merge')
+  })
+
+  it('does not park work on the owner: decisions go to the delegating bot first, hard gates stay', () => {
+    const preamble = buildBotPreamble({
+      name: 'Reviewer',
+      agent: 'claude',
+      soul: null,
+      memory: null
+    })
+    expect(preamble).toContain('Nothing waits on your owner.')
+    expect(preamble).toContain(
+      'A decision goes first to the bot or coordinator that gave you the work'
+    )
+    expect(preamble).toContain('sending to other people (mail or messages), secrets and sign-ins')
+    expect(preamble).toContain('You may merge your own pull requests in a repository you own')
+    expect(preamble).toContain('a review for anyone else is a comment review')
   })
 
   it('quotes memory as notes, never instructions', () => {

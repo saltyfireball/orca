@@ -2107,6 +2107,38 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/card-routing.ts`, `src/main/fork/card-routing/` and
     `src/cli/fork/card-route*`.
 
+- **Nothing waits on the owner (BAD-715).** The default for bot work is to finish it and report,
+  not to park it on the owner. Blackfish is public, so this is written as general behavior with
+  settings, and no name, host or card is in shipped text.
+  - Bot rules (`bot-preamble.ts`): "Nothing waits on your owner". A bot finishes end to end (opens
+    the PR, merges its own once checks pass in a repository it owns, deploys or releases as that
+    repository's process says) and reports in one line. A decision goes first to the bot or
+    coordinator that gave it the work (`orchestration ask` or a `question`). These stay with the
+    owner: sending to other people, secrets and sign-ins, forgetting memory, deleting data,
+    physical-security devices, force pushes, spending money, and a real security or data-loss risk
+    (also still kept: a Slack workspace or another bot's chat that nothing decides, and a new bot's
+    Create button). Merge rights: a bot may merge its own PRs in repositories it owns; approving or
+    requesting changes on others' PRs is for when the owner asks, and reviews for anyone else stay
+    comment reviews. The PR-wait prompt merges a green PR it owns (`gh pr merge`) instead of saying
+    "ready to merge" (it still says it where the bot may not merge), and after the fix attempts it
+    escalates to the bot or coordinator that gave it the work, to the owner only for a hard gate.
+    The rules are text with conditions ("a repository you own"), not a setting: a SOUL.md "Never"
+    section or a repository's own rules still narrows them per bot.
+  - `card route --hand-off` first message: finish the card end to end (PR, merge in a repo it owns,
+    deploy or release, move the card) and report to the bot that ran the route (the roster's
+    `self`) or its coordinator; decisions go to that bot first, to the owner only for the hard gates.
+  - A card nothing routes no longer waits for a choice: after the label, project map and team map,
+    `forkCardDefaultBot`, then the bot that ran the route (never the router), then the quick task
+    router takes it (`via: default`). `forkCardAskOwner` (default off) brings back the Needs you
+    choice, which is also what happens when none of those exists. `--label-only` still needs a label.
+  - The quick task router's brief hands a task to the likeliest bot instead of asking which.
+  - Card comment: it names the receiving bot's own chat (the id `fork.cardRoute.start` returned),
+    its title and the machine. The router's choice chat (only in the ask-owner path) is now titled
+    "Routing KEY: ..." so two chats do not carry the card's title, and `card route` prints
+    "<Bot> chat id: <id>". Tests in `card-route.test.ts`.
+  - Code is in `src/shared/fork/card-routing.ts`, `src/cli/fork/card-route*.ts`,
+    `src/main/fork/quick-task/quick-task-brief.ts` and `src/main/bots/bot-preamble.ts`.
+
 - **Tasks GitHub list: one slow project cannot block the rest (BAD-703).** The Tasks > GitHub
   list (PRs and Issues, All projects) merged every project's answer with one `Promise.all`, and
   every list call held one of 8 shared request slots until it answered. A project or host that
@@ -2286,6 +2318,7 @@ Apply these in this order. Each one is a single commit.
 137. `BAD-703 Tasks GitHub list: a project that never answers times out on its own row with a Retry, and the rest of the list fills`
 138. `BAD-704 Automations: pick the model and effort of a project or bot automation, in the dialog and the CLI`
 139. `BAD-707 Usage-limit continue: a forgotten draft no longer holds it for good, the bot row says Paused: usage limit, continues at HH:MM`
+140. `BAD-715 Nothing waits on the owner: bots finish and merge their own work, a card nothing routes goes to a default bot, and the card comment names the receiving bot's chat`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3351,6 +3384,13 @@ Upstream files only get short hooks, which keeps rebases small:
     `rpc-method-registry.ts` is untouched; `rpc-params-catalog.generated.ts` is regenerated.
   - `forkCardRoutes` is intersected in `fork-global-settings.ts`; `settings-rows-*.generated.ts`
     is regenerated.
+
+- Nothing waits on the owner (BAD-715), small edits in stock files: `bot-preamble.ts` rewords the
+  owner-decision rule, the merge-rights rule, the pull request ownership rule and the PR-wait
+  prompt (merge a green PR it owns; escalate to the delegating bot first); `quick-task-brief.ts`
+  hands a task to the likeliest bot instead of asking. The two settings are intersected through
+  `ForkCardRoutingSettings` in `fork-global-settings.ts`; `settings-rows-fork.generated.ts` is
+  regenerated.
 
 - Tasks GitHub list (BAD-703), from `src/shared/fork/github-source-deadline.ts` and
   `src/renderer/src/fork/github-source-errors/`:
