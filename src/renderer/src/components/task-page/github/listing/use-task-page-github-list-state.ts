@@ -1,4 +1,5 @@
 import { useTaskPageGitHubCollectionState } from './use-task-page-github-collection-state'
+import type { GitHubFailedSource } from '../../../../../../shared/fork/github-source-deadline'
 import type { TaskPageProviderStateModel } from '../../use-task-page-provider-state'
 import { useState, useRef, useEffect, useLayoutEffect, useSyncExternalStore } from 'react'
 import type { TaskViewPresetId } from '../../../../../../shared/ui-chrome/ui-chrome-types'
@@ -49,6 +50,8 @@ export function useTaskPageGitHubListState(model: TaskPageProviderStateModel) {
   const [tasksError, setTasksError] = useState<string | null>(null)
   // Why: per-repo failure count for the "N of M" banner; IPC rejections use tasksError instead so partial-failure and hard-reject don't double-show.
   const [failedCount, setFailedCount] = useState(0)
+  // BAD-703: which projects failed and why, so each shows its own error and Retry.
+  const [failedSources, setFailedSources] = useState<GitHubFailedSource[]>([])
   // Why: when every refresh fails (GitHub outage/network/rate limit), attribute it to GitHub instead of showing an empty or stale list as current.
   const [githubUnavailable, setGithubUnavailable] = useState(false)
   const [taskRefreshNonce, setTaskRefreshNonce] = useState(0)
@@ -203,6 +206,8 @@ export function useTaskPageGitHubListState(model: TaskPageProviderStateModel) {
     setTasksError,
     failedCount,
     setFailedCount,
+    failedSources,
+    setFailedSources,
     githubUnavailable,
     setGithubUnavailable,
     taskRefreshNonce,

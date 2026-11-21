@@ -19,6 +19,7 @@ export type TaskPageGitHubLandingRefreshModel = Pick<
   | 'setGithubListRevalidating'
   | 'setTasksError'
   | 'setFailedCount'
+  | 'setFailedSources'
   | 'setGithubUnavailable'
   | 'taskRefreshNonce'
   | 'lastFetchedNonceRef'
