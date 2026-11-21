@@ -43,6 +43,7 @@ import {
 import { AutomationListLastRunCell } from './AutomationListLastRunCell'
 import { formatAutomationRelativeTime, formatAutomationDateTime } from '../automation-page-parts'
 import { getAutomationTargetAvailability } from '../hosts/automation-target-availability'
+import { automationModelEffortSummary } from '@/fork/automation-model-effort/automation-model-effort-label'
 import { getAgentLabel } from '../authoring/automation-draft-model'
 import { automationProjectName, type AutomationListRow } from './automation-list-row-identity'
 import { formatAutomationUsageSummary } from '../runs/automation-usage-model'
@@ -170,7 +171,7 @@ export function AutomationListLocalRow({
     ? botAgentLabel(automation.agentId)
     : getAgentLabel(automation.agentId)
   const hostLabel = automationRowHostLabel(row, automationRepo, hostLabelById)
-  const agentTooltipLabel = `${agentLabel} · ${hostLabel} · ${formatAutomationUsageSummary(row.usageSummary ?? undefined, t, intlLocale)}`
+  const agentTooltipLabel = `${[agentLabel, automationModelEffortSummary(automation)].filter(Boolean).join(' · ')} · ${hostLabel} · ${formatAutomationUsageSummary(row.usageSummary ?? undefined, t, intlLocale)}`
   const canRunNow = automationRunAvailability.canRunNow && allows(row, 'run')
   const lastRun = lastRunByAutomationId.get(automation.id)
   // Use the projected newest retained run when history is absent; the list does not download history.

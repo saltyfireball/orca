@@ -1,5 +1,6 @@
 import { translate } from '@/i18n/i18n'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
+import { AgentLaunchModelEffortFields } from '@/fork/automation-model-effort/AgentLaunchModelEffortFields'
 import { AgentDefaultArgsInput } from './launch-settings/AgentLaunchDefaultsEditor'
 import { AgentPermissionMenu } from './launch-settings/AgentPermissionMenu'
 import { agentModelChoiceChips } from './launch-settings/agent-model-choice-chips'
@@ -55,11 +56,14 @@ export function AgentLaunchDefaultsFields({
   entry,
   draft,
   disabled,
+  modelEffort,
   onCommit
 }: {
   entry: AgentPickerEntry
   draft: AgentPickerDraft
   disabled?: boolean
+  /** Also offer Model and Effort, for a setup that picks them (an automation's). */
+  modelEffort?: boolean
   /** `surface` is set for Arguments, which a launch kept until its Use action named one. */
   onCommit: (draft: AgentPickerDraft, surface?: AgentPickerSurface) => void
 }) {
@@ -132,6 +136,14 @@ export function AgentLaunchDefaultsFields({
           }
         }}
       />
+      {modelEffort ? (
+        <AgentLaunchModelEffortFields
+          entry={entry}
+          draft={draft}
+          disabled={disabled}
+          onEdit={(change) => onCommit(apply(change))}
+        />
+      ) : null}
       {entry.surfaces.includes('terminal') ? (
         <div className="grid gap-1">
           <div className="flex min-h-7 items-center gap-1.5 text-xs">
