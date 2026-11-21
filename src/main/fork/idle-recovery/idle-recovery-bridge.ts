@@ -36,7 +36,7 @@ export function installForkIdleRecoveryBridge(): void {
   ipcMain.handle(CHANNELS.botAsks, (_event, request: unknown) =>
     reportForkBotAsks(ForkBotAsksReportParams.parse(request), {
       settings: () => mainProcessState.store?.getSettings(),
-      runtime: () => mainProcessState.runtime
+      runtime: () => mainProcessState.core.runtime
     })
   )
   ipcMain.handle(CHANNELS.answer, (_event, request: unknown) =>

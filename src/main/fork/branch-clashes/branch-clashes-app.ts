@@ -24,7 +24,7 @@ function mainWindowContents(): Electron.WebContents | null {
 }
 
 async function check(): Promise<void> {
-  const runtime = mainProcessState.runtime
+  const runtime = mainProcessState.core.runtime
   if (!runtime) {
     return
   }

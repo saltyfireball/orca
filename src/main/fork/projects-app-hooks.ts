@@ -12,7 +12,7 @@ export function installForkProjectApps(readSettings: () => unknown): void {
   installForkBranchClashesApp(readSettings)
   installForkReviewGuideApp({
     store: () => mainProcessState.store,
-    runtime: () => mainProcessState.runtime
+    runtime: () => mainProcessState.core.runtime
   })
   installForkLettersApp()
 }

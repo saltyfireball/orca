@@ -5,7 +5,6 @@ import { randomUUID } from 'node:crypto'
 import type { OrcaRuntimeService } from '../../runtime/orca-runtime'
 import { startBotSession } from '../../bots/bot-chat-session'
 import { botOfSession } from '../../bots/bot-session-tabs'
-import { assertBotAgentRunsOnThisHost } from '../../bots/bot-agent-host-refusal'
 import { BOT_ORCA_CLI } from '../../bots/bot-preamble'
 import { BotLaunchSchema } from '../../../shared/bots/bot-launch'
 import { BOT_AGENTS, type Bot, type BotAgent } from '../../../shared/bot-types'
@@ -31,7 +30,6 @@ async function createRouter(runtime: OrcaRuntimeService, input: QuickTaskRouterI
       `The router's agent must be one of ${BOT_AGENTS.join(', ')}, not ${input.agent}.`
     )
   }
-  assertBotAgentRunsOnThisHost(input.agent)
   const launch = input.model ? BotLaunchSchema.safeParse({ model: input.model }) : null
   if (launch && !launch.success) {
     console.warn(
