@@ -13,11 +13,11 @@ import type {
   UsageLimitStop
 } from '../../../../shared/bots/bot-usage-limit-stop'
 
-/** "Continues at 9:50 PM", or "Hit limit · resets 9:50 PM" when Orca won't continue it. */
+/** "Paused: usage limit, continues at 9:50 PM", or "Hit limit · resets 9:50 PM" when Orca won't continue it. */
 export function usageLimitStopText(t: Translate, stop: UsageLimitStop): string {
   const time = formatUsageLimitResetClock(stop.at)
   return stop.auto
-    ? t('bots.usageLimit.continuesAt', 'Continues at {{time}}', { time })
+    ? t('bots.usageLimit.continuesAt', 'Paused: usage limit, continues at {{time}}', { time })
     : t('bots.usageLimit.hitLimit', 'Hit limit · resets {{time}}', { time })
 }
 

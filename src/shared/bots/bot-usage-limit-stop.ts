@@ -5,11 +5,8 @@ import type { AgentSessionStatusSnapshot } from '../agent-session/view/agent-ses
 /** `at`: when Orca continues it (`auto`), else when the limit resets. */
 export type UsageLimitStop = { at: number; auto: boolean }
 
-/** How long a stop Orca continues keeps showing past its time, while its send waits on a fresh
- *  usage reading or a retry; a chat it has continued drops its cut sooner. */
-export const AUTO_CONTINUE_GRACE_MS = 10 * 60_000
-
-/** A session's stop while its limit still holds; a reset already past is no stop. */
+/** A session's stop while its limit still holds. A scheduled continue stays a stop past its time,
+ *  for the host publishes it only until the chat is continued or the continue lapses (BAD-707). */
 export function usageLimitStopOf(
   summary: Pick<AgentSessionStatusSummary, 'usageLimitContinue'> | undefined,
   now: number
@@ -22,7 +19,7 @@ export function usageLimitStopOf(
     cut.state === 'scheduled'
       ? { at: cut.continueAt ?? cut.resetsAt, auto: true }
       : { at: cut.resetsAt, auto: false }
-  return stop.at + (stop.auto ? AUTO_CONTINUE_GRACE_MS : 0) > now ? stop : null
+  return stop.auto || stop.at > now ? stop : null
 }
 
 /** A stopped session of the bot's, with the name its row would say. */

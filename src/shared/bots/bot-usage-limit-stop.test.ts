@@ -47,13 +47,12 @@ describe('usageLimitStopOf', () => {
     expect(usageLimitStopOf({}, NOW)).toBeNull()
   })
 
-  it('keeps a continuing stop for ten minutes past its time, until Orca sends', () => {
+  it('keeps a continuing stop past its time for as long as the host publishes it', () => {
     const cut = { turnItemId: 't', resetsAt: RESET, state: 'scheduled' } as const
-    expect(usageLimitStopOf({ usageLimitContinue: cut }, RESET + 9 * 60_000)).toEqual({
+    expect(usageLimitStopOf({ usageLimitContinue: cut }, RESET + 16 * 3_600_000)).toEqual({
       at: RESET,
       auto: true
     })
-    expect(usageLimitStopOf({ usageLimitContinue: cut }, RESET + 10 * 60_000)).toBeNull()
   })
 })
 

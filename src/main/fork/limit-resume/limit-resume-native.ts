@@ -35,15 +35,20 @@ export function forkUsageLimitChainLimit(): number {
   )
 }
 
-/** Hook: a chat whose message box holds text waits; it is asked again each pass. A chat an agent
- *  guard paused (SLRM-2385) waits too, until a person resumes it. */
-export function forkUsageLimitHeld(sessionId: string): boolean {
+/** Hook: a chat whose message box holds text waits, but only `forkLimitResumeHoldMaxMinutes` past
+ *  the reset (`overdueMs`), so a forgotten draft cannot park the chat for good (BAD-707). It is
+ *  asked again each pass. A chat an agent guard paused (SLRM-2385) waits too, until a person
+ *  resumes it. */
+export function forkUsageLimitHeld(sessionId: string, overdueMs = 0): boolean {
   if (isForkAgentGuardHeld(sessionId)) {
     return true
   }
   const settings = readLimitResumeSettings(readSettings())
   return (
-    settings.enabled && settings.holdWhileTyping && forkBoundaryCompactionTyped(sessionId) === true
+    settings.enabled &&
+    settings.holdWhileTyping &&
+    overdueMs < settings.holdMaxMinutes * 60_000 &&
+    forkBoundaryCompactionTyped(sessionId) === true
   )
 }
 

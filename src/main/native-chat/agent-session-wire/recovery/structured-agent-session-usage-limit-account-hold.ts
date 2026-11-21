@@ -15,6 +15,7 @@ import {
   type AgentSessionAccountHome
 } from '../../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
 import { normalizeRuntimePathForComparison } from '../../../../shared/file-access/cross-platform-path'
+import { forkUsageLimitHeld } from '../../../fork/limit-resume/limit-resume-native'
 import { usageLimitContinueIdentity as identity } from './structured-agent-session-usage-limit-chain'
 
 /** The polled usage of the account a chat continues on, as the host attributes it. */
@@ -286,6 +287,11 @@ export class UsageLimitAccountHolds {
         now >= waitFrom &&
         now < waitFrom + READING_WAIT_MS
     }
+  }
+
+  /** A draft in the message box holds the send only for a while past the reset it waits for. */
+  held(id: string, cut: { turnItemId: string; resetsAt: number }, now: number): boolean {
+    return forkUsageLimitHeld(id, now - this.verdict(id, cut, now).resetsAt)
   }
 
   /** The day Orca may still continue a cut runs from the reset it actually waits for. */

@@ -15,6 +15,7 @@ describe('readLimitResumeSettings', () => {
       terminals: true,
       maxTries: 5,
       holdWhileTyping: true,
+      holdMaxMinutes: 15,
       delaySeconds: 60,
       backoffMinutes: 30,
       message: 'continue',

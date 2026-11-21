@@ -9,6 +9,9 @@ import type { ForkGlobalSettings } from './fork-global-settings'
 export const LIMIT_RESUME_DEFAULT_MAX_TRIES = 5
 export const LIMIT_RESUME_MIN_MAX_TRIES = 1
 export const LIMIT_RESUME_MAX_MAX_TRIES = 20
+export const LIMIT_RESUME_DEFAULT_HOLD_MAX_MINUTES = 15
+export const LIMIT_RESUME_MIN_HOLD_MAX_MINUTES = 1
+export const LIMIT_RESUME_MAX_HOLD_MAX_MINUTES = 24 * 60
 export const LIMIT_RESUME_DEFAULT_DELAY_SECONDS = 60
 export const LIMIT_RESUME_MAX_DELAY_SECONDS = 1800
 export const LIMIT_RESUME_DEFAULT_BACKOFF_MINUTES = 30
@@ -26,6 +29,8 @@ export type LimitResumeSettings = {
   terminals: boolean
   maxTries: number
   holdWhileTyping: boolean
+  /** How long past the reset a native chat's draft may hold its continue. */
+  holdMaxMinutes: number
   delaySeconds: number
   backoffMinutes: number
   message: string
@@ -38,6 +43,7 @@ type SettingKey = keyof Pick<
   | 'forkLimitResumeTerminals'
   | 'forkLimitResumeMaxTries'
   | 'forkLimitResumeHoldWhileTyping'
+  | 'forkLimitResumeHoldMaxMinutes'
   | 'forkLimitResumeDelaySeconds'
   | 'forkLimitResumeBackoffMinutes'
   | 'forkLimitResumeMessage'
@@ -81,6 +87,12 @@ export function readLimitResumeSettings(settings: LimitResumeSettingsSource): Li
       LIMIT_RESUME_DEFAULT_MAX_TRIES
     ),
     holdWhileTyping: settings?.forkLimitResumeHoldWhileTyping !== false,
+    holdMaxMinutes: int(
+      settings?.forkLimitResumeHoldMaxMinutes,
+      LIMIT_RESUME_MIN_HOLD_MAX_MINUTES,
+      LIMIT_RESUME_MAX_HOLD_MAX_MINUTES,
+      LIMIT_RESUME_DEFAULT_HOLD_MAX_MINUTES
+    ),
     delaySeconds: int(
       settings?.forkLimitResumeDelaySeconds,
       0,

@@ -2,10 +2,7 @@ import type { UsageLimitContinueDeps } from './structured-agent-session-usage-li
 import { AgentSessionPreDispatchError } from '../operations/structured-agent-session-operation-settlement'
 import { randomUUID } from 'node:crypto'
 import { NATIVE_CHAT_USAGE_LIMIT_CONTINUE_MESSAGE } from '../../../../shared/native-chat/transcript/continuation/native-chat-usage-limit-cut'
-import {
-  forkUsageLimitChainLimit,
-  forkUsageLimitHeld
-} from '../../../fork/limit-resume/limit-resume-native'
+import { forkUsageLimitChainLimit } from '../../../fork/limit-resume/limit-resume-native'
 import {
   usageLimitContinueIdentity as identity,
   usageLimitContinueMessageId,
@@ -208,7 +205,7 @@ export class StructuredAgentSessionUsageLimitContinue {
           !this.eligible(id, cut) ||
           attempt?.unconfirmed ||
           (attempt?.count ?? 0) >= 5 ||
-          forkUsageLimitHeld(id)
+          this.holds.held(id, cut, this.deps.now())
         ) {
           continue
         }
@@ -303,7 +300,7 @@ export class StructuredAgentSessionUsageLimitContinue {
             !current ||
             identity(current) !== identity(cut) ||
             !this.eligible(id, current) ||
-            forkUsageLimitHeld(id) ||
+            this.holds.held(id, current, this.deps.now()) ||
             !this.holds.witnessHolds(id, this.deps.host, witness) ||
             !this.holds.ready(id, current, this.deps.now())
           ) {
