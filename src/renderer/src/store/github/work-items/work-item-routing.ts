@@ -1,4 +1,5 @@
 import { getGitHubRepoLookupIndex } from '../repositories/github-repo-lookup-index'
+import { withGitHubSourceDeadline } from '../../../../../shared/fork/github-source-deadline'
 import { githubTaskBinding } from '@/lib/work-items/github/github-task-observation'
 import type { AppState } from '../../types'
 import type { RuntimeFocusSettings } from '../../../../../shared/github/cache/github-cache-key'
@@ -217,27 +218,32 @@ export function getGitHubWorkItemRequestContext(
   }
 }
 
+// BAD-703: the deadline frees the request slot a never-answering source would otherwise hold forever.
 export function listGitHubWorkItemsForRepo(
   context: GitHubWorkItemRequestContext,
   args: GitHubWorkItemsListArgs
 ): Promise<ListWorkItemsResult<Omit<GitHubWorkItem, 'repoId'>>> {
   if (context.target.kind === 'environment') {
     const { wakeWslDistro: _wake, ...remoteArgs } = args
-    return callRuntimeRpc<ListWorkItemsResult<Omit<GitHubWorkItem, 'repoId'>>>(
-      { kind: 'environment', environmentId: context.target.environmentId },
-      'github.listWorkItems',
-      {
-        repo: context.target.runtimeRepoId,
-        ...remoteArgs
-      },
-      { timeoutMs: 30_000 }
+    return withGitHubSourceDeadline(
+      callRuntimeRpc<ListWorkItemsResult<Omit<GitHubWorkItem, 'repoId'>>>(
+        { kind: 'environment', environmentId: context.target.environmentId },
+        'github.listWorkItems',
+        {
+          repo: context.target.runtimeRepoId,
+          ...remoteArgs
+        },
+        { timeoutMs: 30_000 }
+      )
     )
   }
-  return window.api.gh.listWorkItems({
-    repoPath: context.repoPath,
-    repoId: context.repoId,
-    ...args
-  })
+  return withGitHubSourceDeadline(
+    window.api.gh.listWorkItems({
+      repoPath: context.repoPath,
+      repoId: context.repoId,
+      ...args
+    })
+  )
 }
 
 export function countGitHubWorkItemsForRepo(
@@ -246,21 +252,25 @@ export function countGitHubWorkItemsForRepo(
 ): Promise<number> {
   if (context.target.kind === 'environment') {
     const { wakeWslDistro: _wake, ...remoteArgs } = args
-    return callRuntimeRpc<number>(
-      { kind: 'environment', environmentId: context.target.environmentId },
-      'github.countWorkItems',
-      {
-        repo: context.target.runtimeRepoId,
-        ...remoteArgs
-      },
-      { timeoutMs: 30_000 }
+    return withGitHubSourceDeadline(
+      callRuntimeRpc<number>(
+        { kind: 'environment', environmentId: context.target.environmentId },
+        'github.countWorkItems',
+        {
+          repo: context.target.runtimeRepoId,
+          ...remoteArgs
+        },
+        { timeoutMs: 30_000 }
+      )
     )
   }
-  return window.api.gh.countWorkItems({
-    repoPath: context.repoPath,
-    repoId: context.repoId,
-    ...args
-  })
+  return withGitHubSourceDeadline(
+    window.api.gh.countWorkItems({
+      repoPath: context.repoPath,
+      repoId: context.repoId,
+      ...args
+    })
+  )
 }
 
 export function isGitHubUnavailableWorkItemsError(error: unknown): boolean {

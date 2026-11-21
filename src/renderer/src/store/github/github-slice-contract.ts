@@ -1,4 +1,5 @@
 import type { GitHubSourceCollections } from './sources/source-collections'
+import type { GitHubFailedSource } from '../../../../shared/fork/github-source-deadline'
 import type { GitHubTaskRecordCache } from './task-records/task-record-cache'
 import type { ClassifiedError } from '../../../../shared/errors/classified-error'
 import type { PRCheckDetail, PRCheckRunDetails } from '../../../../shared/github/checks/check-types'
@@ -218,6 +219,8 @@ export type GitHubSlice = {
         failedCount: number
         githubUnavailable: boolean
         requestFailureCount?: number
+        /** BAD-703: each project that contributed nothing, with why (a timeout reads differently from an error). */
+        failedSources?: GitHubFailedSource[]
       }
     | undefined
   >

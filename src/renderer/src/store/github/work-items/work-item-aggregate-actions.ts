@@ -1,3 +1,9 @@
+import {
+  GITHUB_SOURCE_AGGREGATE_DEADLINE_MS,
+  describeGitHubSourceFailure,
+  withGitHubSourceDeadline,
+  type GitHubFailedSource
+} from '../../../../../shared/fork/github-source-deadline'
 import { githubTaskBinding } from '@/lib/work-items/github/github-task-observation'
 import { knownUnreachableRuntimeHostError } from '@/runtime/hosts/connections/runtime-host-connection-state'
 import { getWorkItemPageErrorTypes } from '../../../../../shared/github/work-items/work-item-page-errors'
@@ -43,16 +49,22 @@ export const createWorkItemAggregateActions = (
     let requestFailureCount = 0
     let unavailableFailureCount = 0
     let skippedSourceCount = 0
+    // BAD-703: name each project that gave nothing so the list can show it on its own.
+    const failedSources: GitHubFailedSource[] = []
     const perProjectResults = await Promise.all(
       repos.map(async (r) => {
         try {
           if (r.hostUnreachable) {
             throw knownUnreachableRuntimeHostError('github.listWorkItems')
           }
-          return await state.fetchWorkItems(r.repoId, r.path, perRepoLimit, query, {
-            ...options,
-            sourceContext: r.sourceContext ?? options?.sourceContext
-          })
+          // BAD-703: one source that never answers must not hold the merged list.
+          return await withGitHubSourceDeadline(
+            state.fetchWorkItems(r.repoId, r.path, perRepoLimit, query, {
+              ...options,
+              sourceContext: r.sourceContext ?? options?.sourceContext
+            }),
+            GITHUB_SOURCE_AGGREGATE_DEADLINE_MS
+          )
         } catch (err) {
           // Why: fall back to any cache entry (stale or not) before declaring this repo failed; only count as failed when it has nothing to contribute.
           // Why: use perRepoLimit (not displayLimit) so the cache key matches what fetchWorkItems wrote.
@@ -88,6 +100,7 @@ export const createWorkItemAggregateActions = (
           }
           console.warn(`[workItems] ${r.repoId} failed:`, err)
           failedCount += 1
+          failedSources.push(describeGitHubSourceFailure(r.repoId, err))
           return [] as GitHubWorkItem[]
         }
       })
@@ -108,6 +121,7 @@ export const createWorkItemAggregateActions = (
       items: merged,
       failedCount,
       githubUnavailable,
+      ...(failedSources.length > 0 ? { failedSources } : {}),
       ...(requestFailureCount > 0 ? { requestFailureCount } : {})
     }
   },

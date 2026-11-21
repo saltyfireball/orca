@@ -42,6 +42,7 @@ export function runTaskPageGitHubLandingRefresh(model: TaskPageGitHubLandingRefr
     setGithubListRevalidating,
     setTasksError,
     setFailedCount,
+    setFailedSources,
     setGithubUnavailable,
     taskRefreshNonce,
     lastFetchedNonceRef,
@@ -164,6 +165,7 @@ export function runTaskPageGitHubLandingRefresh(model: TaskPageGitHubLandingRefr
   setProvenPageLimit(null)
   setTasksError(null)
   setFailedCount(0) // reset so a prior failure banner doesn't linger
+  setFailedSources([])
   setGithubUnavailable(false)
   const landingNeedsNetwork = targetPage > 0 ? cachedTargetPage === null : anyUncached
   setTasksLoading(landingNeedsNetwork)
@@ -315,6 +317,7 @@ export function runTaskPageGitHubLandingRefresh(model: TaskPageGitHubLandingRefr
       const {
         items,
         failedCount: failed,
+        failedSources: failedSourceList = [],
         githubUnavailable: unavailable,
         requestFailureCount = 0
       } = result
@@ -372,6 +375,7 @@ export function runTaskPageGitHubLandingRefresh(model: TaskPageGitHubLandingRefr
         setCurrentPage(0)
       }
       setFailedCount(failed)
+      setFailedSources(failedSourceList)
       setGithubUnavailable(unavailable)
       if (targetPage === 0 || cachedTargetPage) {
         setTasksLoading(false)
@@ -395,6 +399,7 @@ export function runTaskPageGitHubLandingRefresh(model: TaskPageGitHubLandingRefr
             )
       )
       setFailedCount(0) // the per-repo banner would be misleading next to tasksError
+      setFailedSources([])
       setGithubUnavailable(false)
       if (targetPage === 0 || cachedTargetPage) {
         setTasksLoading(false)
