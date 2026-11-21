@@ -874,6 +874,20 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/limit-resume*.ts`, `src/main/fork/limit-resume/` and
     `src/renderer/src/fork/limit-resume/`.
 
+- **Usage-limit continue keeps its promise (BAD-707).** A chat that stopped on a usage limit is
+  continued at the reset even when someone left text in its message box, and its bot row says so.
+  - **Draft hold ends.** Text or an image left in a native chat's message box holds the automatic
+    continue only `forkLimitResumeHoldMaxMinutes` (15, 1 to 1440) past the reset, then it is sent
+    anyway. Before, a forgotten draft held it for good, and the other mail queued behind the
+    failure waited with it. A guard hold (SLRM-2385) still has no end.
+  - **Restarts and updates.** The schedule was already derived from the chat's saved turn, so a
+    restart or an update keeps it, and a continue time that passed while the app was off (up to a
+    day) is sent on the first sweep; tests now cover both.
+  - **Mail drains in order.** Once the continue's turn ends, the pause a failed turn puts on
+    queued mail lifts and the cards go out oldest first; a test covers it.
+  - **Bot row.** A scheduled continue shows "Paused: usage limit, continues at HH:MM" for as long
+    as the host publishes it. It used to drop 10 minutes after its time, which left a bare
+    "Failed".
 - **Chat handoff (SLRM-2391).** On by default (`forkChatHandoff`, Settings > Blackfish > Chats).
   A native chat moves from Claude to Codex or back. The design comes from T3 Code's portable
   handoffs (MIT); only the ideas are ported.
@@ -2271,6 +2285,7 @@ Apply these in this order. Each one is a single commit.
 136. `BAD-694 Card routing: a Linear card goes to its bot by label or project map, and its work carries the card`
 137. `BAD-703 Tasks GitHub list: a project that never answers times out on its own row with a Retry, and the rest of the list fills`
 138. `BAD-704 Automations: pick the model and effort of a project or bot automation, in the dialog and the CLI`
+139. `BAD-707 Usage-limit continue: a forgotten draft no longer holds it for good, the bot row says Paused: usage limit, continues at HH:MM`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2747,7 +2762,9 @@ Upstream files only get short hooks, which keeps rebases small:
     `forkUsageLimitAutoContinueOn(settings)`.
   - `structured-agent-session-usage-limit-continue.ts`: the chain cap reads
     `forkUsageLimitChainLimit()` (two places), and the sweep and the send's `beforeRun` also skip
-    a chat while `forkUsageLimitHeld(id)`.
+    a chat while `this.holds.held(...)`, which asks `forkUsageLimitHeld(id, overdueMs)` (BAD-707, in
+    `structured-agent-session-usage-limit-account-hold.ts`: a draft holds only
+    `forkLimitResumeHoldMaxMinutes` past the reset).
   - `src/main/index.ts` calls `installForkLimitResumeBridge()` through
     `installForkChatBridges()`, `src/preload/index.ts` adds
     `forkLimitResume` (`src/preload/fork/limit-resume-bridge.ts`) and `api-types.ts` types it.
@@ -2757,6 +2774,12 @@ Upstream files only get short hooks, which keeps rebases small:
     card in the fork's Settings pane, and boundary compaction's message box reporter also runs
     (and its list is kept) while limit resume holds for drafts. `forkLimitResumeMessage` is kind
     `runs-command` in `settings-access.ts`.
+
+- Usage-limit continue (BAD-707), small edits in stock files: `bot-usage-limit-stop.ts` no longer
+  drops a scheduled stop 10 minutes after its time, and the `bots.usageLimit.continuesAt` string
+  (`BotUsageLimitMark.tsx`, `en.json`) reads "Paused: usage limit, continues at {{time}}". The
+  setting is in `limit-resume.ts`, `fork-global-settings.ts`, the Limit resume card
+  (`ForkLimitResumeSetting.tsx`) and the generated settings catalog.
 
 - Pooled limits (SLRM-2392), from `src/shared/fork/pooled-limits.ts`,
   `src/main/fork/pooled-limits/`, `src/cli/fork/limits-usage-handler.ts` and

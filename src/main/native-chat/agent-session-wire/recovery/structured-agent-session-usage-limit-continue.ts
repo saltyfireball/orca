@@ -1,9 +1,6 @@
 import type { UsageLimitContinueDeps } from './structured-agent-session-usage-limit-continue-deps'
 import { AgentSessionPreDispatchError } from '../operations/structured-agent-session-operation-settlement'
-import {
-  forkUsageLimitChainLimit,
-  forkUsageLimitHeld
-} from '../../../fork/limit-resume/limit-resume-native'
+import { forkUsageLimitChainLimit } from '../../../fork/limit-resume/limit-resume-native'
 import {
   usageLimitContinueIdentity as identity,
   type HostUsageLimitCut
@@ -234,7 +231,7 @@ export class StructuredAgentSessionUsageLimitContinue {
           !this.eligible(id, cut) ||
           attempt?.unconfirmed ||
           (attempt?.count ?? 0) >= 5 ||
-          forkUsageLimitHeld(id)
+          this.holds.held(id, cut, this.deps.now())
         ) {
           continue
         }
@@ -320,7 +317,7 @@ export class StructuredAgentSessionUsageLimitContinue {
             !current ||
             identity(current) !== identity(cut) ||
             !this.eligible(id, current) ||
-            forkUsageLimitHeld(id) ||
+            this.holds.held(id, current, this.deps.now()) ||
             !this.holds.witnessHolds(id, this.deps.host, witness) ||
             !this.holds.ready(id, current, this.deps.now())
           ) {

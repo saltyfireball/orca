@@ -153,9 +153,9 @@ export function BotAgentLaunchPicker({
   /** A bot from a link: the owner's permission, which another agent opens with in place of the one
    *  shown (the shown one may be this agent's fallback for it). */
   keptPermission?: BotPermissionIntent
-  /** `permissionPicked` when the owner chose its permission (or cleared it), not only kept the shown one. */
   /** Model and Effort as fields under the card, so a pick is visible without opening it. */
   modelEffort?: boolean
+  /** `permissionPicked` when the owner chose its permission (or cleared it), not only kept the shown one. */
   onChange: (setup: BotAgentSetup, permissionPicked?: boolean) => void
 }): React.JSX.Element {
   const t = useTranslate()

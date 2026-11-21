@@ -113,6 +113,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkLimitResumeMaxTries?: number
     /** Fork (SLRM-2309): a chat whose message box has text, or a terminal typed into since the stop, waits; unset is on. */
     forkLimitResumeHoldWhileTyping?: boolean
+    /** Fork (BAD-707): the most minutes a native chat's message box text holds its automatic continue past the reset (1 to 1440); unset is 15. */
+    forkLimitResumeHoldMaxMinutes?: number
     /** Fork (SLRM-2309): seconds after a terminal agent's reset before it is resumed; unset is 60. */
     forkLimitResumeDelaySeconds?: number
     /** Fork (SLRM-2309): first wait when a terminal agent names no reset, doubling per try up to 6 h; unset is 30. */
