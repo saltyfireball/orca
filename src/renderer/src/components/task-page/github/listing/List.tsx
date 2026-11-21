@@ -1,4 +1,5 @@
 import type { TaskPageComposerActionsModel } from '../../use-task-page-composer-actions'
+import { ForkGitHubSourceErrors } from '@/fork/github-source-errors/ForkGitHubSourceErrors'
 import { useAppStore } from '@/store/index'
 import { cn } from '@/lib/class-names'
 import {
@@ -26,6 +27,8 @@ export function TaskPageGitHubList({
     githubListPending,
     tasksError,
     failedCount,
+    failedSources,
+    handleRefreshGithubTasks,
     githubUnavailable,
     githubResumeContextKey,
     pages,
@@ -135,7 +138,18 @@ export function TaskPageGitHubList({
           </div>
         ) : null}
 
-        {!tasksError && !githubUnavailable && failedCount > 0 ? (
+        {!tasksError && !githubUnavailable ? (
+          <ForkGitHubSourceErrors
+            failedSources={failedSources}
+            labelForRepo={(repoId) =>
+              selectedRepos.find((r) => r.id === repoId)?.displayName ?? repoId
+            }
+            onRetry={handleRefreshGithubTasks}
+            disabled={githubListPending}
+          />
+        ) : null}
+
+        {!tasksError && !githubUnavailable && failedCount > failedSources.length ? (
           // Why: per-repo partial-failure signal, distinct from a hard IPC reject (tasksError); the two are mutually exclusive.
           <div className="border-b border-border/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-200">
             {t(

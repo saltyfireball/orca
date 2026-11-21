@@ -2093,6 +2093,25 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/card-routing.ts`, `src/main/fork/card-routing/` and
     `src/cli/fork/card-route*`.
 
+- **Tasks GitHub list: one slow project cannot block the rest (BAD-703).** The Tasks > GitHub
+  list (PRs and Issues, All projects) merged every project's answer with one `Promise.all`, and
+  every list call held one of 8 shared request slots until it answered. A project or host that
+  never answered (a paired server that accepts the call and says nothing, a stuck SSH relay)
+  kept the list on skeleton rows with no error, and enough of them took every slot.
+  - **Cause.** Local calls (`window.api.gh.listWorkItems`) had no deadline in the renderer, and the
+    remote path's 30 s timer starts only after the compatibility probe, which has none. Only a host
+    already known unreachable was skipped. The main process was healthy in the same session: its
+    trace showed 7.8k git spans, none stuck, so the wait was in the renderer fan-out.
+  - **Fix.** Each project's list and count call is bounded (40 s, `GITHUB_SOURCE_DEADLINE_MS`), which
+    also frees its slot. The merged list bounds each project at 60 s from the start, slot wait
+    included. A project that times out or fails with no cached rows is dropped from the merge and
+    named in `failedSources`; the list fills with the rest.
+  - **Display.** One row per failed project: its name, "did not answer in time" or the error, and a
+    Retry (the list's refresh). The old "N of M projects failed" line shows only for failures
+    that have no named source. Issues uses the same list code, so it behaves the same.
+  - Code is in `src/shared/fork/github-source-deadline.ts` and
+    `src/renderer/src/fork/github-source-errors/`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -2234,6 +2253,7 @@ Apply these in this order. Each one is a single commit.
 134. `BAD-658 Bot chats: list a handed-off chat under its bot, open it from the row's line and from the handoff card`
 135. `BAD-669 Worker archive: remove finished workers' own workspaces when safe, stop idle terminals, hide and close bot chats`
 136. `BAD-694 Card routing: a Linear card goes to its bot by label or project map, and its work carries the card`
+137. `BAD-703 Tasks GitHub list: a project that never answers times out on its own row with a Retry, and the rest of the list fills`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3294,6 +3314,18 @@ Upstream files only get short hooks, which keeps rebases small:
     `rpc-method-registry.ts` is untouched; `rpc-params-catalog.generated.ts` is regenerated.
   - `forkCardRoutes` is intersected in `fork-global-settings.ts`; `settings-rows-*.generated.ts`
     is regenerated.
+
+- Tasks GitHub list (BAD-703), from `src/shared/fork/github-source-deadline.ts` and
+  `src/renderer/src/fork/github-source-errors/`:
+  - `work-item-routing.ts` wraps `listGitHubWorkItemsForRepo` and `countGitHubWorkItemsForRepo` in
+    `withGitHubSourceDeadline`.
+  - `work-item-aggregate-actions.ts` bounds each project in `fetchWorkItemsAcrossRepos` and returns
+    `failedSources`; `github-slice-contract.ts` types it.
+  - `use-task-page-github-list-state.ts` holds `failedSources`; the landing refresh run (and its
+    model type) sets it; `List.tsx` renders `ForkGitHubSourceErrors` and hides the generic count
+    line when every failure is named.
+  - The tests are `github-source-deadline.test.ts` and
+    `github-work-items-hung-source.test.ts` (a source that never resolves).
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
