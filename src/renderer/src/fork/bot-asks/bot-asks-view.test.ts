@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import type { Bot } from '../../../../shared/bot-types'
 import { makeTestBotItem } from '../../../../shared/bots/bot-item.test-fixture'
 import {
-  forkBotAskAnswerable,
   forkBotAskLine,
   forkBotAskNotice,
   forkBotAsksOf,
@@ -17,9 +16,15 @@ function bot(id: string, fields: Partial<Bot> = {}): Bot {
   return { id, name: `Bot ${id}`, hostId: 'local', ...fields } as Bot
 }
 
-const ask = {
-  questions: [{ prompt: 'Upgrade Linear to Basic?', options: [{ label: 'Yes' }, { label: 'No' }] }]
-}
+const decisions = [
+  {
+    question: 'Upgrade Linear to Basic?',
+    replies: [
+      { label: 'Yes', recommended: false },
+      { label: 'No', recommended: false }
+    ]
+  }
+]
 
 describe('forkBotAsksOf', () => {
   it('lists only items waiting on the owner, oldest first, across bots', () => {
@@ -91,27 +96,16 @@ describe('forkBotAsksOf', () => {
   })
 })
 
-describe('forkBotAskLine and forkBotAskAnswerable', () => {
+describe('forkBotAskLine', () => {
   it('reads the question first line plainly, else its first decision, else the title', () => {
     const item = makeTestBotItem(1, { title: 'Linear plan' })
     expect(forkBotAskLine({ item, question: { eventId: 'e1', text: '**Upgrade?**\nmore' } })).toBe(
       'Upgrade?'
     )
-    expect(forkBotAskLine({ item, question: { eventId: 'e1', text: '', ask } })).toBe(
+    expect(forkBotAskLine({ item, question: { eventId: 'e1', text: '', decisions } })).toBe(
       'Upgrade Linear to Basic?'
     )
     expect(forkBotAskLine({ item, question: null })).toBe('Linear plan')
-  })
-
-  it('answers in place only an ask with decisions on a host that records answers', () => {
-    expect(
-      forkBotAskAnswerable({ question: { eventId: 'e1', text: 'Q', ask, answerable: true } })
-    ).toBe(true)
-    expect(forkBotAskAnswerable({ question: { eventId: 'e1', text: 'Q', ask } })).toBe(false)
-    expect(forkBotAskAnswerable({ question: { eventId: 'e1', text: 'Q', answerable: true } })).toBe(
-      false
-    )
-    expect(forkBotAskAnswerable({ question: null })).toBe(false)
   })
 })
 

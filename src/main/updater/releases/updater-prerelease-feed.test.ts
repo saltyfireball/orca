@@ -18,7 +18,7 @@ vi.mock('./updater-release-api-token', () => ({
 function respondWithReleasesApi(...pages: { tag: string; publishedAt: string }[][]): void {
   const atomImplementation = netFetchMock.getMockImplementation()
   netFetchMock.mockImplementation((url: string, init?: { method?: string }) => {
-    if (url.startsWith('https://api.github.com/repos/stablyai/orca/releases')) {
+    if (url.startsWith('https://api.github.com/repos/saltyfireball/orca/releases')) {
       const page = Number(new URL(url).searchParams.get('page') ?? '1')
       const payload = (pages[page - 1] ?? []).map(({ tag, publishedAt }) => ({
         tag_name: tag,
