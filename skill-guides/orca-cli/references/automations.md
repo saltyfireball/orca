@@ -28,6 +28,8 @@ On a plain folder project, `new_per_run` creates separate Orca workspace entries
 
 Use `--extra-agent-args="--model opus --effort high --add-dir docs"` to add arguments after the host's default agent Arguments on every fresh run (always pass it with `=`, since the value starts with `--`). Only model and effort options, plus Claude's `--add-dir`, are accepted, for `antigravity`, `claude`, `codex`, `codebuddy`, `cursor`, `grok`, `omp`, and `pi` (`--model`, `--thinking`). Model or effort in the extras replaces the default's; a default Pi `--provider` stays and scopes the model. Extras can't be combined with `--reuse-session`. `--extra-agent-args=` on edit clears them.
 
+On a project automation, `--model <id>` and `--effort <level>` set the model and effort every run uses, chat or terminal, over the host's default Arguments (`--provider` picks the agent). Leave them out for the agent's default; on edit, `--model=` or `--effort=` goes back to it. They can't be combined with `--extra-agent-args`.
+
 ## Bot automations and events
 
 A bot's automation names the bot instead of a provider and place, and can start on an event as well as (or instead of) a schedule:

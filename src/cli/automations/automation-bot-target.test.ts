@@ -149,7 +149,7 @@ describe('orca automations create --bot', () => {
       '--results-to must be chat, thread, none, channel:<channel> or linear:<issue>'
     ],
     [[['bot', 'Nobody']], 'No bot named Nobody'],
-    [[['agent', 'codex']], '--agent, --model and --effort need --bot'],
+    [[['agent', 'codex']], '--agent needs --bot'],
     [
       [
         ['bot', 'Reviewer'],
