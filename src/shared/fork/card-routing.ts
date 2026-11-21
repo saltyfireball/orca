@@ -21,6 +21,10 @@ export type ForkCardRouteStartResult = { bot: string; chatId: string; machine: s
 export type ForkCardRoutingSettings = {
   /** Fork card routing (BAD-694): Linear project name or team key to the bot that takes its cards, e.g. {"Docs":"Writer"}; unset is no map. A card's `bot:<name>` label wins over it. */
   forkCardRoutes?: Record<string, string>
+  /** Fork card routing (BAD-715): the bot that takes a card when no label or map entry names one; unset falls back to the bot that ran the route, then the quick task router. */
+  forkCardDefaultBot?: string
+  /** Fork card routing (BAD-715): when no label or map entry names a bot, post a choice to the owner instead of using the default bot; unset is false. */
+  forkCardAskOwner?: boolean
 }
 
 /** What routing reads from a card. */
@@ -41,7 +45,13 @@ export type CardRouteBot = {
 }
 
 export type CardRoute<B extends CardRouteBot> =
-  | { kind: 'bot'; bot: B; via: 'label' | 'project' | 'team'; source: string; note?: string }
+  | {
+      kind: 'bot'
+      bot: B
+      via: 'label' | 'project' | 'team' | 'default'
+      source: string
+      note?: string
+    }
   | { kind: 'choose'; choices: B[]; note?: string }
 
 /** Fewest and most bots a choice offers. */
@@ -72,6 +82,18 @@ export function readForkCardRoutes(settings: unknown): Map<string, string> {
     }
   }
   return routes
+}
+
+/** The bot named as the default for cards nothing else routes; null when unset. */
+export function readForkCardDefaultBot(settings: unknown): string | null {
+  const raw = ((settings ?? {}) as ForkCardRoutingSettings).forkCardDefaultBot
+  const name = typeof raw === 'string' ? raw.trim() : ''
+  return name && name.length <= MAX_NAME ? name : null
+}
+
+/** True when the owner wants a choice posted, not a default bot, for a card nothing routes. */
+export function readForkCardAskOwner(settings: unknown): boolean {
+  return ((settings ?? {}) as ForkCardRoutingSettings).forkCardAskOwner === true
 }
 
 /** The bot names a card's `bot:<name>` (or `bot/<name>`) labels give, in label order. */
@@ -125,7 +147,9 @@ export function resolveCardRoute<B extends CardRouteBot>(
   card: CardFacts,
   roster: readonly B[],
   routes: ReadonlyMap<string, string>,
-  exclude: readonly string[] = []
+  exclude: readonly string[] = [],
+  /** Bot names to try, in order, when no label or map entry names one (BAD-715); they may include an excluded bot. */
+  fallbacks: readonly string[] = []
 ): CardRoute<B> {
   const skip = new Set(exclude.map((name) => name.toLowerCase()))
   const bots = roster.filter((bot) => !bot.paused && !skip.has(bot.name.toLowerCase()))
@@ -152,6 +176,13 @@ export function resolveCardRoute<B extends CardRouteBot>(
       return { kind: 'bot', bot, via, source: value, ...(note ? { note } : {}) }
     }
   }
+  const running = roster.filter((bot) => !bot.paused)
+  for (const name of fallbacks) {
+    const bot = byName(running, name)
+    if (bot) {
+      return { kind: 'bot', bot, via: 'default', source: bot.name, ...(note ? { note } : {}) }
+    }
+  }
   return { kind: 'choose', choices: cardRouteChoices(card, bots), ...(note ? { note } : {}) }
 }
 
@@ -168,10 +199,15 @@ export function isCardChatSubject(subject: string): boolean {
 
 /** The bot preamble's line on cards, after its Linear line. */
 export function forkCardToolLine(cli: string): string {
-  return `- A Linear card to route (assigned to Orca, created with a \`bot:<name>\` label, or a task naming its key): \`${cli} card route <KEY> --hand-off\`, never a guess. It starts the bot the card's label or your owner's project map names in a chat titled "KEY: summary", comments on the card and prints the chat id and machine. When it posts a choice for your owner instead, wait for the answer, then run it again with \`--bot <their choice>\`. Work for a card: \`worker-start ... --card <KEY>\`, so its workspace lists under the card; when its PR opens, \`${cli} linear comment add <KEY> --body "PR: <url>"\`.`
+  return `- A Linear card to route (assigned to Orca, created with a \`bot:<name>\` label, or a task naming its key): \`${cli} card route <KEY> --hand-off\`, never a guess. It starts the bot the card's label, the project map or the configured default names, in a chat titled "KEY: summary", comments on the card with that chat's id and prints the chat id and machine. The receiving bot finishes the card end to end and reports back to the bot that handed it off. Only when no bot can be chosen at all does it post a choice for your owner: then run it again with \`--bot <their choice>\`. Work for a card: \`worker-start ... --card <KEY>\`, so its workspace lists under the card; when its PR opens, \`${cli} linear comment add <KEY> --body "PR: <url>"\`.`
 }
 
-/** The comment a card gets when a bot takes it. */
-export function cardStartComment(bot: string, chatId: string | null, machine: string): string {
-  return `${bot} bot on it, chat ${chatId ?? 'not reported'}, machine ${machine}`
+/** The comment a card gets when a bot takes it: the receiving bot's own chat, by id and title. */
+export function cardStartComment(
+  bot: string,
+  chatId: string | null,
+  machine: string,
+  subject?: string
+): string {
+  return `${bot} bot on it, chat ${chatId ?? 'not reported'}${subject ? ` ("${subject}")` : ''}, machine ${machine}`
 }

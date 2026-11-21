@@ -156,7 +156,7 @@ describe('quickTaskRouterBrief', () => {
     expect(brief).toContain('[--on <server>]')
     expect(brief).toContain('bot create --offer')
     expect(brief).toContain('When the task itself is to set up bots, the cards are the whole job')
-    expect(brief).toContain('ask your owner here which one')
+    expect(brief).toContain('hand it to the likeliest one')
   })
 
   it('runs a custom placement command as typed, and none when placement is off', () => {
