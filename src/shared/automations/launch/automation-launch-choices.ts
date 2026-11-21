@@ -46,14 +46,33 @@ export function automationArgumentChoices(
   })
 }
 
+/** Arguments text without the model or effort flags the picker also sets: the picker wins. */
+export function automationArgumentsWithoutPickedChoices(
+  agent: TuiAgent,
+  source: string,
+  choices: AgentDedicatedChoices
+): string {
+  const found = automationArgumentChoices(agent, source, choices)
+  const overridden = found.recognized.filter((occurrence) =>
+    occurrence.key === 'model'
+      ? choices.model !== undefined
+      : occurrence.key !== 'permissionMode' && choices.options?.[occurrence.key] !== undefined
+  )
+  return (overridden.length ? found.analysis.cut(overridden) : null) ?? source
+}
+
 export function automationLaunchInputs(agent: TuiAgent, setup: AutomationLaunchSetup) {
   const choices = automationLaunchChoices(setup)
-  const result = automationArgumentChoices(agent, setup.agentArgs ?? '', choices)
+  const agentArgs =
+    setup.agentArgs === undefined || setup.agentArgs === null
+      ? setup.agentArgs
+      : automationArgumentsWithoutPickedChoices(agent, setup.agentArgs, choices)
+  const result = automationArgumentChoices(agent, agentArgs ?? '', choices)
   const views = projectAgentLaunchInputViews(
     agent,
     choices,
     result,
-    setup.agentArgs !== undefined ? { agentArgs: setup.agentArgs } : {}
+    setup.agentArgs !== undefined ? { agentArgs } : {}
   )
   const chatSessionOptions = { ...views.sessionOptions, ...views.chatSessionOptions }
   return {

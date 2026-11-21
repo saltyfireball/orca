@@ -44,6 +44,10 @@ import {
   getWorkspaceModeFlag
 } from './automation-handler-flags'
 import { getExtraAgentArgsFlag } from './automation-extra-agent-args-flag'
+import {
+  assertLaunchChoicesSupported,
+  getProjectLaunchChoicesPatch
+} from './automation-project-launch-flags'
 import { assertAutomationFieldsSupported } from './automation-host-support'
 import { assertAutomationSetupMode, getAutomationSetupFlag } from './automation-setup-flag'
 import { getTimezoneFlags } from './automation-timezone-flag'
@@ -131,6 +135,7 @@ export const AUTOMATION_HANDLERS: Record<string, CommandHandler> = {
       printSavedAutomation(saved, json, on)
       return
     }
+    const launchChoices = getProjectLaunchChoicesPatch(flags)
     const target = await resolveDefaultTarget(flags, cwd, client)
     const sourceContext = getSourceContextFlag(flags)
     const workspaceMode =
@@ -143,6 +148,7 @@ export const AUTOMATION_HANDLERS: Record<string, CommandHandler> = {
       precheck: getPrecheckFlag(flags),
       agentId: getProviderFlag(flags),
       extraAgentArgs: getExtraAgentArgsFlag(flags),
+      ...(launchChoices ? { launchSetupPatch: launchChoices } : {}),
       ...(setupDecision !== undefined ? { setupDecision } : {}),
       ...(target.runContext ? { runContext: target.runContext } : {}),
       ...(sourceContext !== undefined ? { sourceContext } : {}),
@@ -157,9 +163,11 @@ export const AUTOMATION_HANDLERS: Record<string, CommandHandler> = {
       ...schedule
     } satisfies AutomationCreateParams
     await assertAutomationFieldsSupported(client, create)
+    await assertLaunchChoicesSupported(client, launchChoices)
     const { writer, params } = await routeAutomationCreate(client, target, create)
     if (writer !== client) {
       await assertAutomationFieldsSupported(writer, create)
+      await assertLaunchChoicesSupported(writer, launchChoices)
     }
     // The caller's chat lives on this client's host, so only a local write names it.
     const result = await writer.call<{ automation: Automation }>('automation.create', {
@@ -178,6 +186,7 @@ export const AUTOMATION_HANDLERS: Record<string, CommandHandler> = {
     const agentEdit = getBotAgentSetupEdit(flags)
     const sourceContext = getSourceContextFlag(flags)
     const id = getRequiredStringFlag(flags, 'id')
+    const projectChoices = getProjectLaunchChoicesPatch(flags)
     // Built before the owner read so a contradictory flag still fails without a runtime call.
     const updates = {
       name: getOptionalStringFlag(flags, 'name'),
@@ -205,6 +214,15 @@ export const AUTOMATION_HANDLERS: Record<string, CommandHandler> = {
       client,
       id
     )
+    // A bot's automation keeps its own agent setup; a project's takes the launch choices.
+    const launchChoices = current.bot ? undefined : projectChoices
+    if (!current.bot && flags.has('agent')) {
+      throw new RuntimeClientError(
+        'invalid_argument',
+        '--agent needs a bot automation; a project automation takes --provider, with --model and --effort.'
+      )
+    }
+    await assertLaunchChoicesSupported(client, launchChoices)
     assertAutomationSetupMode(
       setupDecision,
       updates.workspaceMode ?? (target.workspace ? 'existing' : current.workspaceMode)
@@ -214,7 +232,7 @@ export const AUTOMATION_HANDLERS: Record<string, CommandHandler> = {
       current.bot && editNeedsBot(current, agentEdit)
         ? await findBot(client, current.bot.botId)
         : undefined
-    const bot = editedBotTarget(current, botEdits, agentEdit, liveBot)
+    const bot = editedBotTarget(current, botEdits, current.bot ? agentEdit : undefined, liveBot)
     // Owner fencing covers the source host; moves must fence the destination too.
     const destination = await resolveAutomationDestination(client, target)
     const result = await client.call<{ automation: Automation }>('automation.update', {
@@ -223,7 +241,11 @@ export const AUTOMATION_HANDLERS: Record<string, CommandHandler> = {
       ...(destination ? { destination } : {}),
       // A setup choice that relies on the current mode must not land after a switch to existing.
       ...(setupDecision && !updates.workspaceMode ? { expectedWorkspaceMode: 'new_per_run' } : {}),
-      updates: bot ? { ...updates, bot } : updates,
+      updates: {
+        ...updates,
+        ...(bot ? { bot } : {}),
+        ...(launchChoices ? { launchSetupPatch: launchChoices } : {})
+      },
       ...callerChat()
     })
     printSavedAutomation(result, json, on, current)

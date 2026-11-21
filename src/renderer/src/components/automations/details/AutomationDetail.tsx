@@ -23,6 +23,7 @@ import { translate } from '@/i18n/i18n'
 import { useIntlLocale, useTranslate, type Translate } from '@/i18n/use-translate'
 import { AutomationPromptDisclosure } from './AutomationPromptDisclosure'
 import { automationRunErrorText } from '../runs/automation-run-error-copy'
+import { automationModelEffortProperties } from '@/fork/automation-model-effort/automation-model-effort-label'
 import { getAgentLabel } from '../authoring/automation-draft-model'
 import { AutomationDetailHealth } from './AutomationDetailHealth'
 import { AutomationRecentRunsRail } from './AutomationRecentRunsRail'
@@ -223,6 +224,7 @@ export function AutomationDetail({
         </span>
       )
     },
+    ...automationModelEffortProperties(automation, t),
     {
       key: 'host',
       label: t('auto.components.automations.AutomationDetail.host', 'Host'),

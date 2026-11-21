@@ -41,6 +41,7 @@ export function AutomationBotAgentField({
         value={{ agent: setup.agent, ...(setup.launch ? { launch: setup.launch } : {}) }}
         worktreeId={folderWorkspaceKey(bot.folderWorkspaceId)}
         withPermission={false}
+        modelEffort
         disabled={inChat}
         inherit={
           inChat

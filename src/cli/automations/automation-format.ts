@@ -1,5 +1,9 @@
 // Use authority-projected owners: stored target fields survive host removal and re-registration.
 
+import {
+  automationModelEffort,
+  formatAutomationModelEffort
+} from '../../shared/automations/launch/automation-model-effort-summary'
 import type { Automation } from '../../shared/automations/automation-definition'
 import type { AutomationRun } from '../../shared/automations/history/automation-run'
 import type { AutomationListItem } from '../../shared/automations/ownership/automation-list-scope'
@@ -141,9 +145,18 @@ export function formatAutomationList(result: AutomationListPayload): string {
       const host = item ? `\nhost: ${formatListItemSelector(item)}` : ''
       const wontFire = result.wontFire?.[automation.id]
       const inChat = formatRunsInChat(automation)
-      return `${automation.id}  ${automation.name}  ${automation.agentId}  ${status}\n${formatWhen(automation)}${inChat ? `\n${inChat}` : ''}${wontFire ? `\n${wontFire}` : ''}${host}`
+      const choice = formatAutomationModelEffort(automationModelEffort(automation))
+      return `${automation.id}  ${automation.name}  ${automation.agentId}  ${status}\n${formatWhen(automation)}${choice ? `\nmodel: ${choice}` : ''}${inChat ? `\n${inChat}` : ''}${wontFire ? `\n${wontFire}` : ''}${host}`
     })
     .join('\n\n')
+}
+
+function modelEffortLines(automation: Automation): string[] {
+  if (automation.bot) {
+    return []
+  }
+  const { model, effort } = automationModelEffort(automation)
+  return [...(model ? [`model: ${model}`] : []), ...(effort ? [`effort: ${effort}`] : [])]
 }
 
 export function formatAutomationShow(result: AutomationShowPayload): string {
@@ -164,6 +177,7 @@ export function formatAutomationShow(result: AutomationShowPayload): string {
     `name: ${automation.name}`,
     `provider: ${automation.agentId}`,
     ...(automation.bot ? [formatBotAgent(automation.bot)] : []),
+    ...modelEffortLines(automation),
     ...(automation.extraAgentArgs ? [`extraAgentArgs: ${automation.extraAgentArgs}`] : []),
     `enabled: ${automation.enabled}`,
     ...(automation.bot
