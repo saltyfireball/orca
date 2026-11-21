@@ -14,7 +14,7 @@ import { closeQuickTaskWindow, isQuickTaskWindow, toggleQuickTaskWindow } from '
 import { openQuickTaskChat, runtimeQuickTask } from './quick-task-runtime'
 
 function runtime() {
-  const value = mainProcessState.runtime
+  const value = mainProcessState.core.runtime
   if (!value) {
     throw new Error('Orca is still starting. Try again in a moment.')
   }

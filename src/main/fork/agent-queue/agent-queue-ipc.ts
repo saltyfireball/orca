@@ -25,8 +25,8 @@ function mainWindowContents(): Electron.WebContents | null {
 export function installForkAgentQueueApp(readSettings: () => ForkGlobalSettings | undefined): void {
   installForkAgentQueue(readSettings, {
     // Protected on the runtime; bracket access keeps them type-checked against upstream renames.
-    ptys: () => mainProcessState.runtime?.['ptysById'],
-    ptyIdOfHandle: (handle) => mainProcessState.runtime?.['getLivePtyForHandle'](handle)?.pty.ptyId
+    ptys: () => mainProcessState.core.runtime?.['ptysById'],
+    ptyIdOfHandle: (handle) => mainProcessState.core.runtime?.['getLivePtyForHandle'](handle)?.pty.ptyId
   })
   const fromMainWindow = (event: Electron.IpcMainInvokeEvent): boolean =>
     event.sender === mainWindowContents()

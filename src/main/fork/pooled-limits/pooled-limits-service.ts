@@ -24,7 +24,7 @@ import {
 export type PooledLimitsDeps = {
   settings: () => ForkPooledLimitsSettings | null
   /** This machine's accounts snapshot; null where it has no account services. */
-  snapshot: () => PooledLimitsSnapshot | null
+  snapshot: () => PooledLimitsSnapshot | null | Promise<PooledLimitsSnapshot | null>
   /** Reads usage again where it is stale; slow probes keep running past the wait. */
   refresh: () => Promise<void>
   defaultClaudeLogin: () => Promise<DefaultClaudeLogin>
@@ -123,7 +123,7 @@ export async function readForkMachineUsage(
       undefined
     )
   }
-  const snapshot = deps.snapshot()
+  const snapshot = await deps.snapshot()
   if (!snapshot) {
     return { accounts: [] }
   }

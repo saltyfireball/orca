@@ -675,9 +675,9 @@ named Orca Fork until SLRM-1367. `main` is always
     the sidebar lists, oldest first. `forkInboxBotAsks` (on) turns it on, whatever idle
     recovery's mode; with it off nothing is read. Only bots whose host counts Needs you items are
     read (`bots.items.owner.list`), again when their items change or the count moves.
-    - **Answer in place.** An ask that gave decisions, on a host that records answers, has Answer,
-      which opens upstream's own question card (`BotItemAskCard`) in the row; any ask has Open,
-      which shows the item on its bot's Home tab.
+    - **Open.** Every ask has Open, which shows the item on its bot's Home tab, where upstream's
+      quick replies and comment box answer it. (Until 1.4.267 an ask with decisions also had Answer,
+      which drew upstream's question card in the row; upstream removed that card in 1.4.268.)
     - **Counted.** The inbox button's waiting count includes them, and the button and dialog show
       while one waits even when idle recovery and the board are off.
     - **Told once.** Each window reports the asks it reads to the main process, which tells the
@@ -2262,7 +2262,7 @@ Apply these in this order. Each one is a single commit.
 127. `SLRM-2453 Decision inbox: bot asks listed, answered, counted and told once`
 128. `SLRM-2472 Bot row: clicking a bot that needs you shows its first waiting ask`
 129. `BAD-635 Bot model: orca bot set for one bot or all, and a launch default for new bots`
-130. `BAD-641 Bot ask answers: one typed answer may be as long as an item comment, 8,000 characters`
+130. `BAD-641 Bot ask answers: one typed answer may be as long as an item comment, 8,000 characters` (empty since the 1.4.268 resync: upstream replaced typed decision answers with comment replies, so no cap is left to raise)
 131. `BAD-640 Bot connect: orca bot connect links connected Linear and GitHub to one bot or all`
 132. `BAD-642 Bot items: open and show a worker that runs on a paired server`
 133. `BAD-658 Bot row: needs-you and working badges, an idle look and a color per bot`
@@ -2451,7 +2451,7 @@ Upstream files only get short hooks, which keeps rebases small:
   `ForkRestartHeld` (`src/shared/fork/restart-guard-held.ts`), not an error: `app-bridge.ts`
   passes it as `willRestart`'s refusal so the renderer drops its restart state, `app-api.ts`
   widens the two return types, and one `handleForkRestartHeld` call
-  (`src/renderer/src/fork/restart-guard-held-toast.ts`) in each of `SidebarSettingsHelpMenu.tsx`,
+  (`src/renderer/src/fork/restart-guard-held-toast.ts`) in each of `help-menu-controller.tsx`,
   `AdvancedPane.tsx`, `WindowMaterialSetting.tsx` and `UpdateCard.tsx` clears its spinner and
   shows a neutral toast instead of "Couldn't restart Orca."
 - The update card's wait view (SLRM-1569): `src/preload/index.ts` adds
@@ -2700,9 +2700,6 @@ Upstream files only get short hooks, which keeps rebases small:
   - Bot asks (SLRM-2453) add no upstream hook: `ForkRootHosts` mounts `ForkBotAsksWatcher`, the
     window bridge gains `reportBotAsks` (`fork:idleRecovery:botAsks`), and the main side reads
     idle recovery's settings and runtime (`forkIdleRecoveryHostReaders`).
-  - Ask answer cap (BAD-641): one upstream line, `BOT_ITEM_ASK_LIMITS.answer` in
-    `src/shared/bots/bot-item-ask.ts`, is `BOT_ITEM_LIMITS.text` (8,000) instead of 2,000, so a typed
-    answer to a decision may be as long as an item comment; the total cap is unchanged.
   - `orca settings` cannot write the classifier command, the notification command or the
     webhook address (`settings-access.ts`, kind `runs-command`); the Settings screen can.
 
