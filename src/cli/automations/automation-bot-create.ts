@@ -209,10 +209,10 @@ export async function getBotTargetFlags(
         '--runs-in, --results-to, --on and --once need --bot'
       )
     }
-    if (agentEdit) {
+    if (flags.has('agent')) {
       throw new RuntimeClientError(
         'invalid_argument',
-        '--agent, --model and --effort need --bot; a project automation takes --provider.'
+        '--agent needs --bot; a project automation takes --provider, with --model and --effort.'
       )
     }
     return null

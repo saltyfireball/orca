@@ -2093,6 +2093,22 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code is in `src/shared/fork/card-routing.ts`, `src/main/fork/card-routing/` and
     `src/cli/fork/card-route*`.
 
+- **Model and effort per automation (BAD-704).** A project or bot automation can name the model
+  and effort its runs use, such as Claude Opus 5.5 at xhigh. "Agent default" keeps each as it was.
+  - The Create/Edit automation dialog shows Model and Effort rows under the Agent field, with the
+    lists the chat composer's model menu offers that agent. A project automation keeps them as its
+    launch preferences (`launchPreferences.model` and `options.effort`); a bot automation (runs in
+    a new conversation) in its own agent setup.
+  - Runs use them for chat and terminal launches. They also win over a model or effort flag in the
+    Arguments, which used to make a chat run follow the Arguments; the dialog says so.
+  - `orca automations create|edit` accept `--model` and `--effort` on a project automation
+    (`--provider ... --repo ...`); an empty value goes back to the default, and they cannot be
+    combined with `--extra-agent-args`. `automations list` and `show` print them, and the
+    automation's detail card and its row tooltip show them.
+  - Code is in `src/renderer/src/fork/automation-model-effort/`,
+    `src/shared/automations/launch/automation-model-effort-summary.ts` and
+    `src/cli/automations/automation-project-launch-flags.ts`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -2234,6 +2250,7 @@ Apply these in this order. Each one is a single commit.
 134. `BAD-658 Bot chats: list a handed-off chat under its bot, open it from the row's line and from the handoff card`
 135. `BAD-669 Worker archive: remove finished workers' own workspaces when safe, stop idle terminals, hide and close bot chats`
 136. `BAD-694 Card routing: a Linear card goes to its bot by label or project map, and its work carries the card`
+137. `BAD-704 Automations: pick the model and effort of a project or bot automation, in the dialog and the CLI`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3294,6 +3311,20 @@ Upstream files only get short hooks, which keeps rebases small:
     `rpc-method-registry.ts` is untouched; `rpc-params-catalog.generated.ts` is regenerated.
   - `forkCardRoutes` is intersected in `fork-global-settings.ts`; `settings-rows-*.generated.ts`
     is regenerated.
+
+- Model and effort per automation (BAD-704), from `src/renderer/src/fork/automation-model-effort/`:
+  - `AgentLaunchDefaultsFields.tsx` renders `AgentLaunchModelEffortFields` after Permissions when
+    `modelEffort` is set, and `AgentLaunchPicker.tsx` passes that prop through;
+    `AutomationAgentLaunchPicker.tsx` sets it. `BotAgentLaunchPicker.tsx` renders the same fields
+    (and reads the agent list while they show) for `AutomationBotAgentField.tsx`.
+  - `automation-launch-choices.ts` drops a model or effort flag from the Arguments when the
+    automation also picks that choice (`automationArgumentsWithoutPickedChoices`).
+  - `AutomationDetail.tsx` spreads `automationModelEffortProperties` into its properties and
+    `AutomationListLocalRow.tsx` adds `automationModelEffortSummary` to the agent tooltip.
+  - CLI: `automations.ts` reads `getProjectLaunchChoicesPatch` into `launchSetupPatch` on create
+    and edit; `automation-bot-create.ts` now refuses only `--agent` without `--bot`;
+    `automation-format.ts` prints the model and effort; `specs/automations.ts` lists the flags; the
+    orca-cli skill guide and `bundled-skill-guides.ts` carry one line on them.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

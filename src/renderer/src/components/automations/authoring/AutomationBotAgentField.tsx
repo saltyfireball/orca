@@ -39,6 +39,7 @@ export function AutomationBotAgentField({
         choices={menu.choices}
         value={{ agent: setup.agent, ...(setup.launch ? { launch: setup.launch } : {}) }}
         withPermission={false}
+        modelEffort
         disabled={inChat}
         inherit={
           inChat

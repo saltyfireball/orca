@@ -3,6 +3,8 @@ import { useCallback, useMemo, useState, type ComponentProps } from 'react'
 import { useTranslate } from '@/i18n/use-translate'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { AgentLaunchModelEffortFields } from '@/fork/automation-model-effort/AgentLaunchModelEffortFields'
+import { applyAgentPickerEdit } from '../../../../shared/agent-launch/picker/agent-launch-picker-edits'
 import { AgentLaunchPicker } from '@/components/agent/AgentLaunchPicker'
 import { useAgentPickerDraftScope } from '@/components/agent/AgentLaunchSetupButton'
 import { useAgentLaunchPickerInventory } from '@/components/agent/use-agent-launch-picker-inventory'
@@ -126,6 +128,7 @@ export function BotAgentLaunchPicker({
   showChatDefaultHint = true,
   disabled,
   inherit,
+  modelEffort,
   onChange
 }: {
   /** The host's agent menu (`useBotAgentMenu`). */
@@ -139,6 +142,8 @@ export function BotAgentLaunchPicker({
   disabled?: boolean
   /** Offered under the card; while chosen, the field shows it instead of `value`. */
   inherit?: BotAgentLaunchInherit
+  /** Model and Effort as fields under the card, so a pick is visible without opening it. */
+  modelEffort?: boolean
   onChange: (setup: BotAgentSetup) => void
 }): React.JSX.Element {
   const t = useTranslate()
@@ -147,7 +152,7 @@ export function BotAgentLaunchPicker({
   const observed = useAgentLaunchPickerInventory(
     undefined,
     model,
-    menuOpen,
+    menuOpen || Boolean(modelEffort),
     catalogAgent ?? value.agent
   )
   const { entries, draftForEntry } = useBotAgentPickerEntries(
@@ -189,6 +194,8 @@ export function BotAgentLaunchPicker({
         onSelect: inherit.onChoose
       }
     : undefined
+  const fieldEntry = modelEffort ? entries.find((entry) => entry.agent === value.agent) : undefined
+  const fieldDraft = fieldEntry ? draftForEntry(fieldEntry) : undefined
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <AgentLaunchPicker
@@ -211,6 +218,21 @@ export function BotAgentLaunchPicker({
         onPick={onPick}
         choices={extraChoice ? [extraChoice] : undefined}
       />
+      {fieldEntry && fieldDraft ? (
+        <AgentLaunchModelEffortFields
+          entry={fieldEntry}
+          draft={fieldDraft}
+          disabled={disabled}
+          onEdit={(change) =>
+            onChange(
+              botAgentSetupFromDraft(
+                value.agent,
+                applyAgentPickerEdit(fieldEntry, fieldDraft, change)
+              )
+            )
+          }
+        />
+      ) : null}
       {showChatDefaultHint && !inherit && !value.launch ? (
         // Without its own model the picker shows the owner's chat default, which the bot didn't choose.
         <p className="text-xs text-muted-foreground">
