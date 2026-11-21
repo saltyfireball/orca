@@ -165,6 +165,7 @@ export function AutomationAgentLaunchPicker({
         }
         setupDisabled={!modern}
         launchDefaults={modern}
+        modelEffort={modern}
         draftForEntry={draftForEntry}
         onOpenChange={setMenuOpen}
         onCatalogOpen={setCatalogAgent}

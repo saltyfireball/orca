@@ -90,6 +90,7 @@ export const AgentLaunchPicker = memo(
     onSetDefault,
     launchDefaults,
     launchDefaultsContainer,
+    modelEffort,
     onPick
   }: {
     model: NewTabAgentMenuModel
@@ -126,6 +127,8 @@ export const AgentLaunchPicker = memo(
     launchDefaults?: boolean
     /** Renders those fields here instead, e.g. full width under a narrow picker column. */
     launchDefaultsContainer?: HTMLElement | null
+    /** With launchDefaults: Model and Effort rows too, for a form that saves them. */
+    modelEffort?: boolean
     onPick: (
       agent: AgentPickerEntry['agent'],
       draft?: AgentPickerDraft,
@@ -404,6 +407,7 @@ export const AgentLaunchPicker = memo(
                 entry={entry}
                 draft={draft}
                 disabled={disabled}
+                modelEffort={modelEffort}
                 onCommit={(next, surface) => onPick(entry.agent, next, entry, surface)}
               />,
               launchDefaultsContainer
