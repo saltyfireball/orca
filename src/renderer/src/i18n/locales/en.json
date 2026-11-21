@@ -29488,7 +29488,7 @@
       "for": "for {{name}}"
     },
     "usageLimit": {
-      "continuesAt": "Continues at {{time}}",
+      "continuesAt": "Paused: usage limit, continues at {{time}}",
       "hitLimit": "Hit limit · resets {{time}}",
       "continuesTip": "Continues automatically at {{time}}",
       "hitTip": "{{agent}} hit its usage limit · resets {{time}}",

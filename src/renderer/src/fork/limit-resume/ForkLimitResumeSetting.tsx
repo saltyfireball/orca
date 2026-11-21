@@ -6,13 +6,16 @@ import type { GlobalSettings } from '../../../../shared/settings/global-settings
 import {
   LIMIT_RESUME_DEFAULT_BACKOFF_MINUTES,
   LIMIT_RESUME_DEFAULT_DELAY_SECONDS,
+  LIMIT_RESUME_DEFAULT_HOLD_MAX_MINUTES,
   LIMIT_RESUME_DEFAULT_MAX_TRIES,
   LIMIT_RESUME_DEFAULT_MESSAGE,
   LIMIT_RESUME_MAX_BACKOFF_MINUTES,
   LIMIT_RESUME_MAX_DELAY_SECONDS,
+  LIMIT_RESUME_MAX_HOLD_MAX_MINUTES,
   LIMIT_RESUME_MAX_MAX_TRIES,
   LIMIT_RESUME_MAX_MESSAGE_LENGTH,
   LIMIT_RESUME_MIN_BACKOFF_MINUTES,
+  LIMIT_RESUME_MIN_HOLD_MAX_MINUTES,
   LIMIT_RESUME_MIN_MAX_TRIES,
   readLimitResumeSettings
 } from '../../../../shared/fork/limit-resume'
@@ -74,6 +77,7 @@ export function ForkLimitResumeSetting({ settings, updateSettings }: Props): Rea
   const triesLabel = t('fork.limitResume.maxTries', 'Resumes in a row')
   const delayLabel = t('fork.limitResume.delay', 'Wait after the reset (seconds)')
   const backoffLabel = t('fork.limitResume.backoff', 'First wait with no reset time (minutes)')
+  const holdMaxLabel = t('fork.limitResume.holdMax', 'Longest wait for a draft (minutes)')
   const messageLabel = t('fork.limitResume.message', 'Message to a terminal agent')
   const switchLabel = t('fork.limitResume.codexSwitch', 'Codex "Approaching rate limits" menu')
   return (
@@ -113,6 +117,24 @@ export function ForkLimitResumeSetting({ settings, updateSettings }: Props): Rea
         checked={config.holdWhileTyping}
         disabled={off}
         onChange={() => updateSettings({ forkLimitResumeHoldWhileTyping: !config.holdWhileTyping })}
+      />
+      <SettingsRow
+        label={holdMaxLabel}
+        description={t(
+          'fork.limitResume.holdMaxHelp',
+          'Default {{count}}. Native chats only: text left in a message box holds the resume this long past the reset, then Orca resumes anyway.',
+          { count: LIMIT_RESUME_DEFAULT_HOLD_MAX_MINUTES }
+        )}
+        control={
+          <ForkNumberInput
+            value={config.holdMaxMinutes}
+            label={holdMaxLabel}
+            min={LIMIT_RESUME_MIN_HOLD_MAX_MINUTES}
+            max={LIMIT_RESUME_MAX_HOLD_MAX_MINUTES}
+            disabled={off || !config.holdWhileTyping}
+            onCommit={(next) => updateSettings({ forkLimitResumeHoldMaxMinutes: next })}
+          />
+        }
       />
       <SettingsRow
         label={triesLabel}

@@ -149,6 +149,8 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"enum","values":["dismiss","leave"]},"d":"\'dismiss\' presses Esc on Codex\'s \\"Approaching rate limits\\" menu (keeps the model); unset is \'dismiss\'.","o":true}',
   forkLimitResumeDelaySeconds:
     '{"t":{"k":"number"},"d":"Seconds after a terminal agent\'s reset before it is resumed; unset is 60.","o":true}',
+  forkLimitResumeHoldMaxMinutes:
+    '{"t":{"k":"number"},"d":"The most minutes a native chat\'s message box text holds its automatic continue past the reset (1 to 1440); unset is 15.","o":true}',
   forkLimitResumeHoldWhileTyping:
     '{"t":{"k":"boolean"},"d":"A chat whose message box has text, or a terminal typed into since the stop, waits; unset is on.","o":true}',
   forkLimitResumeMaxTries:
