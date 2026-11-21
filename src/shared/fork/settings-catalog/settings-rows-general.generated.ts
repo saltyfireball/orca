@@ -9,20 +9,28 @@ export const FORK_SETTINGS_ROWS_GENERAL = {
     '{"t":{"k":"boolean"},"d":"Deprecated: Artifacts are always available. Use showArtifactsButton for sidebar visibility.","o":true}',
   automaticUpdates:
     '{"t":{"k":"boolean"},"d":"Download and install updates on their own; off by default.","o":true}',
+  avatarGenerationAgent:
+    '{"t":{"k":"enum","values":["antigravity","codex","grok"]},"d":"The agent the avatar Generate tab used last; it opens on that agent while it can still run.","o":true}',
   botsEnabled:
     '{"t":{"k":"boolean"},"d":"Bots (Settings Bots), on unless turned off. Off hides every bot surface and skips bot runs; bot folders stay on disk.","o":true}',
   deleteChatHistoryWithWorkspace:
     '{"t":{"k":"boolean"},"d":"Workspace cleanup also deletes agent chat history whose Orca workspace folder is gone. Absent means off.","o":true}',
+  generatedAvatarDescriptions:
+    '{"t":{"k":"record","of":{"k":"string"}},"d":"The description that made a bot\'s saved picture, by `host|bot|avatar`; shown as its caption.","o":true}',
   keybindings:
     '{"t":{"k":"record","of":{"k":"array","of":{"k":"string"}}},"d":"Legacy shortcut overrides; new writes go to ~/.orca/keybindings.json.","o":true}',
   languagePackSuggestionShown:
     '{"t":{"k":"boolean"},"d":"One-time marker that the language pack suggestion was shown.","o":true}',
+  linuxTilingWindowMode:
+    '{"t":{"k":"boolean"},"d":"Linux: disables titlebar dragging and keeps only the close button.","o":true}',
   managedAccountDisplayNames:
     '{"t":{"k":"object","fields":{"claude":{"k":"record","of":{"k":"string"},"optional":true},"codex":{"k":"record","of":{"k":"string"},"optional":true}}},"d":"Absent means every saved Claude/Codex account shows its sign-in email.","o":true}',
   newTabMenuLayout:
     '{"t":{"k":"object","fields":{"order":{"k":"array","of":{"k":"string"}},"hidden":{"k":"array","of":{"k":"string"}}}},"d":"Order and hidden items of the + menu in the tab bar; unset keeps the default.","o":true}',
   nonMacSearchKeybindingSeed:
     '{"t":{"k":"enum","values":["done","legacy","pending"]},"d":"The later Windows/Linux rollout must not reuse the Mac cohort.","o":true}',
+  perfNoticesOff:
+    '{"t":{"k":"array","of":{"k":"string"}},"d":"Notices turned off with Don\'t show again; Settings > Notifications turns each back on. Ids this build doesn\'t know are kept, so a newer build\'s opt-outs survive a downgrade.","o":true}',
   prAutoRefresh:
     '{"t":{"k":"enum","values":["default","minimal","off","reduced"]},"d":"Timed PR/review/checks refresh cadence on this host; absent means \'default\'.","o":true}',
   searchKeybindingSeed:

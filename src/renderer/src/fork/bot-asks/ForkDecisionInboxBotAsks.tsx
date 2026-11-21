@@ -1,20 +1,18 @@
 // Bot asks in the Decision inbox (FORK.md "Idle recovery", SLRM-2453): every item a bot set to
-// Needs you, on this computer and its paired servers, oldest first. An ask with decisions on a host
-// that records answers opens upstream's own question card in place (`BotItemAskCard`, the card the
-// bot's Home tab draws); any ask has Open, which shows the item on its bot's Home tab. Also the
-// always-mounted watcher that keeps the asks read while the feature is on, so new ones are told.
-import React, { useState } from 'react'
+// Needs you, on this computer and its paired servers, oldest first. Each ask has Open, which shows
+// the item on its bot's Home tab, where upstream's quick replies and comment box answer it. Also
+// the always-mounted watcher that keeps the asks read while the feature is on, so new ones are told.
+import React from 'react'
 import { Button } from '@/components/ui/button'
 import { useTranslate } from '@/i18n/use-translate'
 import { useBots, openBotHomeTab } from '@/lib/bot-catalog'
-import { BotItemAskCard } from '@/components/bots/items/BotItemAskCard'
 import { openBotItem } from '@/components/bots/items/bot-item-open'
 import { useBotHostLabel } from '@/components/bots/use-bot-host-label'
 import { formatBotItemNumber } from '../../../../shared/bots/bot-items'
 import { sleeperAge } from '../sleepers/ForkSleepersRow'
 import { closeForkDecisionInbox } from '../decision-inbox/decision-inbox-store'
-import { refreshForkBotAsks, useForkBotAsks, useForkBotAsksEnabled } from './bot-asks-store'
-import { forkBotAskAnswerable, forkBotAskLine, type ForkBotAsk } from './bot-asks-view'
+import { useForkBotAsks, useForkBotAsksEnabled } from './bot-asks-store'
+import { forkBotAskLine, type ForkBotAsk } from './bot-asks-view'
 
 /** Keeps the bots and their asks read while bot asks are on; renders nothing. */
 export function ForkBotAsksWatcher(): null {
@@ -33,10 +31,8 @@ async function openAsk(ask: ForkBotAsk): Promise<void> {
 
 function BotAskRow({ ask, now }: { ask: ForkBotAsk; now: number }): React.JSX.Element {
   const t = useTranslate()
-  const [answering, setAnswering] = useState(false)
   const host = useBotHostLabel(ask.bot.hostId)
   const name = ask.item.owner.name ?? ask.bot.name
-  const answerable = forkBotAskAnswerable(ask)
   return (
     <li
       className="flex flex-col gap-1 border-b border-border/50 py-1.5 text-sm last:border-b-0"
@@ -57,26 +53,10 @@ function BotAskRow({ ask, now }: { ask: ForkBotAsk; now: number }): React.JSX.El
         <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
           {formatBotItemNumber(ask.item.number)} {ask.item.title}
         </span>
-        {answerable && !answering ? (
-          <Button size="sm" variant="ghost" onClick={() => setAnswering(true)}>
-            {t('fork.botAsks.answer', 'Answer')}
-          </Button>
-        ) : null}
         <Button size="sm" variant="ghost" onClick={() => void openAsk(ask)}>
           {t('fork.botAsks.open', 'Open')}
         </Button>
       </div>
-      {answerable && answering && ask.question ? (
-        <BotItemAskCard
-          bot={ask.bot}
-          item={ask.item}
-          question={ask.question}
-          askedAt={null}
-          takeFocus
-          onCollapse={() => setAnswering(false)}
-          onReconcile={refreshForkBotAsks}
-        />
-      ) : null}
     </li>
   )
 }

@@ -251,7 +251,7 @@ if (preflightReady) {
   })
   startForkIdleRecovery(() => state.store?.getSettings(), {
     store: () => state.store,
-    runtime: () => state.runtime
+    runtime: () => state.core.runtime
   })
   // Fork: boundary compaction, off unless switched on (FORK.md).
   startForkBoundaryCompaction(() => state.store?.getSettings(), { store: () => state.store })

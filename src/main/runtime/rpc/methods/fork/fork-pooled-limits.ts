@@ -32,9 +32,9 @@ function deps(ctx: RpcContext): PooledLimitsDeps {
         return null
       }
     },
-    snapshot: () => {
+    snapshot: async () => {
       try {
-        return ctx.runtime.getAccountsSnapshot()
+        return await ctx.runtime.getAccountsSnapshot()
       } catch {
         // A host without account services has no accounts of its own to report.
         return null

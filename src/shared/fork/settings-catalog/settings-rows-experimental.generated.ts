@@ -13,6 +13,8 @@ export const FORK_SETTINGS_ROWS_EXPERIMENTAL = {
     '{"t":{"k":"boolean"},"d":"Includes stale quiet agents as a fourth Agent Dashboard column.","o":true}',
   experimentalAgentHibernation:
     '{"t":{"k":"boolean"},"d":"Experimental: automatically sleep completed, resumable background agent terminals.","o":true}',
+  experimentalAppRail:
+    '{"t":{"k":"boolean"},"d":"Experimental: icon-only app rail left of the workspace list for switching between Orca destinations.","o":true}',
   experimentalCompactWorktreeCards:
     '{"t":{"k":"boolean"},"d":"Legacy persisted key from the Experimental rollout; new writes use compactWorktreeCards.","o":true}',
   experimentalEphemeralVms:

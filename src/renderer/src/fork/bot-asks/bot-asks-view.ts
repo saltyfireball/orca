@@ -53,13 +53,8 @@ export function forkBotAskLine(ask: Pick<ForkBotAsk, 'question' | 'item'>): stri
   if (line) {
     return line
   }
-  const decision = ask.question?.ask?.questions[0]?.prompt
+  const decision = ask.question?.decisions?.[0]?.question
   return decision ? botItemQuestionLine(decision) : ask.item.title
-}
-
-/** The ask takes a recorded answer in place: its host takes answers and it gave its decisions. */
-export function forkBotAskAnswerable(ask: Pick<ForkBotAsk, 'question'>): boolean {
-  return ask.question?.answerable === true && (ask.question.ask?.questions.length ?? 0) > 0
 }
 
 /** What the main process is told, for its notice. */

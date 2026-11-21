@@ -12,7 +12,8 @@ export function useForkMcpChat(sessionId: string | undefined): {
   chat: ForkMcpChatInfo | null
   choose: (profile: string | null) => void
 } {
-  const bridge = window.api.forkMcpProfiles
+  // A window without the preload bridge (a component test) has no profiles to show.
+  const bridge = window.api?.forkMcpProfiles
   const settings = useAppStore((s) => s.settings)
   const [chat, setChat] = useState<ForkMcpChatInfo | null>(null)
   useEffect(() => {
