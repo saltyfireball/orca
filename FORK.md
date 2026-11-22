@@ -265,6 +265,9 @@ named Orca Fork until SLRM-1367. `main` is always
     pushed with no pull request, Create pull request; a pull request open, View pull request;
     merged, or pull request merged or closed, Delete. A bulk action ends in a summary in the
     dialog: how many were done, and each refused row with its reason.
+  - BAD-542: the in-use read counts a dispatched worker's chat (its `worktree.ps` row has a
+    `parentPaneKey`; Sleepers still skips those rows), and `orca lost-work` waits up to 10 minutes
+    for a scan of every project instead of the stock 60 seconds.
   - Code is in `src/main/fork/lost-work/`, `src/renderer/src/fork/lost-work/`,
     `src/shared/fork/lost-work.ts`, `src/shared/fork/lost-work-use.ts`, `src/preload/fork/lost-work-bridge.ts` and
     `src/cli/fork/lost-work-*`.
@@ -2319,6 +2322,7 @@ Apply these in this order. Each one is a single commit.
 138. `BAD-704 Automations: pick the model and effort of a project or bot automation, in the dialog and the CLI`
 139. `BAD-707 Usage-limit continue: a forgotten draft no longer holds it for good, the bot row says Paused: usage limit, continues at HH:MM`
 140. `BAD-715 Nothing waits on the owner: bots finish and merge their own work, a card nothing routes goes to a default bot, and the card comment names the receiving bot's chat`
+141. `BAD-542 BAD-524 Lost work counts a live worker chat as in use and its CLI waits for the whole scan; usage report links workers to their coordinator chat`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2396,6 +2400,10 @@ Fork-only code lives in `fork/` folders:
     (with the card pattern, the history kept and the price table), and
     `orca usage-report [--by chat|coordinator|workspace|day|card] [--days N] [--json]` over
     runtime RPC (`fork.usageLedger.report`). "Clear history" in the report forgets the ledger.
+  - **Worker link (BAD-524).** A worker's coordinator is read from the `from` it was started with.
+    A chat coordinator spells it `orca_session_id:<id>`, which was not parsed, so no chat was
+    ever linked and the coordinator rollup stayed one row per chat. History saved before this
+    stays unlinked.
   - **Settings** (Settings > Blackfish): `forkUsageCardPattern` (empty), `forkUsagePrices`
     (empty: built-in prices), `forkUsageRetentionDays` (90, shared with SLRM-2103).
   - **Not covered.** Only native Claude chats counted on this computer. `apiKeySource` `none`
