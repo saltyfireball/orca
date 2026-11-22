@@ -41,7 +41,7 @@ export function inputFromEnv(env) {
     changed: env.CHANGED === 'true',
     conflict: env.CONFLICT === 'true',
     unsigned: env.UNSIGNED === 'true',
-    rebaseError: env.REBASE_ERROR === 'true',
+    mergeError: env.MERGE_ERROR === 'true',
     conflicts: list(env.CONFLICTS),
     upstreamUrl: env.UPSTREAM_URL ?? '',
     runUrl:
@@ -61,7 +61,7 @@ function stateAndReason(input) {
     return ['error', input.detectError || 'The fork base could not be worked out.']
   }
   if (input.conflict) {
-    return ['conflict', `Rebasing the fork commits onto ${input.latest} stopped on conflicts.`]
+    return ['conflict', `Merging ${input.latest} into main stopped on conflicts.`]
   }
   if (input.syncResult === 'success') {
     if (input.buildResults.some((result) => FAILED.has(result))) {
@@ -75,17 +75,14 @@ function stateAndReason(input) {
   if (input.syncResult === 'cancelled') {
     return ['behind', 'The run was cancelled before main moved.']
   }
-  if (input.rebaseError) {
-    return [
-      'behind',
-      `The rebase onto ${input.latest} failed before any conflict; see the run log.`
-    ]
+  if (input.mergeError) {
+    return ['behind', `Merging ${input.latest} failed before any conflict; see the run log.`]
   }
   if (input.unsigned) {
-    return ['behind', 'The rebased commits were not all signed, so main was not pushed.']
+    return ['behind', 'The merge commit was not signed, so main was not pushed.']
   }
   if (input.changed) {
-    return ['behind', 'The rebase worked, but the checks or the push failed, so main did not move.']
+    return ['behind', 'The merge worked, but the checks or the push failed, so main did not move.']
   }
   return ['behind', 'The sync job failed before main moved.']
 }
@@ -110,44 +107,34 @@ export function composeStatus(input, previous, now) {
   }
 }
 
-/**
- * The upstream commit main now sits on, recorded only when this run proved it: main was pushed
- * onto the newest tag, or main was already there. Anything else keeps the old record.
- */
-export function baseRecordFor(input) {
-  if (input.syncResult !== 'success' || !input.latestSha) {
-    return ''
-  }
-  return input.changed || input.detectState === 'in-sync' ? input.latestSha : ''
-}
-
 const STATE_WORDS = {
   'in-sync': 'The fork is in sync with upstream.',
   behind: 'The fork is behind upstream.',
-  conflict: 'The fork is behind upstream: the rebase hit conflicts.',
+  conflict: 'The fork is behind upstream: merging the new tag hit conflicts.',
   error: 'The fork sync failed.'
 }
 
 function manualCommands(input) {
-  const tagRef = `refs/upstream-tags/${input.latest}`
+  const branch = `fork-sync-${input.latest}`
   return [
     '```sh',
     'git fetch origin',
-    `git switch main && git merge --ff-only origin/main   # main must be ${input.oldMain}`,
-    `git fetch --no-tags ${input.upstreamUrl || '<upstream url>'} "+refs/tags/${input.latest}:${tagRef}"`,
-    `git branch fork-sync-backup-${input.runId} ${input.oldMain}`,
-    `git rebase --onto ${input.latestSha} ${input.baseSha} main`,
-    '# resolve each stop, then: git rebase --continue',
-    `git log --format='%G? %h %s' ${input.latestSha}..main   # every line must start with G`,
-    '# run the checks the sync job runs (typecheck, fork tests), then:',
-    `git push --force-with-lease=main:${input.oldMain} origin main`,
+    `git fetch --no-tags ${input.upstreamUrl || '<upstream url>'} "+refs/tags/${input.latest}:refs/tags/${input.latest}"`,
+    `git switch -c ${branch} origin/main   # main was ${input.oldMain}`,
+    `git merge ${input.latest}`,
+    "# resolve each conflict: keep upstream's change plus the fork's intent, then git commit",
+    '# run the checks the sync job runs (typecheck, fork tests), then fast-forward main (a plain push):',
+    `git push origin ${branch}:main`,
     '```'
   ]
 }
 
 /** The run summary in plain words, with the exact commands to resync by hand when it failed. */
 export function summaryMarkdown(status, input) {
-  const lines = [`## Fork sync: ${status.state}`, '', STATE_WORDS[status.state]]
+  // A conflict starts with the marker an Orca automation matches, alone on the first line.
+  const lines =
+    status.state === 'conflict' && input.latest ? [`FORK-SYNC-CONFLICT ${input.latest}`, ''] : []
+  lines.push(`## Fork sync: ${status.state}`, '', STATE_WORDS[status.state])
   if (status.reason) {
     lines.push('', status.reason)
   }
@@ -162,12 +149,12 @@ export function summaryMarkdown(status, input) {
   if (status.conflicts.length > 0) {
     lines.push('', 'Conflicting files:', '', ...status.conflicts.map((file) => `- \`${file}\``))
   }
-  // Only a stopped rebase or failed checks leave a resync to do; an error needs a look first.
-  const canResync = input.latestSha && input.baseSha && input.oldMain
+  // Only a stopped merge or failed checks leave a merge to do by hand; an error needs a look first.
+  const canResync = input.latest && input.oldMain
   if (canResync && (status.state === 'behind' || status.state === 'conflict')) {
     lines.push(
       '',
-      'To resync by hand (main on the fork is untouched):',
+      'To merge by hand (main on the fork is untouched):',
       '',
       ...manualCommands(input)
     )
@@ -195,10 +182,7 @@ function main(argv, env) {
     appendFileSync(env.GITHUB_STEP_SUMMARY, summaryMarkdown(status, input))
   }
   if (env.GITHUB_OUTPUT) {
-    appendFileSync(
-      env.GITHUB_OUTPUT,
-      `base_record=${baseRecordFor(input)}\nstate=${status.state}\n`
-    )
+    appendFileSync(env.GITHUB_OUTPUT, `state=${status.state}\n`)
   }
   process.stdout.write(`${JSON.stringify(status, null, 2)}\n`)
 }

@@ -1,7 +1,7 @@
 name: Fork sync
 
-# Rebases the fork's own commits onto the newest stable upstream tag, checks them, pushes main,
-# keeps upstream workflows disabled, then builds and releases a self-signed macOS app. Every run,
+# Merges the newest stable upstream tag into main (one merge commit, never a rebase), checks it, pushes main,
+# without force, keeps upstream workflows disabled, then builds and releases a self-signed macOS app. Every run,
 # success or failure, ends by publishing its sync status for the app and the run summary. See FORK.md.
 
 on:
@@ -39,7 +39,7 @@ jobs:
       actions: write
       contents: write
     outputs:
-      changed: ${{ steps.rebase.outputs.changed }}
+      changed: ${{ steps.merge.outputs.changed }}
       released: ${{ steps.released.outputs.released }}
       upstream_tag: ${{ steps.tags.outputs.latest }}
       latest_sha: ${{ steps.tags.outputs.latest_sha }}
@@ -49,10 +49,10 @@ jobs:
       detect_state: ${{ steps.tags.outputs.state }}
       detect_error: ${{ steps.tags.outputs.detect_error }}
       old_main: ${{ steps.tags.outputs.old_main }}
-      conflict: ${{ steps.rebase.outputs.conflict }}
-      conflicts: ${{ steps.rebase.outputs.conflicts }}
-      unsigned: ${{ steps.rebase.outputs.unsigned }}
-      rebase_error: ${{ steps.rebase.outputs.rebase_error }}
+      conflict: ${{ steps.merge.outputs.conflict }}
+      conflicts: ${{ steps.merge.outputs.conflicts }}
+      unsigned: ${{ steps.merge.outputs.unsigned }}
+      merge_error: ${{ steps.merge.outputs.merge_error }}
       sha: ${{ steps.result.outputs.sha }}
       version: ${{ steps.version.outputs.version }}
     env:
@@ -76,8 +76,8 @@ jobs:
           filter: blob:none
           ssh-key: ${{ secrets.FORK_SYNC_DEPLOY_KEY }}
 
-      # Base detection and its reasoning live in the script (FORK.md "How sync works").
-      - name: Find the newest stable upstream tag and the fork base
+      # Detection and its reasoning live in the script (FORK.md "How sync works").
+      - name: Find the newest stable upstream tag and the newest one merged into main
         id: tags
         shell: bash
         run: |
@@ -85,7 +85,7 @@ jobs:
           git remote add upstream "$UPSTREAM_URL"
           bash config/scripts/fork/fork-sync.sh detect
 
-      # A rebase re-commits every fork commit; with this key they are SSH-signed by the fork owner.
+      # The merge commit is SSH-signed with this key, as the fork owner.
       - name: Set up commit signing
         id: signing
         if: steps.tags.outputs.state == 'behind'
@@ -95,7 +95,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$FORK_GIT_SIGNING_KEY" ]; then
-            echo "::notice::FORK_GIT_SIGNING_KEY is empty, so the rebased commits stay unsigned (FORK.md)."
+            echo "::notice::FORK_GIT_SIGNING_KEY is empty, so the merge commit stays unsigned (FORK.md)."
             echo "enabled=false" >>"$GITHUB_OUTPUT"
             exit 0
           fi
@@ -116,15 +116,16 @@ jobs:
           git config gpg.ssh.allowedSignersFile "$dir/allowed_signers"
           git config commit.gpgsign true
           echo "enabled=true" >>"$GITHUB_OUTPUT"
-          echo "Rebased commits will be signed and committed by $name."
+          echo "The merge commit will be signed and committed by $name."
 
-      # On a conflict main is left as it was (the push below never runs); the status job reports it.
-      - name: Rebase fork commits onto the newest tag
-        id: rebase
+      # On a conflict this step fails fast: it prints FORK-SYNC-CONFLICT <tag> first, nothing is built
+      # or pushed, and the status job lists the conflicted files in the run summary.
+      - name: Merge the newest upstream tag into main
+        id: merge
         if: steps.tags.outputs.state == 'behind'
         shell: bash
         env:
-          BASE_SHA: ${{ steps.tags.outputs.base_sha }}
+          LATEST: ${{ steps.tags.outputs.latest }}
           LATEST_SHA: ${{ steps.tags.outputs.latest_sha }}
           SIGNING: ${{ steps.signing.outputs.enabled }}
         run: |
@@ -133,9 +134,9 @@ jobs:
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           fi
-          bash config/scripts/fork/fork-sync.sh rebase
+          bash config/scripts/fork/fork-sync.sh merge
 
-      # Straight after the rebase, so the key is gone before pnpm install runs package scripts.
+      # Straight after the merge, so the key is gone before pnpm install runs package scripts.
       - name: Remove the signing key
         if: always()
         shell: bash
@@ -147,13 +148,13 @@ jobs:
 
       # Mirrors release-mac-build.yml: "Setup pnpm" and "Setup Node.js".
       - name: Setup pnpm
-        if: steps.rebase.outputs.changed == 'true'
+        if: steps.merge.outputs.changed == 'true'
         uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2
         with:
           install: false
 
       - name: Setup Node.js
-        if: steps.rebase.outputs.changed == 'true'
+        if: steps.merge.outputs.changed == 'true'
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version-file: package.json
@@ -164,39 +165,38 @@ jobs:
             mobile/pnpm-lock.yaml
 
       - name: Install dependencies
-        if: steps.rebase.outputs.changed == 'true'
+        if: steps.merge.outputs.changed == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck
-        if: steps.rebase.outputs.changed == 'true'
+        if: steps.merge.outputs.changed == 'true'
         run: pnpm typecheck
 
       - name: Fork tests
-        if: steps.rebase.outputs.changed == 'true'
+        if: steps.merge.outputs.changed == 'true'
         run: pnpm test src/shared/fork src/main/fork src/main/updater src/renderer/src/components/native-chat/fork config/scripts/fork --maxWorkers=2
 
       # Mirrors release-mac-build.yml: the install-mobile-dependencies action.
       - name: Install mobile dependencies
-        if: steps.rebase.outputs.changed == 'true'
+        if: steps.merge.outputs.changed == 'true'
         uses: ./.github/actions/install-mobile-dependencies
 
       - name: Mobile typecheck
-        if: steps.rebase.outputs.changed == 'true'
+        if: steps.merge.outputs.changed == 'true'
         working-directory: mobile
         run: pnpm typecheck
 
       # Disable what is registered now, so the push cannot start an upstream workflow already known.
       - name: Disable upstream workflows before the push
-        if: steps.rebase.outputs.changed == 'true'
+        if: steps.merge.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash config/scripts/fork/fork-workflow-guard.sh disable
 
       - name: Push main
-        if: steps.rebase.outputs.changed == 'true'
-        env:
-          OLD_MAIN: ${{ steps.tags.outputs.old_main }}
-        run: git push --force-with-lease="main:$OLD_MAIN" origin HEAD:main
+        if: steps.merge.outputs.changed == 'true'
+        # A plain push: it only fast-forwards, and fails if main moved during the run. Never forced.
+        run: git push origin HEAD:main
 
       # Upstream syncs bring new workflow files, which GitHub enables; only fork-sync may run here.
       - name: Keep upstream workflows disabled
@@ -206,7 +206,7 @@ jobs:
 
       # A workflow added by this push was active when the push landed and may have started.
       - name: Cancel upstream runs of the pushed commit
-        if: steps.rebase.outputs.changed == 'true'
+        if: steps.merge.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash config/scripts/fork/fork-workflow-guard.sh cancel-runs "$(git rev-parse HEAD)"
@@ -215,14 +215,15 @@ jobs:
         id: result
         run: echo "sha=$(git rev-parse HEAD)" >>"$GITHUB_OUTPUT"
 
-      # M.m.(p*1000+N): N counts this upstream base's fork releases (config/scripts/fork/fork-version.mjs).
+      # M.m.(p*1000+N): p is the newest upstream tag merged into main, N counts that base's fork
+      # releases (config/scripts/fork/fork-version.mjs).
       # Worked out once here, so the app and the orcad template it ships carry the same version.
       - name: Compute the fork version
         id: version
         shell: bash
         run: |
           set -euo pipefail
-          upstream="$(node -p "require('./package.json').version")"
+          upstream="$(bash config/scripts/fork/fork-sync.sh merged-tag)"
           version="$(git ls-remote --tags --refs origin 'v*' | sed 's#.*refs/tags/##' \
             | node config/scripts/fork/fork-version.mjs "$upstream")"
           echo "version=$version" >>"$GITHUB_OUTPUT"
@@ -654,7 +655,7 @@ jobs:
           CONFLICT: ${{ needs.sync.outputs.conflict }}
           CONFLICTS: ${{ needs.sync.outputs.conflicts }}
           UNSIGNED: ${{ needs.sync.outputs.unsigned }}
-          REBASE_ERROR: ${{ needs.sync.outputs.rebase_error }}
+          MERGE_ERROR: ${{ needs.sync.outputs.merge_error }}
         run: node config/scripts/fork/fork-sync-status.mjs "$RUNNER_TEMP/status.json" "$RUNNER_TEMP/previous-status.json"
 
       - name: Publish the sync status
@@ -662,5 +663,4 @@ jobs:
         shell: bash
         env:
           STATUS_FILE: ${{ runner.temp }}/status.json
-          BASE_RECORD: ${{ steps.compose.outputs.base_record }}
         run: bash config/scripts/fork/fork-sync.sh publish

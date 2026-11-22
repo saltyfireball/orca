@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { baseRecordFor, composeStatus, inputFromEnv, summaryMarkdown } from './fork-sync-status.mjs'
+import { composeStatus, inputFromEnv, summaryMarkdown } from './fork-sync-status.mjs'
 
 const NOW = '2026-11-13T09:30:00.000Z'
 const OLD = 'a'.repeat(40)
@@ -16,7 +16,7 @@ function input(env) {
     LATEST_SHA: NEW,
     BASE_SHA: OLD,
     BASE_VERSION: '1.4.258',
-    BASE_SOURCE: 'record',
+    BASE_SOURCE: 'newest upstream tag merged into main',
     DETECT_STATE: 'behind',
     OLD_MAIN: MAIN,
     ...env
@@ -24,16 +24,23 @@ function input(env) {
 }
 
 describe('composeStatus', () => {
-  it('says so when the rebase failed before any conflict', () => {
-    const run = input({ SYNC_RESULT: 'failure', REBASE_ERROR: 'true' })
+  it('says so when the merge failed before any conflict', () => {
+    const run = input({ SYNC_RESULT: 'failure', MERGE_ERROR: 'true' })
     const status = composeStatus(run, null, NOW)
-    expect(status).toMatchObject({ state: 'behind', forkBaseSha: OLD, conflicts: [] })
+    expect(status).toMatchObject({
+      state: 'behind',
+      forkBaseSha: OLD,
+      conflicts: []
+    })
     expect(status.reason).toMatch(/failed before any conflict/)
-    expect(baseRecordFor(run)).toBe('')
   })
 
-  it('reports a successful sync as in sync on the new tag and records it', () => {
-    const run = input({ SYNC_RESULT: 'success', CHANGED: 'true', BUILD_RESULTS: 'success success' })
+  it('reports a successful sync as in sync on the new tag ', () => {
+    const run = input({
+      SYNC_RESULT: 'success',
+      CHANGED: 'true',
+      BUILD_RESULTS: 'success success'
+    })
     const status = composeStatus(run, null, NOW)
     expect(status).toMatchObject({
       schema: 1,
@@ -46,10 +53,9 @@ describe('composeStatus', () => {
       runUrl: 'https://github.com/someone/orca/actions/runs/42',
       checkedAt: NOW
     })
-    expect(baseRecordFor(run)).toBe(NEW)
   })
 
-  it('reports a conflict with its files, keeps the base and records nothing', () => {
+  it('reports a conflict with its files, keeps the base', () => {
     const run = input({
       SYNC_RESULT: 'failure',
       CONFLICT: 'true',
@@ -65,7 +71,6 @@ describe('composeStatus', () => {
       conflicts: ['src/a.ts', 'src/b c.ts'],
       since: NOW
     })
-    expect(baseRecordFor(run)).toBe('')
   })
 
   it('keeps the first failure time across failed runs and clears it once in sync', () => {
@@ -85,7 +90,11 @@ describe('composeStatus', () => {
     )
     expect(early).toMatchObject({ state: 'error', upstreamVersion: null })
     const build = composeStatus(
-      input({ SYNC_RESULT: 'success', DETECT_STATE: 'in-sync', BUILD_RESULTS: 'success,failure' }),
+      input({
+        SYNC_RESULT: 'success',
+        DETECT_STATE: 'in-sync',
+        BUILD_RESULTS: 'success,failure'
+      }),
       null,
       NOW
     )
@@ -93,42 +102,42 @@ describe('composeStatus', () => {
     expect(build.reason).toMatch(/release build failed/)
   })
 
-  it('records the base of a run that found main already on the newest tag', () => {
-    const run = input({ SYNC_RESULT: 'success', DETECT_STATE: 'in-sync', BASE_SHA: NEW })
-    expect(baseRecordFor(run)).toBe(NEW)
-    expect(baseRecordFor(input({ SYNC_RESULT: 'failure', DETECT_STATE: 'in-sync' }))).toBe('')
-  })
-
-  it('passes on the detect error for a tag that moved below the base', () => {
+  it('passes on a detect error', () => {
     const run = input({
       SYNC_RESULT: 'failure',
       DETECT_STATE: 'error',
-      DETECT_ERROR: 'Upstream v1.4.260 now points at a commit older than the fork base.'
+      DETECT_ERROR: 'No stable upstream tag is merged into main.'
     })
     expect(composeStatus(run, null, NOW)).toMatchObject({
       state: 'error',
-      reason: 'Upstream v1.4.260 now points at a commit older than the fork base.'
+      reason: 'No stable upstream tag is merged into main.'
     })
   })
 })
 
 describe('summaryMarkdown', () => {
-  it('gives the exact resync commands for a conflict', () => {
-    const run = input({ SYNC_RESULT: 'failure', CONFLICT: 'true', CONFLICTS: 'src/a.ts' })
+  it('starts a conflict summary with the marker and gives the by-hand merge commands', () => {
+    const run = input({
+      SYNC_RESULT: 'failure',
+      CONFLICT: 'true',
+      CONFLICTS: 'src/a.ts'
+    })
     const text = summaryMarkdown(composeStatus(run, null, NOW), run)
+    expect(text.split('\n')[0]).toBe('FORK-SYNC-CONFLICT v1.4.260')
+    expect(text.match(/FORK-SYNC-CONFLICT/g)).toHaveLength(1)
     expect(text).toContain('## Fork sync: conflict')
     expect(text).toContain('- `src/a.ts`')
-    expect(text).toContain(`git branch fork-sync-backup-42 ${MAIN}`)
-    expect(text).toContain(`git rebase --onto ${NEW} ${OLD} main`)
-    expect(text).toContain(`git log --format='%G? %h %s' ${NEW}..main`)
-    expect(text).toContain(`git push --force-with-lease=main:${MAIN} origin main`)
+    expect(text).toContain(`git switch -c fork-sync-v1.4.260 origin/main   # main was ${MAIN}`)
+    expect(text).toContain('git merge v1.4.260')
+    expect(text).toContain('git push origin fork-sync-v1.4.260:main')
+    expect(text).not.toMatch(/--force|rebase/)
     expect(text).toContain('https://github.com/upstream/orca.git "+refs/tags/v1.4.260:')
   })
 
-  it('has no commands when the fork is in sync or the failure needs a look first', () => {
+  it('has no commands and no marker when the fork is in sync or the failure needs a look first', () => {
     const ok = input({ SYNC_RESULT: 'success', CHANGED: 'true' })
-    expect(summaryMarkdown(composeStatus(ok, null, NOW), ok)).not.toContain('git rebase')
+    expect(summaryMarkdown(composeStatus(ok, null, NOW), ok)).not.toContain('git merge')
     const odd = input({ SYNC_RESULT: 'failure', DETECT_STATE: 'error' })
-    expect(summaryMarkdown(composeStatus(odd, null, NOW), odd)).not.toContain('git rebase')
+    expect(summaryMarkdown(composeStatus(odd, null, NOW), odd)).not.toContain('git merge')
   })
 })

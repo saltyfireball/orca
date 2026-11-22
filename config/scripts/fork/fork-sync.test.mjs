@@ -11,8 +11,16 @@ let root
 let env
 
 function run(cwd, command, args, extraEnv = {}) {
-  const result = spawnSync(command, args, { cwd, env: { ...env, ...extraEnv }, encoding: 'utf8' })
-  return { ...result, stdout: result.stdout ?? '', stderr: result.stderr ?? '' }
+  const result = spawnSync(command, args, {
+    cwd,
+    env: { ...env, ...extraEnv },
+    encoding: 'utf8'
+  })
+  return {
+    ...result,
+    stdout: result.stdout ?? '',
+    stderr: result.stderr ?? ''
+  }
 }
 
 function git(cwd, ...args) {
@@ -55,7 +63,11 @@ function sync(command, extraEnv = {}) {
     GITHUB_OUTPUT: out,
     ...extraEnv
   })
-  return { status: result.status, out: outputs(out), log: result.stdout + result.stderr }
+  return {
+    status: result.status,
+    out: outputs(out),
+    log: result.stdout + result.stderr
+  }
 }
 
 /** upstream: u1 - u2 (v1.0.0); fork main: v1.0.0 + f1 + f2; job: a fresh clone of the fork. */
@@ -89,7 +101,7 @@ function setUpOffBranchReleases() {
     const sha = commit(
       up,
       'package.json',
-      `{\n  "version": "${version}"\n}\n`,
+      `{\n  "name": "up",\n  "version": "${version}",\n  "description": "upstream"\n}\n`,
       `release: v${version}`
     )
     git(up, 'tag', `v${version}`)
@@ -97,7 +109,12 @@ function setUpOffBranchReleases() {
     return sha
   }
   git(root, 'init', '-q', '-b', 'main', up)
-  commit(up, 'package.json', '{\n  "version": "0.9.0"\n}\n', 'u1')
+  commit(
+    up,
+    'package.json',
+    '{\n  "name": "up",\n  "version": "0.9.0",\n  "description": "upstream"\n}\n',
+    'u1'
+  )
   const u2 = commit(up, 'upstream.txt', 'v1\n', 'u2')
   const r1 = release('1.0.0', u2)
   const r2 = release('1.1.0', commit(up, 'upstream.txt', 'v2\n', 'u3'))
@@ -118,14 +135,10 @@ function cloneJob() {
   git(join(root, 'job'), 'remote', 'add', 'upstream', join(root, 'up'))
 }
 
-function forkCommitsOn(base) {
-  return git(join(root, 'job'), 'log', '--format=%s', `${base}..main`).split('\n')
-}
-
-function publish(baseRecord, state = 'in-sync') {
+function publish(state = 'in-sync') {
   const file = join(root, 'status.json')
   writeFileSync(file, `{\n  "schema": 1,\n  "state": "${state}"\n}\n`)
-  return sync('publish', { STATUS_FILE: file, BASE_RECORD: baseRecord })
+  return sync('publish', { STATUS_FILE: file })
 }
 
 beforeEach(() => {
@@ -148,75 +161,112 @@ afterEach(() => {
 })
 
 describe('fork-sync.sh', () => {
-  it('rebases only the fork commits on a clean sync, without a base record', () => {
+  it('merges a new upstream tag as one merge commit and keeps every fork commit', () => {
     const { up, v1 } = setUp()
     const v2 = commit(up, 'upstream.txt', 'v2\n', 'u3')
     git(up, 'tag', 'v1.1.0')
+    const job = join(root, 'job')
+    const oldMain = git(job, 'rev-parse', 'main')
     const detect = sync('detect')
     expect(detect.status).toBe(0)
     expect(detect.out).toMatchObject({
       latest: 'v1.1.0',
       latest_sha: v2,
       base_sha: v1,
-      base_source: 'merge-base',
       base_version: '1.0.0',
+      old_main: oldMain,
       state: 'behind'
     })
-    const rebase = sync('rebase', { BASE_SHA: v1, LATEST_SHA: v2 })
-    expect(rebase.status).toBe(0)
-    expect(rebase.out.changed).toBe('true')
-    expect(forkCommitsOn(v2)).toEqual(['f2', 'f1'])
+    const merge = sync('merge', { LATEST: 'v1.1.0', LATEST_SHA: v2 })
+    expect(merge.status).toBe(0)
+    expect(merge.out.changed).toBe('true')
+    expect(merge.log).not.toMatch(/FORK-SYNC-CONFLICT/)
+    // One merge commit: first parent is the old main, second is the tag; the fork history is intact.
+    expect(git(job, 'rev-list', '--parents', '-n', '1', 'main').split(' ').slice(1)).toEqual([
+      oldMain,
+      v2
+    ])
+    expect(git(job, 'log', '--format=%s', '-n', '1', 'main')).toBe(
+      'Merge upstream v1.1.0 into main'
+    )
+    expect(git(job, 'rev-list', '--count', `${oldMain}..main`)).toBe('2')
+    git(job, 'merge-base', '--is-ancestor', oldMain, 'main')
+    expect(sync('detect').out).toMatchObject({
+      base_sha: v2,
+      state: 'in-sync'
+    })
   })
 
-  it('bases a first run on the release tag under main when that tag is off the upstream branch', () => {
-    const { u2, r1, r2 } = setUpOffBranchReleases()
-    const job = join(root, 'job')
+  it('merges a tag that sits off the upstream branch, with the base found by ancestry', () => {
+    const { r1, r2 } = setUpOffBranchReleases()
     const detect = sync('detect')
-    expect(detect.status).toBe(0)
-    // Both merge-bases are u2, below the release commit main sits on.
-    git(job, 'fetch', '-q', 'upstream', 'main')
-    expect(git(job, 'merge-base', 'main', 'FETCH_HEAD')).toBe(u2)
-    expect(git(job, 'merge-base', 'main', r2)).toBe(u2)
     expect(detect.out).toMatchObject({
       latest: 'v1.1.0',
       latest_sha: r2,
       base_sha: r1,
-      base_source: 'newest tag under main',
       base_version: '1.0.0',
       state: 'behind'
     })
-    const rebase = sync('rebase', { BASE_SHA: detect.out.base_sha, LATEST_SHA: r2 })
-    expect(rebase.status).toBe(0)
-    expect(rebase.out.changed).toBe('true')
-    expect(forkCommitsOn(r2)).toEqual(['f2', 'f1'])
-    expect(git(job, 'log', '--format=%s', 'main')).not.toMatch(/release: v1\.0\.0/)
+    const merge = sync('merge', { LATEST: 'v1.1.0', LATEST_SHA: r2 })
+    expect(merge.status).toBe(0)
+    expect(git(join(root, 'job'), 'log', '--format=%s', 'main')).toMatch(/release: v1\.1\.0/)
   })
 
-  it('reports in sync from the record once a sync was published', () => {
-    const { v1 } = setUp()
-    expect(publish(v1).status).toBe(0)
-    const detect = sync('detect')
-    expect(detect.status).toBe(0)
-    expect(detect.out).toMatchObject({ base_sha: v1, base_source: 'record', state: 'in-sync' })
+  it('settles the release commit version bump in package.json and keeps the fork edits', () => {
+    const { r2 } = setUpOffBranchReleases()
+    const job = join(root, 'job')
+    commit(
+      job,
+      'package.json',
+      '{\n  "name": "up",\n  "version": "1.0.0",\n  "description": "fork"\n}\n',
+      'f3'
+    )
+    git(job, 'push', '-q', 'origin', 'main')
+    expect(sync('detect').status).toBe(0)
+    const merge = sync('merge', { LATEST: 'v1.1.0', LATEST_SHA: r2 })
+    expect(merge.status).toBe(0)
+    expect(merge.log).toMatch(/version 1\.0\.0 -> 1\.1\.0/)
+    expect(readFileSync(join(job, 'package.json'), 'utf8')).toBe(
+      '{\n  "name": "up",\n  "version": "1.1.0",\n  "description": "fork"\n}\n'
+    )
+    expect(git(job, 'log', '--format=%s', '-n', '1')).toBe('Merge upstream v1.1.0 into main')
+    expect(git(job, 'rev-list', '--parents', '-n', '1', 'main').split(' ')).toHaveLength(3)
+    expect(git(job, 'status', '--porcelain')).toBe('')
   })
 
-  it('replays only the fork commits when upstream re-cut the base tag to another commit', () => {
-    const { up, v1 } = setUp()
-    expect(publish(v1).status).toBe(0)
-    // Upstream drops u2, re-cuts v1.0.0 on a replacement, and tags v1.1.0 after it.
-    git(up, 'reset', '-q', '--hard', 'HEAD~1')
-    const recut = commit(up, 'upstream.txt', 'v1 again\n', 'u2 recut')
-    git(up, 'tag', '-f', 'v1.0.0', recut)
-    const v2 = commit(up, 'upstream.txt', 'v2\n', 'u3')
-    git(up, 'tag', 'v1.1.0')
-    const detect = sync('detect')
-    expect(detect.out).toMatchObject({ base_sha: v1, base_source: 'record', state: 'behind' })
-    const rebase = sync('rebase', { BASE_SHA: detect.out.base_sha, LATEST_SHA: v2 })
-    expect(rebase.status).toBe(0)
-    expect(forkCommitsOn(v2)).toEqual(['f2', 'f1'])
+  it('still reports a package.json conflict when more than the version line differs', () => {
+    const up = join(root, 'up')
+    const { r1 } = setUpOffBranchReleases()
+    const job = join(root, 'job')
+    commit(
+      job,
+      'package.json',
+      '{\n  "name": "up",\n  "version": "1.0.0",\n  "description": "fork"\n}\n',
+      'f3'
+    )
+    git(job, 'push', '-q', 'origin', 'main')
+    const oldMain = git(job, 'rev-parse', 'main')
+    git(up, 'checkout', '-q', '--detach', 'v1.1.0')
+    commit(
+      up,
+      'package.json',
+      '{\n  "name": "up",\n  "version": "1.2.0",\n  "description": "theirs"\n}\n',
+      'r3'
+    )
+    git(up, 'tag', 'v1.2.0')
+    git(up, 'checkout', '-q', 'main')
+    expect(r1).toBeTruthy()
+    const latest = git(up, 'rev-parse', 'v1.2.0')
+    expect(sync('detect').status).toBe(0)
+    const merge = sync('merge', { LATEST: 'v1.2.0', LATEST_SHA: latest })
+    expect(merge.status).toBe(1)
+    expect(merge.log.split('\n')[0]).toBe('FORK-SYNC-CONFLICT v1.2.0')
+    expect(merge.out.conflicts).toBe('package.json')
+    expect(git(job, 'rev-parse', 'main')).toBe(oldMain)
+    expect(git(job, 'status', '--porcelain')).toBe('')
   })
 
-  it('stops on a conflict with main untouched and the conflicting files listed', () => {
+  it('stops on a conflict with the marker first, main untouched and the files listed', () => {
     const { up, v1 } = setUp()
     const job = join(root, 'job')
     commit(job, 'shared.txt', 'fork\n', 'f3')
@@ -226,74 +276,107 @@ describe('fork-sync.sh', () => {
     git(up, 'tag', 'v1.1.0')
     expect(sync('detect').out).toMatchObject({ base_sha: v1, latest_sha: v2 })
     const conflictsFile = join(root, 'conflicts.txt')
-    const rebase = sync('rebase', { BASE_SHA: v1, LATEST_SHA: v2, CONFLICTS_FILE: conflictsFile })
-    expect(rebase.status).toBe(1)
-    expect(rebase.out.conflict).toBe('true')
-    expect(rebase.out.conflicts).toBe('shared.txt')
+    const merge = sync('merge', {
+      LATEST: 'v1.1.0',
+      LATEST_SHA: v2,
+      CONFLICTS_FILE: conflictsFile
+    })
+    expect(merge.status).toBe(1)
+    expect(merge.log.split('\n')[0]).toBe('FORK-SYNC-CONFLICT v1.1.0')
+    expect(merge.out.conflict).toBe('true')
+    expect(merge.out.conflicts).toBe('shared.txt')
+    expect(merge.out.changed).toBeUndefined()
     expect(readFileSync(conflictsFile, 'utf8').trim()).toBe('shared.txt')
     expect(git(job, 'rev-parse', 'main')).toBe(oldMain)
     expect(git(job, 'status', '--porcelain')).toBe('')
     expect(git(join(root, 'origin.git'), 'rev-parse', 'main')).toBe(oldMain)
   })
 
-  it('prefers the merge-base over a stale record when main was resynced by hand', () => {
-    const { up, v1 } = setUp()
-    expect(publish(v1).status).toBe(0)
-    const v2 = commit(up, 'upstream.txt', 'v2\n', 'u3')
-    git(up, 'tag', 'v1.1.0')
-    const job = join(root, 'job')
-    git(job, 'fetch', '-q', 'upstream', 'main')
-    git(job, 'rebase', '-q', '--onto', v2, v1, 'main')
+  it('does nothing on a release-only run: main already has the newest tag', () => {
+    const { v1 } = setUp()
     const detect = sync('detect')
+    expect(detect.status).toBe(0)
     expect(detect.out).toMatchObject({
-      base_sha: v2,
-      base_source: 'merge-base (record was stale)',
+      latest: 'v1.0.0',
+      base_sha: v1,
       state: 'in-sync'
     })
+    expect(detect.out.changed).toBeUndefined()
   })
 
-  it('ignores a record that is not under main', () => {
+  it('names the version after a merge from the newest tag merged, not from package.json', () => {
+    const { r2 } = setUpOffBranchReleases()
+    const job = join(root, 'job')
+    expect(sync('detect').status).toBe(0)
+    expect(run(job, 'bash', [SCRIPT, 'merged-tag']).stdout.trim()).toBe('1.0.0')
+    expect(sync('merge', { LATEST: 'v1.1.0', LATEST_SHA: r2 }).status).toBe(0)
+    const merged = run(job, 'bash', [SCRIPT, 'merged-tag'])
+    expect(merged.stdout.trim()).toBe('1.1.0')
+    const next = spawnSync('node', [resolve(import.meta.dirname, 'fork-version.mjs'), '1.1.0'], {
+      input: 'v1.0.5\nv1.1.1\nv1.1.2\n',
+      encoding: 'utf8'
+    })
+    expect(next.stdout.trim()).toBe('1.1.3')
+  })
+
+  it('treats a tag upstream re-cut to another commit as new and merges it', () => {
+    const { up } = setUp()
+    git(up, 'reset', '-q', '--hard', 'HEAD~1')
+    const recut = commit(up, 'recut.txt', 'again\n', 'u2 recut')
+    git(up, 'tag', '-f', 'v1.0.0', recut)
+    const detect = sync('detect')
+    expect(detect.out).toMatchObject({ state: 'behind', base_version: '1.0.0' })
+    expect(detect.out.base_source).toMatch(/was moved upstream/)
+    expect(sync('merge', { LATEST: 'v1.0.0', LATEST_SHA: recut }).status).toBe(0)
+  })
+
+  it('fails detect when no stable upstream tag is merged into main', () => {
     setUp()
     const stray = commit(join(root, 'up'), 'other.txt', 'x\n', 'unrelated')
-    git(join(root, 'job'), 'fetch', '-q', 'upstream', stray)
-    expect(publish(stray).status).toBe(0)
-    const detect = sync('detect')
-    expect(detect.out.base_source).toBe('merge-base')
-    expect(detect.log).toMatch(/not under main/)
-  })
-
-  it('refuses to rebase backwards when the newest tag moved below the fork base', () => {
-    const { up, v1 } = setUp()
-    expect(publish(v1).status).toBe(0)
-    git(up, 'tag', 'v1.1.0', 'HEAD~1')
+    git(join(root, 'up'), 'tag', 'v2.0.0', stray)
+    git(join(root, 'job'), 'checkout', '-q', '--orphan', 'x')
+    git(join(root, 'job'), 'commit', '-q', '--allow-empty', '-m', 'orphan')
     const detect = sync('detect')
     expect(detect.status).toBe(1)
-    expect(detect.out.state).toBe('error')
-    expect(detect.out.detect_error).toMatch(/older than the fork base/)
+    expect(detect.out.detect_error).toMatch(/No stable upstream tag is merged/)
   })
 
-  it('keeps the base record when a failed run publishes its status', () => {
-    const { v1 } = setUp()
-    expect(publish(v1).status).toBe(0)
-    expect(publish('', 'conflict').status).toBe(0)
+  it('calls a merge that fails without unmerged files an error, not a conflict', () => {
+    setUp()
+    const merge = sync('merge', {
+      LATEST: 'v9.9.9',
+      LATEST_SHA: 'f'.repeat(40)
+    })
+    expect(merge.status).toBe(1)
+    expect(merge.out.merge_error).toBe('true')
+    expect(merge.out.conflict).toBeUndefined()
+    expect(merge.log).not.toMatch(/FORK-SYNC-CONFLICT/)
+  })
+
+  it('refuses to push-ready an unsigned merge commit when signing is required', () => {
+    const { up } = setUp()
+    const v2 = commit(up, 'upstream.txt', 'v2\n', 'u3')
+    git(up, 'tag', 'v1.1.0')
+    expect(sync('detect').status).toBe(0)
+    const merge = sync('merge', {
+      LATEST: 'v1.1.0',
+      LATEST_SHA: v2,
+      SIGNING: 'true'
+    })
+    expect(merge.status).toBe(1)
+    expect(merge.out.unsigned).toBe('true')
+  })
+
+  it('publishes only status.json and reads it back', () => {
+    setUp()
+    expect(publish().status).toBe(0)
+    expect(publish('conflict').status).toBe(0)
     const origin = join(root, 'origin.git')
-    expect(git(origin, 'show', 'fork-sync-status:base')).toBe(v1)
     expect(git(origin, 'show', 'fork-sync-status:status.json')).toMatch(/"conflict"/)
     expect(git(origin, 'rev-list', '--count', 'fork-sync-status')).toBe('2')
-    expect(git(origin, 'ls-tree', '--name-only', 'fork-sync-status').split('\n')).toEqual([
-      'base',
-      'status.json'
-    ])
+    expect(git(origin, 'ls-tree', '--name-only', 'fork-sync-status')).toBe('status.json')
     const previous = run(join(root, 'job'), 'bash', [SCRIPT, 'previous'])
     expect(previous.stdout).toMatch(/"conflict"/)
-  })
-
-  it('calls a rebase that fails without unmerged files an error, not a conflict', () => {
-    const { v1 } = setUp()
-    const rebase = sync('rebase', { BASE_SHA: v1, LATEST_SHA: 'f'.repeat(40) })
-    expect(rebase.status).toBe(1)
-    expect(rebase.out.rebase_error).toBe('true')
-    expect(rebase.out.conflict).toBeUndefined()
   })
 
   it('prints nothing for the previous status before the first publish', () => {
