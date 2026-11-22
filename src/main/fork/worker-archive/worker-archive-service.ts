@@ -34,6 +34,7 @@ import { forkWorkerTurnStartedAt } from '../worker-cleanup/worker-cleanup-activi
 import { listWorkerCleanupCandidates } from '../worker-cleanup/worker-cleanup-query'
 import { closeThroughStockRelease } from '../worker-cleanup/worker-cleanup-release'
 import { publishWorkerCleanup, rememberNotice } from '../worker-cleanup/worker-cleanup-notices'
+import { installForkBotChatAutoClose } from '../bot-chat-close/bot-chat-auto-close-service'
 import { forkFocusedWorkspaces } from './worker-archive-activity'
 import {
   runWorkerArchivePass,
@@ -212,6 +213,7 @@ export function installForkWorkerArchive(runtime: unknown): void {
     return
   }
   installed = { runtime, running: false }
+  installForkBotChatAutoClose(runtime)
   stopTimer ??= startForkBackoffTimer({
     run: sweepForkWorkerArchive,
     baseMs: FORK_WORKER_ARCHIVE_SWEEP_MS,

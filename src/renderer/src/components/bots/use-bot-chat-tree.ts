@@ -35,6 +35,8 @@ export type BotChatTree = {
   workspaceChats: Record<string, string>
   /** Reads the chat's next 8 finished workers onto its list. */
   loadMore: (chatId: string) => void
+  /** Fork (BAD-734): closed chats the host left out of `chats`. */
+  closedTotal?: number
   /** Whether the chats have been read. */
   state: BotHostReadState
   retry: () => void
@@ -122,6 +124,7 @@ export function useBotChatTree(bot: Bot | null): BotChatTree {
   return {
     chats,
     workspaceChats: read?.workspaceChats ?? NO_WORKSPACES,
+    closedTotal: read?.closedTotal ?? 0,
     loadMore,
     state,
     retry

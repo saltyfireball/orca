@@ -70,6 +70,8 @@ export type BotChatTreeRead = {
   chats: BotChatTreeChat[]
   /** Every workspace under the bot, by the chat it sits under (Home Chat when none has it). */
   workspaceChats: Record<string, string>
+  /** Fork (BAD-734): closed chats the host left out of `chats`; absent when none. */
+  closedTotal?: number
 }
 
 export const CHAT_TREE_CAPS = {

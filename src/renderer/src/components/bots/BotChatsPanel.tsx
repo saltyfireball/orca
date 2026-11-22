@@ -40,6 +40,8 @@ import { updateBotReporting } from './bot-update-reporting'
 import { useBotPictureSetting } from '../settings/bots/use-bot-picture-setting'
 import { BotChatsSkeleton } from './BotChatsSkeleton'
 import { ForkBotCleanupButton } from '@/fork/worker-archive/ForkWorkerCleanupActions'
+import { useForkClosedBotChats } from '@/fork/bot-chat-closed/use-fork-closed-bot-chats'
+import { ForkClosedBotChatsToggle } from '@/fork/bot-chat-closed/ForkClosedBotChatsToggle'
 
 const useBotChatSearch = createBotChatSearchHook({ useCallback, useEffect, useMemo, useState })
 
@@ -80,7 +82,12 @@ function BotChatsTab({ bot }: { bot: Bot }): React.JSX.Element {
   const tree = useBotOwnChatTree(bot)
   // Its server is down: the last read shows with its actions off until it's back.
   const offline = useBotHostOffline(bot.hostId)
-  const chats = useMemo(() => orderChatsTab(tree.chats), [tree.chats])
+  // Fork (BAD-734): closed chats come in on request, after the open ones.
+  const closed = useForkClosedBotChats(bot, tree.closedTotal ?? 0)
+  const chats = useMemo(
+    () => orderChatsTab([...tree.chats, ...closed.chats]),
+    [tree.chats, closed.chats]
+  )
   // Its home's chats and runs, and each listed worker's own workspace.
   const stopWorkspaces = useMemo(
     () => [
@@ -256,6 +263,7 @@ function BotChatsTab({ bot }: { bot: Bot }): React.JSX.Element {
             onFewer={steps > 0 ? () => setSteps(0) : null}
             className="px-2 py-1 text-xs"
           />
+          <ForkClosedBotChatsToggle closed={closed} />
         </fieldset>
       </div>
     </BotUsageLimitStopsContext.Provider>

@@ -25,6 +25,7 @@ import {
 import { refuseUndeliverableSessionRecipientWith } from './orchestration/messaging/session-recipient'
 import { namedOrCallerBot } from './bots-caller-bot'
 import { defineMethod } from '../core'
+import { forkReopenAutoClosedChat } from '../../../fork/bot-chat-close/bot-chat-reopen'
 import type { OrcaRuntimeService } from '../../orca-runtime'
 import {
   isBotBackgroundRun,
@@ -100,6 +101,8 @@ export async function botChatTakingMail(
   bot: Pick<Bot, 'folderWorkspaceId' | 'chatSessionId'>,
   id: string
 ): Promise<{ title: string | null; sessionId: string } | null> {
+  // Fork (BAD-734): mail for a chat Orca auto-closed reopens it first.
+  await forkReopenAutoClosedChat(id)
   const row = (await readBotChats(runtime, bot, null)).find((chat) => chat.id === id)
   if (!row) {
     return null

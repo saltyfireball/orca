@@ -25,6 +25,7 @@ import {
 import type { AgentSessionConversationView } from '../../../../../../shared/agent-session/lifecycle/leases/agent-session-conversation-view'
 import type { OrchestrationDb } from '../../../../orchestration/db/orchestration-db'
 import { canonicalOrcaSessionId } from '../../../../orchestration/addressing/session-lineage/canonical-orca-session-id'
+import { forkReopenAutoClosedChat } from '../../../../../fork/bot-chat-close/bot-chat-reopen'
 import { agentHookServer } from '../../../../../agent-hooks/server/agent-hook-server'
 
 /** `address` is the named session's own spelling; the mailbox mail lands in is its identity address. */
@@ -83,6 +84,8 @@ export async function prepareSessionRecipient(
   }
   // Recipient routing reads the session record store, which the host opens lazily.
   await runtime.ensureStructuredAgentSessionHost().catch(() => undefined)
+  // Fork (BAD-734): mail for a chat Orca auto-closed reopens it, so it is never refused or dropped.
+  await forkReopenAutoClosedChat(recipient)
   const terminal = await resolveTerminalAgentRecipient(recipient)
   revalidateCaller?.()
   return terminal

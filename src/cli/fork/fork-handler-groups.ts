@@ -33,7 +33,7 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
   // BAD-669: remove finished workers' own workspaces (FORK.md "Worker archive").
   {
     name: 'fork-worker-cleanup',
-    keys: ['orchestration worker-cleanup'],
+    keys: ['orchestration worker-cleanup', 'bot chats-cleanup'],
     load: async () => (await import('./worker-cleanup-handlers.js')).FORK_WORKER_CLEANUP_HANDLERS
   },
   // SLRM-2098: the agent launch queue (FORK.md).
