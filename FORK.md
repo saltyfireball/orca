@@ -2512,6 +2512,29 @@ ones `SLRM-123 `).
     `src/cli/fork/worker-retry-*.ts` and
     `src/main/runtime/rpc/methods/fork/fork-worker-retry.ts`.
 
+- **Agent slice limits (BAD-684).** On a Linux server the terminal host already starts every
+  terminal in its own systemd user scope, all under one slice that lives and dies with the host.
+  This feature puts limits on that slice, so every agent together is capped and the server,
+  Tailscale and SSH keep running when one misbehaves.
+  - **Off by default.** `ORCA_AGENT_SLICE=1` in the environment that starts `orca serve` turns it
+    on. Orca reads it when the terminal host starts, so a host that is already running keeps its
+    old limits until it restarts. Nothing changes on macOS or Windows.
+  - **Limits.** `ORCA_AGENT_SLICE_CPU_WEIGHT` and `ORCA_AGENT_SLICE_IO_WEIGHT` (default 10, the
+    systemd default is 100, so the server wins any contention), `ORCA_AGENT_SLICE_TASKS_MAX`
+    (default 25% of the kernel's `pid_max`) and `ORCA_AGENT_SLICE_MEMORY_HIGH` (default 75% of RAM
+    plus 25% of swap, at least 512M). `MemoryHigh` throttles and reclaims; it never kills, so memory
+    exhaustion becomes a slowdown.
+  - **Safe fallback.** Each limit is set on its own with `systemctl --user set-property --runtime`
+    and kept only when the slice's cgroup file shows the kernel enforces it. A limit the host
+    cannot enforce is skipped, and one `agent-slice` line in the terminal host log lists what was
+    applied and what was refused, or says the terminal scopes are off and why. A launch is never
+    affected. User slices only, no privilege.
+  - **Leftover scopes.** The slice is bound to the terminal host's scope (`BindsTo`), so systemd
+    removes the slice and its scopes when the host stops; there is nothing to clean up by hand.
+  - **Not done.** Chat providers keep the stock process tree and are not placed in the slice;
+    the slice's pressure is not shown in Resource Usage yet.
+  - Code is in `src/main/fork/agent-slice/`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -2666,6 +2689,7 @@ Apply these in this order. Each one is a single commit.
 147. `BAD-679 Spend caps for every agent: Codex chats and Claude Code or Codex terminals are priced into the ledger; caps per Run and per automation (run, day, 7 days); guards list shows every cap with its spend`
 148. `BAD-682 Goal loop: orca goal set keeps any agent going until a check command or a judge passes, under a round limit, a budget and a stall limit; a stop is told in chat and the Decision inbox`
 149. `BAD-681 Worker retry policy: Orca restarts a worker that exited, was lost or hit a provider error in its workspace after an exponential backoff, up to a limit; per Run or by setting, off by default; orca retry policy and show`
+150. `BAD-684 Agent slice limits: on Linux the terminal host's systemd slice gets CPUWeight, IOWeight, TasksMax and MemoryHigh, so a runaway agent cannot take the server down`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3861,6 +3885,11 @@ Upstream files only get short hooks, which keeps merges small:
   `fork-global-settings.ts`; the settings catalog is regenerated. The digest section gains an
   optional `retries` list (`digest.ts`, `digest-schema.ts`, `digest-format.ts`,
   `digest-local.ts`, `digest-runtime.ts`).
+
+- Agent slice limits (BAD-684), one small edit in a stock file: `terminal-scopes-runtime.ts` calls
+  `forkApplyAgentSlice(resolved, log)` right after the terminal scopes resolve. The limits are
+  environment variables read by the terminal host, so there are no store settings and no catalog
+  to regenerate.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

@@ -3,6 +3,7 @@ import { userManagerEnv } from './daemon-cgroup-scope'
 import { warnWhenRealtimeTimeoutIsZero } from './daemon-rttime-limit'
 import { setPtyActiveProcessLimit } from '../../windows/windows-pty-job'
 import { resolveTerminalScopes, type TerminalScopeRuntime } from './terminal-scopes'
+import { forkApplyAgentSlice } from '../../fork/agent-slice/agent-slice-install'
 import type { PtyProcessCeilingState } from '../../../shared/terminal/pty/native-process/pty-process-ceiling-state'
 
 type DaemonLog = (event: string, details?: Record<string, unknown>) => void
@@ -34,6 +35,7 @@ export function initializeTerminalScopes(
     // Report requested limits even on hosts that cannot enforce them.
     log('terminal-memory-limits', { platform: process.platform, ...resolved.memory })
   }
+  forkApplyAgentSlice(resolved, log)
   warnWhenRealtimeTimeoutIsZero(log)
   return resolved.ceiling
 }

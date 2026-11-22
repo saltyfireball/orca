@@ -231,6 +231,18 @@ orca-ide serve --pairing-address 100.64.1.20
 - Orca reads them only when its terminal host process starts. That process keeps running when `orca serve` restarts, so terminals keep their old limits until it restarts too, for example after the server reboots.
 - They have no effect on macOS or Windows.
 
+### Cap all agents together on a Linux server
+
+Blackfish can put a limit on the whole group of terminals, so a runaway build cannot starve the server or SSH. Set this where `orca serve` starts:
+
+```bash
+export ORCA_AGENT_SLICE=1
+```
+
+- It sets `CPUWeight=10`, `IOWeight=10`, `TasksMax` (25% of the kernel's task limit) and `MemoryHigh` (75% of RAM plus 25% of swap) on the slice that holds every terminal. Override them with `ORCA_AGENT_SLICE_CPU_WEIGHT`, `ORCA_AGENT_SLICE_IO_WEIGHT`, `ORCA_AGENT_SLICE_TASKS_MAX` and `ORCA_AGENT_SLICE_MEMORY_HIGH`.
+- Over `MemoryHigh` the kernel slows the agents down; it does not kill them.
+- A limit the host cannot enforce is skipped and logged as `agent-slice` in the terminal host log. It needs the same systemd user manager as per-terminal scopes, and has no effect on macOS or Windows.
+
 ### Use the GPU on a Linux server
 
 On Linux, `orca serve` turns off hardware acceleration by default, because most headless hosts have no GPU and a failing GPU process can stop the server from starting. Browser panes then render in software. If the host gives the Orca process a GPU (for example a render node such as `/dev/dri/renderD128`), set `ORCA_SERVE_GPU=1` in the environment that starts `orca serve` (or in its service unit) to keep hardware acceleration on:
