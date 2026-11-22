@@ -1,5 +1,6 @@
 import type { RuntimeClient } from '../runtime/client'
 import { RuntimeClientError } from '../runtime/connection/types'
+import { applyForkAgentProfile } from '../fork/agent-profile-flag'
 import { HANDLER_GROUPS, type HandlerGroup } from './handler-group-manifest'
 
 export type HandlerContext = {
@@ -47,5 +48,7 @@ export async function dispatch(commandPath: string[], ctx: HandlerContext): Prom
       `CLI handler group "${group.name}" does not export "${key}"`
     )
   }
+  // Fork (BAD-687): --profile fills the launch flags first (FORK.md "Agent profiles").
+  await applyForkAgentProfile(key, ctx)
   await handler(ctx)
 }

@@ -2,6 +2,7 @@
 // launch runs per agent on this host. Read-only.
 import { defineMethod } from '../../core'
 import type { AgentLaunchChoices } from '../../../../../shared/agent-launch/choices/agent-launch-choices'
+import { FORK_AGENT_PROFILE_METHODS } from './fork-agent-profiles'
 import { buildForkLaunchDefaultsReport } from '../../../../../shared/fork/launch-defaults/launch-defaults-report'
 
 export const FORK_LAUNCH_DEFAULTS_METHODS = [
@@ -16,5 +17,7 @@ export const FORK_LAUNCH_DEFAULTS_METHODS = [
       }
       return buildForkLaunchDefaultsReport(settings)
     }
-  })
+  }),
+  // BAD-687: agent profiles ride in this list (FORK.md "Agent profiles").
+  ...FORK_AGENT_PROFILE_METHODS
 ] as const

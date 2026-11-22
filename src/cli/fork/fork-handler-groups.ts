@@ -61,6 +61,19 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     keys: ['launch-defaults'],
     load: async () => (await import('./launch-defaults-handlers.js')).FORK_LAUNCH_DEFAULTS_HANDLERS
   },
+  // BAD-687: agent profiles, named launch bundles (FORK.md "Agent profiles").
+  {
+    name: 'fork-agent-profiles',
+    keys: [
+      'profiles list',
+      'profiles show',
+      'profiles set',
+      'profiles remove',
+      'profiles import',
+      'profiles confirm'
+    ],
+    load: async () => (await import('./agent-profile-handlers.js')).FORK_AGENT_PROFILE_HANDLERS
+  },
   // Fork: Sleepers, list, sleep, wake and pin chats (FORK.md).
   {
     name: 'fork-sleepers',

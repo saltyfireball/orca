@@ -2,6 +2,7 @@
 // commands that start agents.
 import { CLI_GLOBAL_FLAGS as GLOBAL_FLAGS } from '../../shared/cli/cli-argument-boundary'
 import type { CommandSpec } from '../discovery/command-spec'
+import { withForkAgentProfileFlag } from './agent-profile-specs'
 
 export const FORK_MCP_PROFILE_FLAG = 'mcp-profile'
 
@@ -51,7 +52,8 @@ const FLAG_NOTE =
 
 /** Adds --mcp-profile to the commands that start agents; one hook on the spec list. */
 export function withForkMcpProfileFlag(specs: CommandSpec[]): CommandSpec[] {
-  return specs.map((spec) =>
+  // BAD-687: --profile goes on the same commands, through the same one hook.
+  return withForkAgentProfileFlag(specs).map((spec) =>
     LAUNCH_PATHS.includes(spec.path.join(' '))
       ? {
           ...spec,
