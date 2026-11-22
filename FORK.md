@@ -1,10 +1,40 @@
 # Blackfish (saltyfireball/orca)
 
-This repository is upstream [stablyai/orca](https://github.com/stablyai/orca) at its newest
-stable `vX.Y.Z` tag, plus a short series of fork commits on top. The app is Blackfish; it was
-named Orca Fork until SLRM-1367. `main` is always
-`<upstream tag> + fork commits`. Each fork commit message starts with its slrm Jira key
-(`SLRM-1309 ` for the original series).
+This repository is upstream [stablyai/orca](https://github.com/stablyai/orca) plus the fork's
+own commits. The app is Blackfish; it was named Orca Fork until SLRM-1367. Each upstream
+release tag is merged into `main` as one merge commit (see Merge model below); `main` is never
+rebased or force-pushed. Each fork commit message starts with its card key (`BAD-123 `; older
+ones `SLRM-123 `).
+
+## Merge model
+
+- **`main` takes in upstream by merging.** When a newer stable upstream tag `vX.Y.Z` exists,
+  the Fork sync workflow runs `git merge --no-ff <tag>` on `main`: one merge commit named
+  `Merge upstream vX.Y.Z into main`, SSH-signed (see Signed merge commits). Fork commits keep
+  their SHAs and signatures. `main` is never rebased and never force-pushed, by the workflow or
+  by hand, so a push to `main` is always a fast-forward.
+- **The merged base.** The newest stable upstream tag whose commit is under `main` (found by
+  ancestry, no record kept) is the fork's upstream base. Its version is the `p` of the fork
+  version (see Versions). If upstream moves a tag after `main` merged it, the moved tag is
+  merged again as a new tag (the base then comes from `package.json`'s version).
+- **The version line.** Upstream releases each tag on its own commit beside its branch, and that
+  commit changes `package.json`'s `version`, so two consecutive tags always conflict on that one
+  line. The sync settles it by taking the new tag's version when nothing else in `package.json`
+  differs. Any other difference is a real conflict.
+- **Landing a change.** Work on a branch from `origin/main`, fast-forward `main` to it:
+  `git push origin <sha>:refs/heads/main`. If `main` moved, cherry-pick onto a new branch from
+  the new `main`. Never rebase or force-push `main` or a pushed branch.
+- **A conflicted merge.** The workflow stops before building, pushes nothing, and prints
+  `FORK-SYNC-CONFLICT <tag>` as the first line of the merge step and of the run summary,
+  which lists the conflicting files. To resolve it by hand:
+  1. `git fetch origin` and fetch the tag from upstream.
+  2. `git switch -c fork-sync-<tag> origin/main`, then `git merge <tag>`.
+  3. Resolve each file: keep upstream's change plus the fork's intent (fork-only files keep
+     the fork's content). `git commit`, SSH-signed like any fork commit.
+  4. Run the checks the sync job runs (`pnpm typecheck`, the fork tests, mobile typecheck).
+     Fix a failing fork test in its own commit on the same branch.
+  5. Fast-forward `main` to the branch: `git push origin fork-sync-<tag>:refs/heads/main`. No
+     force push. The next sync run builds and releases it.
 
 ## What the fork changes
 
@@ -2301,6 +2331,7 @@ Apply these in this order. Each one is a single commit.
 138. `BAD-715 Nothing waits on the owner: bots finish and merge their own work, a card nothing routes goes to a default bot, and the card comment names the receiving bot's chat`
 139. `BAD-542 BAD-524 Lost work counts a live worker chat as in use and its CLI waits for the whole scan; usage report links workers to their coordinator chat`
 140. `BAD-560 Auto-continue filter: replace the fork unattended-resume pass; upstream continues cut chats, the fork limits it to workers and automation runs unless forkAutoContinueInteractive`
+141. `BAD-735 Fork sync merges each upstream tag into main as one signed merge commit instead of rebasing, so main is never force-pushed; a conflict stops before the build with a FORK-SYNC-CONFLICT marker`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2415,7 +2446,7 @@ Fork-only code lives in `fork/` folders:
     the child count) and `DashboardAgentRow.tsx` (after the model), and the ledger hook
     `useCacheState` is now exported.
 
-Upstream files only get short hooks, which keeps rebases small:
+Upstream files only get short hooks, which keeps merges small:
 
 - One line each in `NativeChatCodeBlock.tsx` and `MobileMarkdownCodeBlock.tsx`.
 - An optional `executionHostId` on `runQuickCommandInNewTab` and `createTab`, so a Run tab
@@ -3525,12 +3556,14 @@ same in both apps, and switching is quit one, open the other. The code is
 
 ## Versions
 
-A fork release is `M.m.(p*1000+N)`. Here `M.m.p` is the upstream base, and N runs from 1 to 999
+A fork release is `M.m.(p*1000+N)`. Here `M.m.p` is the upstream base (the newest stable upstream
+tag merged into `main`, found by ancestry; the sync job reads it with
+`fork-sync.sh merged-tag`), and N runs from 1 to 999
 for each base and starts again at 1 on a new base. For example, upstream `1.4.252` with fork
 release 1 is `1.4.252001`, tagged `v1.4.252001`. A fork release on a newer base always sorts
 above one on an older base. A base that would need N 1000 fails the build.
 
-`package.json` keeps the upstream version in git. The sync job works out the next version
+`package.json` keeps the upstream version in git (a tag merge takes the tag's version). The sync job works out the next version
 with `config/scripts/fork/fork-version.mjs`, and the template and app jobs set it in their own
 build copies only. The app version, the orcad template's `out/package.json`, `latest-mac.yml`
 and the tag all match it, and the release is a normal release
@@ -3557,20 +3590,23 @@ runs in a fork, never in the upstream repository (`stablyai/orca`). Every third-
    - Fails at once, with a message, if the `FORK_SYNC_DEPLOY_KEY` secret is empty.
    - Checks out `main` over SSH with that deploy key.
    - `config/scripts/fork/fork-sync.sh detect` finds the newest stable upstream tag with
-     `git ls-remote --tags` and `sort -V`, and the upstream commit `main` sits on (the base, see
-     Base detection).
-   - If the base is not the tag's commit, `fork-sync.sh rebase` rebases the fork commits
-     (`<base>..main`) onto it, SSH-signed when `FORK_GIT_SIGNING_KEY` is set (see Signed rebase
-     commits).
-   - **If the rebase conflicts**, it aborts and the run fails with `main` untouched (the push
-     never runs). The status job publishes the conflict and the run summary lists the
-     conflicting files with the exact commands to resync by hand (see Sync status).
-   - **If the rebase succeeds**, it installs and checks the result:
+     `git ls-remote --tags` and `sort -V`, and the newest one already merged into `main` (the
+     base, see Base detection).
+   - If the newest tag's commit is not under `main`, `fork-sync.sh merge` runs
+     `git merge --no-ff <tag>`: one merge commit, SSH-signed when `FORK_GIT_SIGNING_KEY` is set
+     (see Signed merge commits). With no newer tag it does nothing (a release-only run).
+   - **If the merge conflicts**, the run fails at once, before any install or build: the merge is
+     aborted, `main` is untouched and nothing is pushed. The step prints
+     `FORK-SYNC-CONFLICT <tag>` as its first line, and the status job puts the same marker on
+     the first line of the run summary, followed by the conflicting files and the commands to
+     merge by hand (see Sync status and Merge model).
+   - **If the merge succeeds**, it installs and checks the result:
      - root typecheck
      - the fork and updater tests
      - mobile install and typecheck
    - It disables every workflow except fork-sync, then pushes with
-     `git push --force-with-lease origin HEAD:main`.
+     `git push origin HEAD:main`, a plain push that fast-forwards (it fails if `main` moved
+     during the run, and is never forced).
    - After the push it disables any workflow the push added, and cancels any other workflow's
      run of the pushed commit (see below).
    - It checks whether a published fork release already has a tag on the `main` commit.
@@ -3630,28 +3666,15 @@ runs in a fork, never in the upstream repository (`stablyai/orca`). Every third-
 
 ### Base detection
 
-A tag name does not say which commit `main` sits on: upstream has re-cut a tag to another
-commit, and `rebase --onto <new> <tag>` then replayed upstream's own commits as fork commits.
-So `fork-sync.sh detect` works out the base as a SHA:
-
-1. The record: the file `base` on the status branch (`fork-sync-status`), the SHA the last
-   successful sync rebased onto (or found `main` already on). It is written only by the status
-   job of a run whose sync job succeeded. It is used while it is an ancestor of `main`.
-2. Without a record, the fallback: the nearest to `main` of three upstream commits under it.
-   Two are merge-bases of `main`, with upstream's default branch (`FORK_SYNC_UPSTREAM_BRANCH`
-   overrides) and with the newest tag. The third is the newest stable tag whose commit is under
-   `main`. Upstream tags release commits that are not on its branch, so a fork sitting on such
-   a tag has both merge-bases below it, and a rebase from there would replay upstream's
-   release commit as a fork commit.
-3. A record older than the fallback is stale (main resynced by hand, or a run died between
-   the push and the record), so the fallback wins. A moved tag never makes the fallback newer
-   than the record, since the dropped commit is not on upstream and the tag's new commit is
-   not under `main`.
-
-If the newest tag's commit is an ancestor of the base (a tag re-cut to an older commit), the
-run fails instead of rebasing backwards. `config/scripts/fork/fork-sync.test.mjs` covers a clean
-sync, a moved tag, a conflict, a missing, stale and foreign record, and that case, against
-throwaway repos.
+`fork-sync.sh detect` needs no record. The base is the newest stable upstream tag (`vX.Y.Z`,
+version order) whose commit is an ancestor of `main`. The state is `in-sync` when the newest
+upstream tag's commit is under `main` and `behind` otherwise, so a tag upstream moved to another
+commit counts as new until that commit is merged. If upstream moved the tag `main` is on, no tag
+commit is under `main`: the base then comes from `package.json`'s version (a tag merge takes the
+tag's version). With neither, the run fails and a tag has to be merged by hand.
+`config/scripts/fork/fork-sync.test.mjs` covers a clean merge, a conflict, the `package.json`
+version line, a release-only run, a moved tag, a missing base and the version after a merge
+against throwaway repos.
 
 ### Sync status
 
@@ -3660,18 +3683,18 @@ release exists, so the status job publishes each run's outcome where anyone can 
 
 - `status.json` on the branch `fork-sync-status` (the workflow env `FORK_SYNC_STATUS_BRANCH`),
   served at `https://raw.githubusercontent.com/<repo>/fork-sync-status/status.json`. Its tree
-  holds only `status.json` and `base`, so pushing it starts no workflow. Each run adds one
+  holds only `status.json`, so pushing it starts no workflow. Each run adds one
   commit, so the branch is also the sync history. It is pushed with `GITHUB_TOKEN`.
 - Fields (`config/scripts/fork/fork-sync-status.mjs`): `schema` (1), `state` (`in-sync`,
   `behind`, `conflict`, `error`), `reason`, `upstreamVersion`, `upstreamSha`,
   `forkBaseVersion`, `forkBaseSha`, `conflicts`, `since` (first run of the current
   not-in-sync streak), `runUrl`, `checkedAt`.
-- `error` covers a run that could not read upstream, a tag that moved below the base, a failed
-  sync job with nothing to rebase, and a failed release build after a good sync.
-- The run summary says the same in plain words. For `behind` and `conflict` it gives the exact
-  resync commands for that run: a backup branch at the old `main`,
-  `git rebase --onto <new> <base> main`, the `%G?` signature check and
-  `git push --force-with-lease=main:<old main>`.
+- `error` covers a run that could not read upstream, a main with no upstream tag merged, a failed
+  sync job that did not reach the merge, and a failed release build after a good sync.
+- The run summary says the same in plain words. A conflict starts with the marker line
+  `FORK-SYNC-CONFLICT <tag>` (once, on the first line). For `behind` and `conflict` it gives the
+  commands to merge by hand: a branch from `origin/main`, `git merge <tag>`, and a plain push of
+  the branch to `main`.
 - The app reads it from the URL derived from `FORK_RELEASE_REPO`
   (`src/shared/fork/fork-sync-status.ts`) when Settings, About opens and after each update check
   settles, at most once per 5 minutes, through `net.fetch` in main. It shows one line under the
@@ -3700,24 +3723,21 @@ the fork signs every build with one self-signed certificate, `Orca Fork Code Sig
 - Replacing the certificate changes the requirement: installed copies then need one manual
   install, as the move from ad-hoc did.
 
-### Signed rebase commits
+### Signed merge commits
 
-A rebase re-commits every fork commit, so the old signatures are lost. When the Actions secret
-`FORK_GIT_SIGNING_KEY` holds an ed25519 SSH private key, the sync job signs the new commits:
+When the Actions secret `FORK_GIT_SIGNING_KEY` holds an ed25519 SSH private key, the sync job
+signs the merge commit with it (the fork commits keep their own signatures):
 
-- Before the rebase it writes the key to `$RUNNER_TEMP/git-signing/key` (mode 600), sets
+- Before the merge it writes the key to `$RUNNER_TEMP/git-signing/key` (mode 600), sets
   `gpg.format ssh`, `user.signingkey` and `commit.gpgsign true`, and commits as the author of
-  the newest fork commit (the fork owner), so the rebased commits stay his on both lines.
-- After the rebase every commit in `<new tag>..HEAD` must show `%G?` = `G` against an
-  allowed-signers file built from the key's public half, or the job fails before the push.
-- An `always()` step deletes the key and unsets the signing config straight after the rebase,
+  the newest fork commit (the fork owner).
+- After the merge the merge commit must show `%G?` = `G` against an allowed-signers file built
+  from the key's public half, or the job fails before the push.
+- An `always()` step deletes the key and unsets the signing config straight after the merge,
   before `pnpm install` runs any package script.
-- Committer dates are the rebase time (no `--committer-date-is-author-date`), so the dates
-  say when the signed copy was made; author dates keep the original.
 - Add the public key to the owner's GitHub account as a signing key, so GitHub shows the
-  commits as Verified. Keep the private key in Infisical folder `/orca_fork`.
-- With the secret empty the job prints a notice and commits unsigned as `github-actions[bot]`,
-  as before.
+  commit as Verified. Keep the private key in Infisical folder `/orca_fork`.
+- With the secret empty the job prints a notice and commits unsigned as `github-actions[bot]`.
 
 ### Deploy key and tokens
 
@@ -3756,8 +3776,8 @@ disables fork-sync or cancels its runs. The job needs `actions: write` for it.
 
 ### Notes
 
-- A rebase rewrites the fork commits. CI signs its copies only when `FORK_GIT_SIGNING_KEY` is
-  set (see Signed rebase commits); otherwise they are unsigned and committed by
+- The merge commit is the only commit CI makes. It is signed only when `FORK_GIT_SIGNING_KEY` is
+  set (see Signed merge commits); otherwise it is unsigned and committed by
   `github-actions[bot]`.
 - Builds are self-signed, not notarized. On first launch, macOS Gatekeeper asks you to approve
   the app.
