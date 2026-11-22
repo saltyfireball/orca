@@ -17,6 +17,7 @@ import type { ForkServerUpdateSettings } from './server-update'
 import type { ForkAgentGuardSettings } from './agent-guards'
 import type { ForkWorktreePortsSettings } from './worktree-ports'
 import type { ForkWorktreeSnapshotSettings } from './worktree-snapshots'
+import type { ForkTurnCheckpointSettings } from './turn-checkpoints'
 import type { ForkPrBabysitSettings } from './pr-babysit'
 import type { ForkMainSyncSettings } from './main-sync'
 import type { ForkRowStatusSettings } from './row-status'
@@ -61,6 +62,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkWorktreePortsSettings &
   /** Fork (BAD-677): snapshot a worktree's work before it is removed, and for how long. */
   ForkWorktreeSnapshotSettings &
+  /** Fork (BAD-678): checkpoint a workspace's files at the end of each agent turn. */
+  ForkTurnCheckpointSettings &
   /** Fork (SLRM-2386): the PR babysitter; off unless a repo is listed. */
   ForkPrBabysitSettings &
   /** Fork (SLRM-2384): keep each local project's default branch current. */

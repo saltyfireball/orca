@@ -3,6 +3,7 @@
 import { defineMethod, type RpcContext } from '../../core'
 import { FORK_WORKER_ARCHIVE_METHODS } from './fork-worker-methods'
 import { FORK_WORKTREE_SNAPSHOT_METHODS } from './fork-worktree-snapshots'
+import { FORK_TURN_CHECKPOINT_METHODS } from './fork-turn-checkpoints'
 import {
   ForkLostWorkScanParams,
   resolveLostWorkSettings,
@@ -40,11 +41,12 @@ async function withUse(result: LostWorkScanResult, ctx: RpcContext): Promise<Los
   }
 }
 
-// BAD-669 and BAD-677: the worker archive and worktree snapshot methods ride in this list, so
+// BAD-669, BAD-677 and BAD-678: the worker archive, worktree snapshot and turn checkpoint methods ride in this list, so
 // rpc-method-registry.ts (over its line budget) needs no new line.
 export const FORK_LOST_WORK_METHODS = [
   ...FORK_WORKER_ARCHIVE_METHODS,
   ...FORK_WORKTREE_SNAPSHOT_METHODS,
+  ...FORK_TURN_CHECKPOINT_METHODS,
   defineMethod({
     name: 'fork.lostWork.scan',
     permission: 'workspace',
