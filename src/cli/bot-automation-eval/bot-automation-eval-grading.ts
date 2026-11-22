@@ -1,4 +1,5 @@
 // How a benchmark turn is graded: the automation the bot wrote, or the question it asked.
+import { isChainTrigger } from '../../shared/automation-chain-triggers'
 import { isGoogleTrigger } from '../../shared/automation-google-triggers'
 import { parseAutomationEventTrigger } from '../automations/automation-event-trigger-spec'
 import {
@@ -69,7 +70,7 @@ function placeOf(subject: string): string {
 }
 
 function triggerMatches(actual: AutomationEventTrigger, expected: ExpectedTrigger): boolean {
-  if (isGoogleTrigger(actual)) {
+  if (isGoogleTrigger(actual) || isChainTrigger(actual)) {
     return false
   }
   const listensIn = actual.source === 'webhook' ? [] : (actual.in ?? [])

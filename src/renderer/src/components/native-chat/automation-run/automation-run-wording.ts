@@ -24,6 +24,7 @@ const KEYS: Record<AutomationRunCopyKey, string> = {
   webhook: 'components.native-chat.automationRun.webhook',
   gmail: 'components.native-chat.automationRun.gmail',
   calendar: 'components.native-chat.automationRun.calendar',
+  automation: 'components.native-chat.automationRun.automation',
   instructions: 'components.native-chat.automationRun.instructions',
   event: 'components.native-chat.automationRun.event',
   startError: 'components.native-chat.automationRun.startError',
@@ -116,6 +117,9 @@ const KEYS: Record<AutomationRunCopyKey, string> = {
   'what.linear.issue_moved': 'components.native-chat.automationRun.what.linear.issue_moved',
   'what.gmail.new_email': 'components.native-chat.automationRun.what.gmail.new_email',
   'what.calendar.starting_soon': 'components.native-chat.automationRun.what.calendar.starting_soon',
+  'what.automation.run_succeeded':
+    'components.native-chat.automationRun.what.automation.run_succeeded',
+  'what.automation.run_failed': 'components.native-chat.automationRun.what.automation.run_failed',
   'what.other': 'components.native-chat.automationRun.what.other'
 }
 

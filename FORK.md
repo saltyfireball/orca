@@ -2796,6 +2796,37 @@ ones `SLRM-123 `).
     the slice's pressure is not shown in Resource Usage yet.
   - Code is in `src/main/fork/agent-slice/`.
 
+- **Automation run triggers: an automation that starts when another automation's run finishes or fails (BAD-689).**
+  A bot automation can listen for `automation.run_succeeded` or `automation.run_failed`, so a
+  nightly research run chains into a summary, or a failure into triage, with no webhook or GitHub
+  side effect.
+  - **Authoring.** `--on "automation.run_failed automation=<id,...> bot=<id,...> depth=<n>"`.
+    `automation=` limits it to runs of those automations (default: any other automation); `bot=`
+    to automations of those bots; `depth=` narrows the chain depth limit for this rule. Shown in
+    `orca automations trigger-options`.
+  - **What counts.** A run that ends `completed` raises `run_succeeded`; a run that ends
+    `dispatch_failed` raises `run_failed`. Skipped runs and events a bot's chat answered in a turn
+    raise nothing. An automation never starts itself.
+  - **The switch.** Having an `automation.*` rule is that automation's "can be triggered by
+    automations" switch: nothing chains into an automation without one. `forkAutomationChaining`
+    (default on) switches every chained start off on this host.
+  - **Loop guard.** Each chained run records its depth on its event (`event.chain.depth`: 1 for
+    a run started by an automation that a person or schedule started). A start deeper than
+    `forkAutomationChainMaxDepth` (default 3, 1 to 10; a rule's `depth=` can only lower it) is not
+    run: the target gets a skipped run (`skipped_unavailable`) saying "Chain depth limit: ...", and
+    the chain stops. A skipped run raises no event, so the refusal cannot loop.
+  - **Untrusted payload.** The run summary (automation name, run number, error, the end of the
+    output) goes in the event's quoted text, so it is fenced as information, never instructions;
+    only the source, event and time sit outside the fence.
+  - **Same path as other triggers.** A chained start goes through `runForEvent`, so Pause all,
+    the spend caps, dedupe (one start per source run, key `automation:<runId>:<event>`) and the
+    missed-run grace apply. Rules are checked on this host and never sent to Orca Cloud.
+  - **Not done.** No event for a run that is skipped or still running; no dedicated authoring
+    field in the Automations editor (rules show in the events list; author them from the CLI).
+  - Code is in `src/shared/automation-chain-triggers.ts`, `src/main/automations/automation-chain-runs.ts`
+    (matching and depth) and `automation-chain-start.ts` (starting and recording refusals), and
+    `src/cli/automations/automation-chain-trigger-spec.ts`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -2958,6 +2989,7 @@ Apply these in this order. Each one is a single commit.
 155. `BAD-687 Agent profiles: named launch bundles (agent, model, effort, permission mode, MCP profile, account, preamble, when-to-use note); --profile on agent launch, worktree create, worker-start and automations create; orca profiles list|show|set|remove|import|confirm; import from .claude/agents, .codex/agents and .agents/agents with the preamble held until confirmed`
 156. `BAD-742 Services mail a bot's chat as the owner: orchestration send --as-service`
 157. `BAD-688 Session export: orca agent export writes a chat or terminal agent session as Markdown, one self-contained HTML file or JSON with secrets and home paths redacted by default, and --share publishes the redacted file as an unlisted artifact link; Copy chat as Markdown in the chat tab menu`
+158. `BAD-689 Automation run triggers: automation.run_succeeded and automation.run_failed start a bot automation when another automation's run ends, with the run summary quoted as untrusted text, a per-automation switch (having the rule), a chain depth limit (forkAutomationChainMaxDepth, default 3) that records a skipped run when it stops a chain, and forkAutomationChaining to turn it off`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4202,6 +4234,19 @@ Upstream files only get short hooks, which keeps merges small:
   (`fork-agent-guards.ts`), so `rpc-method-registry.ts` is untouched, and `FORK_COMMAND_GUARDS_COMMAND_SPECS` in `src/cli/specs/index.ts`; `fork-handler-groups.ts`
   adds the `fork-command-guards` group. The seven settings are intersected in
   `fork-global-settings.ts`; the settings and RPC params catalogs are regenerated.
+
+- Automation run triggers (BAD-689), small edits in stock files: `automation-event-triggers.ts`
+  adds the `automation` source to `AUTOMATION_EVENT_KINDS`, `AutomationEventTrigger`,
+  `ConnectorEventSource` (excluded), `AutomationRunEvent.chain` and the validation;
+  `automation-service.ts` (`markDispatchResult` calls `startChainedRuns` once a run is final);
+  `connector-triggers.ts` keeps `automation.*` rules out of the cloud's list;
+  `automation-event-trigger-spec.ts` parses, formats and describes them;
+  `bot-event-sources.ts`, `bot-automation-rows.ts`, `bot-automation-when.ts`,
+  `automation-run-row-copy.ts`, `automation-run-wording.ts`, `automation-run-message.ts`,
+  `automation-run-row-words.ts`, `automation-chat-row.ts`, `automation-event-words.ts`,
+  `automation-event-prompt.ts` and `bot-automation-eval-grading.ts` add the new source to their
+  per-source tables. The two settings are intersected in `fork-global-settings.ts`; the settings
+  catalog is regenerated.
 
 - Session export (BAD-688), two small edits in stock files: `SortableTabContextMenu.tsx` renders
   `ForkSessionExportTabMenuItems` after the chat handoff items, and `src/cli/specs/index.ts` adds

@@ -3,6 +3,7 @@ import type { AutomationRun } from './automations/history/automation-run'
 import { hookIdOfRule, type WebhookFilters } from './connector-webhook-contract'
 import { assertAutomationOnce } from './automation-once'
 import { assertGitHubFilters, assertWorkflowWait } from './automation-github-triggers'
+import * as chain from './automation-chain-triggers'
 import {
   assertGoogleTrigger,
   isGoogleTrigger,
@@ -43,7 +44,9 @@ export const AUTOMATION_EVENT_KINDS = {
   webhook: ['call'],
   // Checked on the host that holds the Google sign-in; never sent to Orca Cloud.
   gmail: ['new_email'],
-  calendar: ['starting_soon']
+  calendar: ['starting_soon'],
+  // Fork (BAD-689): another automation's run ending on this host.
+  automation: chain.CHAIN_EVENTS
 } as const
 
 /**
@@ -82,23 +85,27 @@ export function automationEventKind(source: string, event: string): AutomationEv
 }
 
 /** The sources Orca Cloud delivers: a connector app's events. */
-export type ConnectorEventSource = Exclude<AutomationEventSource, 'webhook' | GoogleEventSource>
+export type ConnectorEventSource = Exclude<
+  AutomationEventSource,
+  'webhook' | 'automation' | GoogleEventSource
+>
 
 /** One rule that starts the automation; the filters narrow where it listens. */
 export type AutomationEventTrigger =
   | AutomationConnectorEventTrigger
   | AutomationWebhookTrigger
   | AutomationGoogleTrigger
+  | chain.AutomationChainTrigger
 
 export function isConnectorSource(source: AutomationEventSource): source is ConnectorEventSource {
-  return source !== 'webhook' && !isGoogleTrigger({ source })
+  return source !== 'webhook' && !isGoogleTrigger({ source }) && !chain.isChainTrigger({ source })
 }
 
 /** A Slack, GitHub or Linear rule: the ones Orca Cloud matches. */
 export function isConnectorTrigger(
   trigger: AutomationEventTrigger
 ): trigger is AutomationConnectorEventTrigger {
-  return !isWebhookTrigger(trigger) && !isGoogleTrigger(trigger)
+  return !isWebhookTrigger(trigger) && !isGoogleTrigger(trigger) && !chain.isChainTrigger(trigger)
 }
 
 /** A Slack, GitHub or Linear rule. */
@@ -207,6 +214,8 @@ export type AutomationRunEvent = {
   place?: string
   url?: string
   text?: string
+  /** Fork (BAD-689): an automation.* event's source run. Its depth is how many automation-started runs lead to the run this event starts (1 when the source run was not itself chained). */
+  chain?: { automationId: string; runId: string; depth: number }
   webhook?: AutomationRunWebhookCall
   /** A Gmail or Calendar event: the account it came on and Orca's ref for the mail or event. */
   google?: { account: string; ref: string }
@@ -282,8 +291,10 @@ function assertThreadResults(automation: Automation): void {
   if (triggers.some(isWebhookTrigger)) {
     throw new Error('A webhook call has no thread; send its results somewhere else.')
   }
-  if (triggers.some((trigger) => isGoogleTrigger(trigger))) {
-    throw new Error('A Gmail or Calendar event has no thread; send its results somewhere else.')
+  if (triggers.some((trigger) => isGoogleTrigger(trigger) || chain.isChainTrigger(trigger))) {
+    throw new Error(
+      'A Gmail, Calendar or automation event has no thread; send its results somewhere else.'
+    )
   }
   if (automation.bot?.runsIn !== 'new') {
     throw new Error(
@@ -327,6 +338,10 @@ export function assertAutomationEventTriggers(automation: Automation): void {
     }
     if (isGoogleTrigger(trigger)) {
       assertGoogleTrigger(trigger)
+      continue
+    }
+    if (chain.isChainTrigger(trigger)) {
+      chain.assertChainTrigger(trigger)
       continue
     }
     if (

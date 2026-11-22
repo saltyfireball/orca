@@ -47,7 +47,9 @@ export function botEventSources(bot: BotConnectors): AutomationEventSource[] {
     webhook: bot.webhooks === true,
     // Google events come from this host's own sign-in, once the owner turns Google on for the bot.
     gmail: bot.google === true,
-    calendar: bot.google === true
+    calendar: bot.google === true,
+    // Fork (BAD-689): another automation's run needs no connector, so it is never listed as one.
+    automation: false
   }
   return Object.keys(connected)
     .filter(isEventSource)
@@ -64,7 +66,9 @@ export function unheardEventTriggers<Rule extends EventRule>(
   triggers: readonly Rule[]
 ): Rule[] {
   const heard = botEventSources(bot)
-  return triggers.filter((trigger) => !heard.includes(trigger.source))
+  return triggers.filter(
+    (trigger) => trigger.source !== 'automation' && !heard.includes(trigger.source)
+  )
 }
 
 const googleOff = (bot: BotConnectors) =>

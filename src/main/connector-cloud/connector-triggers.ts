@@ -12,6 +12,7 @@ import {
   type AutomationWebhookTrigger,
   type AutomationRunEvent
 } from '../../shared/automation-event-triggers'
+import { isChainTrigger } from '../../shared/automation-chain-triggers'
 import { isGoogleTrigger } from '../../shared/automation-google-triggers'
 import { hookIdOfRule, webhookActorId } from '../../shared/connector-webhook-contract'
 
@@ -44,7 +45,9 @@ export function connectorTriggers(
   return automations.flatMap(({ id, enabled, bot, on, missedRunGraceMinutes }) =>
     bot
       ? (on ?? [])
-          .filter((trigger): trigger is CloudRule => !isGoogleTrigger(trigger))
+          .filter(
+            (trigger): trigger is CloudRule => !isGoogleTrigger(trigger) && !isChainTrigger(trigger)
+          )
           .filter((trigger) => enabled || pausing(hookIdOfRule(trigger.id) ?? ''))
           .map((trigger) => ({
             ...withoutNames(trigger),
@@ -97,7 +100,7 @@ export function triggerRunEvent(
       ? automation.on?.find((rule) => rule.id === delivery.triggerId)
       : undefined
   // The cloud never has a Google rule, so it can't deliver one.
-  if (!trigger || !bot || isGoogleTrigger(trigger)) {
+  if (!trigger || !bot || isGoogleTrigger(trigger) || isChainTrigger(trigger)) {
     return null
   }
   const hookId = hookIdOfRule(trigger.id)

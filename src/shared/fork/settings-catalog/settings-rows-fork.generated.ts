@@ -47,6 +47,10 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"number"},"d":"Estimated USD one run of an automation may spend before its agent is paused; 0 or unset is off.","o":true}',
   forkAutomationCapWeekUsd:
     '{"t":{"k":"number"},"d":"Estimated USD an automation\'s runs may spend in the last 7 local days before further runs are skipped; 0 or unset is off.","o":true}',
+  forkAutomationChainMaxDepth:
+    '{"t":{"k":"number"},"d":"The longest chain of automation-started runs (1 to 10); a run that would be deeper is recorded as skipped. Unset is 3.","o":true}',
+  forkAutomationChaining:
+    '{"t":{"k":"boolean"},"d":"Automations can start on another automation\'s run finishing or failing; false stops every chained start on this host. Unset is true.","o":true}',
   forkBatchStart:
     '{"t":{"k":"boolean"},"d":"A Batch switch in the new-workspace composer for rapid prompts; unset is on.","o":true}',
   forkBatchStartAutoHost:

@@ -25,7 +25,8 @@ const SOURCE_MARKS = {
   linear: 'linear',
   gmail: 'google',
   calendar: 'google',
-  webhook: 'webhook'
+  webhook: 'webhook',
+  automation: 'event'
 } as const satisfies Record<AutomationEventSource, AutomationRowMark>
 
 /** A saved automation's mark: the connector of its first event, else a wait's hourglass or a clock. */

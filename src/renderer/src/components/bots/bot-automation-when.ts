@@ -114,6 +114,16 @@ export function eventLabel(trigger: AutomationEventKind): string {
       return translate('bots.automations.on.gmailNewEmail', 'On a new email')
     case 'calendar':
       return translate('bots.automations.on.calendarStartingSoon', 'Before a meeting starts')
+    case 'automation':
+      return trigger.event === 'run_failed'
+        ? translate(
+            'bots.automations.on.automationRunFailed',
+            "When another automation's run fails"
+          )
+        : translate(
+            'bots.automations.on.automationRunSucceeded',
+            "When another automation's run finishes"
+          )
   }
 }
 

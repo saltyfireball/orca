@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Why: upstream keeps this file at the 300-line limit, and the fork's chained-run hook and import (FORK.md, BAD-689) add two lines to the one place a run ends. */
 import type { AutomationUsageClient } from '../../shared/backend/backend-service-contract'
 import {
   requestAutomationDispatch,
@@ -47,6 +48,7 @@ import {
   type EventRunOptions
 } from './automation-trigger-runs'
 import { runDueAutomations } from './automation-due-runs'
+import { startChainedRuns } from './automation-chain-start'
 
 const DEFAULT_TICK_MS = 60 * 1000
 
@@ -224,6 +226,8 @@ export class AutomationService {
       return run
     }
     this.completionWatcher?.forget(run.id)
+    // Fork (BAD-689): automations that start on this run ending; detached so a launch never holds the result.
+    void startChainedRuns(this.triggerRunContext(), this.store.getSettings(), run)
     // Duplicate completion effects must not recalculate usage with a later attribution window.
     if (run.usage) {
       return run

@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Why: upstream keeps this file near the 300-line limit, and the fork's automation.* trigger hooks (FORK.md, BAD-689) add the parse, format, describe and options calls beside the Gmail and webhook ones; their code is in automation-chain-trigger-spec.ts. */
 // `--on "<source>.<event> in=... contains=... subject=..."`: one event trigger, written by a bot or a person.
 import { createHash } from 'node:crypto'
 import { GITHUB2_EVENT_KINDS } from '../../shared/automation-github-triggers'
@@ -40,6 +41,7 @@ import {
   GOOGLE_TRIGGER_OPTIONS,
   parseGoogleTrigger
 } from '../google/google-event-trigger-spec'
+import * as chainSpec from './automation-chain-trigger-spec'
 import { GOOGLE_EVENT_SOURCES, isGoogleTrigger } from '../../shared/automation-google-triggers'
 
 type ConnectorEventSource = AutomationConnectorEventTrigger['source']
@@ -59,7 +61,8 @@ const CONNECTOR_SOURCES: readonly ConnectorEventSource[] = ['slack', 'github', '
 const ALL_SOURCES: readonly AutomationEventSource[] = [
   ...CONNECTOR_SOURCES,
   ...GOOGLE_EVENT_SOURCES,
-  'webhook'
+  'webhook',
+  'automation'
 ]
 
 const EVENTS: Pick<AutomationConnectorEventTrigger, 'source' | 'event'>[] = [
@@ -127,6 +130,9 @@ export function formatAutomationEventTrigger(trigger: AutomationEventTrigger): s
   if (isGoogleTrigger(trigger)) {
     return formatGoogleTrigger(trigger)
   }
+  if (chainSpec.isChainTrigger(trigger)) {
+    return chainSpec.formatChainTrigger(trigger)
+  }
   return [
     `${trigger.source}.${trigger.event}`,
     ...(trigger.in?.length ? [`in=${trigger.in.join(',')}`] : []),
@@ -146,6 +152,9 @@ export function parseAutomationEventTrigger(spec: string): AutomationEventTrigge
   }
   if (head[3] === 'webhook.call') {
     return parseWebhookTrigger(spec, entriesOf(spec, rest))
+  }
+  if (chainSpec.isChainHead(head[3])) {
+    return chainSpec.parseChainTrigger(spec, head[3], entriesOf(spec, rest))
   }
   if (head[3] === 'gmail.new_email' || head[3] === 'calendar.starting_soon') {
     return parseGoogleTrigger(spec, head[3], entriesOf(spec, rest))
@@ -231,6 +240,9 @@ export function describeAutomationEventTrigger(trigger: AutomationEventTrigger):
   if (isGoogleTrigger(trigger)) {
     return describeGoogleTrigger(trigger)
   }
+  if (chainSpec.isChainTrigger(trigger)) {
+    return chainSpec.describeChainTrigger(trigger)
+  }
   const words: Record<string, string> = EVENT_WORDS[trigger.source]
   return [
     words[trigger.event] ?? `${trigger.source}.${trigger.event}`,
@@ -261,6 +273,9 @@ export function formatAutomationTriggerOptions(
   const sources = offeredEventSources(only, bot).map((source) => {
     if (source === 'webhook') {
       return WEBHOOK_TRIGGER_OPTIONS
+    }
+    if (source === 'automation') {
+      return chainSpec.CHAIN_TRIGGER_OPTIONS
     }
     if (isGoogleTrigger({ source })) {
       return bot && !heard?.includes(source)

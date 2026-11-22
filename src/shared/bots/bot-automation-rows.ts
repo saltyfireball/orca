@@ -80,6 +80,8 @@ function triggerFacts(trigger: AutomationEventTrigger): BotAutomationTrigger {
       return { id: trigger.id, source: trigger.source, event: trigger.event }
     case 'calendar':
       return { id: trigger.id, source: trigger.source, event: trigger.event }
+    case 'automation':
+      return { id: trigger.id, source: trigger.source, event: trigger.event }
   }
 }
 
