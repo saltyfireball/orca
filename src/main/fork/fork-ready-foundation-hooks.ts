@@ -8,6 +8,7 @@ import { installForkWorktreePorts } from './worktree-ports/worktree-ports-servic
 import { installForkWorktreeSnapshots } from './worktree-snapshots/worktree-snapshot-service'
 import { installForkTurnCheckpoints } from './turn-checkpoints/turn-checkpoint-live'
 import { installForkPrBabysit } from './pr-babysit/pr-babysit-hooks'
+import { installForkPrNudge } from './pr-nudge/pr-nudge-hooks'
 import { installForkQuickTask } from './quick-task/quick-task-app'
 
 export { forkPostReadyAppName } from './app-name'
@@ -25,6 +26,7 @@ export async function installForkReady(
   installForkWorktreeSnapshots(store)
   installForkTurnCheckpoints(store)
   installForkPrBabysit(store)
+  installForkPrNudge(store)
   // SLRM-2428: the quick task box and its global shortcut.
   installForkQuickTask(store)
   await installForkChatSurvive(store)

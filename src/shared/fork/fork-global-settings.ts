@@ -19,6 +19,7 @@ import type { ForkWorktreePortsSettings } from './worktree-ports'
 import type { ForkWorktreeSnapshotSettings } from './worktree-snapshots'
 import type { ForkTurnCheckpointSettings } from './turn-checkpoints'
 import type { ForkPrBabysitSettings } from './pr-babysit'
+import type { ForkPrNudgeSettings } from './pr-nudge'
 import type { ForkMainSyncSettings } from './main-sync'
 import type { ForkRowStatusSettings } from './row-status'
 import type { ForkBranchClashSettings } from './branch-clashes'
@@ -67,6 +68,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkTurnCheckpointSettings &
   /** Fork (SLRM-2386): the PR babysitter; off unless a repo is listed. */
   ForkPrBabysitSettings &
+  /** Fork (BAD-680): PR nudges, new review comments and merge conflicts to the owning chat; off by default. */
+  ForkPrNudgeSettings &
   /** Fork (SLRM-2384): keep each local project's default branch current. */
   ForkMainSyncSettings &
   /** Fork (SLRM-2390): spend, context, pull request and fix button on agent rows. */

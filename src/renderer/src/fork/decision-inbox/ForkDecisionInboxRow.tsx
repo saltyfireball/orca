@@ -23,6 +23,9 @@ function detailLine(item: ForkIdleRecoveryInboxItem, now: number, t: Translate):
   if (item.source === 'babysit') {
     return t('fork.decisionInbox.babysitDetail', 'PR babysitter')
   }
+  if (item.source === 'nudge') {
+    return t('fork.decisionInbox.nudgeDetail', 'PR nudges')
+  }
   if (item.source === 'contract') {
     return t('fork.decisionInbox.contractDetail', 'Done checks')
   }
@@ -165,11 +168,13 @@ export function ForkDecisionInboxRow({
             ? t('fork.decisionInbox.guardResume', 'Resume')
             : item.source === 'babysit'
               ? t('fork.decisionInbox.stopBabysit', 'Stop babysitting')
-              : item.source === 'contract'
-                ? t('fork.decisionInbox.dismissContract', 'Dismiss')
-                : item.paused
-                  ? t('fork.decisionInbox.resume', 'Resume recovery')
-                  : t('fork.decisionInbox.pause', 'Pause recovery')}
+              : item.source === 'nudge'
+                ? t('fork.decisionInbox.stopNudge', 'Stop nudging')
+                : item.source === 'contract'
+                  ? t('fork.decisionInbox.dismissContract', 'Dismiss')
+                  : item.paused
+                    ? t('fork.decisionInbox.resume', 'Resume recovery')
+                    : t('fork.decisionInbox.pause', 'Pause recovery')}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => actions.jump(item)}>
           {t('fork.decisionInbox.jump', 'Go to chat')}

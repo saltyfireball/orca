@@ -189,17 +189,16 @@ function localOptions(ws: PRWatchWorkspace): { wslDistro?: string } {
   return ws.wslDistro ? { wslDistro: ws.wslDistro } : {}
 }
 
-/** The live port. Imported lazily by the service so tests never load stock's GitHub client. */
-export async function livePrBabysitGitHub(): Promise<PrBabysitGitHub> {
-  const [{ ghExecFileAsync }, { resolveGitHubRepoExecution }, { getPRChecks }, details] =
-    await Promise.all([
-      import('../../git/command-runner/hosted-cli/gh-exec-file'),
-      import('../../github/repositories/github-api-repository'),
-      import('../../github/client/check/get-pr-checks'),
-      import('../../github/client/check/get-pr-check-details')
-    ])
-  const prRepo = (pr: PrBabysitPr) => ({ owner: pr.owner, repo: pr.repo, host: pr.host })
-  const gh: PrBabysitGh = async (ws, pr, args) => {
+const livePrRepo = (pr: PrBabysitPr) => ({ owner: pr.owner, repo: pr.repo, host: pr.host })
+
+/** The live gh runner (also the PR nudges'): the chat's checkout, argv only, never prompting. */
+export async function livePrGhRunner(): Promise<PrBabysitGh> {
+  const [{ ghExecFileAsync }, { resolveGitHubRepoExecution }] = await Promise.all([
+    import('../../git/command-runner/hosted-cli/gh-exec-file'),
+    import('../../github/repositories/github-api-repository')
+  ])
+  const prRepo = livePrRepo
+  return async (ws, pr, args) => {
     const { ghOptions } = await resolveGitHubRepoExecution(
       ws.repoPath,
       prRepo(pr),
@@ -215,6 +214,16 @@ export async function livePrBabysitGitHub(): Promise<PrBabysitGitHub> {
     })
     return stdout
   }
+}
+
+/** The live port. Imported lazily by the service so tests never load stock's GitHub client. */
+export async function livePrBabysitGitHub(): Promise<PrBabysitGitHub> {
+  const [gh, { getPRChecks }, details] = await Promise.all([
+    livePrGhRunner(),
+    import('../../github/client/check/get-pr-checks'),
+    import('../../github/client/check/get-pr-check-details')
+  ])
+  const prRepo = livePrRepo
   const readChecks: PrBabysitGitHub['checks'] = async (ws, pr, headSha) => {
     const checks = await getPRChecks(
       ws.repoPath,
