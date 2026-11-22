@@ -16,6 +16,7 @@ import type { ForkServerHealthSettings } from './server-health'
 import type { ForkServerUpdateSettings } from './server-update'
 import type { ForkAgentGuardSettings } from './agent-guards'
 import type { ForkWorktreePortsSettings } from './worktree-ports'
+import type { ForkWorktreeSnapshotSettings } from './worktree-snapshots'
 import type { ForkPrBabysitSettings } from './pr-babysit'
 import type { ForkMainSyncSettings } from './main-sync'
 import type { ForkRowStatusSettings } from './row-status'
@@ -58,6 +59,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkAgentGuardSettings &
   /** Fork (SLRM-2383): a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1. */
   ForkWorktreePortsSettings &
+  /** Fork (BAD-677): snapshot a worktree's work before it is removed, and for how long. */
+  ForkWorktreeSnapshotSettings &
   /** Fork (SLRM-2386): the PR babysitter; off unless a repo is listed. */
   ForkPrBabysitSettings &
   /** Fork (SLRM-2384): keep each local project's default branch current. */

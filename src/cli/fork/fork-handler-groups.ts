@@ -18,6 +18,13 @@ export function withoutForkSharedHandlerKeys(
 }
 
 export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
+  // BAD-677: snapshots taken before a worktree is removed (FORK.md "Worktree snapshots").
+  {
+    name: 'fork-worktree-snapshots',
+    keys: ['worktree snapshots', 'worktree restore'],
+    load: async () =>
+      (await import('./worktree-snapshots-handlers.js')).FORK_WORKTREE_SNAPSHOT_HANDLERS
+  },
   // SLRM-1503: move Claude chats between accounts (FORK.md).
   {
     name: 'fork-account-move',

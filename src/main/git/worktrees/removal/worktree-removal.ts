@@ -26,6 +26,7 @@ import { runUnderWorktreeDeleteLimit } from './worktree-delete-limit'
 import { removeWindowsCheckout, usesNativeWindowsRemoval } from './windows-worktree-removal'
 import { listWorktreesStrict } from '../catalog/worktree-listing'
 import { isWorktreePathMissing } from '../../../workspaces/removal/worktree-removal-safety'
+import { forkSnapshotBeforeWorktreeRemoval } from '../../../fork/worktree-snapshots/worktree-snapshot-service'
 import { runKeyedSerializedOperation } from '../../../../shared/concurrency/keyed-serialized-operations'
 
 const branchCleanupQueueByRepo = new Map<string, Promise<void>>()
@@ -80,6 +81,9 @@ async function performRemoveWorktree(
 
   // Enforce locks even for callers that bypass IPC/runtime preflight.
   assertWorktreeUnlockedForRemoval(removedWorktree ?? undefined)
+
+  // BAD-677: keep a recoverable copy of uncommitted, untracked and unpushed work first.
+  await forkSnapshotBeforeWorktreeRemoval(repoPath, worktreePath, force, options)
 
   // Avoid default deadlines during large deletes; preserve Windows long-path support used at creation.
   const longPathArgs = windowsLongPathGitArgs(repoPath)

@@ -2,6 +2,7 @@
 // Lost work dialog. Only the desktop app installs the scan host, so a host without it says so.
 import { defineMethod, type RpcContext } from '../../core'
 import { FORK_WORKER_ARCHIVE_METHODS } from './fork-worker-methods'
+import { FORK_WORKTREE_SNAPSHOT_METHODS } from './fork-worktree-snapshots'
 import {
   ForkLostWorkScanParams,
   resolveLostWorkSettings,
@@ -39,10 +40,11 @@ async function withUse(result: LostWorkScanResult, ctx: RpcContext): Promise<Los
   }
 }
 
-// BAD-669: the worker archive methods ride in this list, so rpc-method-registry.ts (over its line
-// budget) needs no new line.
+// BAD-669 and BAD-677: the worker archive and worktree snapshot methods ride in this list, so
+// rpc-method-registry.ts (over its line budget) needs no new line.
 export const FORK_LOST_WORK_METHODS = [
   ...FORK_WORKER_ARCHIVE_METHODS,
+  ...FORK_WORKTREE_SNAPSHOT_METHODS,
   defineMethod({
     name: 'fork.lostWork.scan',
     permission: 'workspace',

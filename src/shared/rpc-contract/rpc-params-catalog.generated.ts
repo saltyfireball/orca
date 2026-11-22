@@ -147,6 +147,11 @@ import {
   ForkWorktreeMoveInspectParams
 } from '../fork/worktree-move/worktree-move-wire'
 import { ForkWorktreePortsGetParams } from '../fork/worktree-ports-wire'
+import {
+  ForkWorktreeSnapshotsListParams,
+  ForkWorktreeSnapshotsPruneParams,
+  ForkWorktreeSnapshotsRestoreParams
+} from '../fork/worktree-snapshots'
 import { MobileWebBundleChunkParamsSchema } from '../mobile-web-bundle/bundle-rpc-contract'
 import { MobileWebBundleLocaleCatalogParamsSchema } from '../mobile-web-bundle/locale-catalog-contract'
 import { OrcadMigrationBlobChunkRequestSchema } from '../orcad-migration/orcad-migration-blob-transfer'
@@ -1739,6 +1744,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.worktreeMove.import': ForkWorktreeMoveImportParams,
   'fork.worktreeMove.inspect': ForkWorktreeMoveInspectParams,
   'fork.worktreePorts.get': ForkWorktreePortsGetParams,
+  'fork.worktreeSnapshots.list': ForkWorktreeSnapshotsListParams,
+  'fork.worktreeSnapshots.prune': ForkWorktreeSnapshotsPruneParams,
+  'fork.worktreeSnapshots.restore': ForkWorktreeSnapshotsRestoreParams,
   'git.abortMerge': WorktreeSelectorOfGitParams,
   'git.abortRebase': WorktreeSelectorOfGitParams,
   'git.atRiskLocalFiles': WorktreeSelectorOfGitParams,

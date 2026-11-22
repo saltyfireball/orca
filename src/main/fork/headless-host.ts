@@ -15,6 +15,7 @@ import {
 import { installForkVisualFallbackSettings } from './visual-image/visual-image-settings'
 import { installForkUsageLedgerOnServer } from './usage-ledger/usage-ledger-server'
 import { installForkWorktreePorts } from './worktree-ports/worktree-ports-service'
+import { installForkWorktreeSnapshots } from './worktree-snapshots/worktree-snapshot-service'
 import { installForkPrBabysit } from './pr-babysit/pr-babysit-hooks'
 
 export type ForkHeadlessHostStore = {
@@ -29,6 +30,7 @@ export type ForkHeadlessHostStore = {
  * - `::orca-visual` image files and unquoted values follow this host's own setting (SLRM-2349).
  * - The usage ledger counts the Claude chats that run here, for the spend cap (SLRM-2385).
  * - Workspace port blocks follow this host's own settings (SLRM-2383).
+ * - Worktrees are snapshotted before removal by this host's own settings (BAD-677).
  * - The PR babysitter acts on CI lines of this host's chats (SLRM-2386).
  * Returns what to run at shutdown.
  */
@@ -50,6 +52,7 @@ export function installForkHeadlessHost(store: ForkHeadlessHostStore): () => voi
       .catch((error: unknown) => console.warn('[fork-usage-ledger] could not start', error))
   }
   installForkWorktreePorts(store)
+  installForkWorktreeSnapshots(store)
   const stopPrBabysit = installForkPrBabysit(store)
   return () => {
     stopPrBabysit()

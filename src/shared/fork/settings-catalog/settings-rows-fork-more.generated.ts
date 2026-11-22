@@ -193,5 +193,9 @@ export const FORK_SETTINGS_ROWS_FORK_MORE = {
   forkWorktreePortsFrom:
     '{"t":{"k":"number"},"d":"First port blocks are taken from (1024 to 65535); unset is 20000.","o":true}',
   forkWorktreePortsTo:
-    '{"t":{"k":"number"},"d":"Last port blocks are taken from (1024 to 65535); unset is 29999.","o":true}'
+    '{"t":{"k":"number"},"d":"Last port blocks are taken from (1024 to 65535); unset is 29999.","o":true}',
+  forkWorktreeSnapshotRetentionDays:
+    '{"t":{"k":"number"},"d":"Days a snapshot is kept before it is pruned (1 to 365); unset is 14.","o":true}',
+  forkWorktreeSnapshots:
+    '{"t":{"k":"boolean"},"d":"Snapshot a worktree\'s uncommitted, untracked and unpushed work before Orca removes it; unset is on.","o":true}'
 }
