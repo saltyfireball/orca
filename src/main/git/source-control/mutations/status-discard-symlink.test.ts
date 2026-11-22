@@ -23,6 +23,8 @@ async function createRepoWithOutsideDirectory(): Promise<{
   execFileSync('git', ['init', '-q'], { cwd: repo })
   execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repo })
   execFileSync('git', ['config', 'user.name', 'Test User'], { cwd: repo })
+  // A developer's global ignore (e.g. *.log) must not hide the fixture files.
+  execFileSync('git', ['config', 'core.excludesFile', ''], { cwd: repo })
   await writeFile(path.join(repo, '.gitkeep'), '')
   execFileSync('git', ['add', '.gitkeep'], { cwd: repo })
   execFileSync('git', ['commit', '-q', '-m', 'initial'], { cwd: repo })

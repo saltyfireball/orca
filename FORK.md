@@ -1840,6 +1840,16 @@ ones `SLRM-123 `).
     the spend a resume set aside; a record with nothing left is dropped, any after 30 days.
   - Code is in `src/shared/fork/agent-guards*.ts`, `src/main/fork/agent-guards/`,
     `src/cli/fork/guards-*` and `src/renderer/src/fork/agent-guards/`.
+- **Tests ignore the developer's git config and Orca session (BAD-740).** A suite run on a
+  developer's machine, or inside an Orca terminal, gives the same result as on CI.
+  - Real-git fixtures get a global git config of their own (`gitSigningOffEnv`): no signing, no
+    hooks path, no excludes file, no `merge.ff`, no includes. Identity stays with each fixture.
+    `filesystem-quick-open-options.integration.test.ts` also points `HOME` and `XDG_CONFIG_HOME`
+    at its fixture, since ripgrep reads the global ignore on its own.
+  - The test setup clears the variables an Orca terminal exports (`ORCA_TERMINAL_HANDLE`,
+    `ORCA_CLI_COMMAND`, `ORCA_USER_DATA_PATH` and the like).
+  - Fix of a regression from BAD-683: with no store attached, the reviewer gate reads its
+    defaults, so a worker_done in a test runtime no longer throws `runtime_unavailable`.
 - **Command guards: deny destructive shell commands of agents (BAD-686).** On by default
   (`forkCommandGuards`). Orca's own rules, run in the PreToolUse hook Orca already installs, so
   they travel to every host Orca manages (paired servers too) and sit beside a person's own hooks
@@ -3037,6 +3047,7 @@ Apply these in this order. Each one is a single commit.
 158. `BAD-689 Automation run triggers: automation.run_succeeded and automation.run_failed start a bot automation when another automation's run ends, with the run summary quoted as untrusted text, a per-automation switch (having the rule), a chain depth limit (forkAutomationChainMaxDepth, default 3) that records a skipped run when it stops a chain, and forkAutomationChaining to turn it off`
 159. `BAD-690 Injected-context ratchet: check:injected-context-ratchet fails when the skill guides, skill stubs or worker preamble Orca injects into agents grow past a baseline`
 160. `BAD-691 Worktree reclaim: orca workspace reclaim and a Space page button remove regenerable git-ignored paths (node_modules, build output, caches; orca.yaml worktree.reclaim overrides the list) from idle workspaces, skipping ones in use, never touching env files, tracked or non-ignored files; off by default (forkWorktreeReclaim), dry run always available`
+161. `BAD-740 Tests: real-git fixtures use their own global git config, the test setup clears Orca session variables, and the reviewer gate reads defaults when no store is attached`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4326,6 +4337,11 @@ Upstream files only get short hooks, which keeps merges small:
   `check:injected-context-ratchet` script and `config/scripts/preflight/changed-checks/run-lint.mjs`
   adds it to `LINT_STEPS`. The check, its test and `config/injected-context-baseline.txt` are new
   fork files.
+- Test isolation (BAD-740), edits in upstream files: `vitest-git-signing-env.mjs` now always
+  returns a global git config of its own (and its test checks that), and
+  `vitest-caller-identity-env-setup.ts` lists more session variables to clear. Stock tests edited:
+  `filesystem-quick-open-options.integration.test.ts`. The reviewer gate change is in the fork file
+  `reviewer-gate-live.ts`, so no upstream hook.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

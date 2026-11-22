@@ -1,19 +1,23 @@
 import { mkdtemp, mkdir, writeFile, symlink, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import type { Store } from '../../../persistence/loading-store/store'
 import { listQuickOpenFiles } from './filesystem-list-files'
 import { searchQuickOpenFilePaths } from './filesystem-search-file-paths'
 
 const fixtures: string[] = []
 afterEach(async () => {
+  vi.unstubAllEnvs()
   await Promise.all(fixtures.splice(0).map((path) => rm(path, { recursive: true, force: true })))
 })
 
 it('honors inherited ignores, opt-in links, cycles, and retargets in real processes', async () => {
   const parent = await mkdtemp(join(tmpdir(), 'orca-quick-open-options-'))
   fixtures.push(parent)
+  // ripgrep reads the developer's global git ignore (it may list .env) from HOME and XDG_CONFIG_HOME.
+  vi.stubEnv('HOME', parent)
+  vi.stubEnv('XDG_CONFIG_HOME', join(parent, 'xdg'))
   await mkdir(join(parent, '.git'))
   const root = join(parent, 'project')
   const external = join(parent, 'external')

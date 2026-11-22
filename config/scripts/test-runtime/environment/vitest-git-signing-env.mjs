@@ -1,49 +1,22 @@
-import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 // Per-checkout, user-owned: a predictable name in a shared /tmp could be planted by another user.
 const CACHE_DIR = resolve(import.meta.dirname, '../../../../node_modules/.cache')
 
-function signsByDefault(env) {
-  try {
-    const values = execFileSync(
-      'git',
-      [
-        'config',
-        '--type=bool',
-        '--get-regexp',
-        '^(commit\\.gpgsign|tag\\.(gpgsign|forcesignannotated))$'
-      ],
-      { cwd: tmpdir(), env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
-    )
-    return /\strue$/m.test(values)
-  } catch {
-    return false
-  }
-}
-
 /**
- * Real-git fixtures must not sign with the developer's key, and `tag.gpgsign` breaks `git tag <name>`.
- * The rest of the global config (e.g. safe.directory) still applies; `~` keeps HOME-isolated fixtures isolated.
+ * Real-git fixtures run against a global config of their own, never the developer's: a user's
+ * merge.ff, hooksPath, excludesFile, signing, includeIf or url rewrites changed fixture outcomes. Identity is
+ * left to each fixture, as on CI; safe.directory keeps fixtures in other users' folders usable.
  */
-export function gitSigningOffEnv(env = process.env) {
-  if (!signsByDefault(env)) {
-    return {}
-  }
-  const inherited = env.GIT_CONFIG_GLOBAL
-    ? [resolve(env.GIT_CONFIG_GLOBAL)]
-    : [
-        env.XDG_CONFIG_HOME
-          ? join(resolve(env.XDG_CONFIG_HOME), 'git', 'config')
-          : '~/.config/git/config',
-        '~/.gitconfig'
-      ]
+export function gitSigningOffEnv() {
+  const noExcludes = join(CACHE_DIR, 'orca-vitest-empty-excludes')
   const config = [
-    '[include]',
-    ...inherited.map((path) => `\tpath = ${JSON.stringify(path.replaceAll('\\', '/'))}`),
+    '[core]',
+    `\texcludesFile = ${JSON.stringify(noExcludes.replaceAll('\\', '/'))}`,
+    '[safe]',
+    '\tdirectory = *',
     '[commit]',
     '\tgpgsign = false',
     '[tag]',
@@ -53,6 +26,10 @@ export function gitSigningOffEnv(env = process.env) {
   ].join('\n')
   const hash = createHash('sha256').update(config).digest('hex').slice(0, 16)
   const file = join(CACHE_DIR, `orca-vitest-unsigned-${hash}.gitconfig`)
+  if (!existsSync(noExcludes)) {
+    mkdirSync(CACHE_DIR, { recursive: true })
+    writeFileSync(noExcludes, '')
+  }
   if (!existsSync(file)) {
     mkdirSync(CACHE_DIR, { recursive: true })
     // Concurrent runs may share the cache; rename so no git ever reads a half-written file.
@@ -60,5 +37,5 @@ export function gitSigningOffEnv(env = process.env) {
     writeFileSync(partial, config)
     renameSync(partial, file)
   }
-  return { GIT_CONFIG_GLOBAL: file }
+  return { GIT_CONFIG_GLOBAL: file, GIT_CONFIG_NOSYSTEM: '1' }
 }

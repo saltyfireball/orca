@@ -24,7 +24,14 @@ export function forkStoreReviewGate(db: OrchestrationDb, taskId: string, rawPara
 }
 
 function settingsOf(runtime: OrcaRuntimeService): ReviewerGateSettings {
-  return readReviewerGateSettings(runtime.requireStore().getSettings() as never)
+  // Before the store attaches the defaults apply; a worker_done must not fail on it.
+  let settings: unknown = null
+  try {
+    settings = runtime.requireStore().getSettings()
+  } catch {
+    settings = null
+  }
+  return readReviewerGateSettings(settings as never)
 }
 
 function workerAgentOf(db: OrchestrationDb, dispatchId: string): string | null {

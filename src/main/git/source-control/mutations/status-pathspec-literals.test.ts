@@ -19,6 +19,8 @@ async function createRepoWithGlobNamedFiles(): Promise<string> {
   execFileSync('git', ['init', '-q'], { cwd: repo })
   execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repo })
   execFileSync('git', ['config', 'user.name', 'Test User'], { cwd: repo })
+  // A developer's global ignore (e.g. *.log) must not hide the fixture files.
+  execFileSync('git', ['config', 'core.excludesFile', ''], { cwd: repo })
   await writeFile(path.join(repo, globNamedFile), 'selected')
   await writeFile(path.join(repo, globMatchedFile), 'keep')
   execFileSync('git', ['add', gitLiteralPathspec(globNamedFile), globMatchedFile], { cwd: repo })
