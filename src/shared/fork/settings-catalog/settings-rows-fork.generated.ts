@@ -105,6 +105,8 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Card routing (BAD-715): when no label or map entry names a bot, post a choice to the owner instead of using the default bot; unset is false.","o":true}',
   forkCardDefaultBot:
     '{"t":{"k":"string"},"d":"Card routing (BAD-715): the bot that takes a card when no label or map entry names one; unset falls back to the bot that ran the route, then the quick task router.","o":true}',
+  forkCardNoProjectBot:
+    '{"t":{"k":"string"},"d":"Card routing (BAD-737): the bot that takes a card with no Linear project when no label, team entry or repo names one, even with forkCardAskOwner on; unset uses the default chain.","o":true}',
   forkCardRoutes:
     '{"t":{"k":"record","of":{"k":"string"}},"d":"Card routing (BAD-694): Linear project name or team key to the bot that takes its cards, e.g. {\\"Docs\\":\\"Writer\\"}; unset is no map. A card\'s `bot:<name>` label wins over it.","o":true}',
   forkChildTallyCountFinished:

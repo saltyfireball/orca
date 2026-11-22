@@ -63,7 +63,7 @@ import { ForkBotChatCleanupParams } from '../fork/bot-chat-cleanup'
 import { ForkBotChatCloseParams } from '../fork/bot-chat-hide'
 import { ForkBotChatOlderParams } from '../fork/bot-chat-list-filter'
 import { ForkClashesLocalParams, ForkClashesScanParams } from '../fork/branch-clashes-wire'
-import { ForkCardRouteStartParams } from '../fork/card-routing'
+import { ForkCardRouteClaimsParams, ForkCardRouteStartParams } from '../fork/card-routing'
 import { ForkChatHandoffStartParams, ForkChatHistoryParams } from '../fork/chat-handoff-wire'
 import {
   ForkClaudeAccountCancelParams,
@@ -100,6 +100,7 @@ import { ForkLimitsListParams, ForkLimitsTargetParams } from '../fork/limit-resu
 import { ForkLostWorkScanParams } from '../fork/lost-work'
 import { ForkMainSyncRunParams, ForkMainSyncStatusParams } from '../fork/main-sync'
 import { ForkMcpChatParams, ForkMcpChatSetParams, ForkMcpListParams } from '../fork/mcp-profiles'
+import { ForkOwnerItemAnswerParams, ForkOwnerTokenEmptyParams } from '../fork/owner-token'
 import { ForkPauseAllSetParams, ForkPauseAllStatusParams } from '../fork/pause-all'
 import { ForkMachineUsageParams, ForkPooledLimitsParams } from '../fork/pooled-limits'
 import {
@@ -1682,6 +1683,8 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.botChat.cleanup': ForkBotChatCleanupParams,
   'fork.botChat.close': ForkBotChatCloseParams,
   'fork.botChat.older': ForkBotChatOlderParams,
+  'fork.botItems.ownerAnswer': ForkOwnerItemAnswerParams,
+  'fork.cardRoute.claims': ForkCardRouteClaimsParams,
   'fork.cardRoute.start': ForkCardRouteStartParams,
   'fork.chatHandoff.history': ForkChatHistoryParams,
   'fork.chatHandoff.start': ForkChatHandoffStartParams,
@@ -1729,6 +1732,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.mcpProfiles.chat': ForkMcpChatParams,
   'fork.mcpProfiles.list': ForkMcpListParams,
   'fork.mcpProfiles.set': ForkMcpChatSetParams,
+  'fork.ownerToken.mint': ForkOwnerTokenEmptyParams,
+  'fork.ownerToken.revoke': ForkOwnerTokenEmptyParams,
+  'fork.ownerToken.status': ForkOwnerTokenEmptyParams,
   'fork.pauseAll.set': ForkPauseAllSetParams,
   'fork.pauseAll.status': ForkPauseAllStatusParams,
   'fork.placement.load': ForkPlacementLoadParams,

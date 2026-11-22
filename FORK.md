@@ -2377,6 +2377,49 @@ ones `SLRM-123 `).
   - Code is in `src/shared/fork/card-routing.ts`, `src/cli/fork/card-route*.ts`,
     `src/main/fork/quick-task/quick-task-brief.ts` and `src/main/bots/bot-preamble.ts`.
 
+- **Card routing dedupe, owner inference, owner token (BAD-737).** Routing a card twice opened a
+  second "Which bot takes KEY?" while a bot already had it, and an MCP server could not answer an
+  item without a bot's chat.
+  - Before routing, `card route` checks who already has the card, in this order: an earlier
+    hand-off's card comment ("<Bot> bot on it, chat <id> ..., machine <m>"), a bot item of this
+    computer's bots that links the card's URL or names its key in its title (open first, then done;
+    canceled ones and the router's own do not count), the owner's answer to an earlier
+    "Which bot takes KEY?" item (its done-means names `card route KEY`) when it names one bot, and
+    that question while it still waits. The first two print `kind: owned` and the third hands off to
+    the answered bot (`via: chosen`); the last prints `kind: asked` with its item. None opens a chat
+    or a question. `--bot <name>` still moves a card to a different bot; naming the bot that has it
+    prints `owned`. A failed lookup routes as before.
+  - Owner inference: when no label or map entry decides, `fork.cardRoute.claims` (asked of this
+    computer and each paired server with a bot) lists each running bot's repos: the projects it
+    loads skills from (`skillProjects`) and the repos its SOUL.md names, by display name and folder
+    name. The card's title, description, project and labels are matched against them (a whole-word
+    repo name; else a relative file path in the card that exists in that repo, checked on the host,
+    never outside the repo). Exactly one bot is the owner (`via: inferred`, source the repo); none or
+    several go on to the defaults, and several become the choices if it still has to ask.
+  - `forkCardNoProjectBot` (unset by default): the bot for a card with no Linear project, after
+    inference and before the default chain, even with `forkCardAskOwner` on (`via: no-project`).
+    With it unset, a no-project card already reaches `forkCardDefaultBot`, the bot that ran the
+    route or the router without asking; the only path that asked was `forkCardAskOwner`.
+  - Reads need no terminal: `bot item list --bot X` already took a bot, and `bot item show` takes
+    `--bot X` too (refusing another bot's item), so both work from a plain shell.
+  - Owner token: Settings > Blackfish > Remote servers > Owner token creates, replaces or revokes
+    one token (none exists by default). It is shown once; the host keeps only its SHA-256 in
+    `fork-owner-token.json` (owner-only mode). `fork.ownerToken.mint`, `.revoke` and `.status` are
+    refused for an agent's CLI (`ownerOnly`). `orca bot item answer <id> --text T [--question eN]
+    [--plain] [--bot X] [--request-id R] [--owner-token-file P] [--json]` reads the token from the
+    file (refused unless no group or other access, except on Windows) or `ORCA_OWNER_TOKEN` and calls
+    `fork.botItems.ownerAnswer`, the only thing the token allows: the token is compared in constant
+    time, then the owner panel's own `bots.items.owner.comment` body runs with the actor
+    `{kind: owner, device: owner-token}`, so it answers the question, moves a Needs you item to In
+    progress and mails (wakes) the bot exactly as a UI answer does. The comment ends with
+    "_Answered via owner token._" and the host logs each answer and each refused token, never the
+    token.
+  - Code is in `src/cli/fork/card-route-prior-owner.ts`, `card-route-lookups.ts`,
+    `card-route-format.ts`, `bot-item-answer*.ts`, `src/shared/fork/card-owner-inference.ts`,
+    `src/shared/fork/owner-token.ts`, `src/main/fork/card-routing/card-route-claims.ts`,
+    `src/main/fork/owner-token/`, `src/main/runtime/rpc/methods/fork/fork-owner-token.ts` and
+    `src/renderer/src/fork/owner-token/`.
+
 - **Tasks GitHub list: one slow project cannot block the rest (BAD-703).** The Tasks > GitHub
   list (PRs and Issues, All projects) merged every project's answer with one `Promise.all`, and
   every list call held one of 8 shared request slots until it answered. A project or host that
@@ -2821,6 +2864,7 @@ Apply these in this order. Each one is a single commit.
 151. `BAD-683 Reviewer gate: --review on a Task has a second agent (the other provider) review the worker's exact head read-only before its done settles; findings go back to the worker as a message, rounds are capped, then the Task escalates`
 152. `BAD-685 Pause all: orca pause-all stops schedulers, automations, idle-recovery wakes, babysitter and nudge sends, unattended resume, goal steps, worker retries and worker launches from starting work, here and on paired servers; running turns finish; a switch that cannot be read counts as paused; status-bar toggle, digest line`
 153. `BAD-686 Command guards: Orca-managed deny rules for an agent's shell commands (delete outside the workspace, force push, default-branch rewrites, worktree removal) in Claude Code's PreToolUse hook, with per-project allows, an audit list and a list of unguarded agents; orca command-guards`
+154. `BAD-737 Card routing: an owned card is never routed or asked about twice, the owner is inferred from the repos a card names, forkCardNoProjectBot; owner token for orca bot item answer from any shell`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4051,6 +4095,18 @@ Upstream files only get short hooks, which keeps merges small:
   (`fork-agent-guards.ts`), so `rpc-method-registry.ts` is untouched, and `FORK_COMMAND_GUARDS_COMMAND_SPECS` in `src/cli/specs/index.ts`; `fork-handler-groups.ts`
   adds the `fork-command-guards` group. The seven settings are intersected in
   `fork-global-settings.ts`; the settings and RPC params catalogs are regenerated.
+
+- Card routing dedupe and owner token (BAD-737), small edits in stock files:
+  `bots-items-owner-methods.ts` moves the body of `bots.items.owner.comment` into an exported
+  `ownerItemComment(params, context, actor)` that the method calls with `ownerActor(context)`, so
+  the owner-token answer runs the same code. `src/cli/bots/bot-items.ts` and
+  `src/cli/specs/bot-items.ts` add `--bot` to `bot item show`. `fork.cardRoute.claims` and the
+  owner-token methods are spread into `FORK_QUICK_TASK_METHODS`, the `bot item answer` spec into
+  `FORK_CARD_ROUTE_COMMAND_SPECS`, so `rpc-method-registry.ts` and `src/cli/specs/index.ts` are
+  untouched; `fork-handler-groups.ts` adds the `fork-bot-item-answer` group. The Owner token card
+  is in the fork settings pane. `forkCardNoProjectBot` is in `ForkCardRoutingSettings`, so
+  `fork-global-settings.ts` is untouched; `settings-rows-fork.generated.ts` and
+  `rpc-params-catalog.generated.ts` are regenerated.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

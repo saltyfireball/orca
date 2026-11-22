@@ -51,6 +51,7 @@ import { ForkMainSyncSetting } from '../main-sync/ForkMainSyncSetting'
 import { ForkBranchClashesSetting } from '../branch-clashes/ForkBranchClashesSetting'
 import { ForkReviewGuideSetting } from '../review-guide/ForkReviewGuideSetting'
 import { ForkDeviceApprovalSetting } from '../device-approval/ForkDeviceApprovalSetting'
+import { ForkOwnerTokenSetting } from '../owner-token/ForkOwnerTokenSetting'
 import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
 import { ForkServerHealthSetting } from '../server-health/ForkServerHealthSetting'
 import { ForkServerHeartbeatSetting } from '../server-health/ForkServerHeartbeatSetting'
@@ -137,6 +138,7 @@ const SECTION_CARDS: Record<
     ['server-health', ForkServerHealthSetting],
     ['server-heartbeat', ForkServerHeartbeatSetting],
     ['device-approval', ForkDeviceApprovalSetting],
+    ['owner-token', ForkOwnerTokenSetting],
     ['webhooks', ForkWebhooksSetting],
     ['server-update', ForkServerUpdateSetting]
   ],

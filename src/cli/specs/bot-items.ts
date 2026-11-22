@@ -149,9 +149,13 @@ export const BOT_ITEM_COMMAND_SPECS: CommandSpec[] = [
     path: ['bot', 'item', 'show'],
     hidden: true,
     summary: 'Show one item and its activity',
-    usage: 'orca bot item show <id> [--after <eventId>] [--json]',
-    allowedFlags: [...GLOBAL_FLAGS, 'id', 'after'],
+    usage: 'orca bot item show <id> [--bot <name>] [--after <eventId>] [--json]',
+    allowedFlags: [...GLOBAL_FLAGS, 'id', 'bot', 'after'],
     positionalArgs: ['id'],
-    notes: ['--after e41 prints only the events after e41; each update you get names its event.']
+    notes: [
+      '--after e41 prints only the events after e41; each update you get names its event.',
+      // Fork BAD-737.
+      "--bot <name> refuses an item of any other bot. Reads need no bot chat or terminal, so `list --bot` and `show` work from any shell; your owner's answer from one is `orca bot item answer`."
+    ]
   }
 ]

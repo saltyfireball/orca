@@ -25,7 +25,24 @@ export type ForkCardRoutingSettings = {
   forkCardDefaultBot?: string
   /** Fork card routing (BAD-715): when no label or map entry names a bot, post a choice to the owner instead of using the default bot; unset is false. */
   forkCardAskOwner?: boolean
+  /** Fork card routing (BAD-737): the bot that takes a card with no Linear project when no label, team entry or repo names one, even with forkCardAskOwner on; unset uses the default chain. */
+  forkCardNoProjectBot?: string
 }
+
+/** Each bot's claimed repos, from the host that runs it (BAD-737). */
+export const FORK_CARD_ROUTE_CLAIMS_METHOD = 'fork.cardRoute.claims'
+
+/** Most file paths a claims read checks, from the card's own text. */
+export const CARD_CLAIM_PATHS_MAX = 20
+
+export const ForkCardRouteClaimsParams = z.object({
+  paths: z.array(z.string().trim().min(1).max(300)).max(CARD_CLAIM_PATHS_MAX).optional()
+})
+
+/** A bot's repos (by name) and those holding one of the card's paths. */
+export type CardBotClaims = { name: string; repos: string[]; pathRepos: string[] }
+
+export type ForkCardRouteClaimsResult = { bots: CardBotClaims[] }
 
 /** What routing reads from a card. */
 export type CardFacts = {
@@ -48,7 +65,7 @@ export type CardRoute<B extends CardRouteBot> =
   | {
       kind: 'bot'
       bot: B
-      via: 'label' | 'project' | 'team' | 'default'
+      via: 'label' | 'project' | 'team' | 'inferred' | 'no-project' | 'default'
       source: string
       note?: string
     }
@@ -84,11 +101,19 @@ export function readForkCardRoutes(settings: unknown): Map<string, string> {
   return routes
 }
 
-/** The bot named as the default for cards nothing else routes; null when unset. */
-export function readForkCardDefaultBot(settings: unknown): string | null {
-  const raw = ((settings ?? {}) as ForkCardRoutingSettings).forkCardDefaultBot
+function botNameSetting(raw: unknown): string | null {
   const name = typeof raw === 'string' ? raw.trim() : ''
   return name && name.length <= MAX_NAME ? name : null
+}
+
+/** The bot named as the default for cards nothing else routes; null when unset. */
+export function readForkCardDefaultBot(settings: unknown): string | null {
+  return botNameSetting(((settings ?? {}) as ForkCardRoutingSettings).forkCardDefaultBot)
+}
+
+/** The bot for cards with no Linear project; null when unset. */
+export function readForkCardNoProjectBot(settings: unknown): string | null {
+  return botNameSetting(((settings ?? {}) as ForkCardRoutingSettings).forkCardNoProjectBot)
 }
 
 /** True when the owner wants a choice posted, not a default bot, for a card nothing routes. */
@@ -142,6 +167,14 @@ export function cardRouteChoices<B extends CardRouteBot>(card: CardFacts, bots: 
   return scored.slice(0, count).map((entry) => entry.bot)
 }
 
+/** What routing knows beyond the card and the map (BAD-737). */
+export type CardRouteHints = {
+  /** Bots whose claimed repos the card names, each with the repo that matched. */
+  owners?: readonly { name: string; repo: string }[]
+  /** forkCardNoProjectBot: taken for a card with no project, before the fallbacks. */
+  noProjectBot?: string | null
+}
+
 /** Which bot takes the card. `exclude` names bots that never take one (the router itself). */
 export function resolveCardRoute<B extends CardRouteBot>(
   card: CardFacts,
@@ -149,7 +182,8 @@ export function resolveCardRoute<B extends CardRouteBot>(
   routes: ReadonlyMap<string, string>,
   exclude: readonly string[] = [],
   /** Bot names to try, in order, when no label or map entry names one (BAD-715); they may include an excluded bot. */
-  fallbacks: readonly string[] = []
+  fallbacks: readonly string[] = [],
+  hints: CardRouteHints = {}
 ): CardRoute<B> {
   const skip = new Set(exclude.map((name) => name.toLowerCase()))
   const bots = roster.filter((bot) => !bot.paused && !skip.has(bot.name.toLowerCase()))
@@ -176,14 +210,36 @@ export function resolveCardRoute<B extends CardRouteBot>(
       return { kind: 'bot', bot, via, source: value, ...(note ? { note } : {}) }
     }
   }
+  const owners = (hints.owners ?? []).flatMap((owner) => {
+    const bot = byName(bots, owner.name)
+    return bot ? [{ bot, repo: owner.repo }] : []
+  })
+  if (owners.length === 1) {
+    const [{ bot, repo }] = owners as [{ bot: B; repo: string }]
+    return { kind: 'bot', bot, via: 'inferred', source: repo, ...(note ? { note } : {}) }
+  }
   const running = roster.filter((bot) => !bot.paused)
+  const noProject = !card.project && hints.noProjectBot ? byName(running, hints.noProjectBot) : null
+  if (noProject) {
+    return {
+      kind: 'bot',
+      bot: noProject,
+      via: 'no-project',
+      source: noProject.name,
+      ...(note ? { note } : {})
+    }
+  }
   for (const name of fallbacks) {
     const bot = byName(running, name)
     if (bot) {
       return { kind: 'bot', bot, via: 'default', source: bot.name, ...(note ? { note } : {}) }
     }
   }
-  return { kind: 'choose', choices: cardRouteChoices(card, bots), ...(note ? { note } : {}) }
+  const choices =
+    owners.length >= CARD_ROUTE_MIN_CHOICES
+      ? owners.slice(0, CARD_ROUTE_MAX_CHOICES).map((owner) => owner.bot)
+      : cardRouteChoices(card, bots)
+  return { kind: 'choose', choices, ...(note ? { note } : {}) }
 }
 
 /** The subject, and so the chat title, a card's hand-off gets: "KEY: title". */

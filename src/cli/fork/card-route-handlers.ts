@@ -14,16 +14,13 @@ import {
   isCardKey,
   type ForkCardRouteStartResult
 } from '../../shared/fork/card-routing'
-import type { BotRosterEntry } from '../../shared/bot-roster'
+import type { BotRosterEntry, BotRosterServer } from '../../shared/bot-roster'
+import { cardClaims, cardItemHits } from './card-route-lookups'
 import type { LinearIssueContextResult } from '../../shared/linear/agent-result-types'
 import type { ForkSettingsGetResult } from '../../shared/fork/settings-wire'
 import type { RuntimeRpcSuccess } from '../../shared/remote-runtime/rpc/runtime-rpc-envelope'
-import {
-  formatCardRouteOutcome,
-  runCardRoute,
-  type CardRouteCalls,
-  type CardRouteOutcome
-} from './card-route'
+import { runCardRoute, type CardRouteCalls, type CardRouteOutcome } from './card-route'
+import { formatCardRouteOutcome } from './card-route-format'
 
 const CALL_TIMEOUT_MS = 75_000
 
@@ -40,11 +37,22 @@ function incompatible(error: unknown): never {
 export function bindCardRouteCalls(ctx: HandlerContext): CardRouteCalls {
   const { client, cwd } = ctx
   const servers = new Map<string, RuntimeClient>()
+  const serverClient = (server: BotRosterServer): RuntimeClient => {
+    const target =
+      servers.get(server.on) ??
+      new RuntimeClient(client.userDataPath, CALL_TIMEOUT_MS, null, server.on)
+    servers.set(server.on, target)
+    return target
+  }
   const inBotChat = Boolean(callerChat().callerSessionId)
   return {
     issue: async (key) => {
-      const request = buildIssueRequest(new Map([['id', key]]), cwd, client.isRemote)
-      const { issue } = (
+      const flags = new Map<string, string | boolean>([
+        ['id', key],
+        ['comments', true]
+      ])
+      const request = buildIssueRequest(flags, cwd, client.isRemote)
+      const { issue, comments } = (
         await client.call<LinearIssueContextResult>('linear.issueContext', request, {
           timeoutMs: CALL_TIMEOUT_MS
         })
@@ -56,9 +64,12 @@ export function bindCardRouteCalls(ctx: HandlerContext): CardRouteCalls {
         description: issue.description ?? null,
         project: issue.project?.name ?? null,
         team: issue.team?.key ?? issue.team?.name ?? null,
-        labels: issue.labels.flatMap((label) => (label.name ? [label.name] : []))
+        labels: issue.labels.flatMap((label) => (label.name ? [label.name] : [])),
+        comments: (comments ?? []).map((comment) => comment.body)
       }
     },
+    items: (issue, roster) => cardItemHits(client, issue, roster),
+    claims: (paths, roster) => cardClaims(client, serverClient, paths, roster),
     roster: async () =>
       (
         await client.call<{ bots: BotRosterEntry[] }>('bots.roster', {
@@ -69,13 +80,7 @@ export function bindCardRouteCalls(ctx: HandlerContext): CardRouteCalls {
     settings: async () =>
       (await client.call<ForkSettingsGetResult>('fork.settings.get', {})).result.values,
     start: async (server, params) => {
-      let target = client
-      if (server) {
-        target =
-          servers.get(server.on) ??
-          new RuntimeClient(client.userDataPath, CALL_TIMEOUT_MS, null, server.on)
-        servers.set(server.on, target)
-      }
+      const target = server ? serverClient(server) : client
       return (
         await target
           .call<ForkCardRouteStartResult>(FORK_CARD_ROUTE_START_METHOD, params, {

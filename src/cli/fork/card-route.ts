@@ -3,22 +3,33 @@
 // `bot:<name>` label or the owner's map names, in a chat titled "KEY: summary", and the card gets a
 // comment naming the bot, its own chat and machine. When neither names one, the configured default bot (or
 // the bot that ran the route, or the router) takes it (BAD-715); the owner gets a tap choice only when
-// there is no such bot or forkCardAskOwner is on.
+// there is no such bot or forkCardAskOwner is on. A card someone already has is reported, not routed
+// again, and one nothing names goes to the one bot whose repos it names (BAD-737).
 import {
   cardChatSubject,
   cardStartComment,
   readForkCardAskOwner,
   readForkCardDefaultBot,
+  readForkCardNoProjectBot,
   readForkCardRoutes,
   resolveCardRoute,
+  type CardBotClaims,
   type CardFacts,
   type CardRoute
 } from '../../shared/fork/card-routing'
+import { cardClaimPaths, inferCardOwners } from '../../shared/fork/card-owner-inference'
 import { readForkQuickTaskConfig } from '../../shared/fork/quick-task'
 import type { BotRosterEntry, BotRosterServer } from '../../shared/bot-roster'
+import type { BotItemStatus } from '../../shared/bots/bot-items'
 import { untrustedContent } from '../../shared/quoted-text-fence'
+import { priorCardOwner, type CardItemHit } from './card-route-prior-owner'
 
-export type CardIssue = CardFacts & { url: string; description: string | null }
+export type CardIssue = CardFacts & {
+  url: string
+  description: string | null
+  /** The card's comment bodies, oldest first; an earlier hand-off's comment names its bot. */
+  comments?: string[]
+}
 
 export type CardChatStart = { bot: string; chatId: string; machine: string }
 
@@ -43,6 +54,10 @@ export type CardRouteCalls = {
   comment: (key: string, body: string) => Promise<void>
   /** Posts a Needs you item with the choice in the calling bot's chat; null outside a bot chat. */
   ask: ((ask: CardAsk) => Promise<number>) | null
+  /** Bot items, of any status, that link the card or name its key in their title. */
+  items: (issue: CardIssue, roster: readonly BotRosterEntry[]) => Promise<CardItemHit[]>
+  /** Each bot's claimed repos, from the hosts that run them; `paths` are the card's file paths. */
+  claims: (paths: string[], roster: readonly BotRosterEntry[]) => Promise<CardBotClaims[]>
 }
 
 export type CardRouteRequest = {
@@ -54,7 +69,7 @@ export type CardRouteRequest = {
   bot?: string
 }
 
-type Via = 'label' | 'project' | 'team' | 'default' | 'chosen'
+type Via = 'label' | 'project' | 'team' | 'inferred' | 'no-project' | 'default' | 'chosen'
 
 export type CardRouteOutcome =
   | {
@@ -80,12 +95,28 @@ export type CardRouteOutcome =
       next: string
     }
   | { kind: 'skipped'; key: string; why: string }
+  | {
+      kind: 'owned'
+      key: string
+      bot: string
+      /** From an earlier hand-off's card comment. */
+      chatId?: string | null
+      machine?: string
+      /** From the bot's item on the card. */
+      item?: number
+      status?: BotItemStatus
+      next: string
+    }
+  /** An earlier "Which bot takes KEY?" still waits on the owner, in `bot`'s item. */
+  | { kind: 'asked'; key: string; bot: string; item: number; next: string }
 
 const DESCRIPTION_MAX = 3000
-const VIA_WORDS: Record<Via, string> = {
+export const VIA_WORDS: Record<Via, string> = {
   label: 'its bot: label',
   project: "your owner's project map",
   team: "your owner's team map",
+  inferred: 'the repo it names',
+  'no-project': 'the bot for cards with no project',
   default: 'the default bot',
   chosen: "your owner's choice"
 }
@@ -141,6 +172,35 @@ export async function runCardRoute(
   ])
   const router = readForkQuickTaskConfig(settings).routerBot
   const self = roster.find((bot) => bot.self)
+  // A failed lookup routes as before: a missed duplicate beats a card nobody can route.
+  const prior = priorCardOwner(
+    issue.comments ?? [],
+    await calls.items(issue, roster).catch(() => []),
+    roster.map((bot) => bot.name),
+    router
+  )
+  const chosen = request.bot ?? (prior?.kind === 'answered' ? prior.bot : undefined)
+  const sameBot = (name: string) => !request.bot || name.toLowerCase() === request.bot.toLowerCase()
+  if ((prior?.kind === 'comment' || prior?.kind === 'item') && sameBot(prior.bot)) {
+    return {
+      kind: 'owned',
+      key,
+      bot: prior.bot,
+      ...(prior.kind === 'comment'
+        ? { chatId: prior.chatId, machine: prior.machine }
+        : { item: prior.item, status: prior.status }),
+      next: `orca card route ${key} --hand-off --bot <another bot>`
+    }
+  }
+  if (prior?.kind === 'asked' && !request.bot) {
+    return {
+      kind: 'asked',
+      key,
+      bot: prior.bot,
+      item: prior.item,
+      next: `orca card route ${key} --hand-off --bot <their answer>`
+    }
+  }
   // The router only routes: it takes a card itself as the last resort, never because it ran the route.
   const fallbacks = readForkCardAskOwner(settings)
     ? []
@@ -149,10 +209,18 @@ export async function runCardRoute(
         self && self.name.toLowerCase() !== router.toLowerCase() ? self.name : null,
         router
       ].filter((name): name is string => Boolean(name))
-  const route = request.bot
-    ? chosenRoute(roster, request.bot)
-    : resolveCardRoute(issue, roster, readForkCardRoutes(settings), [router], fallbacks)
-  const via: Via | null = request.bot ? 'chosen' : route.kind === 'bot' ? route.via : null
+  const routes = readForkCardRoutes(settings)
+  let route = chosen
+    ? chosenRoute(roster, chosen)
+    : resolveCardRoute(issue, roster, routes, [router])
+  if (!chosen && route.kind === 'choose' && !request.labelOnly) {
+    const claims = await calls.claims(cardClaimPaths(issue), roster).catch(() => [])
+    route = resolveCardRoute(issue, roster, routes, [router], fallbacks, {
+      owners: inferCardOwners(issue, claims),
+      noProjectBot: readForkCardNoProjectBot(settings)
+    })
+  }
+  const via: Via | null = chosen ? 'chosen' : route.kind === 'bot' ? route.via : null
   if (request.labelOnly && via !== 'label' && via !== 'chosen') {
     return { kind: 'skipped', key, why: `${key} has no bot: label naming a running bot.` }
   }
@@ -175,7 +243,7 @@ export async function runCardRoute(
       bot: route.bot.name,
       via: via!,
       source,
-      next: `orca card route ${key} --hand-off${request.bot ? ` --bot ${botArgument(route.bot.name)}` : ''}`
+      next: `orca card route ${key} --hand-off${chosen ? ` --bot ${botArgument(route.bot.name)}` : ''}`
     }
   }
   const subject = cardChatSubject(issue)
@@ -237,7 +305,7 @@ async function choose(
             }
           : {})
       })),
-      context: `${issue.url}\nNo bot: label, no project map entry for ${issue.project ?? 'its project'}, and no default bot.`
+      context: `${issue.url}\nNo bot: label, no project map entry for ${issue.project ?? 'its project'}, no repo only one bot claims, and no default bot.`
     })
     return { kind: 'choose', key, choices: names, item, next }
   }
@@ -252,33 +320,4 @@ async function choose(
     message: `Route Linear card ${key}: run \`orca card route ${key} --hand-off\` and do only what it prints.`
   })
   return { kind: 'choose', key, choices: names, item: null, router: started, next }
-}
-
-export function formatCardRouteOutcome(outcome: CardRouteOutcome): string {
-  switch (outcome.kind) {
-    case 'started':
-      return [
-        `${outcome.bot} took ${outcome.key} (by ${VIA_WORDS[outcome.via]}${outcome.source ? `: ${outcome.source}` : ''}).`,
-        `${outcome.bot} chat id: ${outcome.chatId} (machine ${outcome.machine}, titled "${outcome.subject}").`,
-        outcome.commented
-          ? 'Commented on the card.'
-          : `Could not comment on the card: ${outcome.commentError}`
-      ].join('\n')
-    case 'routed':
-      return [
-        `${outcome.key} goes to ${outcome.bot} (by ${VIA_WORDS[outcome.via]}${outcome.source ? `: ${outcome.source}` : ''}).`,
-        `Hand it off: ${outcome.next}`
-      ].join('\n')
-    case 'choose':
-      return [
-        `No bot: label, project map entry or default bot names a bot for ${outcome.key}. Could be: ${outcome.choices.join(', ')}.`,
-        outcome.item !== null
-          ? `Posted the choice to your owner as item ${outcome.item}. When they answer, run: ${outcome.next}`
-          : outcome.router
-            ? `Router ${outcome.router.bot} posts the choice from its own routing chat ${outcome.router.chatId} on ${outcome.router.machine}; the card's chat starts once a bot is chosen.`
-            : `--hand-off posts the choice to your owner; or pick one: ${outcome.next}`
-      ].join('\n')
-    case 'skipped':
-      return `Nothing to do: ${outcome.why}`
-  }
 }

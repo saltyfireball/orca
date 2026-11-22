@@ -275,5 +275,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-card-route',
     keys: ['card route'],
     load: async () => (await import('./card-route-handlers.js')).FORK_CARD_ROUTE_HANDLERS
+  },
+  // BAD-737: the owner's item answer from any shell, by owner token (FORK.md "Owner token").
+  {
+    name: 'fork-bot-item-answer',
+    keys: ['bot item answer'],
+    load: async () => (await import('./bot-item-answer.js')).FORK_BOT_ITEM_ANSWER_HANDLERS
   }
 ]

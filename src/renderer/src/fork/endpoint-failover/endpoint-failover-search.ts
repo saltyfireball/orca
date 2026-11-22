@@ -58,6 +58,15 @@ export function getForkRemoteSettingsSectionParts(
         ),
         keywords: ['pairing', 'pair', 'approve', 'device', 'phone', 'revoke', 'forkDeviceApproval']
       },
+      // BAD-737: the Owner token card.
+      {
+        title: t('fork.ownerToken.title', 'Owner token'),
+        description: t(
+          'fork.settingsPane.search.ownerToken',
+          'Let a tool outside Orca, such as an MCP server, answer bot items as you.'
+        ),
+        keywords: ['owner', 'token', 'mcp', 'answer', 'item', 'revoke', 'rotate']
+      },
       {
         title: t('fork.webhooks.title', 'Webhooks'),
         description: t(

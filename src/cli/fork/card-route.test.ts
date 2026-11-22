@@ -1,13 +1,10 @@
 // Fakes stand in for Linear and the runtime: nothing here reaches a real card or bot.
 import { describe, expect, it, vi } from 'vitest'
 import type { BotRosterEntry } from '../../shared/bot-roster'
-import {
-  formatCardRouteOutcome,
-  runCardRoute,
-  type CardAsk,
-  type CardIssue,
-  type CardRouteCalls
-} from './card-route'
+import type { CardBotClaims } from '../../shared/fork/card-routing'
+import type { CardItemHit } from './card-route-prior-owner'
+import { runCardRoute, type CardAsk, type CardIssue, type CardRouteCalls } from './card-route'
+import { formatCardRouteOutcome } from './card-route-format'
 
 const ROSTER: BotRosterEntry[] = [
   { id: 'b0', name: 'Dispatcher', agent: 'claude', paused: false, specialty: null, linked: [] },
@@ -26,7 +23,12 @@ const ROSTER: BotRosterEntry[] = [
 function fakes(
   issue: Partial<CardIssue> = {},
   inBotChat = false,
-  options: { settings?: Record<string, unknown>; self?: string } = {}
+  options: {
+    settings?: Record<string, unknown>
+    self?: string
+    items?: CardItemHit[]
+    claims?: CardBotClaims[]
+  } = {}
 ) {
   const calls = {
     issue: vi.fn(async (key: string) => ({
@@ -51,7 +53,9 @@ function fakes(
       })
     ),
     comment: vi.fn(async (_key: string, _body: string) => {}),
-    ask: inBotChat ? vi.fn(async (_ask: CardAsk) => 4) : null
+    ask: inBotChat ? vi.fn(async (_ask: CardAsk) => 4) : null,
+    items: vi.fn(async (): Promise<CardItemHit[]> => options.items ?? []),
+    claims: vi.fn(async (): Promise<CardBotClaims[]> => options.claims ?? [])
   } satisfies CardRouteCalls
   return calls
 }
@@ -208,6 +212,87 @@ describe('runCardRoute', () => {
       commented: false,
       commentError: 'linear down'
     })
+  })
+
+  it('routes a card once: a second hand-off finds the first one on the card and starts nothing', async () => {
+    const first = fakes()
+    await runCardRoute(first, { key: 'ABC-9', handOff: true, labelOnly: false })
+    const body = first.comment.mock.calls[0]![1]
+    const again = fakes({ comments: ['Looks good', body] }, true, {
+      settings: { forkCardAskOwner: true }
+    })
+    const outcome = await runCardRoute(again, { key: 'ABC-9', handOff: true, labelOnly: false })
+    expect(outcome).toMatchObject({
+      kind: 'owned',
+      bot: 'Writer',
+      chatId: 'chat-Writer',
+      machine: 'deskmac'
+    })
+    expect(again.start).not.toHaveBeenCalled()
+    expect(again.ask).not.toHaveBeenCalled()
+  })
+
+  it("opens no second question while the first waits, and none for a card a bot's item already has", async () => {
+    const unrouted = { project: null, team: null }
+    const asked = fakes(unrouted, true, {
+      settings: { forkCardAskOwner: true },
+      items: [{ bot: 'Dispatcher', number: 4, status: 'needs_you', ask: { answer: null } }]
+    })
+    expect(
+      await runCardRoute(asked, { key: 'ABC-9', handOff: true, labelOnly: false })
+    ).toMatchObject({ kind: 'asked', bot: 'Dispatcher', item: 4 })
+    const owned = fakes(unrouted, true, {
+      settings: { forkCardAskOwner: true },
+      items: [{ bot: 'Builder', number: 7, status: 'working' }]
+    })
+    expect(
+      await runCardRoute(owned, { key: 'ABC-9', handOff: true, labelOnly: false })
+    ).toMatchObject({ kind: 'owned', bot: 'Builder', item: 7 })
+    for (const calls of [asked, owned]) {
+      expect(calls.ask).not.toHaveBeenCalled()
+      expect(calls.start).not.toHaveBeenCalled()
+    }
+  })
+
+  it("hands the card to the bot the owner named in an earlier question's answer", async () => {
+    const calls = fakes({ project: null, team: null }, true, {
+      settings: { forkCardAskOwner: true },
+      items: [{ bot: 'Dispatcher', number: 4, status: 'working', ask: { answer: 'Builder' } }]
+    })
+    const outcome = await runCardRoute(calls, { key: 'ABC-9', handOff: true, labelOnly: false })
+    expect(outcome).toMatchObject({ kind: 'started', bot: 'Builder', via: 'chosen' })
+    expect(calls.ask).not.toHaveBeenCalled()
+  })
+
+  it('routes a card with no label or project to the one bot whose repo it names, without asking', async () => {
+    const calls = fakes(
+      { title: 'Flaky step in the pipeline-tools build', project: null, team: null },
+      true,
+      {
+        settings: { forkCardAskOwner: true },
+        claims: [
+          { name: 'Writer', repos: ['docs-site'], pathRepos: [] },
+          { name: 'Builder', repos: ['pipeline-tools'], pathRepos: [] }
+        ]
+      }
+    )
+    const outcome = await runCardRoute(calls, { key: 'ABC-9', handOff: true, labelOnly: false })
+    expect(outcome).toMatchObject({
+      kind: 'started',
+      bot: 'Builder',
+      via: 'inferred',
+      source: 'pipeline-tools'
+    })
+    expect(calls.ask).not.toHaveBeenCalled()
+  })
+
+  it('gives a card with no project to forkCardNoProjectBot even when the owner asked to be asked', async () => {
+    const calls = fakes({ project: null, team: null }, true, {
+      settings: { forkCardAskOwner: true, forkCardNoProjectBot: 'writer' }
+    })
+    const outcome = await runCardRoute(calls, { key: 'ABC-9', handOff: true, labelOnly: false })
+    expect(outcome).toMatchObject({ kind: 'started', bot: 'Writer', via: 'no-project' })
+    expect(calls.ask).not.toHaveBeenCalled()
   })
 
   it('only says where the card goes without --hand-off', async () => {

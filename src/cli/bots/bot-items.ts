@@ -159,11 +159,21 @@ export const BOT_ITEM_HANDLERS: Record<string, CommandHandler> = {
     print(result, json, (value) => formatBotItemList(value, Date.now()))
   },
   'bot item show': async ({ flags, client, json }) => {
+    // Fork BAD-737: --bot names whose item it must be, for a caller outside any bot's chat.
+    const selector = getOptionalStringFlag(flags, 'bot')
+    const bot = selector ? await findBot(client, selector) : undefined
     const result = await callBots<BotItemShowView>(client, 'bots.items.show', {
       ...callerChat(),
       item: itemId(flags),
+      ...(bot ? { botId: bot.id } : {}),
       ...optional('after', getOptionalStringFlag(flags, 'after'))
     })
+    if (bot && result.result.item.owner.botId !== bot.id) {
+      throw new RuntimeClientError(
+        'invalid_argument',
+        `Item ${result.result.item.number} is not ${bot.name}'s. \`orca bot item list --bot ${bot.name}\` lists its items.`
+      )
+    }
     print(result, json, formatBotItemShow)
   }
 }
