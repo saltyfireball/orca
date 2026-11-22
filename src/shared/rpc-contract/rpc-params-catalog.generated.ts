@@ -46,6 +46,10 @@ import {
   ForkGuardsTargetParams
 } from '../fork/agent-guards-wire'
 import {
+  ForkAgentProfileResolveParams,
+  ForkAgentProfilesListParams
+} from '../fork/agent-profiles/agent-profiles-wire'
+import {
   ForkAgentQueueListParams,
   ForkAgentQueueStatusParams,
   ForkAgentQueueTicketParams
@@ -1667,6 +1671,8 @@ export const RPC_PARAMS_BY_METHOD = {
   'folderWorkspace.getPathStatus': FolderWorkspacePathStatus,
   'folderWorkspace.list': null,
   'folderWorkspace.update': FolderWorkspaceUpdate,
+  'fork.agentProfiles.list': ForkAgentProfilesListParams,
+  'fork.agentProfiles.resolve': ForkAgentProfileResolveParams,
   'fork.agentQueue.cancel': ForkAgentQueueTicketParams,
   'fork.agentQueue.list': ForkAgentQueueListParams,
   'fork.agentQueue.start': ForkAgentQueueTicketParams,

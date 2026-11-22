@@ -28,7 +28,9 @@ describe('withForkMcpProfileFlag', () => {
       spec(['repo', 'list'])
     ])
     expect(launch!.allowedFlags).toContain('mcp-profile')
-    expect(launch!.usage).toBe('orca agent launch [--mcp-profile <name>] [--json]')
+    expect(launch!.usage).toBe(
+      'orca agent launch [--profile <name>] [--mcp-profile <name>] [--json]'
+    )
     expect(other!.allowedFlags).toEqual(['json'])
   })
 })

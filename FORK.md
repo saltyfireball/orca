@@ -2648,6 +2648,43 @@ ones `SLRM-123 `).
     `src/cli/fork/worker-retry-*.ts` and
     `src/main/runtime/rpc/methods/fork/fork-worker-retry.ts`.
 
+- **Agent profiles: named launch bundles that coordinators and the UI pick from (BAD-687).** A
+  profile is an agent, an optional model, effort, permission mode, MCP profile and account, an
+  optional preamble and a when-to-use note. Nothing is set by default: no profiles exist until the
+  user makes or imports one.
+  - **Use.** `--profile <name>` on `orca agent launch`, `orca worktree create`,
+    `orca orchestration worker-start` and `orca automations create`. The host resolves the name
+    from its own settings (`fork.agentProfiles.resolve`), so a paired server applies its own
+    profiles and permission policy; the CLI writes the result into the flags the command already
+    reads. Order: an explicit flag (`--agent`, `--model`, `--effort`, `--mcp-profile`) wins, then the
+    profile. `--agent` that differs from the profile's drops the profile's model and effort. A
+    profile model or effort the agent refuses is left out with a `profile note:` line on stderr.
+    The preamble goes in front of `--prompt` (launches, automations) or `--spec` (workers) when one
+    is given. Launch defaults (SLRM-2102) still fill a model the profile and flags left empty.
+  - **Catalog.** `orca profiles list [--json]` gives every profile with its fields and when-to-use
+    note, so a coordinator picks a worker without restating flags. `show <name>` prints one with
+    its full preamble; `set <name> [--agent ...]` makes or changes one (an empty value clears a
+    field); `remove <name>`.
+  - **Import.** `orca profiles import [<file-or-folder>]` reads `.claude/agents` and
+    `.agents/agents` markdown (frontmatter `name`, `description`, `model`; the body is the prompt)
+    and `.codex/agents` TOML (`name`, `description`, `model`, `developer_instructions`). With no
+    path it reads those three folders under the current folder and the home folder. The prompt
+    becomes the preamble, the description the when-to-use note; a model of `inherit` is none. An
+    existing profile name is skipped. `.claude/agents` and `.agents/agents` files import as
+    Claude profiles, `.codex/agents` as Codex; `--agent` overrides.
+  - **Security.** An imported preamble is not used until `orca profiles confirm <name>`, after
+    `show` has printed it; changing the preamble asks again. A profile cannot widen permission:
+    its mode is lowered to the agent's permission in Settings > Agents when that is set, else to
+    `forkAgentProfilePermissionCap` (default `accept-edits`), and a launch says so.
+  - **Settings.** `forkAgentProfiles` (the list, also editable in the settings file or with
+    `orca settings`) and `forkAgentProfilePermissionCap`.
+  - **Not covered yet.** The permission mode and account are resolved, capped and shown, but a
+    launch does not apply them: Orca has no per-launch permission or account input, so the agent
+    runs on Settings > Agents' permission and the account chosen with `orca account select`.
+    There is no profile picker in the new-chat UI or the automation dialog.
+  - Code is in `src/shared/fork/agent-profiles/`, `src/main/fork/agent-profiles/` and
+    `src/cli/fork/agent-profile-*`.
+
 - **Pause all: one switch that stops every unattended feature from starting work (BAD-685).**
   `orca pause-all` writes one persisted switch; while it is engaged, nothing unattended starts new
   work. Turns already running finish. `orca resume-all` releases it, and `orca pause-status` shows
@@ -2865,6 +2902,7 @@ Apply these in this order. Each one is a single commit.
 152. `BAD-685 Pause all: orca pause-all stops schedulers, automations, idle-recovery wakes, babysitter and nudge sends, unattended resume, goal steps, worker retries and worker launches from starting work, here and on paired servers; running turns finish; a switch that cannot be read counts as paused; status-bar toggle, digest line`
 153. `BAD-686 Command guards: Orca-managed deny rules for an agent's shell commands (delete outside the workspace, force push, default-branch rewrites, worktree removal) in Claude Code's PreToolUse hook, with per-project allows, an audit list and a list of unguarded agents; orca command-guards`
 154. `BAD-737 Card routing: an owned card is never routed or asked about twice, the owner is inferred from the repos a card names, forkCardNoProjectBot; owner token for orca bot item answer from any shell`
+155. `BAD-687 Agent profiles: named launch bundles (agent, model, effort, permission mode, MCP profile, account, preamble, when-to-use note); --profile on agent launch, worktree create, worker-start and automations create; orca profiles list|show|set|remove|import|confirm; import from .claude/agents, .codex/agents and .agents/agents with the preamble held until confirmed`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4087,6 +4125,14 @@ Upstream files only get short hooks, which keeps merges small:
   `fork.pauseAll.set` and `.status` are spread into `FORK_BRANCH_CLASHES_METHODS`, so
   `rpc-method-registry.ts` is untouched; `rpc-params-catalog.generated.ts` is regenerated. The one
   setting is intersected in `fork-global-settings.ts`; the settings catalog is regenerated.
+- Agent profiles (BAD-687), small edits in stock files: `dispatch.ts` calls
+  `applyForkAgentProfile` before each handler (it acts only on the four launch commands when
+  `--profile` is given); `withForkMcpProfileFlag` also calls `withForkAgentProfileFlag`, so
+  `src/cli/specs/index.ts` only spreads `FORK_AGENT_PROFILE_COMMAND_SPECS`;
+  `fork-handler-groups.ts` adds the `fork-agent-profiles` group; `cli-command-names.ts` lists
+  `profiles`; `FORK_AGENT_PROFILE_METHODS` is spread into `FORK_LAUNCH_DEFAULTS_METHODS`
+  (`rpc-method-registry.ts` is untouched) and `rpc-params-catalog.generated.ts` is regenerated. The two settings are intersected in
+  `fork-global-settings.ts`; the settings catalog is regenerated.
 
 - Command guards (BAD-686), one small edit in a stock file: `agent-tool-plugin-hooks.ts`
   (`respondAfterAgentToolPluginHooks`) asks `forkCommandGuardAnswer` before it reads the plugin

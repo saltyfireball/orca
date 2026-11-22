@@ -15,6 +15,10 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"enum","values":["all","workers"]},"d":"Which chats the default spend cap covers: orchestration workers or all chats; unset is workers.","o":true}',
   forkAgentGuardSpendCapUsd:
     '{"t":{"k":"number"},"d":"Estimated USD a chat may spend before it is paused at its turn\'s end; 0 or unset is off.","o":true}',
+  forkAgentProfilePermissionCap:
+    '{"t":{"k":"enum","values":["accept-edits","ask","auto","full-access"]},"d":"Agent profiles: the widest permission mode a profile may ask for when Settings > Agents sets none for its agent; unset is \'accept-edits\'.","o":true}',
+  forkAgentProfiles:
+    '{"t":{"k":"array","of":{"k":"object","fields":{"name":{"k":"string"},"agent":{"k":"string"},"model":{"k":"string","optional":true},"effort":{"k":"string","optional":true},"permissionMode":{"k":"enum","values":["accept-edits","ask","auto","full-access"],"optional":true},"mcpProfile":{"k":"string","optional":true},"account":{"k":"string","optional":true},"preamble":{"k":"string","optional":true},"whenToUse":{"k":"string","optional":true},"imported":{"k":"object","fields":{"path":{"k":"string"},"confirmedHash":{"k":"string","optional":true}},"optional":true}}}},"d":"Agent profiles: the user\'s named launch bundles; unset is none.","o":true}',
   forkAgentQueueEnabled:
     '{"t":{"k":"boolean"},"d":"The agent launch queue\'s switch (SLRM-2098), read here so pause and queue never both act. Fork (SLRM-2098): limit how many agents run at once and queue the rest. Off unless true.","o":true}',
   forkAgentQueueMaxLive:

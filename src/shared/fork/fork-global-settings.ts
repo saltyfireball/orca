@@ -4,6 +4,7 @@ import type { ForkMemoryGlobalSettings } from './memory-truth'
 import type { ForkLaunchDefaultsSettings } from './launch-defaults/launch-defaults-settings'
 import type { ForkAgentColorState } from './agent-state-color'
 import type { ForkMcpProfileSettings } from './mcp-profiles'
+import type { ForkAgentProfileSettings } from './agent-profiles/agent-profiles-types'
 import type { ForkUsageLedgerSettings } from './usage-ledger'
 import type { ForkAutoPlacementSettings } from './auto-placement'
 import type { ForkServerSetupSettings } from './server-setup'
@@ -48,6 +49,7 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkMemoryGlobalSettings &
   /** Fork: MCP profiles and their defaults; unset is "all" everywhere. */
   ForkMcpProfileSettings &
+  ForkAgentProfileSettings &
   ForkUsageLedgerSettings &
   /** Fork (SLRM-2266): per-machine placement and auto placement when no machine is named. */
   ForkAutoPlacementSettings &
