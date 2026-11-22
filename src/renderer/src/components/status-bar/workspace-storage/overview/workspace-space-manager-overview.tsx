@@ -1,5 +1,6 @@
 import { AlertTriangle, HardDrive, Loader2, RefreshCw, X } from 'lucide-react'
 import { Button } from '../../../ui/button'
+import { ForkWorktreeReclaimButton } from '@/fork/worktree-reclaim/ForkWorktreeReclaimButton'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../ui/popover'
 import { getWorkspaceSpaceScanningFallbackLabel } from '../workspace-space-format'
 import { formatBytes } from '../../../../../../shared/text/format-bytes'
@@ -86,6 +87,7 @@ export function WorkspaceSpaceManagerOverview({
           />
           <UpdatedMetric scannedAt={analysis?.scannedAt ?? null} isScanning={isScanning} />
         </div>
+        <ForkWorktreeReclaimButton onReclaimed={refresh} />
         <Button
           variant="outline"
           size="sm"

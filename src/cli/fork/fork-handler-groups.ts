@@ -31,6 +31,13 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     load: async () =>
       (await import('./worktree-snapshots-handlers.js')).FORK_WORKTREE_SNAPSHOT_HANDLERS
   },
+  // BAD-691: free disk in idle workspaces (FORK.md "Worktree reclaim").
+  {
+    name: 'fork-worktree-reclaim',
+    keys: ['workspace reclaim'],
+    load: async () =>
+      (await import('./worktree-reclaim-handlers.js')).FORK_WORKTREE_RECLAIM_HANDLERS
+  },
   // SLRM-1503: move Claude chats between accounts (FORK.md).
   {
     name: 'fork-account-move',

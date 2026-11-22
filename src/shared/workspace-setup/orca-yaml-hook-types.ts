@@ -18,6 +18,8 @@ export type OrcaHooks = {
 export type OrcaWorktreeDefaults = {
   // Share large rebuildable directories such as node_modules across worktrees instead of copying installs.
   sharedDirectories?: string[]
+  // Fork (BAD-691): git-ignored paths `orca workspace reclaim` may remove from idle worktrees; replaces the default list.
+  reclaim?: string[]
 }
 
 export type OrcaDefaultTabTemplate = {

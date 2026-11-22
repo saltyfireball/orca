@@ -60,6 +60,7 @@ import { FORK_USAGE_REPORT_COMMAND_SPECS } from '../fork/usage-report-specs'
 import { FORK_SETTINGS_COMMAND_SPECS } from '../fork/settings-specs'
 import { FORK_WORKTREE_MOVE_COMMAND_SPECS } from '../fork/worktree-move-specs'
 import { FORK_WORKTREE_SNAPSHOT_COMMAND_SPECS } from '../fork/worktree-snapshots-specs'
+import { FORK_WORKTREE_RECLAIM_COMMAND_SPECS } from '../fork/worktree-reclaim-specs'
 import { FORK_TURN_CHECKPOINT_COMMAND_SPECS } from '../fork/turn-checkpoints-specs'
 import { FORK_DEVICE_APPROVAL_COMMAND_SPECS } from '../fork/device-approval-specs'
 import { FORK_SERVER_HEALTH_COMMAND_SPECS } from '../fork/server-health-specs'
@@ -162,6 +163,7 @@ export const COMMAND_SPECS: CommandSpec[] = withForkDoneContractFlags(
           ...FORK_AUTO_PLACEMENT_COMMAND_SPECS,
           ...FORK_WORKTREE_MOVE_COMMAND_SPECS,
           ...FORK_WORKTREE_SNAPSHOT_COMMAND_SPECS,
+          ...FORK_WORKTREE_RECLAIM_COMMAND_SPECS,
           ...FORK_TURN_CHECKPOINT_COMMAND_SPECS,
           ...FORK_DEVICE_APPROVAL_COMMAND_SPECS,
           ...FORK_WEBHOOK_COMMAND_SPECS,

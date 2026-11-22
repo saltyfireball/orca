@@ -38,6 +38,42 @@ ones `SLRM-123 `).
 
 ## What the fork changes
 
+- **Worktree reclaim: free disk inside idle workspaces without removing them (BAD-691).**
+  `orca workspace reclaim [--idle 3d] [--repo R] [--worktree W] [--dry-run]` and a Reclaim
+  button on the Space page delete the regenerable, git-ignored paths of idle workspaces
+  (dependencies, build output, caches). The workspace, its branch, its env files and its
+  uncommitted work stay; the project's `orca.yaml` setup script reinstalls what went.
+  - **Off by default.** `forkWorktreeReclaim` (off) must be on to delete. A dry run always works
+    and lists each path and its size per workspace; the Space button shows that list, and
+    confirming it turns the setting on. `forkWorktreeReclaimIdleDays` (3) and
+    `forkWorktreeReclaimPaths` (node_modules, dist, build, .next, .nuxt, .turbo, .parcel-cache,
+    .cache, .pytest_cache, .mypy_cache, .ruff_cache, **pycache**, .venv, target, .gradle,
+    coverage) are the other two. A project's own list goes in `orca.yaml` under
+    `worktree: reclaim: [globs]` and replaces the default list for that project.
+  - **What is deleted.** Only paths `git ls-files --others --ignored --exclude-standard` lists
+    (ignored and untracked) that a glob names. A name with no slash matches at any depth, a
+    pattern with a slash is anchored at the workspace root and takes `*`, `?` and `**`; a pattern
+    made only of wildcards, an absolute path, `..` or `.git` is dropped. A folder holding a file
+    whose name starts `.env`, or a `.git` entry, is left alone whole, and so are symlinks (nothing
+    is followed or removed through one). Each delete re-checks that the real parent folder is
+    inside the real workspace root. Tracked files and untracked files that are not ignored are
+    never listed.
+  - **What is skipped.** A workspace with a running agent, a live terminal or on screen, or with
+    an open or sleeping chat (the Lost work in-use signals, so Settings > Blackfish > Lost work
+    decides the two chat signals); one active within the idle period; the main checkout; one
+    Orca does not track (no activity record to prove idleness); a missing folder. A host that
+    cannot tell what is in use fails the run.
+  - **Manual only.** A person starts every run, so Pause all (BAD-685) has no work to gate; a
+    future scheduled reclaim must ask `isForkPauseAllEngaged`.
+  - **Runs on the owning host.** `fork.worktreeReclaim.run` (`workspace` permission) walks this
+    host's local git projects; use `--environment` or a paired server for another host. Dry run
+    unless `apply: true`; the CLI sends `apply` unless `--dry-run`.
+  - Code is in `src/shared/fork/worktree-reclaim.ts` (settings, params, types),
+    `worktree-reclaim-glob.ts` (matcher, also read by orca.yaml parsing),
+    `src/main/fork/worktree-reclaim/` (plan, delete and the per-host walk),
+    `src/main/runtime/rpc/methods/fork/fork-worktree-reclaim.ts`,
+    `src/cli/fork/worktree-reclaim-*.ts` and `src/renderer/src/fork/worktree-reclaim/`.
+
 - **Injected-context ratchet (BAD-690).** Orca adds its own text to every agent it launches, and
   every worker pays for each byte on every turn. `pnpm check:injected-context-ratchet` prints the
   bytes of each bundled skill guide (`skill-guides/**/*.md`), each installed skill stub
@@ -3000,6 +3036,7 @@ Apply these in this order. Each one is a single commit.
 157. `BAD-688 Session export: orca agent export writes a chat or terminal agent session as Markdown, one self-contained HTML file or JSON with secrets and home paths redacted by default, and --share publishes the redacted file as an unlisted artifact link; Copy chat as Markdown in the chat tab menu`
 158. `BAD-689 Automation run triggers: automation.run_succeeded and automation.run_failed start a bot automation when another automation's run ends, with the run summary quoted as untrusted text, a per-automation switch (having the rule), a chain depth limit (forkAutomationChainMaxDepth, default 3) that records a skipped run when it stops a chain, and forkAutomationChaining to turn it off`
 159. `BAD-690 Injected-context ratchet: check:injected-context-ratchet fails when the skill guides, skill stubs or worker preamble Orca injects into agents grow past a baseline`
+160. `BAD-691 Worktree reclaim: orca workspace reclaim and a Space page button remove regenerable git-ignored paths (node_modules, build output, caches; orca.yaml worktree.reclaim overrides the list) from idle workspaces, skipping ones in use, never touching env files, tracked or non-ignored files; off by default (forkWorktreeReclaim), dry run always available`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4277,6 +4314,14 @@ Upstream files only get short hooks, which keeps merges small:
   `fork-global-settings.ts` is untouched; `settings-rows-fork.generated.ts` and
   `rpc-params-catalog.generated.ts` are regenerated.
 
+- Worktree reclaim (BAD-691), small edits in stock files: `orca-yaml.ts` and
+  `orca-yaml-hook-types.ts` read `worktree.reclaim` (globs, through `normalizeReclaimGlobs`);
+  `workspace-space-manager-overview.tsx` renders `ForkWorktreeReclaimButton` before the Scan
+  button; `src/cli/specs/index.ts` adds `FORK_WORKTREE_RECLAIM_COMMAND_SPECS` and
+  `fork-handler-groups.ts` adds the `fork-worktree-reclaim` group. `fork.worktreeReclaim.run`
+  is spread into `FORK_LOST_WORK_METHODS`, so `rpc-method-registry.ts` is untouched;
+  `rpc-params-catalog.generated.ts` is regenerated. The three settings are intersected in
+  `fork-global-settings.ts`; the settings catalog is regenerated.
 - Injected-context ratchet (BAD-690), small edits in stock files: `package.json` adds the
   `check:injected-context-ratchet` script and `config/scripts/preflight/changed-checks/run-lint.mjs`
   adds it to `LINT_STEPS`. The check, its test and `config/injected-context-baseline.txt` are new

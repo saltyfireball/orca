@@ -14,6 +14,7 @@ import {
 } from './orca-yaml-file-limit'
 import { parseEphemeralVmRecipeTimeoutSeconds } from '../remote-runtime/ephemeral-vm-recipes/ephemeral-vm-recipe-timeouts'
 import { parseRecipePassEnv } from '../remote-runtime/ephemeral-vm-recipes/ephemeral-vm-recipe-env'
+import { normalizeReclaimGlobs } from '../fork/worktree-reclaim-glob'
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -259,6 +260,7 @@ export function parseOrcaYaml(content: string): OrcaHooks | null {
   const sharedDirectories = worktreeRecord
     ? normalizeSharedDirectories(worktreeRecord.sharedDirectories)
     : []
+  const reclaim = worktreeRecord ? normalizeReclaimGlobs(worktreeRecord.reclaim) : []
 
   if (
     !setup &&
@@ -268,7 +270,8 @@ export function parseOrcaYaml(content: string): OrcaHooks | null {
     defaultTabs.length === 0 &&
     environmentRecipes.length === 0 &&
     environmentRecipeDiagnostics.length === 0 &&
-    sharedDirectories.length === 0
+    sharedDirectories.length === 0 &&
+    reclaim.length === 0
   ) {
     return null
   }
@@ -283,6 +286,13 @@ export function parseOrcaYaml(content: string): OrcaHooks | null {
     ...(defaultTabs.length > 0 ? { defaultTabs } : {}),
     ...(environmentRecipes.length > 0 ? { environmentRecipes } : {}),
     ...(environmentRecipeDiagnostics.length > 0 ? { environmentRecipeDiagnostics } : {}),
-    ...(sharedDirectories.length > 0 ? { worktree: { sharedDirectories } } : {})
+    ...(sharedDirectories.length > 0 || reclaim.length > 0
+      ? {
+          worktree: {
+            ...(sharedDirectories.length > 0 ? { sharedDirectories } : {}),
+            ...(reclaim.length > 0 ? { reclaim } : {})
+          }
+        }
+      : {})
   }
 }

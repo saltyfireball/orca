@@ -246,6 +246,12 @@ export const FORK_SETTINGS_ROWS_FORK_MORE = {
     '{"t":{"k":"number"},"d":"First port blocks are taken from (1024 to 65535); unset is 20000.","o":true}',
   forkWorktreePortsTo:
     '{"t":{"k":"number"},"d":"Last port blocks are taken from (1024 to 65535); unset is 29999.","o":true}',
+  forkWorktreeReclaim:
+    '{"t":{"k":"boolean"},"d":"Let `orca workspace reclaim` and the Space action delete regenerable ignored paths; unset is off (a dry run always works).","o":true}',
+  forkWorktreeReclaimIdleDays:
+    '{"t":{"k":"number"},"d":"Days without activity before a workspace may be reclaimed (0 to 3650); unset is 3.","o":true}',
+  forkWorktreeReclaimPaths:
+    '{"t":{"k":"array","of":{"k":"string"}},"d":"Git-ignored paths to remove, as names or root-relative globs; a project\'s orca.yaml worktree.reclaim replaces them; unset is node_modules, dist, build, caches and similar.","o":true}',
   forkWorktreeSnapshotRetentionDays:
     '{"t":{"k":"number"},"d":"Days a snapshot is kept before it is pruned (1 to 365); unset is 14.","o":true}',
   forkWorktreeSnapshots:

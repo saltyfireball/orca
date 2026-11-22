@@ -169,6 +169,7 @@ import {
   ForkWorktreeMoveInspectParams
 } from '../fork/worktree-move/worktree-move-wire'
 import { ForkWorktreePortsGetParams } from '../fork/worktree-ports-wire'
+import { ForkWorktreeReclaimRunParams } from '../fork/worktree-reclaim'
 import {
   ForkWorktreeSnapshotsListParams,
   ForkWorktreeSnapshotsPruneParams,
@@ -1790,6 +1791,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.worktreeMove.import': ForkWorktreeMoveImportParams,
   'fork.worktreeMove.inspect': ForkWorktreeMoveInspectParams,
   'fork.worktreePorts.get': ForkWorktreePortsGetParams,
+  'fork.worktreeReclaim.run': ForkWorktreeReclaimRunParams,
   'fork.worktreeSnapshots.list': ForkWorktreeSnapshotsListParams,
   'fork.worktreeSnapshots.prune': ForkWorktreeSnapshotsPruneParams,
   'fork.worktreeSnapshots.restore': ForkWorktreeSnapshotsRestoreParams,
