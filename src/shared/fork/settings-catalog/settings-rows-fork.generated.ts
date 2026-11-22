@@ -33,6 +33,8 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Approval triage (SLRM-2397): approval cards show a low, medium or high risk grade, and high risk cannot be allowed for the session. Off unless true.","o":true}',
   forkArchiveOnMerge:
     '{"t":{"k":"boolean"},"d":"Archive on merge (SLRM-2397): archive a workspace once its pull request merges, through the stock archive. Off unless true.","o":true}',
+  forkAutoContinueInteractive:
+    '{"t":{"k":"boolean"},"d":"Upstream\'s automatic continue after a restart also takes a person\'s own chats; unset is off, so only workers and automation runs carry on.","o":true}',
   forkBatchStart:
     '{"t":{"k":"boolean"},"d":"A Batch switch in the new-workspace composer for rapid prompts; unset is on.","o":true}',
   forkBatchStartAutoHost:

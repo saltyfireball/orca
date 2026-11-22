@@ -150,12 +150,6 @@ export const FORK_SETTINGS_ROWS_FORK_MORE = {
     '{"t":{"k":"boolean"},"d":"Sync status: say when the fork is behind upstream or its last sync failed; unset is on.","o":true}',
   forkSyncNoticeStaleDays:
     '{"t":{"k":"number"},"d":"Sync status: days without a new status before it is called stale; unset is 3, 0 is off.","o":true}',
-  forkUnattendedResume:
-    '{"t":{"k":"boolean"},"d":"Workers and automation runs a restart cut carry on by themselves; unset is on.","o":true}',
-  forkUnattendedResumeInteractive:
-    '{"t":{"k":"boolean"},"d":"Interactive chats a restart cut carry on by themselves too; unset follows forkChatSurvive.","o":true}',
-  forkUnattendedResumeMaxTries:
-    '{"t":{"k":"number"},"d":"Automatic continuations of one chat in a row; unset is 3.","o":true}',
   forkUsageCardPattern:
     '{"t":{"k":"string"},"d":"Regex over branch or workspace name; group 1 (or the match) is the card.","o":true}',
   forkUsagePrices:

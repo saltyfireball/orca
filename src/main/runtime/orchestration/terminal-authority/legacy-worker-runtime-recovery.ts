@@ -17,6 +17,7 @@ import { reconsiderRestAfterWait } from '../workers/turn-stops/worker-presence-r
 import type { TerminalWorkerTurnStops } from '../workers/turn-stops/terminal-worker-turn-stops'
 import { agentHookServer } from '../../../agent-hooks/server/agent-hook-server'
 import { isOrcaSessionId } from '../../../../shared/agent-session/identity/orca-session-address'
+import { forkAutoContinueForRuntime } from '../../../fork/auto-continue/auto-continue-chats'
 import { canonicalOrcaSessionId } from '../addressing/session-lineage/canonical-orca-session-id'
 
 export abstract class LegacyWorkerRuntimeRecovery extends RuntimeWorkspaceSessionFlush {
@@ -37,7 +38,8 @@ export abstract class LegacyWorkerRuntimeRecovery extends RuntimeWorkspaceSessio
         restored
           ? structuredAgentSessionLaunchContinuationDeps(
               getStructuredAgentSessionHost(),
-              () => this.store?.getSettings?.()?.nativeChatResumeWorkOnRestart === true
+              () => this.store?.getSettings?.()?.nativeChatResumeWorkOnRestart === true,
+              () => forkAutoContinueForRuntime(this)
             )
           : undefined
       )

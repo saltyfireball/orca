@@ -7,7 +7,7 @@ import type { GlobalSettings } from '../../../../shared/settings/global-settings
 import { SettingsGroupHeader } from '@/components/settings/section-layout/SettingsGroup'
 import { useTranslate } from '@/i18n/use-translate'
 import { ForkChatSurviveSetting } from '../ForkChatSurviveSetting'
-import { ForkUnattendedResumeSetting } from '../unattended-resume/ForkUnattendedResumeSetting'
+import { ForkAutoContinueSetting } from '../auto-continue/ForkAutoContinueSetting'
 import { ForkLimitResumeSetting } from '../limit-resume/ForkLimitResumeSetting'
 import { ForkAgentGuardsSetting } from '../agent-guards/ForkAgentGuardsSetting'
 import { ForkChatHandoffSetting } from '../chat-handoff/ForkChatHandoffSetting'
@@ -76,7 +76,7 @@ const SECTION_CARDS: Record<
 > = {
   chats: [
     ['chat-survive', ForkChatSurviveSetting],
-    ['unattended-resume', ForkUnattendedResumeSetting],
+    ['auto-continue', ForkAutoContinueSetting],
     ['limit-resume', ForkLimitResumeSetting],
     ['chat-handoff', ForkChatHandoffSetting],
     ['chat-sleep', ForkChatSleepSetting],

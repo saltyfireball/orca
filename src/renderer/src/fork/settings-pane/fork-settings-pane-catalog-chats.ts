@@ -22,21 +22,12 @@ export function getForkChatsSearchEntries(t: Translate): SettingsSearchEntry[] {
       keywords: words('restart', 'background', 'claude', 'forkChatSurvive')
     },
     {
-      title: t('fork.unattendedResume.title', 'Unattended resume'),
+      title: t('fork.autoContinue.title', 'Continue my chats after a restart'),
       description: t(
-        'fork.unattendedResume.description',
-        'Continue interrupted workers and automation runs after a restart or update.'
+        'fork.autoContinue.description',
+        'Let the automatic continue after a restart or update take your own chats too.'
       ),
-      keywords: words(
-        'restart',
-        'update',
-        'worker',
-        'automation',
-        'tries',
-        'interactive',
-        'forkUnattendedResume',
-        'forkUnattendedResumeInteractive'
-      )
+      keywords: words('restart', 'update', 'continue', 'interactive', 'forkAutoContinueInteractive')
     },
     {
       title: t('fork.limitResume.title', 'Limit resume'),

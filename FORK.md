@@ -794,38 +794,18 @@ named Orca Fork until SLRM-1367. `main` is always
     that declare compaction), run by the desktop app. Not terminal agents, and not chats run by
     the headless server.
 
-- **Unattended resume (SLRM-2268).** On by default (`forkUnattendedResume`, Settings >
-  Blackfish > Chats). A restart or update cuts every running turn and stock Orca offers to
-  continue them, waiting for a person. Once per process, after start-up settles, the fork
-  continues by itself the cut turns of chats nobody is watching: an orchestration worker with an
-  open dispatch, or the chat of an automation run that was open (or failed by the cut) at the
-  time. It sends the stock "Continue" through the chat host's own `continueAfterRestart`, so
-  eligibility, the offer reservation and the chat notes are the stock ones. It runs wherever the
-  chat host runs: the desktop app and the headless server (`orca serve`, orcad).
-  - **Never on a person's turn.** A turn that was waiting on an approval or a question, or whose
-    stop-time activity was not captured, is left for a person. Interactive chats keep the stock
-    offer unless the interactive setting below is on.
-  - **Try cap.** At most `forkUnattendedResumeMaxTries` (3) automatic continuations of one chat
-    in a row. The count is kept in `fork-unattended-resume.json` in the data folder and goes up
-    before the continuation is sent, so a crash loop stops at the cap; it is dropped once a start
-    finds no cut turn for that chat. A crash writes no restart offer, so a crash alone is never
-    resumed.
-  - **Heuristic.** A person who goes on typing in an automation's chat after its run failed is
-    taken for the automation until a new run settles.
-  - **Interactive chats (SLRM-2411).** With `forkUnattendedResumeInteractive` on (Settings >
-    Blackfish > Chats, "Continue my chats too"; unset follows `forkChatSurvive`, so it is on
-    exactly when chat survive is), a person's own native chat whose turn the restart cut is
-    continued the same way, under the same try cap. This covers the chats chat survive could not
-    pick back up. Only a turn whose lead agent was working: never one waiting on an approval, a
-    question or the person (`waiting`, `blocked`, or a settled lead with cut helpers). It answers
-    the restart offer for the person, so `orca settings` cannot write it (kind `agent-limit`).
-    While it is unset, `forkChatSurvive` is the person's switch for it; chat survive stays
-    writable as before.
-  - **Holds (SLRM-2411).** Before any chat is continued (workers and automation runs too), its
-    saved conversation is read the way stock reads an unopened chat's limit cut: a person's Stop
-    still in force (pressed on the cut turn, nothing sent since) and a newest turn that ended on
-    a usage limit (limit resume's wait) both leave it for the person; a read that fails holds it
-    too. A chat an agent guard paused (SLRM-2385) is skipped before any of this.
+- **Auto-continue filter (BAD-560).** Upstream's launch continuation (`nativeChatResumeWorkOnRestart`,
+  on by default) continues every chat a restart or update cut, up to 3 times in 5 minutes, and never
+  a turn waiting on a person. The fork adds one filter: only orchestration workers with an open
+  dispatch and the chats of automation runs carry on by themselves. A person's own chat keeps
+  the restart offer and waits, unless `forkAutoContinueInteractive` is on (Settings > Blackfish >
+  Chats, "Continue my chats too"; unset is off; `orca settings` cannot write it, kind
+  `agent-limit`, because it answers the restart offer for the person). It replaces the earlier
+  fork pass (SLRM-2268, SLRM-2411), which upstream's recovery made redundant; the old
+  `forkUnattendedResume*` settings are gone and a leftover value is ignored. Runs wherever the
+  chat host runs: the desktop app and the headless server.
+  - Code is in `src/shared/fork/auto-continue.ts`, `src/main/fork/auto-continue/` and
+    `src/renderer/src/fork/auto-continue/`.
 
 - **Limit resume (SLRM-2309).** On by default (`forkLimitResume`, Settings > Blackfish > Chats).
   A Claude or Codex chat or terminal agent that stops on its 5-hour or weekly usage limit waits
@@ -1627,8 +1607,7 @@ named Orca Fork until SLRM-1367. `main` is always
     then; 0 drops it. Native Claude chats only: Codex chats and terminal agents have no ledger.
     The ledger now also runs on a headless server (its own `fork-usage-ledger.json`), so caps
     work there and `orca usage-report --environment NAME` answers.
-  - **Paused.** A paused agent is held: idle recovery never wakes it, limit resume and unattended
-    resume skip it. A paused chat that starts a turn another agent asked for (orchestration mail)
+  - **Paused.** A paused agent is held: idle recovery never wakes it, limit resume skips it. A paused chat that starts a turn another agent asked for (orchestration mail)
     is stopped at once; a turn a person starts lifts the pause. A terminal agent stays as the Esc
     left it. Each pause is listed in the Decision inbox under "Paused by a guard", whatever
     `forkIdleSweepMode` is (the inbox button shows while any is listed): an answer sends the
@@ -2268,61 +2247,60 @@ Apply these in this order. Each one is a single commit.
 85. `SLRM-2230 Lost work: in-use guard, select all, project groups, suggested actions, bulk summary`
 86. `SLRM-2257 Boundary compaction: ask an idle chat with a large context to compact between turns`
 87. `SLRM-2263 Chat survive: carry chats over an app update, say why a claim is refused`
-88. `SLRM-2268 Unattended resume: continue interrupted workers and automation runs after a restart`
-89. `SLRM-2266 Auto placement: pick the machine with the most spare CPU and memory for --on auto and --host auto`
-90. `SLRM-2267 Endpoint failover: try a saved server's routes in order and move back to the better one`
-91. `SLRM-2265 Worktree move: move a workspace and its chats to another host`
-92. `SLRM-2264 Pairing on a pinned bind: pair a server bound to a Tailscale or LAN address, and release the Linux server tarballs`
-93. `SLRM-2270 APFS clone: fast new worktrees on macOS with copy-on-write clones of node_modules and, opt-in, the checkout`
-94. `SLRM-2271 Device approval and webhook automations: approve new paired devices, start automations from signed webhooks`
-95. `SLRM-2278 Follow upstream 1.4.261's moved modules and APIs in fork code`
-96. `SLRM-2269 Snooze: hide a workspace or chat until a time, its merge or idle days, waking early when it needs you`
-97. `SLRM-2307 Settings on a server: orca settings writes a headless host's own store, and boundary compaction runs there`
-98. `SLRM-2311 Server health: alert when a paired server stops answering and when it is back, and an optional heartbeat`
-99. `SLRM-2309 Limit resume: resume chats and terminal agents when a usage limit resets`
-100. `SLRM-2310 Server updates: update every paired server from the desktop over its own RPC, with a rollback`
-101. `SLRM-2316 Follow upstream 1.4.262's moved modules and native provider launch in fork code`
-102. `SLRM-2349 Chat visuals: show image files and take unquoted values, and servers --wait takes a separate value`
-103. `SLRM-2383 Worktree ports: a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1`
-104. `SLRM-2386 PR babysitter: send a pull request's chat fix requests when CI fails, merge on green when allowed`
-105. `SLRM-2384 Keep main current and server memory protection: fetch and fast-forward default branches, orca serve service protect`
-106. `SLRM-2392 Pooled limits: Claude and Codex usage limits pooled across every account and paired server`
-107. `SLRM-2390 Row status: spend, context, pull request checks and a fix button on agent rows`
-108. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
+88. `SLRM-2266 Auto placement: pick the machine with the most spare CPU and memory for --on auto and --host auto`
+89. `SLRM-2267 Endpoint failover: try a saved server's routes in order and move back to the better one`
+90. `SLRM-2265 Worktree move: move a workspace and its chats to another host`
+91. `SLRM-2264 Pairing on a pinned bind: pair a server bound to a Tailscale or LAN address, and release the Linux server tarballs`
+92. `SLRM-2270 APFS clone: fast new worktrees on macOS with copy-on-write clones of node_modules and, opt-in, the checkout`
+93. `SLRM-2271 Device approval and webhook automations: approve new paired devices, start automations from signed webhooks`
+94. `SLRM-2278 Follow upstream 1.4.261's moved modules and APIs in fork code`
+95. `SLRM-2269 Snooze: hide a workspace or chat until a time, its merge or idle days, waking early when it needs you`
+96. `SLRM-2307 Settings on a server: orca settings writes a headless host's own store, and boundary compaction runs there`
+97. `SLRM-2311 Server health: alert when a paired server stops answering and when it is back, and an optional heartbeat`
+98. `SLRM-2309 Limit resume: resume chats and terminal agents when a usage limit resets`
+99. `SLRM-2310 Server updates: update every paired server from the desktop over its own RPC, with a rollback`
+100. `SLRM-2316 Follow upstream 1.4.262's moved modules and native provider launch in fork code`
+101. `SLRM-2349 Chat visuals: show image files and take unquoted values, and servers --wait takes a separate value`
+102. `SLRM-2383 Worktree ports: a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1`
+103. `SLRM-2386 PR babysitter: send a pull request's chat fix requests when CI fails, merge on green when allowed`
+104. `SLRM-2384 Keep main current and server memory protection: fetch and fast-forward default branches, orca serve service protect`
+105. `SLRM-2392 Pooled limits: Claude and Codex usage limits pooled across every account and paired server`
+106. `SLRM-2390 Row status: spend, context, pull request checks and a fix button on agent rows`
+107. `SLRM-2385 Agent guards: warn and pause agents stuck in a failure loop or past a spend cap`
      Follow-up: an inbox answer to a guard-paused agent lifts the pause only once the send is taken.
-109. `SLRM-2394 Branch clashes: warn when parallel worktree branches change the same files, across paired servers`
-110. `SLRM-2395 Batch start: a prompt per worktree and model from the composer, placed with auto placement`
-111. `SLRM-2393 Best of N: one task to 2 to 4 agents in their own worktrees, compared and picked`
-112. `SLRM-2312 Set up on a server: clone a project onto a paired server that lacks it from the host picker or --setup-missing`
-113. `SLRM-2391 Chat handoff: hand a chat from Claude to Codex or back with a budgeted history`
-114. `SLRM-2396 Review guides: an agent-written tour of a pull request in a Guide tab, on the phone and in orca review-guide`
-115. `SLRM-2387 Agents on the iPhone Lock Screen: a Live Activity and an Agents widget`
-116. `SLRM-2405 Typecheck caps: environment variables for parallel projects and tsrs checker threads`
-117. `SLRM-2388 Digest: what finished, failed, merged and cost, and what waits on you, across this host and its paired servers`
-118. `SLRM-2397 Small extras: approval triage by risk, workspace tags and archive on merge, prompt stash, saved prompts`
-119. `SLRM-2389 Letters and the board: chats message each other between turns, and agents file asks for the user`
-120. `SLRM-2406 Set up on a server from the phone and from batch start's Auto machine`
-121. `SLRM-2408 Follow upstream 1.4.263's moved modules in fork code`
-122. `SLRM-2411 Chat survive: an Orca env key only one launch has does not refuse adoption, say why in the start error`
-123. `SLRM-2411 Unattended resume: continue interactive chats a restart cut, unless stopped, asking, guarded or waiting on a limit`
-124. `SLRM-2428 Quick task on the phone: a Feed button and sheet that send a typed or dictated task to the paired computer's router`
-125. `SLRM-2428 Quick task: a shortcut box hands a typed or spoken task to the bot that owns it`
-126. `SLRM-2459 Bot starting rules: a setting for the rules a new bot's SOUL.md starts with`
-127. `SLRM-2453 Decision inbox: bot asks listed, answered, counted and told once`
-128. `SLRM-2472 Bot row: clicking a bot that needs you shows its first waiting ask`
-129. `BAD-635 Bot model: orca bot set for one bot or all, and a launch default for new bots`
-130. `BAD-641 Bot ask answers: one typed answer may be as long as an item comment, 8,000 characters` (empty since the 1.4.268 resync: upstream replaced typed decision answers with comment replies, so no cap is left to raise)
-131. `BAD-640 Bot connect: orca bot connect links connected Linear and GitHub to one bot or all`
-132. `BAD-642 Bot items: open and show a worker that runs on a paired server`
-133. `BAD-658 Bot row: needs-you and working badges, an idle look and a color per bot`
-134. `BAD-658 Bot chats: list a handed-off chat under its bot, open it from the row's line and from the handoff card`
-135. `BAD-669 Worker archive: remove finished workers' own workspaces when safe, stop idle terminals, hide and close bot chats`
-136. `BAD-694 Card routing: a Linear card goes to its bot by label or project map, and its work carries the card`
-137. `BAD-703 Tasks GitHub list: a project that never answers times out on its own row with a Retry, and the rest of the list fills`
-138. `BAD-704 Automations: pick the model and effort of a project or bot automation, in the dialog and the CLI`
-139. `BAD-707 Usage-limit continue: a forgotten draft no longer holds it for good, the bot row says Paused: usage limit, continues at HH:MM`
-140. `BAD-715 Nothing waits on the owner: bots finish and merge their own work, a card nothing routes goes to a default bot, and the card comment names the receiving bot's chat`
-141. `BAD-542 BAD-524 Lost work counts a live worker chat as in use and its CLI waits for the whole scan; usage report links workers to their coordinator chat`
+108. `SLRM-2394 Branch clashes: warn when parallel worktree branches change the same files, across paired servers`
+109. `SLRM-2395 Batch start: a prompt per worktree and model from the composer, placed with auto placement`
+110. `SLRM-2393 Best of N: one task to 2 to 4 agents in their own worktrees, compared and picked`
+111. `SLRM-2312 Set up on a server: clone a project onto a paired server that lacks it from the host picker or --setup-missing`
+112. `SLRM-2391 Chat handoff: hand a chat from Claude to Codex or back with a budgeted history`
+113. `SLRM-2396 Review guides: an agent-written tour of a pull request in a Guide tab, on the phone and in orca review-guide`
+114. `SLRM-2387 Agents on the iPhone Lock Screen: a Live Activity and an Agents widget`
+115. `SLRM-2405 Typecheck caps: environment variables for parallel projects and tsrs checker threads`
+116. `SLRM-2388 Digest: what finished, failed, merged and cost, and what waits on you, across this host and its paired servers`
+117. `SLRM-2397 Small extras: approval triage by risk, workspace tags and archive on merge, prompt stash, saved prompts`
+118. `SLRM-2389 Letters and the board: chats message each other between turns, and agents file asks for the user`
+119. `SLRM-2406 Set up on a server from the phone and from batch start's Auto machine`
+120. `SLRM-2408 Follow upstream 1.4.263's moved modules in fork code`
+121. `SLRM-2411 Chat survive: an Orca env key only one launch has does not refuse adoption, say why in the start error`
+122. `SLRM-2428 Quick task on the phone: a Feed button and sheet that send a typed or dictated task to the paired computer's router`
+123. `SLRM-2428 Quick task: a shortcut box hands a typed or spoken task to the bot that owns it`
+124. `SLRM-2459 Bot starting rules: a setting for the rules a new bot's SOUL.md starts with`
+125. `SLRM-2453 Decision inbox: bot asks listed, answered, counted and told once`
+126. `SLRM-2472 Bot row: clicking a bot that needs you shows its first waiting ask`
+127. `BAD-635 Bot model: orca bot set for one bot or all, and a launch default for new bots`
+128. `BAD-641 Bot ask answers: one typed answer may be as long as an item comment, 8,000 characters` (empty since the 1.4.268 resync: upstream replaced typed decision answers with comment replies, so no cap is left to raise)
+129. `BAD-640 Bot connect: orca bot connect links connected Linear and GitHub to one bot or all`
+130. `BAD-642 Bot items: open and show a worker that runs on a paired server`
+131. `BAD-658 Bot row: needs-you and working badges, an idle look and a color per bot`
+132. `BAD-658 Bot chats: list a handed-off chat under its bot, open it from the row's line and from the handoff card`
+133. `BAD-669 Worker archive: remove finished workers' own workspaces when safe, stop idle terminals, hide and close bot chats`
+134. `BAD-694 Card routing: a Linear card goes to its bot by label or project map, and its work carries the card`
+135. `BAD-703 Tasks GitHub list: a project that never answers times out on its own row with a Retry, and the rest of the list fills`
+136. `BAD-704 Automations: pick the model and effort of a project or bot automation, in the dialog and the CLI`
+137. `BAD-707 Usage-limit continue: a forgotten draft no longer holds it for good, the bot row says Paused: usage limit, continues at HH:MM`
+138. `BAD-715 Nothing waits on the owner: bots finish and merge their own work, a card nothing routes goes to a default bot, and the card comment names the receiving bot's chat`
+139. `BAD-542 BAD-524 Lost work counts a live worker chat as in use and its CLI waits for the whole scan; usage report links workers to their coordinator chat`
+140. `BAD-560 Auto-continue filter: replace the fork unattended-resume pass; upstream continues cut chats, the fork limits it to workers and automation runs unless forkAutoContinueInteractive`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -2779,26 +2757,21 @@ Upstream files only get short hooks, which keeps rebases small:
     Settings pane, so neither adds an upstream hook. The five settings are in
     `src/shared/fork/fork-global-settings.ts`.
 
-- Unattended resume (SLRM-2268), from `src/shared/fork/unattended-resume.ts`,
-  `src/main/fork/unattended-resume/` and `src/renderer/src/fork/unattended-resume/`. On unless
-  `forkUnattendedResume` is false:
-  - `noteAgentLaunchStartupSettled()` (`orca-runtime.ts`, the desktop and `orca serve`) and
-    orcad's `src/main/backend/core-runtime-activation.ts` (after the RPC server starts, before
-    `startOrcadSchedulers`) call `startForkUnattendedResume(...)`; the pass runs once per process.
-  - The Chats section's search entries moved to `fork-settings-pane-catalog-chats.ts` for the
-    catalog's line budget.
-  - The card is in the fork's Settings pane. The settings are in
-    `src/shared/fork/fork-global-settings.ts`; SLRM-2411 adds `forkUnattendedResumeInteractive`
-    there, regenerates `settings-rows-fork-more.generated.ts` and lists it as an `agent-limit`
-    key in `settings-access.ts`. The holds read the journal
-    through `journalSqlReads(...)` and the host's `deps.journalDatabase`
-    (`src/main/fork/unattended-resume/unattended-resume-holds.ts`), no upstream file changed.
+- Auto-continue filter (BAD-560), from `src/shared/fork/auto-continue.ts`,
+  `src/main/fork/auto-continue/` and `src/renderer/src/fork/auto-continue/`:
+  - `structured-agent-session-launch-continuation.ts`: the deps take an optional
+    `chatsToContinue`, and the automatic `continueAfterRestart` passes its answer as the chat
+    list (`await deps.chatsToContinue?.()`; undefined is every chat, as upstream).
+  - `legacy-worker-runtime-recovery.ts` passes `() => forkAutoContinueForRuntime(this)`.
+  - The card is in the fork's Settings pane; the setting is in
+    `src/shared/fork/fork-global-settings.ts`, regenerates the settings catalog and is an
+    `agent-limit` key in `settings-access.ts`.
 
 - Limit resume (SLRM-2309), from `src/shared/fork/limit-resume*.ts`, `src/main/fork/limit-resume/`
   and `src/renderer/src/fork/limit-resume/`. On unless `forkLimitResume` is false:
   - `orca-runtime.ts` and orcad's `core-runtime-activation.ts` now call
     `startForkRuntimeSettleServices(...)` (`src/main/fork/runtime-settle-hooks.ts`) in place of
-    `startForkUnattendedResume(...)`; it starts unattended resume and limit resume.
+    `startForkUnattendedResume(...)`; it starts limit resume and the other settle services.
   - `runtime-structured-agent-host.ts`: the stock usage-limit continue's `isEnabled` reads
     `forkUsageLimitAutoContinueOn(settings)`.
   - `structured-agent-session-usage-limit-continue.ts`: the chain cap reads
@@ -2901,8 +2874,8 @@ Upstream files only get short hooks, which keeps rebases small:
     its chat names moved to `usage-ledger-meta.ts`; `installForkHeadlessHost` starts the ledger
     on a server; the Decision inbox lists, answers and resumes guard rows (idle recovery's
     service is wrapped in `withForkAgentGuardInbox`, its item's `verdict` takes `guard`, and the
-    inbox shows while a guard holds an agent); idle recovery's candidates, limit resume (native and terminal) and unattended
-    resume skip held agents (`isForkAgentGuardHeld`); the marks render in `ForkTabTitle` and
+    inbox shows while a guard holds an agent); idle recovery's candidates, limit resume (native and terminal)
+    skip held agents (`isForkAgentGuardHeld`); the marks render in `ForkTabTitle` and
     `ForkClaudeAccountAgentRowChip`, and the card in the fork's Settings pane.
 
 - Device approval and webhook automations (SLRM-2271), from `src/shared/fork/device-approval.ts`,
