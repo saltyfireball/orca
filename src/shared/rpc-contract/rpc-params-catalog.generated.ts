@@ -95,6 +95,7 @@ import { ForkLimitsListParams, ForkLimitsTargetParams } from '../fork/limit-resu
 import { ForkLostWorkScanParams } from '../fork/lost-work'
 import { ForkMainSyncRunParams, ForkMainSyncStatusParams } from '../fork/main-sync'
 import { ForkMcpChatParams, ForkMcpChatSetParams, ForkMcpListParams } from '../fork/mcp-profiles'
+import { ForkPauseAllSetParams, ForkPauseAllStatusParams } from '../fork/pause-all'
 import { ForkMachineUsageParams, ForkPooledLimitsParams } from '../fork/pooled-limits'
 import {
   ForkPrBabysitListParams,
@@ -1720,6 +1721,8 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.mcpProfiles.chat': ForkMcpChatParams,
   'fork.mcpProfiles.list': ForkMcpListParams,
   'fork.mcpProfiles.set': ForkMcpChatSetParams,
+  'fork.pauseAll.set': ForkPauseAllSetParams,
+  'fork.pauseAll.status': ForkPauseAllStatusParams,
   'fork.placement.load': ForkPlacementLoadParams,
   'fork.placement.pick': ForkPlacementPickParams,
   'fork.prBabysit.list': ForkPrBabysitListParams,

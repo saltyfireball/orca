@@ -40,6 +40,8 @@ export type AgentLaunchGateDeps = {
   /** Every agent whose provider process runs now, by key, with its pool. */
   readLive: () => ReadonlyMap<string, ForkAgentQueueKind>
   shouldHold: () => GateHold
+  /** Pause all (BAD-685): while true, worker launches wait; a person's own do not. */
+  paused?: () => boolean
   now: () => number
   /** Runs `run` once after `ms`; returns a cancel. */
   schedule: (run: () => void, ms: number) => () => void
@@ -55,6 +57,7 @@ type Ticket = GateRequest & {
   resolve: (verdict: GateVerdict) => void
 }
 
+export const PAUSED_REASON = 'paused by pause-all'
 const DEFAULT_POLL_MS = 2_000
 const DEFAULT_RESERVATION_MS = 120_000
 
@@ -76,10 +79,12 @@ export class AgentLaunchGate {
       return this.queued(waiting)
     }
     const config = this.deps.readConfig()
-    if (!config.enabled) {
+    // Pause all: a worker launch waits even with the queue off or a free slot; a resume is no bypass.
+    const pausedWorker = request.kind === 'worker' && (this.deps.paused?.() ?? false)
+    if (!config.enabled && !pausedWorker) {
       return { state: 'admitted' }
     }
-    if (request.resume && config.resumeBypass) {
+    if (request.resume && config.resumeBypass && !pausedWorker) {
       this.reserve(request.key, request.kind)
       return { state: 'admitted' }
     }
@@ -233,19 +238,27 @@ export class AgentLaunchGate {
       return
     }
     const config = this.deps.readConfig()
+    const paused = this.deps.paused?.() ?? false
     let changed = false
     if (!config.enabled) {
-      // Switched off with launches waiting: they all start.
+      // Switched off with launches waiting: they all start, but a worker waits while paused.
       for (const ticket of this.ordered()) {
-        this.settle(ticket, 'admitted')
+        if (!(paused && ticket.kind === 'worker')) {
+          this.settle(ticket, 'admitted')
+        }
       }
-      this.stopPoll()
+      this.heldReason = this.tickets.length > 0 ? PAUSED_REASON : undefined
+      this.settlePoll()
       this.emit()
       return
     }
     const hold = this.deps.shouldHold()
     // A hold blocks even an empty pool, so every waiting entry says why (no silent wait).
-    const reason = hold.hold ? (hold.reason ?? 'held') : undefined
+    const reason = hold.hold
+      ? (hold.reason ?? 'held')
+      : paused && this.tickets.some((ticket) => ticket.kind === 'worker')
+        ? PAUSED_REASON
+        : undefined
     if (reason !== this.heldReason) {
       this.heldReason = reason
       changed = true
@@ -253,6 +266,9 @@ export class AgentLaunchGate {
     if (!hold.hold) {
       const live = this.live()
       for (const ticket of this.ordered()) {
+        if (paused && ticket.kind === 'worker') {
+          continue
+        }
         if (this.hasRoom(config, live, ticket.kind) || this.breaksDeadlock(config, live, ticket)) {
           this.settle(ticket, 'admitted')
           live.set(ticket.key, ticket.kind)
@@ -263,10 +279,14 @@ export class AgentLaunchGate {
     if (changed) {
       this.emit()
     }
+    this.settlePoll()
+  }
+
+  /** Stops the slow poll when nothing waits; else keeps it armed, as exits free slots without telling the gate. */
+  private settlePoll(): void {
     if (this.tickets.length === 0) {
       this.stopPoll()
     } else if (!this.cancelPoll) {
-      // Exits and crashes free slots without telling the gate; a slow poll notices them.
       this.cancelPoll = this.deps.schedule(() => {
         this.cancelPoll = null
         this.pump()

@@ -12,6 +12,16 @@ import { localCheckRunner, runDoneCheck } from '../completion-contract/check-run
 import type { IdleRecoveryCandidate } from '../idle-recovery/idle-recovery-types'
 import { createGoalService, type GoalServiceDeps } from './goal-service'
 
+const pause = vi.hoisted(() => ({ engaged: false }))
+vi.mock('../pause-all/pause-all-state', () => ({
+  isForkPauseAllEngaged: () => pause.engaged,
+  forkPauseAllRefusal: () => (pause.engaged ? 'Paused by pause-all: test' : null),
+  onForkPauseAllChanged: () => () => {}
+}))
+afterEach(() => {
+  pause.engaged = false
+})
+
 let dir = ''
 
 beforeEach(async () => {
@@ -108,6 +118,20 @@ async function sweepUntilStopped(service: ReturnType<typeof createGoalService>, 
 }
 
 describe('goal loop with a fake terminal agent', () => {
+  it('takes no step while pause-all is engaged, and goes on after it lifts (BAD-685)', async () => {
+    const agent = fakeAgent({ work: () => undefined })
+    await agent.service.set({ id: 'agent-1', untilCmd: 'echo broken; exit 1' })
+    pause.engaged = true
+    for (let index = 0; index < 3; index += 1) {
+      await agent.service.sweep()
+    }
+    expect(agent.sent).toEqual([])
+    expect(agent.candidates).not.toHaveBeenCalled()
+    pause.engaged = false
+    await sweepUntilStopped(agent.service)
+    expect(agent.sent.length).toBeGreaterThan(0)
+  })
+
   it('re-prompts after each turn until the file exists, then stops met', async () => {
     const agent = fakeAgent({
       work: async (round) => {

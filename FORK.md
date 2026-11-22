@@ -2512,6 +2512,41 @@ ones `SLRM-123 `).
     `src/cli/fork/worker-retry-*.ts` and
     `src/main/runtime/rpc/methods/fork/fork-worker-retry.ts`.
 
+- **Pause all: one switch that stops every unattended feature from starting work (BAD-685).**
+  `orca pause-all` writes one persisted switch; while it is engaged, nothing unattended starts new
+  work. Turns already running finish. `orca resume-all` releases it, and `orca pause-status` shows
+  it here and on every paired server.
+  - **What it stops.** Scheduled and event automations (webhook runs included) record the run as
+    skipped with "Paused by pause-all" in run history and launch nothing; idle recovery reads,
+    classifies and wakes nothing; the PR babysitter sends no fix request and merges nothing; PR
+    nudges send nothing; limit resume leaves parked chats and terminals parked; the automatic
+    continue after a restart continues no chat; goal loop steps wait; a due worker retry stays
+    scheduled and is looked at again every 30 seconds; worker launches wait in the agent launch
+    queue even when the queue is off ("paused by pause-all" shows as the held reason); a card
+    routed to a bot (`fork.cardRoute.start`) is refused.
+  - **What it never stops.** A person's own chats, sends and launches, "Run now" on an automation,
+    `orca limits resume-now`, answering the Decision inbox, and a message an agent sends to a chat
+    that already exists. A bot request that opens a new conversation for another bot is not gated.
+  - **Fails closed.** The switch is `fork-pause-all.json` in the app's data folder (mode 0600,
+    written atomically). A missing file is "not paused"; a file that exists but cannot be read or
+    parsed counts as paused, and `orca resume-all` clears it. A process with no app data folder
+    (unit tests) reads as not paused.
+  - **Paired servers.** `fork.pauseAll.set` sets this host first, then asks every paired server
+    (4 at a time, 8 s each) to set its own with `relayed: true`, so servers never fan out again. A
+    server that did not answer, has no pause-all or refused is listed by name, in the CLI and in a
+    toast. `--hosts local` changes this host only. The setting `forkPauseAllPairedServers` (on)
+    makes local-only the default when off.
+  - **Who can toggle it.** `fork.pauseAll.set` needs the `host-admin` permission: the local user
+    and a paired client that manages this host. `fork.pauseAll.status` is a read. A phone cannot
+    change it.
+  - **Where it shows.** A Pause button in the status bar (red "Paused" chip while engaged), the
+    digest (`paused` on each host's section, a `PAUSED` line in the text digest, so the phone's
+    digest shows it), and the held reason of a waiting worker launch.
+  - **Not done.** No Pause control in the mobile app itself; mobile reads the digest.
+  - Code is in `src/main/fork/pause-all/` (`pause-all-state.ts` the switch, `pause-all-fleet.ts`
+    the fan-out), `src/shared/fork/pause-all.ts`, `src/cli/fork/pause-all-*.ts`,
+    `src/main/runtime/rpc/methods/fork/fork-pause-all.ts` and `src/renderer/src/fork/pause-all/`.
+
 - **Agent slice limits (BAD-684).** On a Linux server the terminal host already starts every
   terminal in its own systemd user scope, all under one slice that lives and dies with the host.
   This feature puts limits on that slice, so every agent together is capped and the server,
@@ -2690,6 +2725,7 @@ Apply these in this order. Each one is a single commit.
 148. `BAD-682 Goal loop: orca goal set keeps any agent going until a check command or a judge passes, under a round limit, a budget and a stall limit; a stop is told in chat and the Decision inbox`
 149. `BAD-681 Worker retry policy: Orca restarts a worker that exited, was lost or hit a provider error in its workspace after an exponential backoff, up to a limit; per Run or by setting, off by default; orca retry policy and show`
 150. `BAD-684 Agent slice limits: on Linux the terminal host's systemd slice gets CPUWeight, IOWeight, TasksMax and MemoryHigh, so a runaway agent cannot take the server down`
+151. `BAD-685 Pause all: orca pause-all stops schedulers, automations, idle-recovery wakes, babysitter and nudge sends, unattended resume, goal steps, worker retries and worker launches from starting work, here and on paired servers; running turns finish; a switch that cannot be read counts as paused; status-bar toggle, digest line`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3890,6 +3926,20 @@ Upstream files only get short hooks, which keeps merges small:
   `forkApplyAgentSlice(resolved, log)` right after the terminal scopes resolve. The limits are
   environment variables read by the terminal host, so there are no store settings and no catalog
   to regenerate.
+
+- Pause all (BAD-685), small edits in stock files: `automation-dispatch-request.ts` asks
+  `forkPauseAllRefusal` after the spend cap check and refuses a scheduled or event run as
+  `skipped_unavailable`; `idle-recovery-sweep.ts`, `idle-recovery-wake.ts`, `pr-babysit-core.ts`,
+  `pr-nudge-service.ts`, `limit-resume-native.ts` (`forkUsageLimitHeld`), `limit-resume-service.ts`,
+  `auto-continue-chats.ts`, `goal-service.ts`, `worker-retry-live.ts`, `card-route-start.ts` and
+  `agent-launch-gate.ts` / `agent-queue-service.ts` ask `isForkPauseAllEngaged`;
+  `StatusBarSurface.tsx` renders `ForkPauseAllStatusSegment` after the Caffeinate segment. The
+  digest section gains an optional `paused` (`digest.ts`, `digest-schema.ts`, `digest-format.ts`,
+  `digest-local.ts`, `digest-runtime.ts`). `src/cli/specs/index.ts` adds
+  `FORK_PAUSE_ALL_COMMAND_SPECS`; `fork-handler-groups.ts` adds the `fork-pause-all` group.
+  `fork.pauseAll.set` and `.status` are spread into `FORK_BRANCH_CLASHES_METHODS`, so
+  `rpc-method-registry.ts` is untouched; `rpc-params-catalog.generated.ts` is regenerated. The one
+  setting is intersected in `fork-global-settings.ts`; the settings catalog is regenerated.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

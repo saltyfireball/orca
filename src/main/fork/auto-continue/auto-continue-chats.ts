@@ -2,6 +2,7 @@
 // continuation may continue by itself. Workers with an open dispatch and the chats of automation
 // runs always; a person's own chats only with `forkAutoContinueInteractive`. A chat left out keeps
 // the restart offer for the person.
+import { isForkPauseAllEngaged } from '../pause-all/pause-all-state'
 import {
   autoContinueInteractiveOn,
   chatRunsAutomation,
@@ -24,6 +25,10 @@ export type AutoContinueSources = {
 export async function forkAutoContinueChats(
   sources: AutoContinueSources
 ): Promise<string[] | undefined> {
+  // Pause all (BAD-685, FORK.md): nothing continues by itself; every chat keeps the restart offer.
+  if (isForkPauseAllEngaged()) {
+    return []
+  }
   const settings = sources.settings()
   if (autoContinueInteractiveOn(typeof settings === 'object' ? (settings as object) : null)) {
     return undefined

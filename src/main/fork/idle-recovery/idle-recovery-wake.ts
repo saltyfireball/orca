@@ -13,6 +13,7 @@ import {
   type IdleRecoveryChatKind
 } from '../../../shared/fork/idle-recovery'
 import type { ForkIdleRecoveryAnswerOutcome } from '../../../shared/fork/idle-recovery-wire'
+import { isForkPauseAllEngaged } from '../pause-all/pause-all-state'
 import {
   idleRecoveryPorts,
   type IdleRecoveryChatFacts,
@@ -34,7 +35,8 @@ export async function sendIdleRecoveryWake(
   nextStep: string,
   ports: IdleRecoveryPorts = idleRecoveryPorts()
 ): Promise<boolean> {
-  if (!nextStep.trim()) {
+  if (!nextStep.trim() || isForkPauseAllEngaged()) {
+    // Pause all (BAD-685, FORK.md): no wake is sent while the switch is engaged.
     return false
   }
   const text = buildIdleRecoveryWakeMessage(nextStep)

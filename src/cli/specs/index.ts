@@ -81,6 +81,7 @@ import { withForkDoneContractFlags } from '../fork/completion-contract-specs'
 import { FORK_COMPLETION_CONTRACT_COMMAND_SPECS } from '../fork/completion-contract-show-specs'
 import { FORK_GOAL_LOOP_COMMAND_SPECS } from '../fork/goal-loop-specs'
 import { FORK_WORKER_RETRY_COMMAND_SPECS } from '../fork/worker-retry-specs'
+import { FORK_PAUSE_ALL_COMMAND_SPECS } from '../fork/pause-all-specs'
 import { FORK_BOT_SET_COMMAND_SPECS } from '../fork/bot-set-specs'
 import { FORK_BOT_CONNECT_COMMAND_SPECS } from '../fork/bot-connect-specs'
 import {
@@ -179,7 +180,8 @@ export const COMMAND_SPECS: CommandSpec[] = withForkDoneContractFlags(
           ...FORK_CARD_ROUTE_COMMAND_SPECS,
           ...FORK_COMPLETION_CONTRACT_COMMAND_SPECS,
           ...FORK_GOAL_LOOP_COMMAND_SPECS,
-          ...FORK_WORKER_RETRY_COMMAND_SPECS
+          ...FORK_WORKER_RETRY_COMMAND_SPECS,
+          ...FORK_PAUSE_ALL_COMMAND_SPECS
         ])
       )
     )

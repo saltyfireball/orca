@@ -8,6 +8,7 @@
 //   hook the runtime to start workers with, and arms restarts a quit left waiting.
 // A restart is the worker's own follow-up path: the same workspace, its saved conversation when the
 // agent keeps one, and the Task's original spec.
+import { isForkPauseAllEngaged } from '../pause-all/pause-all-state'
 import type { OrcaRuntimeService } from '../../runtime/orca-runtime'
 import type { OrchestrationDb } from '../../runtime/orchestration/db/orchestration-db'
 import type { DispatchContextRow } from '../../runtime/orchestration/db/orchestration-records'
@@ -35,6 +36,8 @@ import {
 type Live = { runtime: OrcaRuntimeService; db: OrchestrationDb }
 
 let live: Live | null = null
+/** A restart that came due while pause-all is engaged looks again this often. */
+const PAUSED_RECHECK_MS = 30_000
 const timers = new Map<string, ReturnType<typeof setTimeout>>()
 
 export function installForkWorkerRetry(runtime: OrcaRuntimeService, db: OrchestrationDb): void {
@@ -144,6 +147,11 @@ function arm(db: OrchestrationDb, dispatchId: string, dueAtMs: number): void {
   const timer = setTimeout(
     () => {
       timers.delete(dispatchId)
+      // Pause all (BAD-685, FORK.md): a due restart waits while paused and stays scheduled.
+      if (isForkPauseAllEngaged()) {
+        arm(db, dispatchId, Date.now() + PAUSED_RECHECK_MS)
+        return
+      }
       void runRetry(db, dispatchId)
     },
     Math.min(Math.max(0, dueAtMs - Date.now()), 2 ** 31 - 1)

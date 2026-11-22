@@ -1,6 +1,7 @@
 // Card routing (BAD-694, FORK.md): `fork.cardRoute.start` starts a card's chat on the bot that takes
 // it, acting for the owner as the owner's own new chat does, titled "KEY: summary", and says which
 // chat and machine it is, so the caller can follow it.
+import { forkPauseAllRefusal } from '../pause-all/pause-all-state'
 import { randomUUID } from 'node:crypto'
 import { hostname } from 'node:os'
 import type * as z from 'zod'
@@ -35,6 +36,11 @@ export async function startCardChat<B extends Pick<Bot, 'id' | 'name' | 'paused'
 ): Promise<ForkCardRouteStartResult> {
   if (!deps.botsEnabled()) {
     throw new CardRouteStartError('Bots are off on this computer. Turn them on in Settings > Bots.')
+  }
+  // Pause all (BAD-685, FORK.md): a routed card is unattended work; it starts nothing while paused.
+  const paused = forkPauseAllRefusal()
+  if (paused) {
+    throw new CardRouteStartError(paused)
   }
   const bot = botOfAddress(deps.listBots(), params.bot)
   if (!bot) {

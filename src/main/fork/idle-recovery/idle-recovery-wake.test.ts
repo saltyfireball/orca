@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { IDLE_RECOVERY_WAKE_MARKER, isWakePrompt } from '../../../shared/fork/idle-recovery'
 import {
   idleRecoveryTerminalPort,
@@ -8,6 +8,16 @@ import {
   type IdleRecoveryTerminalRuntime
 } from './idle-recovery-ports'
 import { sendIdleRecoveryAnswer, sendIdleRecoveryWake } from './idle-recovery-wake'
+
+const pause = vi.hoisted(() => ({ engaged: false }))
+vi.mock('../pause-all/pause-all-state', () => ({
+  isForkPauseAllEngaged: () => pause.engaged,
+  forkPauseAllRefusal: () => (pause.engaged ? 'Paused by pause-all: test' : null),
+  onForkPauseAllChanged: () => () => {}
+}))
+afterEach(() => {
+  pause.engaged = false
+})
 
 function fakePorts() {
   const fake = {
@@ -60,6 +70,15 @@ const chat = { chatId: 'c1', kind: 'chat', agent: 'claude', idleSince: 5000 } as
 const terminal = { chatId: 'pane-1', kind: 'terminal', agent: 'claude', idleSince: 5000 } as const
 
 describe('sendIdleRecoveryWake', () => {
+  it('sends no wake while pause-all is engaged (BAD-685)', async () => {
+    const fake = fakePorts()
+    pause.engaged = true
+    expect(await sendIdleRecoveryWake(chat, 'run the tests', fake.ports)).toBe(false)
+    expect(fake.sent).toEqual([])
+    pause.engaged = false
+    expect(await sendIdleRecoveryWake(chat, 'run the tests', fake.ports)).toBe(true)
+  })
+
   it('sends a short message that says it is from idle recovery and carries the next step', async () => {
     const fake = fakePorts()
     expect(await sendIdleRecoveryWake(chat, 'run the tests', fake.ports)).toBe(true)

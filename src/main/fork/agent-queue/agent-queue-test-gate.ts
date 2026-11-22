@@ -7,6 +7,8 @@ export type TestGate = {
   config: ForkAgentQueueConfig
   live: Map<string, ForkAgentQueueKind>
   hold: GateHold
+  /** BAD-685: pause-all engaged. */
+  paused: boolean
   clock: { now: number }
   /** Runs the pending poll, as the timer would. */
   poll: () => void
@@ -27,6 +29,7 @@ export function testGate(config: Partial<ForkAgentQueueConfig> = {}): TestGate {
     },
     live: new Map<string, ForkAgentQueueKind>(),
     hold: HOLD_OFF,
+    paused: false,
     clock: { now: 1_000 }
   }
   const polls: (() => void)[] = []
@@ -35,6 +38,7 @@ export function testGate(config: Partial<ForkAgentQueueConfig> = {}): TestGate {
     readConfig: () => state.config,
     readLive: () => state.live,
     shouldHold: () => state.hold,
+    paused: () => state.paused,
     now: () => state.clock.now,
     schedule: (run) => {
       polls.push(run)
@@ -62,6 +66,12 @@ export function testGate(config: Partial<ForkAgentQueueConfig> = {}): TestGate {
     },
     set hold(next) {
       state.hold = next
+    },
+    get paused() {
+      return state.paused
+    },
+    set paused(next) {
+      state.paused = next
     },
     clock: state.clock,
     poll: () => polls.shift()?.(),

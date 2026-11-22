@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildIdleRecoveryWakeMessage } from '../../../shared/fork/idle-recovery'
 import type { IdleRecoverySettings } from '../../../shared/fork/idle-recovery-settings'
 import {
@@ -22,6 +22,16 @@ import {
   testSettings,
   testVerdict
 } from './idle-recovery-sweep-fixtures'
+
+const pause = vi.hoisted(() => ({ engaged: false }))
+vi.mock('../pause-all/pause-all-state', () => ({
+  isForkPauseAllEngaged: () => pause.engaged,
+  forkPauseAllRefusal: () => (pause.engaged ? 'Paused by pause-all: test' : null),
+  onForkPauseAllChanged: () => () => {}
+}))
+afterEach(() => {
+  pause.engaged = false
+})
 
 const stalled = testVerdict({ verdict: 'stalled', nextStep: 'run the tests' })
 const waiting = testVerdict({ verdict: 'waiting_user', question: 'Which one?' })
@@ -55,6 +65,20 @@ function afterWake(ctx: ReturnType<typeof harness>, round: number): void {
 }
 
 describe('runIdleRecoverySweep', () => {
+  it('reads, classifies and wakes nothing while pause-all is engaged, then carries on after it lifts (BAD-685)', async () => {
+    const ctx = harness()
+    ctx.world.candidates = [testCandidate()]
+    ctx.world.verdict = stalled
+    pause.engaged = true
+    expect(await ctx.sweep(50_000)).toEqual({ changed: false, newlyWaiting: [] })
+    expect(ctx.world.reads).toEqual([])
+    expect(ctx.world.classified).toEqual([])
+    expect(ctx.world.wakes).toEqual([])
+    pause.engaged = false
+    await ctx.sweep(65_000)
+    expect(ctx.world.wakes).toHaveLength(1)
+  })
+
   it('does nothing in mode off', async () => {
     const ctx = harness(testSettings({ forkIdleSweepMode: 'off' }))
     ctx.world.candidates = [testCandidate()]

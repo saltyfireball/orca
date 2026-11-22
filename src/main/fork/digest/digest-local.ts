@@ -23,6 +23,8 @@ export type ForkDigestLocalDeps = {
   inbox: () => Promise<ForkIdleRecoveryInboxResult>
   /** BAD-681: automatic worker restarts since a time; absent where none are read. */
   retries?: (since: number) => ForkDigestRetry[]
+  /** BAD-685: this host's pause-all switch. */
+  paused?: () => { engaged: boolean; since: number | null; corrupt: boolean }
   /** Throws where no usage ledger runs. */
   usage: (days: number) => ForkUsageReport
 }
@@ -104,5 +106,20 @@ export async function readForkDigestLocal(
   } catch {
     // Only the desktop app keeps a usage ledger; a server's part has no cost, which is not news.
   }
-  return { tasks, pullRequests, waiting, ...(retries.length ? { retries } : {}), cost, notes }
+  let paused: { since: number | null; corrupt: boolean } | undefined
+  try {
+    const pause = deps.paused?.()
+    paused = pause?.engaged ? { since: pause.since, corrupt: pause.corrupt } : undefined
+  } catch {
+    notes.push('The pause-all switch could not be read.')
+  }
+  return {
+    tasks,
+    pullRequests,
+    waiting,
+    ...(retries.length ? { retries } : {}),
+    ...(paused ? { paused } : {}),
+    cost,
+    notes
+  }
 }

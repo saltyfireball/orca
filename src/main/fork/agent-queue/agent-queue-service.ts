@@ -15,6 +15,7 @@ import { structuredAgentSessionIdFromTabId } from '../../../shared/agent-session
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { AgentLaunchGate } from './agent-launch-gate'
 import { claimThroughGate, type QueueClaimInput } from './agent-queue-claim'
+import { isForkPauseAllEngaged, onForkPauseAllChanged } from '../pause-all/pause-all-state'
 import { onLaunchHoldChanged, shouldHoldLaunches } from './launch-hold'
 import { readLiveAgents, type LiveAgentSources, type PtyLike } from './live-agents'
 
@@ -72,6 +73,7 @@ export function agentQueueGate(): AgentLaunchGate {
       readConfig: config,
       readLive: () => readLiveAgents(sources()),
       shouldHold: shouldHoldLaunches,
+      paused: isForkPauseAllEngaged,
       now: Date.now,
       schedule: (run, ms) => {
         const timer = setTimeout(run, ms)
@@ -81,6 +83,8 @@ export function agentQueueGate(): AgentLaunchGate {
       newId: () => randomUUID().slice(0, 8)
     })
     onLaunchHoldChanged(() => gate?.notify())
+    // Pause all (BAD-685, FORK.md): resuming lets the waiting worker launches start.
+    onForkPauseAllChanged(() => gate?.notify())
     gate.onChange(() => {
       for (const listener of changeListeners) {
         listener()
@@ -169,7 +173,7 @@ export function forkAgentQueueStart<O>(input: {
   cancelled: QueueClaimInput<O>['cancelled']
 }): Promise<O> {
   // Off and nothing waiting: the start runs exactly as upstream's.
-  if (!config().enabled && (gate?.entries().length ?? 0) === 0) {
+  if (!config().enabled && (gate?.entries().length ?? 0) === 0 && !isForkPauseAllEngaged()) {
     return input.start()
   }
   const { sessionId } = input

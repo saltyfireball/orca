@@ -1,6 +1,6 @@
 // PR babysitter (SLRM-2386): the service against stubs. No GitHub, gh, chat host or file is used:
 // the GitHub port is `prBabysitGitHub` over a fake gh that records argv, the chat port is a fake.
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { readPrBabysitSettings, type PrBabysitLine } from '../../../shared/fork/pr-babysit'
 import type { ForkIdleRecoveryInboxItem } from '../../../shared/fork/idle-recovery-wire'
 import type { PRWatchWorkspace } from '../../github/pr-watch/pr-watch-types'
@@ -9,6 +9,16 @@ import { prBabysitGitHub, type PrBabysitChecks } from './pr-babysit-github'
 import { PR_BABYSIT_MARKER } from './pr-babysit-message'
 import { createPrBabysitService } from './pr-babysit-service'
 import { emptyPrBabysitState, type PrBabysitState } from './pr-babysit-state'
+
+const pause = vi.hoisted(() => ({ engaged: false }))
+vi.mock('../pause-all/pause-all-state', () => ({
+  isForkPauseAllEngaged: () => pause.engaged,
+  forkPauseAllRefusal: () => (pause.engaged ? 'Paused by pause-all: test' : null),
+  onForkPauseAllChanged: () => () => {}
+}))
+afterEach(() => {
+  pause.engaged = false
+})
 
 const PR = 'github.com/acme/api#12'
 const HEAD = 'abcdef1234567'
@@ -165,6 +175,19 @@ function line(verdict: 'failure' | 'success', occurrence = 1, headSha = HEAD): P
 }
 
 describe('PR babysitter service', () => {
+  it('sends no fix request and merges nothing while pause-all is engaged (BAD-685)', async () => {
+    const h = harness()
+    pause.engaged = true
+    await h.service.line('chat-a', line('failure'))
+    await h.service.line('chat-a', line('success', 2))
+    expect(h.sent).toEqual([])
+    expect(h.gh).toEqual([])
+    expect(h.saved).toEqual([])
+    pause.engaged = false
+    await h.service.line('chat-a', line('failure'))
+    expect(h.sent).toHaveLength(1)
+  })
+
   it('does nothing for a pull request that is not babysat', async () => {
     const h = harness({})
     await h.service.line('chat-a', line('failure'))

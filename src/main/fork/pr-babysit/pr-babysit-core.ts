@@ -8,6 +8,7 @@
 // (cap reached, no CI result after a fix request, the chat cannot take a message, the merge
 // failed) it stops and the pull request joins the Decision inbox. Keep electron out of this file:
 // it also runs in the headless server.
+import { isForkPauseAllEngaged } from '../pause-all/pause-all-state'
 import type { PRWatchWorkspace } from '../../github/pr-watch/pr-watch-types'
 import type { ForkIdleRecoveryInboxItem } from '../../../shared/fork/idle-recovery-wire'
 import type { ForkIdleRecoveryAnswerOutcome } from '../../../shared/fork/idle-recovery-wire'
@@ -188,6 +189,10 @@ export function createPrBabysitCore(deps: PrBabysitServiceDeps) {
       entry.reason = 'merge-blocked'
       entry.detail = prBabysitPlain(detail)
     }
+    // Pause all (BAD-685, FORK.md): no merge while paused; a stock PR read tries it again later.
+    if (isForkPauseAllEngaged()) {
+      return blocked('paused by pause-all')
+    }
     const ws = await checkout(entry)
     if (!pr || !ws) {
       return blocked('no checkout of it on this host to merge from')
@@ -219,6 +224,11 @@ export function createPrBabysitCore(deps: PrBabysitServiceDeps) {
   }
 
   async function handleLine(chatId: string, line: PrBabysitLine): Promise<void> {
+    // Pause all (BAD-685, FORK.md): a CI line that arrives while paused sends no fix request and
+    // changes nothing; the PR's next CI result picks it up after `orca resume-all`.
+    if (isForkPauseAllEngaged()) {
+      return
+    }
     const settings = deps.settings()
     const listed = prBabysitRepoListed(line.prKey, settings.repos)
     const state = await loaded()
