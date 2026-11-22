@@ -108,6 +108,7 @@ const MARKERS: SettingsKey[] = [
   'floatingTerminalCwdMigratedToAppWorkspace',
   'floatingTerminalDefaultedForAllUsers',
   'localAccountRuntimeDefaultedToAutoForAllUsers',
+  'nativeChatAutoContinueAfterUsageLimitDefaultedOn',
   'nestedWorkerMaxDepthDefaultedToFour',
   'nonMacSearchKeybindingSeed',
   'pluginSystemDefaultedOn',
