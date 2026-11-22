@@ -37,6 +37,7 @@ import type { ForkBotChatListingSettings } from './bot-chat-listing'
 import type { ForkBotChatAutoCloseSettings } from './bot-chat-auto-close'
 import type { ForkCardRoutingSettings } from './card-routing'
 import type { ForkCompletionContractSettings } from './completion-contract'
+import type { ForkReviewerGateSettings } from './reviewer-gate'
 import type { ForkGoalLoopSettings } from './goal-loop'
 import type { ForkWorkerRetrySettings } from './worker-retry'
 
@@ -101,6 +102,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkCardRoutingSettings &
   /** Fork (BAD-676): done checks a Task can declare, and how many failed reports go back to a worker. */
   ForkCompletionContractSettings &
+  /** Fork (BAD-683): a second agent reviews a worker's work before its done settles the Task. */
+  ForkReviewerGateSettings &
   /** Fork (BAD-682): the goal loop's limits and its judge command. */
   ForkGoalLoopSettings &
   /** Fork (BAD-681): restart a worker that exited, was lost or hit a provider error, after a backoff. */

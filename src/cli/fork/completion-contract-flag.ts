@@ -7,6 +7,7 @@ import {
 } from '../../shared/fork/completion-contract'
 import { getOptionalNumberFlag, getRepeatedStringFlag } from '../arguments/flags'
 import { RuntimeClientError } from '../runtime/connection/types'
+import { readForkReviewGateFlags } from './reviewer-gate-flag'
 
 export const FORK_DONE_CHECK_FLAG = 'done-check'
 export const FORK_REQUIRE_PR_CHECKS_FLAG = 'require-pr-checks'
@@ -17,7 +18,14 @@ export const FORK_DONE_CONTRACT_FLAGS = [
   FORK_DONE_MAX_ROUNDS_FLAG
 ]
 
-export function readForkDoneContractFlags(flags: Map<string, string | boolean>): {
+/** The done checks (BAD-676) and, riding the same hook, the review request (BAD-683). */
+export function readForkDoneContractFlags(
+  flags: Map<string, string | boolean>
+): ReturnType<typeof readForkDoneChecksFlags> & ReturnType<typeof readForkReviewGateFlags> {
+  return { ...readForkDoneChecksFlags(flags), ...readForkReviewGateFlags(flags) }
+}
+
+function readForkDoneChecksFlags(flags: Map<string, string | boolean>): {
   forkDoneChecks?: string[]
   forkRequirePrChecks?: true
   forkDoneMaxRounds?: number

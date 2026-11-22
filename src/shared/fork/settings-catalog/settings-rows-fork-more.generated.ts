@@ -80,6 +80,24 @@ export const FORK_SETTINGS_ROWS_FORK_MORE = {
     '{"t":{"k":"number"},"d":"Review guides: minutes the writer may take (1 to 15); unset is 5.","o":true}',
   forkReviewGuides:
     '{"t":{"k":"boolean"},"d":"The Guide tab on pull requests, its phone view and `orca review-guide`; unset is on.","o":true}',
+  forkReviewerClaudeCommand:
+    '{"t":{"k":"string"},"d":"Reviewer gate: the command that runs a Claude review. {prompt} and {model} are filled in; empty is the read-only default.","o":true}',
+  forkReviewerCodexCommand:
+    '{"t":{"k":"string"},"d":"Reviewer gate: the command that runs a Codex review. {prompt} and {model} are filled in; empty is the read-only default.","o":true}',
+  forkReviewerGate:
+    '{"t":{"k":"boolean"},"d":"Reviewer gate (BAD-683): run a second agent\'s review before a worker\'s done settles a Task that asks for one. Off turns every review request into a plain done; unset is on.","o":true}',
+  forkReviewerGateAllTasks:
+    '{"t":{"k":"boolean"},"d":"Reviewer gate: review every Task, not only those started with --review; unset is off.","o":true}',
+  forkReviewerGateMaxConcurrent:
+    '{"t":{"k":"number"},"d":"Reviewer gate: reviews that run at the same time on this host (1 to 8); unset is 2.","o":true}',
+  forkReviewerGateMaxRounds:
+    '{"t":{"k":"number"},"d":"Reviewer gate: rounds of findings sent back to the worker before the Task escalates (1 to 10); unset is 2.","o":true}',
+  forkReviewerGateModel:
+    '{"t":{"k":"string"},"d":"Reviewer gate: model name passed to the reviewer as {model}; empty uses the reviewing tool\'s own default.","o":true}',
+  forkReviewerGateOutputLines:
+    '{"t":{"k":"number"},"d":"Reviewer gate: lines of findings sent to the worker and kept as evidence (20 to 400); unset is 120.","o":true}',
+  forkReviewerGateTimeoutSeconds:
+    '{"t":{"k":"number"},"d":"Reviewer gate: seconds one review may run before it counts as failed (60 to 7200); unset is 1200.","o":true}',
   forkRowContext:
     '{"t":{"k":"boolean"},"d":"A native Claude chat\'s context size on its agent rows; unset is on.","o":true}',
   forkRowFixChecks:
