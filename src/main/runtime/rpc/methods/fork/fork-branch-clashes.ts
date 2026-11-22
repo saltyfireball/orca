@@ -2,6 +2,7 @@
 // worktree branches (its paired desktop asks it); fork.clashes.scan folds this host's and its
 // paired servers' reports into clashes, for `orca clashes`.
 import { defineMethod } from '../../core'
+import { FORK_COMPLETION_CONTRACT_METHODS } from './fork-completion-contract'
 import {
   buildForkClashes,
   forkClashRepoMatches,
@@ -62,5 +63,7 @@ export const FORK_BRANCH_CLASHES_METHODS = [
       // A full check is kept for the sidebar; a one-project check is only answered.
       return params.project ? gatherForkClashes(deps, params.project) : runForkClashCheck(deps)
     }
-  })
+  }),
+  // BAD-676: `fork.completionContract.show` rides in this list so the full registry file stays as it is.
+  ...FORK_COMPLETION_CONTRACT_METHODS
 ] as const

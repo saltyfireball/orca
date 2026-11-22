@@ -24,6 +24,7 @@ import { refuseAgentServerRoute } from '../identity/agent-server-route'
 import { printForkQueuedLaunch, readForkQueuedLaunch } from '../../fork/agent-queue-launch-note'
 import { readForkMcpProfileFlag } from '../../fork/mcp-profile-flag'
 import { readForkCardFlag } from '../../fork/card-route-flag'
+import { readForkDoneContractFlags } from '../../fork/completion-contract-flag'
 
 export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler> = {
   'orchestration worker-start': async (ctx) => {
@@ -94,7 +95,9 @@ export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler>
       // Fork: --mcp-profile (FORK.md "MCP profiles").
       ...readForkMcpProfileFlag(flags),
       // Fork (BAD-694): --card links a new workspace to its Linear card.
-      ...readForkCardFlag(flags)
+      ...readForkCardFlag(flags),
+      // Fork (BAD-676): --done-check, --require-pr-checks, --done-max-rounds.
+      ...readForkDoneContractFlags(flags)
     }).catch(async (error: unknown) => {
       throw await explainOlderRuntimeRunRequired(client, error)
     })

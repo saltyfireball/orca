@@ -1,3 +1,4 @@
+import { forkStoreDoneContract } from '../../../../../../fork/completion-contract/completion-gate-live'
 import { createLocalWorkerStartDispatch } from './local-worker-start-dispatch'
 import { refuseClaimedWorkerTerminal } from '../../../../../orchestration/db/worker-dispatch/worker-terminal-claim'
 import { probeWorkerOpenCodeModelLaunchSupport } from './launch/worker-opencode-model-preflight'
@@ -145,6 +146,8 @@ export async function startLocalWorker(args: {
     launchReceipt: launch.receipt
   })
   releaseRetriedWorkerTerminal(runtime, db, params)
+  // Fork (BAD-676): done checks the start declared, on the Task it created or reopened.
+  forkStoreDoneContract(db, started.task.id, params)
   const effects: WorkerEffect[] = []
   const task = started.task
   if (resolvedWorktree) {

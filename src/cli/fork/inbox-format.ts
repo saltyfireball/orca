@@ -29,6 +29,9 @@ function kindLabel(item: ForkIdleRecoveryInboxItem): string {
   if (item.source === 'babysit') {
     return 'pr-babysit'
   }
+  if (item.source === 'contract') {
+    return 'done-checks'
+  }
   if (item.verdict === 'guard') {
     return 'guard-paused'
   }

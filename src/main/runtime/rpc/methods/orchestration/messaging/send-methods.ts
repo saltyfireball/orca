@@ -30,6 +30,7 @@ import { assertLifecycleCallerIsNotAnotherParty } from './lifecycle-caller-fence
 import { planWorkerFollowUp, startWorkerFollowUp } from './worker-follow-up'
 import { finishedWorkerSend, refuseFinishedRemoteWorker } from './finished-worker-mail'
 import { relayedDeliveryUnknownWarning, withDeliveryHoldWarning } from './send-delivery-hold'
+import { forkGateWorkerDone } from '../../../../../fork/completion-contract/completion-gate-live'
 import {
   followThroughWorkerReport,
   passHeldWorkerMail,
@@ -120,6 +121,15 @@ export const ORCHESTRATION_SEND_METHODS = [
         : finishedWorkerSend(db, { ...sender, processIncarnation }, routing, params)
       ;({ params, routing } = finished ?? { params, routing })
       assertSendParamsDeliverable(params)
+
+      // Fork (BAD-676): a Task with done checks runs them before its worker's done settles it.
+      const contractGate = await forkGateWorkerDone(runtime, db, params, routing.dispatchId)
+      if (contractGate.kind === 'answer') {
+        markWorkerDoneMutationEffectFree?.()
+        recordMutationReceipt?.(contractGate.receipt)
+        return contractGate.receipt
+      }
+      params = contractGate.params
 
       let to = params.to
       if (

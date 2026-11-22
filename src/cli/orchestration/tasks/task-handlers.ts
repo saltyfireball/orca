@@ -6,6 +6,7 @@ import { getOptionalStringFlag, getRequiredStringFlag } from '../../arguments/fl
 import { RuntimeClientError } from '../../runtime/connection/types'
 import { abbreviateOrchestrationTasks } from '../../../shared/orchestration/orchestration-task-summary'
 import { callOrchestrationMutation } from '../recovery/mutation-request'
+import { readForkDoneContractFlags } from '../../fork/completion-contract-flag'
 import { readTextOrFileFlag } from '../../arguments/command-body-input'
 import {
   resolveCoordinatorTerminalHandle,
@@ -35,7 +36,9 @@ export const ORCHESTRATION_TASK_HANDLERS: Record<string, CommandHandler> = {
         deps: getOptionalStringFlag(flags, 'deps'),
         parent: getOptionalStringFlag(flags, 'parent'),
         run: getOptionalStringFlag(flags, 'run'),
-        callerTerminalHandle
+        callerTerminalHandle,
+        // Fork (BAD-676): --done-check, --require-pr-checks, --done-max-rounds.
+        ...readForkDoneContractFlags(flags)
       }
     )
     if (!flags.has('full')) {

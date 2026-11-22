@@ -7,6 +7,7 @@ import { structuredWorkerIdentityFromRow } from '../terminal-authority/structure
 import { isStructuredWorkerHandle } from '../../../../shared/orchestration/workers/structured-worker-handle'
 import { committedHandBackTypes, type MailHandBack } from './messages/helper-mailbox-hand-back'
 import { existsSync } from 'node:fs'
+import { installForkContractInboxSource } from '../../../fork/completion-contract/contract-inbox'
 import { structuredMailboxCustody } from '../mailbox/routing/structured-session-mail-target'
 import { closeOrphanedTerminalApprovals } from '../workers/approvals/terminal-approval-orphans'
 import { OrcaRuntimeWithAutomationApiOperations } from '../../workspaces/persisted-surfaces/automation-api-operations'
@@ -34,6 +35,8 @@ export abstract class RuntimeOrchestrationDatabaseAccess extends OrcaRuntimeWith
     if (!this._orchestrationDb) {
       const db = new OrchestrationDb(this.orchestrationDbPath())
       this._orchestrationDb = db
+      // Fork (BAD-676): done-check escalations list in the Decision inbox.
+      installForkContractInboxSource(db)
       this.orchestrationDbMaintenance = new OrchestrationDbMaintenance(
         db,
         (dispatchId) => isReleasedChatReadable(db, dispatchId),

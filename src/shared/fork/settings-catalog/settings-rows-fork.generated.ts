@@ -103,6 +103,14 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Finished children count toward that total; unset is on.","o":true}',
   forkChildTallyCountTasks:
     '{"t":{"k":"boolean"},"d":"Background shell tasks and monitors count as children; unset is on.","o":true}',
+  forkCompletionContract:
+    '{"t":{"k":"boolean"},"d":"Completion contract (BAD-676): run a Task\'s done checks before its worker\'s done settles it. Off turns every contract into a plain done; unset is on.","o":true}',
+  forkCompletionContractMaxRounds:
+    '{"t":{"k":"number"},"d":"Completion contract: failed done reports sent back to the worker before the Task escalates (1 to 10); unset is 2.","o":true}',
+  forkCompletionContractOutputLines:
+    '{"t":{"k":"number"},"d":"Completion contract: lines of a failing check\'s output sent back to the worker and kept as evidence (5 to 200); unset is 40.","o":true}',
+  forkCompletionContractTimeoutSeconds:
+    '{"t":{"k":"number"},"d":"Completion contract: seconds one done check may run before it counts as failed (10 to 3600); unset is 600.","o":true}',
   forkDeviceApproval:
     '{"t":{"k":"boolean"},"d":"A newly paired device needs approval from an approved device or this host\'s owner. Off unless true.","o":true}',
   forkDigest:

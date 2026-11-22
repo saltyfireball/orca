@@ -128,6 +128,13 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     keys: ['clashes'],
     load: async () => (await import('./branch-clashes-handlers.js')).FORK_BRANCH_CLASHES_HANDLERS
   },
+  // BAD-676: a Task's done checks and attempts (FORK.md "Completion contract").
+  {
+    name: 'fork-completion-contract',
+    keys: ['contract show'],
+    load: async () =>
+      (await import('./completion-contract-handlers.js')).FORK_COMPLETION_CONTRACT_HANDLERS
+  },
   // SLRM-2269: snooze workspaces and chats out of the sidebar (FORK.md "Snooze").
   {
     name: 'fork-snooze',

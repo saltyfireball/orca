@@ -34,6 +34,7 @@ import type { ForkBotRowBadgeSettings } from './bot-row-badges'
 import type { ForkBotChatListingSettings } from './bot-chat-listing'
 import type { ForkBotChatAutoCloseSettings } from './bot-chat-auto-close'
 import type { ForkCardRoutingSettings } from './card-routing'
+import type { ForkCompletionContractSettings } from './completion-contract'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -89,7 +90,9 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   /** Fork (SLRM-2459): the rules a new bot's SOUL.md starts with. */
   ForkBotStartingRulesSettings &
   /** Fork (BAD-694): Linear project or team to the bot that takes its cards. */
-  ForkCardRoutingSettings & {
+  ForkCardRoutingSettings &
+  /** Fork (BAD-676): done checks a Task can declare, and how many failed reports go back to a worker. */
+  ForkCompletionContractSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */
     forkLostWork?: LostWorkSettings
     /** Fork (SLRM-2265): moving a workspace and its chats to another host; unset keys take the defaults. */

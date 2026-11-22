@@ -1,5 +1,6 @@
 import { ORCHESTRATION_REPLY_METHOD } from './reply-method'
 import { defineOrchestrationMethod } from '../access/orchestration-method-access'
+import { forkStoreDoneContract } from '../../../../../fork/completion-contract/completion-gate-live'
 import { inspectedRunAccess, taskCreateAccess, taskUpdateAccess } from '../access/run-access-rules'
 import type { TaskStatus } from '../../../../orchestration/db/orchestration-records'
 import { abbreviateOrchestrationTasks } from '../../../../../../shared/orchestration/orchestration-task-summary'
@@ -84,6 +85,8 @@ export const ORCHESTRATION_MESSAGE_METHODS = [
           : {}),
         runId: run.id
       })
+      // Fork (BAD-676): done checks the request declared.
+      forkStoreDoneContract(db, task.id, params)
       return { task }
     }
   }),

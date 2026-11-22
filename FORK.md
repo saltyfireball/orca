@@ -2219,6 +2219,55 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/shared/automations/launch/automation-model-effort-summary.ts` and
     `src/cli/automations/automation-project-launch-flags.ts`.
 
+- **Completion contract: Orca checks a worker's done before it settles the Task (BAD-676).** A
+  worker's `worker_done` used to settle its Task at once, so only the coordinator or you could
+  catch a false done. A Task can now declare done checks, and Orca runs them when the worker
+  reports done. A Task that declares none behaves exactly as before.
+  - **Declaring.** `orchestration task-create` and `orchestration worker-start` take
+    `--done-check '<command>'` (repeatable, up to 8), `--require-pr-checks` and
+    `--done-max-rounds <1-10>`. The commands come only from that request, which the coordinator
+    writes; nothing a worker writes is ever run. They are stored with the Task in two fork-owned
+    tables of the orchestration database (`fork_done_contracts`, `fork_done_attempts`, created on
+    first use, so upstream's schema version is untouched).
+  - **Checking.** On a succeeded `worker_done` for a Task with a contract, Orca runs each command
+    in the worker's workspace, on the host that workspace lives on: this computer, WSL through
+    `wsl.exe`, or an SSH workspace through the app's own SSH connection. A worker that reports
+    `failed` is not asked to prove it. `--require-pr-checks` reads the pull request of the
+    workspace's branch with `gh` in that workspace and needs it open, at the commit the workspace
+    has checked out (so a commit that was never pushed fails), with every required check green
+    (when the repository has no required checks, every check on that commit). Checks still
+    running are not a failure: the report is turned back without using a round, at most 10
+    times. A folder (non-git) workspace supports command checks only.
+  - **Pass.** The done settles the Task as before, and the checks' result is added to the done
+    message the coordinator reads.
+  - **Fail.** The worker's `orca orchestration send --type worker_done` fails with the output's
+    last lines in a fenced block that is marked as data, not instructions (the fence is longer
+    than any backtick run inside it), and the Task stays open. The worker fixes the work and
+    reports again. Nothing reaches the coordinator for a turned-back report.
+  - **Escalation.** Once failures pass the limit (the Task's `--done-max-rounds`, else
+    `forkCompletionContractMaxRounds`, default 2) the done is not settled: it is delivered to the
+    coordinator as an `escalation` message with the last output, and the Task is listed in
+    `orca contract show` as escalated. The coordinator re-dispatches the Task or accepts it with
+    `task-update`; a later passing done clears it.
+  - **Evidence.** `orca contract show <task_id>` (RPC `fork.completionContract.show`) prints the
+    declared checks and every attempt with its exit code, time and the tail of its output.
+  - **Settings** (Settings > Blackfish, `orca settings`): `forkCompletionContract` (on; off makes
+    every contract a plain done), `forkCompletionContractMaxRounds` (2),
+    `forkCompletionContractTimeoutSeconds` (600 per command; a command past it is killed by its
+    own handle and counts as failed), `forkCompletionContractOutputLines` (40).
+  - **Decision inbox.** An escalated Task is a row "Task <id>" (`orca inbox list` shows it as
+    `done-checks`) until the Task completes or you dismiss it. It has no chat to answer: the
+    reason names `orca contract show`. The inbox source is installed where the orchestration
+    database opens, so it lists after a restart once orchestration has been used.
+  - **Limits.** The gate runs on the host that holds the Task's database: a worker started
+    `--on` a paired server is judged there only when that server runs this fork build and
+    receives the flags.
+  - Code is in `src/main/fork/completion-contract/` (`completion-gate.ts` the settle/bounce rule
+    over the store, `check-runner.ts`, `pr-checks.ts`, `contract-store.ts`,
+    `completion-gate-live.ts` the hooks), `src/shared/fork/completion-contract.ts` (the pure
+    state machine, fencing and settings), `src/cli/fork/completion-contract-*.ts` and
+    `src/main/runtime/rpc/methods/fork/fork-completion-contract.ts`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -2366,6 +2415,7 @@ Apply these in this order. Each one is a single commit.
 140. `BAD-560 Auto-continue filter: replace the fork unattended-resume pass; upstream continues cut chats, the fork limits it to workers and automation runs unless forkAutoContinueInteractive`
 141. `BAD-734 Auto-close finished bot chats: card done, reported back or idle; the list clients get leaves closed chats out; orca bot chats-cleanup`
 142. `BAD-677 Worktree snapshots: save uncommitted, untracked and unpushed work under refs/orca/snapshots before any worktree removal; orca worktree snapshots and restore`
+143. `BAD-676 Completion contract: --done-check and --require-pr-checks on a Task; Orca runs them before a worker's done settles it, turns a failure back to the worker as untrusted output, and escalates after the rounds`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3490,6 +3540,23 @@ Upstream files only get short hooks, which keeps rebases small:
     and edit; `automation-bot-create.ts` now refuses only `--agent` without `--bot`;
     `automation-format.ts` prints the model and effort; `specs/automations.ts` lists the flags; the
     orca-cli skill guide and `bundled-skill-guides.ts` carry one line on them.
+
+- Completion contract (BAD-676), small edits in stock files: `send-methods.ts` calls
+  `forkGateWorkerDone` after `assertSendParamsDeliverable` (a done turned back answers with a
+  rejected receipt; an escalated one is sent as an `escalation`); `message-methods.ts` and
+  `local-worker-start.ts` call `forkStoreDoneContract` after they create the Task;
+  `orchestration-params.ts` (`TaskCreateParams`) and `orchestration-worker-start-params.ts` spread
+  `ForkDoneContractShape`; `runtime-orchestration-database-access.ts` calls
+  `installForkContractInboxSource` where the database opens; `idle-recovery-wire.ts`,
+  `idle-recovery-sources.ts`, `inbox-format.ts`, `inbox-handlers.ts` and `ForkDecisionInboxRow.tsx`
+  learn a `contract` row source. `src/cli/specs/index.ts` wraps the spec list in
+  `withForkDoneContractFlags` and adds `FORK_COMPLETION_CONTRACT_COMMAND_SPECS`;
+  `fork-handler-groups.ts` adds the `fork-completion-contract` group and `cli-command-names.ts`
+  lists `contract`; `task-handlers.ts` and `worker-launch-handler.ts` spread
+  `readForkDoneContractFlags(flags)`. `fork.completionContract.show` is spread into
+  `FORK_BRANCH_CLASHES_METHODS`, so `rpc-method-registry.ts` is untouched;
+  `rpc-params-catalog.generated.ts` is regenerated. The four settings are intersected in
+  `fork-global-settings.ts`; `settings-rows-fork.generated.ts` is regenerated.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

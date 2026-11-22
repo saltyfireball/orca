@@ -26,6 +26,7 @@ export const CLI_COMMAND_NAMES = [
   'computer',
   'console',
   'contacts',
+  'contract',
   'cookie',
   'dblclick',
   'devices',

@@ -68,7 +68,7 @@ export function pickInboxItem(
 async function resolveChatId(
   ctx: HandlerContext,
   id: string
-): Promise<{ chatId: string; source?: 'babysit' }> {
+): Promise<{ chatId: string; source?: ForkIdleRecoveryInboxItem['source'] }> {
   const { result } = await ctx.client
     .call<ForkIdleRecoveryInboxResult>(METHODS.inbox, {})
     .catch(incompatible)

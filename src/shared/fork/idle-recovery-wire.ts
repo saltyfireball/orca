@@ -35,8 +35,8 @@ export const FORK_IDLE_RECOVERY_CHANNELS = {
 export const FORK_IDLE_RECOVERY_MAX_ANSWER_CHARS = 20_000
 
 const ChatId = z.string().min(1).max(512)
-/** Which list a row came from: absent is idle recovery's own; 'babysit' the PR babysitter's (SLRM-2386). */
-const Source = z.enum(['babysit']).optional()
+/** Which list a row came from: absent is idle recovery's own; 'babysit' the PR babysitter's (SLRM-2386); 'contract' a Task whose done checks failed past their rounds (BAD-676). */
+const Source = z.enum(['babysit', 'contract']).optional()
 
 export const ForkIdleRecoveryInboxParams = z.object({})
 export const ForkIdleRecoveryStatusParams = z.object({})
@@ -75,7 +75,7 @@ export type ForkIdleRecoveryInboxItem = {
   wakeAt: number | null
   paused: boolean
   /** 'babysit': a pull request the PR babysitter stopped on (SLRM-2386); its Pause stops babysitting. */
-  source?: 'babysit'
+  source?: 'babysit' | 'contract'
   /** The babysat pull request, `host/owner/repo#number`. */
   prKey?: string
 }
