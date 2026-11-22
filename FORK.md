@@ -1539,6 +1539,33 @@ named Orca Fork until SLRM-1367. `main` is always
     `src/main/runtime/rpc/methods/fork/fork-best-of.ts`, `src/renderer/src/fork/best-of/` and
     `src/cli/fork/best-of-*`.
 
+- **Worktree snapshots (BAD-677).** Removing a worktree with uncommitted, untracked or unpushed
+  work was final; bulk flows (worker cleanup, cleanup rules, the lost work dialog) made that easy.
+  Now every removal is reversible for two weeks.
+  - The shared removal path (`removeWorktree`, which the manual delete, cleanup rules, worker
+    cleanup and lost work flows all reach) first asks whether the worktree holds work: changed,
+    staged or untracked (not ignored) files, or commits no remote or default branch has (the lost
+    work scan's own git checks). If it does, it saves the whole working tree as a commit built
+    through a temporary index, so the worktree's own index is not touched, under
+    `refs/orca/snapshots/<workspace>/<ms timestamp>` in the project. The commit's parent is the
+    branch head, and its message records the path, branch and head. Ignored files (`.env`) are
+    left out. `refs/orca` is in no default push or fetch refspec, so snapshots stay on the host.
+  - A clean, fully pushed or merged worktree makes no snapshot. A failed-creation rollback makes
+    none either.
+  - A snapshot that cannot be written stops the removal with the error; a forced delete removes
+    anyway and logs a warning.
+  - Snapshots older than `forkWorktreeSnapshotRetentionDays` (14 by default, 1 to 365) are
+    pruned each time a snapshot is taken, and by `orca worktree snapshots --prune`.
+    `forkWorktreeSnapshots` (on by default) turns the feature off.
+  - `orca worktree snapshots [--repo R] [--prune]` lists them. `orca worktree restore <id>
+    [--repo R] [--path P]` recreates the worktree at its old path (or `--path`) on its branch at
+    the head it had, with edits unstaged and new files untracked; a branch name now used at
+    another commit gets `<branch>-restored-<ms>`, and an existing path is refused. Restore and
+    list run on the host that owns the project through `fork.worktreeSnapshots.*`. Local git
+    projects only; a paired server answers for its own.
+  - Code: `src/shared/fork/worktree-snapshots.ts`, `src/main/fork/worktree-snapshots/`,
+    `src/cli/fork/worktree-snapshots-*.ts`. The tests run real git in a temp repo.
+
 - **Worktree ports (SLRM-2383).** Each workspace holds a block of ports on the host that runs it,
   so many workers on one machine stop fighting over dev-server ports (Conductor gives each
   workspace 10 ports the same way). Stock Orca only finds ports once something listens on them.
@@ -2301,6 +2328,7 @@ Apply these in this order. Each one is a single commit.
 138. `BAD-715 Nothing waits on the owner: bots finish and merge their own work, a card nothing routes goes to a default bot, and the card comment names the receiving bot's chat`
 139. `BAD-542 BAD-524 Lost work counts a live worker chat as in use and its CLI waits for the whole scan; usage report links workers to their coordinator chat`
 140. `BAD-560 Auto-continue filter: replace the fork unattended-resume pass; upstream continues cut chats, the fork limits it to workers and automation runs unless forkAutoContinueInteractive`
+141. `BAD-677 Worktree snapshots: save uncommitted, untracked and unpushed work under refs/orca/snapshots before any worktree removal; orca worktree snapshots and restore`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3060,6 +3088,18 @@ Upstream files only get short hooks, which keeps rebases small:
   - `ForkRootHosts.tsx` mounts `ForkSnoozeCustomDialogHost` and `ForkSnoozeWatcher`; the card is
     in the fork's Settings pane and `forkSnoozeSettleCommand` is a runs-command key in
     `settings-access.ts`.
+
+- Worktree snapshots (BAD-677), from `src/shared/fork/worktree-snapshots.ts`,
+  `src/main/fork/worktree-snapshots/` and `src/cli/fork/worktree-snapshots-*.ts`:
+  - `worktree-removal.ts` (`performRemoveWorktree`, after the lock check and before Git deletes)
+    awaits `forkSnapshotBeforeWorktreeRemoval(repoPath, worktreePath, force, options)`.
+  - `installForkReady` and `installForkHeadlessHost` call `installForkWorktreeSnapshots`.
+  - `fork-lost-work.ts` spreads `FORK_WORKTREE_SNAPSHOT_METHODS` into `FORK_LOST_WORK_METHODS`
+    (`fork.worktreeSnapshots.list|restore|prune`), so `rpc-method-registry.ts` is untouched;
+    `rpc-params-catalog.generated.ts` is regenerated with it.
+  - `fork-handler-groups.ts` adds the `fork-worktree-snapshots` group and `specs/index.ts` spreads
+    `FORK_WORKTREE_SNAPSHOT_COMMAND_SPECS`.
+  - `ForkGlobalSettings` gains `ForkWorktreeSnapshotSettings`; the settings catalog is regenerated.
 
 - Worktree ports (SLRM-2383), from `src/shared/fork/worktree-ports*.ts`,
   `src/main/fork/worktree-ports/` and `src/cli/fork/worktree-ports-cli.ts`:
