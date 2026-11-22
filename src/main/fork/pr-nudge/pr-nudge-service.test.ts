@@ -1,5 +1,5 @@
 // PR nudges (BAD-680): the service against stubs. No GitHub, gh, chat host or file is used.
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ForkIdleRecoveryInboxItem } from '../../../shared/fork/idle-recovery-wire'
 import { readPrNudgeSettings, type PrNudgeComment } from '../../../shared/fork/pr-nudge'
 import type { PRWatchWorkspace } from '../../github/pr-watch/pr-watch-types'
@@ -12,6 +12,16 @@ import {
   type PrNudgeObservation
 } from './pr-nudge-service'
 import { emptyPrNudgeState, type PrNudgeState } from './pr-nudge-state'
+
+const pause = vi.hoisted(() => ({ engaged: false }))
+vi.mock('../pause-all/pause-all-state', () => ({
+  isForkPauseAllEngaged: () => pause.engaged,
+  forkPauseAllRefusal: () => (pause.engaged ? 'Paused by pause-all: test' : null),
+  onForkPauseAllChanged: () => () => {}
+}))
+afterEach(() => {
+  pause.engaged = false
+})
 
 const PR = 'github.com/acme/api#12'
 const WS: PRWatchWorkspace = {
@@ -111,6 +121,20 @@ function harness(
 }
 
 describe('review comments', () => {
+  it('reads and sends nothing while pause-all is engaged, then nudges what is due (BAD-685)', async () => {
+    const h = harness()
+    await h.service.observed(h.seen())
+    h.setComments([comment(2)])
+    h.tick(PR_NUDGE_COMMENT_READ_MS)
+    pause.engaged = true
+    await h.service.observed(h.seen())
+    await h.service.observed(h.seen({ mergeable: 'CONFLICTING' }))
+    expect(h.sent).toHaveLength(0)
+    pause.engaged = false
+    await h.service.observed(h.seen())
+    expect(h.sent).toHaveLength(1)
+  })
+
   it('sends a new comment once, with file and line, and never resends it', async () => {
     const h = harness()
     h.setComments([comment(1, { association: 'OWNER' })])

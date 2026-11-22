@@ -10,6 +10,11 @@ import type { OrcaRuntimeService } from '../../runtime/orca-runtime'
 import { installForkWorkerRetry } from './worker-retry-live'
 import { listRetries, readRunPolicy, writeRunPolicy } from './retry-store'
 
+const pause = vi.hoisted(() => ({ engaged: false }))
+vi.mock('../pause-all/pause-all-state', () => ({
+  isForkPauseAllEngaged: () => pause.engaged
+}))
+
 const started = vi.fn()
 vi.mock('../../runtime/rpc/methods/orchestration/messaging/worker-follow-up', () => ({
   planWorkerFollowUp: () => ({ kind: 'start', latest: {}, resource: undefined }),
@@ -55,6 +60,7 @@ beforeEach(() => {
   started.mockResolvedValue({ kind: 'started', receipt: { dispatchId: 'ctx_retry_1' } })
 })
 afterEach(() => {
+  pause.engaged = false
   vi.useRealTimers()
 })
 
@@ -86,6 +92,20 @@ describe('worker retry on a killed worker', () => {
     expect(started).toHaveBeenCalledTimes(1)
     expect(started.mock.calls[0]?.[0].message.body).toContain('build the thing')
     expect(listRetries(db)).toMatchObject([{ status: 'started', retryDispatchId: 'ctx_retry_1' }])
+  })
+
+  it('keeps a due restart waiting while pause-all is engaged, then starts it (BAD-685)', async () => {
+    settings = { forkWorkerRetry: true }
+    const { db, kill } = rig()
+    kill()
+    pause.engaged = true
+    await vi.advanceTimersByTimeAsync(120_000)
+    expect(started).not.toHaveBeenCalled()
+    expect(listRetries(db)).toMatchObject([{ status: 'scheduled' }])
+    pause.engaged = false
+    await vi.advanceTimersByTimeAsync(31_000)
+    expect(started).toHaveBeenCalledTimes(1)
+    expect(listRetries(db)).toMatchObject([{ status: 'started' }])
   })
 
   it('takes the Run policy over the setting', () => {

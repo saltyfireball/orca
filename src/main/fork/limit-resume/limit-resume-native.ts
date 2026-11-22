@@ -3,6 +3,7 @@
 // Continue`), behind a toggle that is off by default. The fork turns it on with
 // `forkLimitResume`, caps its chain at `forkLimitResumeMaxTries`, and holds it while the chat's
 // message box has text. The three hooks below are what the stock files call. Keep electron out.
+import { isForkPauseAllEngaged } from '../pause-all/pause-all-state'
 import { isForkAgentGuardHeld } from '../agent-guards/agent-guards-holds'
 import {
   limitResumeNativeContinueOn,
@@ -40,7 +41,8 @@ export function forkUsageLimitChainLimit(): number {
  *  asked again each pass. A chat an agent guard paused (SLRM-2385) waits too, until a person
  *  resumes it. */
 export function forkUsageLimitHeld(sessionId: string, overdueMs = 0): boolean {
-  if (isForkAgentGuardHeld(sessionId)) {
+  // Pause all (BAD-685, FORK.md): every parked chat waits, and is asked again each pass.
+  if (isForkAgentGuardHeld(sessionId) || isForkPauseAllEngaged()) {
     return true
   }
   const settings = readLimitResumeSettings(readSettings())

@@ -30,6 +30,7 @@ import { readForkDigestLocal } from './digest-local'
 import { readForkDigestPullRequests, type ForkDigestRepo } from './digest-pull-requests'
 import { readForkDigestTasks, type ForkDigestTaskDb } from './digest-tasks'
 import { readForkDigestLastSentAt, runForkDigestTick } from './digest-schedule'
+import { readForkPauseAll } from '../pause-all/pause-all-state'
 import { boundedForkPairedCall } from '../paired-server-call/paired-server-call'
 
 export type ForkDigestRuntime = {
@@ -91,7 +92,8 @@ export function readForkDigestLocalPart(
           return stdout
         }),
       inbox: listIdleRecoveryInbox,
-      usage: (days) => forkUsageReport({ by: 'day', days })
+      usage: (days) => forkUsageReport({ by: 'day', days }),
+      paused: readForkPauseAll
     },
     params
   )

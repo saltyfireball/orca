@@ -153,6 +153,12 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     keys: ['retry policy', 'retry show'],
     load: async () => (await import('./worker-retry-handlers.js')).FORK_WORKER_RETRY_HANDLERS
   },
+  // BAD-685: one switch that pauses all unattended work (FORK.md "Pause all").
+  {
+    name: 'fork-pause-all',
+    keys: ['pause-all', 'resume-all', 'pause-status'],
+    load: async () => (await import('./pause-all-handlers.js')).FORK_PAUSE_ALL_HANDLERS
+  },
   // SLRM-2269: snooze workspaces and chats out of the sidebar (FORK.md "Snooze").
   {
     name: 'fork-snooze',

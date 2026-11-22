@@ -18,6 +18,7 @@ import {
 } from '../../../shared/fork/idle-recovery'
 import type { IdleRecoverySettings } from '../../../shared/fork/idle-recovery-settings'
 import type { ForkIdleRecoveryInboxItem } from '../../../shared/fork/idle-recovery-wire'
+import { isForkPauseAllEngaged } from '../pause-all/pause-all-state'
 import { listIdleRecoveryCandidates } from './idle-recovery-candidates'
 import { classifyIdleRecoveryEnding } from './idle-recovery-classifier'
 import { readIdleRecoveryEnding } from './idle-recovery-ending'
@@ -111,6 +112,11 @@ export async function runIdleRecoverySweep(
 ): Promise<IdleRecoverySweepResult> {
   const { settings, nowMs } = input
   if (settings.mode === 'off') {
+    return { changed: false, newlyWaiting: [] }
+  }
+  // Pause all (BAD-685, FORK.md): nothing is read, classified or woken. Wake times stay, so the
+  // chats due are looked at again after `orca resume-all`.
+  if (isForkPauseAllEngaged()) {
     return { changed: false, newlyWaiting: [] }
   }
   const deps: IdleRecoverySweepDeps = {

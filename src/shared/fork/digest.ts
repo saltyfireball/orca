@@ -98,6 +98,8 @@ export type ForkDigestSection = {
   waiting: ForkDigestWaiting[]
   /** BAD-681: automatic worker restarts in the window; absent from hosts that predate them. */
   retries?: ForkDigestRetry[]
+  /** BAD-685: set while pause-all is engaged on that host (the phone shows it); absent otherwise and from older hosts. `since` is null when the switch could not be read. */
+  paused?: { since: number | null; corrupt: boolean }
   /** Null where no usage ledger runs (a headless server). */
   cost: ForkDigestCost | null
   /** What could not be read here, said plainly. */

@@ -18,6 +18,25 @@ function order(t: TestGate): string[] {
 }
 
 describe('AgentLaunchGate', () => {
+  it('holds worker launches while pause-all is engaged, even with the queue off, and starts them when it lifts (BAD-685)', async () => {
+    for (const config of [{ enabled: false }, { enabled: true, maxLive: 10 }]) {
+      const t = testGate(config)
+      t.paused = true
+      expect(ask(t, 'mine').state).toBe('admitted')
+      const worker = ask(t, 'w1', { kind: 'worker' })
+      expect(worker.state).toBe('queued')
+      // A resume does not slip a worker past the pause.
+      expect(ask(t, 'w2', { kind: 'worker', resume: true }).state).toBe('queued')
+      expect(t.gate.entries()[0]?.heldReason).toBe('paused by pause-all')
+      t.paused = false
+      t.gate.notify()
+      expect(t.gate.entries()).toEqual([])
+      if (worker.state === 'queued') {
+        await expect(worker.settled).resolves.toBe('admitted')
+      }
+    }
+  })
+
   it('admits everything while the limit is off', () => {
     const t = testGate({ enabled: false })
     for (const key of ['a', 'b', 'c', 'd']) {

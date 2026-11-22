@@ -4,6 +4,7 @@
 import { defineMethod } from '../../core'
 import { FORK_COMPLETION_CONTRACT_METHODS } from './fork-completion-contract'
 import { FORK_GOAL_LOOP_METHODS } from './fork-goal-loop'
+import { FORK_PAUSE_ALL_METHODS } from './fork-pause-all'
 import { FORK_WORKER_RETRY_METHODS } from './fork-worker-retry'
 import {
   buildForkClashes,
@@ -71,5 +72,7 @@ export const FORK_BRANCH_CLASHES_METHODS = [
   // BAD-682: `fork.goal.set`, `.clear` and `.list` ride here too.
   ...FORK_GOAL_LOOP_METHODS,
   // BAD-681: `fork.workerRetry.*` rides here for the same reason.
-  ...FORK_WORKER_RETRY_METHODS
+  ...FORK_WORKER_RETRY_METHODS,
+  // BAD-685: `fork.pauseAll.*` rides here too.
+  ...FORK_PAUSE_ALL_METHODS
 ] as const

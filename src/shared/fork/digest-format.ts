@@ -42,6 +42,11 @@ function hostLines(host: ForkDigestHost): string[] {
   if (!section) {
     return lines
   }
+  if (section.paused) {
+    lines.push(
+      `PAUSED${section.paused.since ? ` since ${when(section.paused.since)}` : ''}${section.paused.corrupt ? ' (switch unreadable)' : ''}: nothing unattended starts here until pause-all is released`
+    )
+  }
   const failed = section.tasks.filter((task) => task.status === 'failed')
   const finished = section.tasks.filter((task) => task.status === 'completed')
   const merged = section.pullRequests.filter((pr) => pr.state === 'merged')

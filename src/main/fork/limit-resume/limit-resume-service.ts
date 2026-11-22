@@ -3,6 +3,7 @@
 // hands the native-chat hooks their settings and runs the terminal sweep on a backoff timer:
 // every 30 s while some agent is parked, backing off to 2 min while none is or the feature is off.
 // Keep electron out of this file.
+import { isForkPauseAllEngaged } from '../pause-all/pause-all-state'
 import {
   readLimitResumeSettings,
   type LimitResumeEntry,
@@ -98,6 +99,11 @@ async function pass(): Promise<boolean> {
   }
   lastRows = await readLimitResumeRows(live)
   let busy = false
+  // Pause all (BAD-685, FORK.md): no terminal is resumed while paused; parked entries stay.
+  if (isForkPauseAllEngaged()) {
+    publish()
+    return forkLimitResumeEntries().length > 0
+  }
   if (settings.terminals) {
     busy = await sweep.pass(settings)
   } else {

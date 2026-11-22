@@ -82,6 +82,7 @@ export const ForkDigestSectionSchema = z.object({
   pullRequests: rows(PullRequestSchema),
   waiting: rows(WaitingSchema),
   retries: rows(RetrySchema).optional(),
+  paused: z.object({ since: time.nullable(), corrupt: z.boolean() }).optional().catch(undefined),
   cost: CostSchema.nullable().catch(null),
   notes: z.array(text).max(20).catch([])
 })

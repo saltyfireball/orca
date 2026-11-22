@@ -15,6 +15,16 @@ import {
 } from './limit-resume-native'
 import type { IdleRecoveryChatPort } from '../idle-recovery/idle-recovery-ports'
 
+const pause = vi.hoisted(() => ({ engaged: false }))
+vi.mock('../pause-all/pause-all-state', () => ({
+  isForkPauseAllEngaged: () => pause.engaged,
+  forkPauseAllRefusal: () => (pause.engaged ? 'Paused by pause-all: test' : null),
+  onForkPauseAllChanged: () => () => {}
+}))
+afterEach(() => {
+  pause.engaged = false
+})
+
 afterEach(() => {
   setForkLimitResumeSettingsReader(() => null)
   clearForkBoundaryCompactionTyped()
@@ -39,6 +49,13 @@ function host(state: 'scheduled' | 'cancelled' | 'failed' | 'off'): LimitResumeN
 }
 
 describe('limit resume native hooks', () => {
+  it('holds every parked chat while pause-all is engaged (BAD-685)', () => {
+    expect(forkUsageLimitHeld('s1')).toBe(false)
+    pause.engaged = true
+    expect(forkUsageLimitHeld('s1')).toBe(true)
+    expect(forkUsageLimitHeld('s2', 10 * 60 * 60_000)).toBe(true)
+  })
+
   it('caps the chain at the setting, never above stock', () => {
     expect(forkUsageLimitChainLimit()).toBe(5)
     setForkLimitResumeSettingsReader(() => ({ forkLimitResumeMaxTries: 2 }))

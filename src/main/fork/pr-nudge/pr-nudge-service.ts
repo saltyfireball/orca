@@ -5,6 +5,7 @@
 // running turn holds them as a queued card). Dedupe keys are kept on disk, so a restart or a
 // repeated read never resends. A send the chat refuses is counted; at the cap the pull request
 // stops and joins the Decision inbox. Keep electron out of this file: it also runs headless.
+import { isForkPauseAllEngaged } from '../pause-all/pause-all-state'
 import type { PRWatchWorkspace } from '../../github/pr-watch/pr-watch-types'
 import type {
   ForkIdleRecoveryAnswerOutcome,
@@ -232,7 +233,9 @@ export function createPrNudgeService(deps: PrNudgeServiceDeps) {
     /** A stock PR read saw this pull request. Never throws; steps of one PR run in order. */
     observed(seen: PrNudgeObservation): Promise<void> {
       const settings = deps.settings()
-      if (!settings.enabled || seen.state !== 'open') {
+      // Pause all (BAD-685, FORK.md): no nudge while paused; dedupe keys stay, so the next read
+      // after `orca resume-all` sends what is due.
+      if (!settings.enabled || seen.state !== 'open' || isForkPauseAllEngaged()) {
         return Promise.resolve()
       }
       const prKey = seen.prKey.toLowerCase()

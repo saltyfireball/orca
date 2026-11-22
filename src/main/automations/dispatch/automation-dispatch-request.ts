@@ -34,6 +34,7 @@ import {
   ORCAD_FENCED_AUTOMATION
 } from '../ownership/orcad-fenced-automation'
 import { AutomationDispatchCancelledError } from './automation-dispatch-cancelled-error'
+import { forkPauseAllRefusal } from '../../fork/pause-all/pause-all-state'
 import { forkAutomationCapRefusal } from '../../fork/agent-guards/agent-guards-scopes'
 import { withForkWebhookPayload } from '../../fork/webhooks/webhook-payload'
 
@@ -160,6 +161,12 @@ export async function requestAutomationDispatch(
   const capped = forkAutomationCapRefusal(automation.id, run.trigger)
   if (capped) {
     return refuse({ error: capped })
+  }
+  // Fork (BAD-685, FORK.md "Pause all"): while the switch is engaged a scheduled or event run
+  // starts nothing and says so in run history. A person's own Run now is never refused.
+  const paused = run.trigger === 'manual' ? null : forkPauseAllRefusal()
+  if (paused) {
+    return refuse({ error: paused })
   }
   await ctx.runs.updateRun({
     runId: run.id,

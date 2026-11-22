@@ -22,6 +22,7 @@ import { scrollStripSidewaysOnWheel } from '../tab-bar/strip/tab-strip-scroll-me
 import { StatusBarVisibilityMenu } from './composition/StatusBarVisibilityMenu'
 import { isPairedWebClientWindow } from '@/app-shell/chrome/desktop-window-chrome'
 import { GitBlameStatusSegment } from './GitBlameStatusSegment'
+import { ForkPauseAllStatusSegment } from '../../fork/pause-all/ForkPauseAllStatusSegment'
 
 const PetStatusSegment = lazyWithRetry(() =>
   import('./PetStatusSegment').then((module) => ({ default: module.PetStatusSegment }))
@@ -112,6 +113,7 @@ export function StatusBarSurface({
               <PluginsStatusSegment />
               <PluginStatusBarItems />
               <CaffeinateStatusSegment />
+              <ForkPauseAllStatusSegment />
             </>
           ) : null}
           <RemoteServerUpdateStatusSegment />

@@ -4,6 +4,7 @@
 // judge) once per turn end, sends a continue message with the failure when it is not met, and
 // stops on success, the round limit, the budget or no progress. With no goal set the sweep reads
 // nothing and no agent is touched. Everything it reads of the process is passed in (`GoalServiceDeps`).
+import { isForkPauseAllEngaged } from '../pause-all/pause-all-state'
 import {
   goalSpentUsd,
   goalStopNote,
@@ -130,7 +131,8 @@ export function createGoalService(deps: GoalServiceDeps) {
     if (!settings.enabled || active.length === 0) {
       return false
     }
-    if (running) {
+    // Pause all (BAD-685, FORK.md): no goal step runs while paused; active goals wait.
+    if (running || isForkPauseAllEngaged()) {
       return true
     }
     running = true
