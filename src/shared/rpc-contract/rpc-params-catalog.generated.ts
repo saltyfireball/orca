@@ -58,7 +58,9 @@ import {
   ForkBestOfSettleParams,
   ForkBestOfShowParams
 } from '../fork/best-of/best-of-wire'
+import { ForkBotChatCleanupParams } from '../fork/bot-chat-cleanup'
 import { ForkBotChatCloseParams } from '../fork/bot-chat-hide'
+import { ForkBotChatOlderParams } from '../fork/bot-chat-list-filter'
 import { ForkClashesLocalParams, ForkClashesScanParams } from '../fork/branch-clashes-wire'
 import { ForkCardRouteStartParams } from '../fork/card-routing'
 import { ForkChatHandoffStartParams, ForkChatHistoryParams } from '../fork/chat-handoff-wire'
@@ -1656,7 +1658,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.board.add': ForkBoardAddParams,
   'fork.board.close': ForkBoardCloseParams,
   'fork.board.list': ForkBoardListParams,
+  'fork.botChat.cleanup': ForkBotChatCleanupParams,
   'fork.botChat.close': ForkBotChatCloseParams,
+  'fork.botChat.older': ForkBotChatOlderParams,
   'fork.cardRoute.start': ForkCardRouteStartParams,
   'fork.chatHandoff.history': ForkChatHistoryParams,
   'fork.chatHandoff.start': ForkChatHandoffStartParams,

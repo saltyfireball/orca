@@ -22,5 +22,24 @@ export const FORK_WORKER_CLEANUP_COMMAND_SPECS: CommandSpec[] = [
       'orca orchestration worker-cleanup --bot cassandra',
       'orca orchestration worker-cleanup --include-remote --dry-run --json'
     ]
+  },
+  {
+    path: ['bot', 'chats-cleanup'],
+    summary:
+      'Close the bot chats that are finished: their card is done, they reported back, or they sat idle too long',
+    usage: 'orca bot chats-cleanup [--bot <name>] [--dry-run] [--include-remote] [--json]',
+    allowedFlags: [...GLOBAL_FLAGS, 'bot', 'dry-run', 'include-remote'],
+    notes: [
+      "Closes a chat like Close chat in the sidebar: its history stays in the bot's Chats tab. Never a Home Chat, a chat that is running, queued or waiting on you, or one you typed into within the idle window.",
+      'A chat closes when its card (a key such as ABC-12 in the title) is Done or Canceled, when a chat Orca started finished and reported back, or when it has been idle longer than forkBotChatAutoCloseIdleHours (24). The automatic pass does the same on a timer; this command runs it now.',
+      '--dry-run lists what would close and why, and closes nothing.',
+      '--bot limits it to one bot (its name or id).',
+      "--include-remote also asks every paired server to close its own bots' chats."
+    ],
+    examples: [
+      'orca bot chats-cleanup --dry-run',
+      'orca bot chats-cleanup --bot builder',
+      'orca bot chats-cleanup --include-remote --dry-run --json'
+    ]
   }
 ]

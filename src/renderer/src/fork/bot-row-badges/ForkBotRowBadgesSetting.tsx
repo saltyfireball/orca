@@ -17,6 +17,13 @@ import {
   SelectValue
 } from '../../components/ui/select'
 import { FORK_BOT_CHAT_RECENT_DEFAULT_MINUTES } from '../../../../shared/fork/bot-chat-listing'
+import {
+  FORK_BOT_CHAT_AUTO_CLOSE_DEFAULT_GRACE_MINUTES,
+  FORK_BOT_CHAT_AUTO_CLOSE_DEFAULT_IDLE_HOURS,
+  FORK_BOT_CHAT_AUTO_CLOSE_GRACE_CHOICES,
+  FORK_BOT_CHAT_AUTO_CLOSE_IDLE_CHOICES,
+  forkBotChatAutoCloseEnabled
+} from '../../../../shared/fork/bot-chat-auto-close'
 import { formatMinutesDuration } from '@/i18n/ui-intl-formatters'
 import { useIntlLocale, useTranslate } from '@/i18n/use-translate'
 
@@ -36,6 +43,15 @@ export function ForkBotRowBadgesSetting({ settings, updateSettings }: Props): Re
   const recentChoices = RECENT_CHOICES.includes(recent)
     ? RECENT_CHOICES
     : [...RECENT_CHOICES, recent].sort((a, b) => a - b)
+  const autoClose = forkBotChatAutoCloseEnabled(settings)
+  const idleHours =
+    settings.forkBotChatAutoCloseIdleHours ?? FORK_BOT_CHAT_AUTO_CLOSE_DEFAULT_IDLE_HOURS
+  const graceMinutes =
+    settings.forkBotChatAutoCloseGraceMinutes ?? FORK_BOT_CHAT_AUTO_CLOSE_DEFAULT_GRACE_MINUTES
+  const idleId = useId()
+  const graceId = useId()
+  const withCurrent = (choices: readonly number[], current: number): readonly number[] =>
+    choices.includes(current) ? choices : [...choices, current].sort((a, b) => a - b)
   const colored = Object.keys(settings.forkBotRowColors ?? {}).length
   return (
     <section className="space-y-3">
@@ -87,6 +103,71 @@ export function ForkBotRowBadgesSetting({ settings, updateSettings }: Props): Re
                   {choice === 0
                     ? t('fork.botRowBadges.recentNone', 'None')
                     : formatMinutesDuration(choice, intlLocale)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
+      <SettingsSwitchRow
+        label={t('fork.botChatAutoClose.label', 'Close finished bot chats')}
+        description={t(
+          'fork.botChatAutoClose.help',
+          'A bot chat closes by itself, with its history kept in the bot\u2019s Chats tab, once it is idle and its card is done or canceled, a chat Orca started finished and reported back, or it has sat idle too long. Never a Home Chat, a chat that is running or waiting on you, or one you typed into recently. Mail for a closed chat reopens it.'
+        )}
+        checked={autoClose}
+        onChange={() => updateSettings({ forkBotChatAutoClose: !autoClose })}
+      />
+      <SettingsRow
+        label={t('fork.botChatAutoClose.idleLabel', 'Close idle chats after')}
+        description={t(
+          'fork.botChatAutoClose.idleHelp',
+          'Time since the chat\u2019s last activity.'
+        )}
+        labelId={idleId}
+        control={
+          <Select
+            value={String(idleHours)}
+            disabled={!autoClose}
+            onValueChange={(value) =>
+              updateSettings({ forkBotChatAutoCloseIdleHours: Number(value) })
+            }
+          >
+            <SelectTrigger size="sm" className="min-w-32" aria-labelledby={idleId}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {withCurrent(FORK_BOT_CHAT_AUTO_CLOSE_IDLE_CHOICES, idleHours).map((choice) => (
+                <SelectItem key={choice} value={String(choice)}>
+                  {formatMinutesDuration(choice * 60, intlLocale)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
+      <SettingsRow
+        label={t('fork.botChatAutoClose.graceLabel', 'Keep a finished chat open for')}
+        description={t(
+          'fork.botChatAutoClose.graceHelp',
+          'After a chat Orca started finishes, a quick follow-up can still land there. A follow-up restarts the wait.'
+        )}
+        labelId={graceId}
+        control={
+          <Select
+            value={String(graceMinutes)}
+            disabled={!autoClose}
+            onValueChange={(value) =>
+              updateSettings({ forkBotChatAutoCloseGraceMinutes: Number(value) })
+            }
+          >
+            <SelectTrigger size="sm" className="min-w-32" aria-labelledby={graceId}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {withCurrent(FORK_BOT_CHAT_AUTO_CLOSE_GRACE_CHOICES, graceMinutes).map((choice) => (
+                <SelectItem key={choice} value={String(choice)}>
+                  {formatMinutesDuration(choice, intlLocale)}
                 </SelectItem>
               ))}
             </SelectContent>

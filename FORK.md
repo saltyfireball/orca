@@ -204,6 +204,42 @@ named Orca Fork until SLRM-1367. `main` is always
   chats are `forkBotHiddenChats` (chat id to time, newest 500); the rule is
   `src/shared/fork/bot-chat-hide.ts`. Code is in `src/renderer/src/fork/bot-chat-hide/` and
   `src/main/fork/bot-chat-close/`.
+- **Auto-close finished bot chats (BAD-734).** A bot opens one chat per routed card or handoff and
+  nothing ended them: a bot listed every chat it ever had, and the iPhone app (upstream's own build)
+  shows whatever chat list the desktop serves it. Blackfish is public, so every number is a setting.
+  - **When a chat closes.** A non-home bot chat closes (the same close as Close chat in BAD-669; its
+    history stays in the bot's Chats tab) when it is idle (no running turn, no worker running, no
+    mail queued, no open ask or Needs you item naming it) and one of these holds: its card (a key
+    such as ABC-12 in the title) is Done or Canceled in Linear; a chat Orca started (card route,
+    handoff, quick task, an outside thread) finished and reported back to whoever handed it off
+    (`worker_done`, or its handoff answered), with no mail received since; or it has been idle longer
+    than `forkBotChatAutoCloseIdleHours` (unset is 24). The first two wait `forkBotChatAutoCloseGraceMinutes`
+    (unset is 10) after the chat's last activity, so a quick follow-up lands there and restarts the
+    wait. `forkBotChatAutoClose` (unset is on) turns it all off.
+  - **Never.** The Home Chat, a chat already closed, one that is running, queued, or waiting on the
+    owner, and one the owner typed into within the idle window (a turn that is not Orca's mail and
+    began more than a minute after the chat was created).
+  - **Home Chat row.** A closed chat Orca started leaves one compact status line in its bot's Home
+    Chat: title, card key and link, outcome (done, failed or blocked, read from the final reply) and
+    the chat id (`chat:<id>`, as `orca bot chats` prints it). It is a status line, so it starts no
+    turn and wakes no bot. A chat the owner started closes quietly.
+  - **Mail reopens.** Chats Orca closed are kept in `fork-bot-chats-auto-closed.json` in the data
+    folder. Mail for one (any session recipient, or a chat id a bot send names) shows its tab again
+    before it is routed, so nothing is refused or dropped. A chat closed by hand stays closed.
+  - **Each host runs its own.** The desktop, `orca serve` and orcad each run the pass for their own
+    bots, every 2 minutes (backing off to 10 when idle). The first pass is the one-time sweep: it
+    judges every existing chat with the same rule, so there is no separate flag.
+  - **The list clients get.** `bots.chatTree` leaves closed chats out (the phone app can neither
+    ask for them nor be changed), orders the rest as the app does, and says how many it left out
+    (`closedTotal`). `fork.botChat.older` pages closed chats in, newest activity first. The Chats tab
+    has a Show older chats (N closed) toggle and Show more. A read for one chat (`chatId`) is
+    unchanged. The phone has no way to show closed chats; they stay in the desktop's Chats tab.
+  - **CLI.** `orca bot chats-cleanup [--bot <name>] [--dry-run] [--include-remote]` runs the same
+    pass by hand (`fork.botChat.cleanup`) and prints what closed, or with `--dry-run` what would,
+    and why. `--include-remote` asks every paired server for its own part.
+  - Code is in `src/shared/fork/bot-chat-auto-close.ts` (the rule and settings),
+    `src/shared/fork/bot-chat-list-filter.ts`, `src/shared/fork/bot-chat-cleanup.ts`,
+    `src/main/fork/bot-chat-close/` and `src/renderer/src/fork/bot-chat-closed/`.
 - **Lost work (SLRM-2096).** A Lost work button in the workspace cleanup dialog opens a scan of
   every local git project for work an agent worktree could lose. Nothing runs until you press
   Scan; the scan only reads git and can be stopped.
@@ -2301,6 +2337,7 @@ Apply these in this order. Each one is a single commit.
 138. `BAD-715 Nothing waits on the owner: bots finish and merge their own work, a card nothing routes goes to a default bot, and the card comment names the receiving bot's chat`
 139. `BAD-542 BAD-524 Lost work counts a live worker chat as in use and its CLI waits for the whole scan; usage report links workers to their coordinator chat`
 140. `BAD-560 Auto-continue filter: replace the fork unattended-resume pass; upstream continues cut chats, the fork limits it to workers and automation runs unless forkAutoContinueInteractive`
+141. `BAD-734 Auto-close finished bot chats: card done, reported back or idle; the list clients get leaves closed chats out; orca bot chats-cleanup`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3384,6 +3421,21 @@ Upstream files only get short hooks, which keeps rebases small:
     line when every failure is named.
   - The tests are `github-source-deadline.test.ts` and
     `github-work-items-hung-source.test.ts` (a source that never resolves).
+
+- Auto-close finished bot chats (BAD-734), small edits in stock files:
+  - `bots-chat-tree.ts` serves `forkOpenBotChatTree` for a read with no `chatId`; `BotChatTreeRead`
+    (`bot-chat-tree.ts`) gains an optional `closedTotal`.
+  - `session-recipient.ts` (`prepareSessionRecipient`) and `bots-chats.ts` (`botChatTakingMail`)
+    each call `forkReopenAutoClosedChat` first.
+  - `installForkWorkerArchive` also calls `installForkBotChatAutoClose`, so no new line in
+    `orchestration-database-binding.ts`; `FORK_WORKER_ARCHIVE_METHODS` also spreads
+    `FORK_BOT_CHAT_CLEANUP_METHODS` (`fork.botChat.cleanup`, `fork.botChat.older`), so
+    `rpc-method-registry.ts` is untouched; `rpc-params-catalog.generated.ts` is regenerated.
+  - CLI: `FORK_WORKER_CLEANUP_COMMAND_SPECS` also lists `bot chats-cleanup` and the `fork-worker-cleanup`
+    handler group also holds its key, so `specs/index.ts` and the manifest are untouched.
+  - `use-bot-chat-tree.ts` returns `closedTotal`; `BotChatsPanel.tsx` calls `useForkClosedBotChats`
+    and renders `ForkClosedBotChatsToggle`; `ForkBotRowBadgesSetting.tsx` holds the three settings
+    (intersected in `fork-global-settings.ts`; `settings-rows-fork.generated.ts` is regenerated).
 
 - Model and effort per automation (BAD-704), from `src/renderer/src/fork/automation-model-effort/`:
   - `AgentLaunchDefaultsFields.tsx` renders `AgentLaunchModelEffortFields` after Permissions when

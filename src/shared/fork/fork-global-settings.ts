@@ -31,6 +31,7 @@ import type { ForkInboxBotAsksSettings } from './inbox-bot-asks'
 import type { ForkBotRowAskJumpSettings } from './bot-row-ask-jump'
 import type { ForkBotRowBadgeSettings } from './bot-row-badges'
 import type { ForkBotChatListingSettings } from './bot-chat-listing'
+import type { ForkBotChatAutoCloseSettings } from './bot-chat-auto-close'
 import type { ForkCardRoutingSettings } from './card-routing'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
@@ -79,6 +80,7 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkBotRowBadgeSettings &
   /** Fork (BAD-658): bot chats with no open tab that still list under their bot. */
   ForkBotChatListingSettings &
+  ForkBotChatAutoCloseSettings &
   /** Fork (SLRM-2428): the quick task box, its shortcut and the router bot. */
   ForkQuickTaskSettings &
   /** Fork (SLRM-2459): the rules a new bot's SOUL.md starts with. */

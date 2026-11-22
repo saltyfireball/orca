@@ -55,6 +55,12 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"enum","values":["archive","keep","remove"]},"d":"Best of N: what a pick does with the worktrees of the attempts that lost; unset is \'archive\'.","o":true}',
   forkBestOfPlacement:
     '{"t":{"k":"string"},"d":"Best of N: default machines of the attempts, auto, here or server names, comma separated and cycled; unset is auto.","o":true}',
+  forkBotChatAutoClose:
+    '{"t":{"k":"boolean"},"d":"Close finished bot chats by themselves (card done or canceled, handoff answered, or idle too long); unset is on.","o":true}',
+  forkBotChatAutoCloseGraceMinutes:
+    '{"t":{"k":"number"},"d":"Minutes a finished chat that Orca started (card route, handoff, quick task) stays open after its last activity, so a quick follow-up lands there; unset is 10.","o":true}',
+  forkBotChatAutoCloseIdleHours:
+    '{"t":{"k":"number"},"d":"Hours a bot chat may sit idle before it closes; unset is 24.","o":true}',
   forkBotChatRecentMinutes:
     '{"t":{"k":"number"},"d":"Minutes a bot\'s chat with no open tab stays listed under it after its last activity (a running or new one always lists); unset is 60, 0 lists only chats with an open tab.","o":true}',
   forkBotHiddenChats:
