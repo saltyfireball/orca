@@ -74,6 +74,7 @@ import { ForkCompletionContractShowParams } from '../fork/completion-contract-wi
 import { ForkDeviceListParams, ForkDeviceTargetParams } from '../fork/device-approval'
 import { ForkDigestCollectParams, ForkDigestLocalParams } from '../fork/digest'
 import { ForkEndpointAddressesParams } from '../fork/endpoint-failover'
+import { ForkGoalListParams, ForkGoalSetParams, ForkGoalTargetParams } from '../fork/goal-loop-wire'
 import {
   ForkIdleRecoveryAnswerParams,
   ForkIdleRecoveryInboxParams,
@@ -1690,6 +1691,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.digest.collect': ForkDigestCollectParams,
   'fork.digest.local': ForkDigestLocalParams,
   'fork.endpoints.addresses': ForkEndpointAddressesParams,
+  'fork.goal.clear': ForkGoalTargetParams,
+  'fork.goal.list': ForkGoalListParams,
+  'fork.goal.set': ForkGoalSetParams,
   'fork.guards.automationCap': ForkGuardsAutomationCapParams,
   'fork.guards.cap': ForkGuardsCapParams,
   'fork.guards.list': ForkGuardsListParams,

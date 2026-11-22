@@ -33,7 +33,7 @@ function finished(reason: string): IdleRecoveryVerdict {
  * process group (`detached`), so signalling the group by the child's pid also reaches what the
  * shell line started. On Windows `taskkill /t` does the same for the child's pid.
  */
-function stopClassifier(child: ChildProcess, hasExited: () => boolean): void {
+export function stopClassifier(child: ChildProcess, hasExited: () => boolean): void {
   const pid = child.pid
   if (!pid || hasExited()) {
     return

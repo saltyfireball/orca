@@ -35,6 +35,9 @@ function kindLabel(item: ForkIdleRecoveryInboxItem): string {
   if (item.source === 'contract') {
     return 'done-checks'
   }
+  if (item.source === 'goal') {
+    return 'goal'
+  }
   if (item.verdict === 'guard') {
     return 'guard-paused'
   }

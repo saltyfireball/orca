@@ -51,6 +51,7 @@ export const CLI_COMMAND_NAMES = [
   'geolocation',
   'get',
   'gmail',
+  'goal',
   'google',
   'goto',
   'guards',

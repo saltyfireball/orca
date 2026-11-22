@@ -3,6 +3,7 @@
 // paired servers' reports into clashes, for `orca clashes`.
 import { defineMethod } from '../../core'
 import { FORK_COMPLETION_CONTRACT_METHODS } from './fork-completion-contract'
+import { FORK_GOAL_LOOP_METHODS } from './fork-goal-loop'
 import {
   buildForkClashes,
   forkClashRepoMatches,
@@ -65,5 +66,7 @@ export const FORK_BRANCH_CLASHES_METHODS = [
     }
   }),
   // BAD-676: `fork.completionContract.show` rides in this list so the full registry file stays as it is.
-  ...FORK_COMPLETION_CONTRACT_METHODS
+  ...FORK_COMPLETION_CONTRACT_METHODS,
+  // BAD-682: `fork.goal.set`, `.clear` and `.list` ride here too.
+  ...FORK_GOAL_LOOP_METHODS
 ] as const

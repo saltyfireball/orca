@@ -141,6 +141,12 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     load: async () =>
       (await import('./completion-contract-handlers.js')).FORK_COMPLETION_CONTRACT_HANDLERS
   },
+  // BAD-682: keep an agent going until a check or judge passes (FORK.md "Goal loop").
+  {
+    name: 'fork-goal-loop',
+    keys: ['goal set', 'goal list', 'goal clear'],
+    load: async () => (await import('./goal-loop-handlers.js')).FORK_GOAL_LOOP_HANDLERS
+  },
   // SLRM-2269: snooze workspaces and chats out of the sidebar (FORK.md "Snooze").
   {
     name: 'fork-snooze',

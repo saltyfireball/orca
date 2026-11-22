@@ -2420,6 +2420,63 @@ ones `SLRM-123 `).
     state machine, fencing and settings), `src/cli/fork/completion-contract-*.ts` and
     `src/main/runtime/rpc/methods/fork/fork-completion-contract.ts`.
 
+- **Goal loop: keep any agent going until a check or a judge passes (BAD-682).** Goals were
+  harness-native (Codex and Grok thread goals, Claude /goal), so a terminal agent or a provider
+  without a goal mode could not be told "keep going until the tests pass", and nothing capped such a
+  loop. `orca goal set` gives every agent the pattern, under Orca's own limits. With no goal set
+  nothing is read and no agent is touched.
+  - **Setting a goal.** `orca goal set <id> (--until-cmd '<command>' | --until-judge '<criteria>')
+    [--max-rounds <n>] [--budget <usd>]` for a native chat of any provider (its session id) or a
+    terminal agent (its pane key); a unique prefix of 4+ characters is enough. Exactly one of the
+    two `--until` flags. `orca goal list` shows each goal with its rounds, spend and, for a stopped
+    one, why; `orca goal clear <id>` removes it. Goals are kept in `fork-goal-loop.json` in the data
+    folder (mode 0600), so a restart keeps them; a stopped goal is kept a day.
+  - **Each turn end.** A sweep (every 10 s while a goal is active, backing off to 2 min with none)
+    reads the same idle agents the Sleepers list and idle recovery read, and looks at a turn end
+    once, after the agent rested `forkGoalLoopIdleSeconds`. A goal set on an agent that is already
+    idle looks at that ending at once. An agent with background work pending is not looked at. The
+    check is `--until-cmd`, run in the agent's workspace (exit 0 is met), or the judge. A failure
+    is sent to the agent as a continue message with the output's last lines in a fenced block that
+    is marked as data, not instructions. The send is idle recovery's: never into a chat that is
+    asleep or in a turn, nor a terminal with typed text or a dialog, and never twice.
+  - **Judge.** `--until-judge` runs the command in `forkGoalJudgeCommand` (none by default, and
+    the flag is refused without it). It is one shell line that reads a JSON object on stdin
+    (`criteria`, and `agent_output`, the agent's last message fenced as untrusted data) and prints
+    `{"met": true, "reason": "..."}` or `met` / `not met` and a reason. A failed, slow or
+    unreadable judge is "not met": it never ends a goal. The judge is skipped once the budget is
+    spent.
+  - **Stops.** The loop stops on success; after `--max-rounds` continue messages (else
+    `forkGoalLoopMaxRounds`, 10); when the spend since the goal was set reaches `--budget`; or when
+    the same failure comes back `forkGoalLoopStallLimit` times in a row (2). A failure is the
+    check's output with digits, ids and times taken out, plus a fingerprint of the workspace (its
+    uncommitted changes and head commit): the same output with the workspace changed is progress,
+    not a stall. Also `unreachable` (a judge is missing, or the agent refused five sends) and
+    `gone` (the agent closed, which ends the goal quietly).
+  - **Where a stop is told.** Every stop but success and gone is a row in the Decision inbox
+    ("Goal loop", `orca inbox list` shows `goal`; Dismiss removes it), goes to the inbox's notify
+    targets, and, with `forkGoalLoopPostToChat` on, is told to the agent in its chat in one line
+    (the agent answers it, which costs one short turn). A passing goal needs none of these.
+  - **Budget.** Counted from the usage ledger BAD-679 feeds (Claude and Codex chats, and Claude
+    Code and Codex terminals). An agent the ledger knows nothing of counts as $0, so its goal is
+    stopped by rounds and stalls only.
+  - **Security.** The command and the criteria come only from the `orca goal set` request, never
+    from what an agent wrote; the check output and the agent's words reach the agent and the judge
+    only inside a fence longer than any backtick run in them. The check runs with the user's own
+    rights in the agent's workspace, with a timeout (`forkGoalLoopTimeoutSeconds`).
+  - **Hosts.** Each host runs the loop for its own agents; `--environment` sets a goal on an agent of
+    a paired server, which must run this fork build. An agent in an SSH workspace is not looked at.
+  - **Settings** (Settings > Blackfish, `orca settings`): `forkGoalLoop` (on; off pauses every
+    goal), `forkGoalLoopIdleSeconds` (15), `forkGoalLoopMaxRounds` (10), `forkGoalLoopStallLimit`
+    (2), `forkGoalLoopTimeoutSeconds` (600), `forkGoalLoopOutputLines` (40),
+    `forkGoalLoopPostToChat` (on) and `forkGoalJudgeCommand` (none).
+  - **Not done.** It does not detect a harness's own /goal and defer to it; and goals are not yet
+    drawn as a row in the chat or in the Sleepers and crew views.
+  - Code is in `src/main/fork/goal-loop/` (`goal-engine.ts` the turn-end step, `goal-service.ts`
+    the sweep and the set, clear and list, `goal-live.ts` the wiring, `goal-judge.ts`,
+    `goal-send.ts`, `goal-store.ts`, `goal-inbox.ts`), `src/shared/fork/goal-loop.ts` (the pure
+    stop rules, signatures, fencing and settings), `src/shared/fork/goal-loop-wire.ts`,
+    `src/cli/fork/goal-loop-*.ts` and `src/main/runtime/rpc/methods/fork/fork-goal-loop.ts`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -2572,6 +2629,7 @@ Apply these in this order. Each one is a single commit.
 145. `BAD-735 Fork sync merges each upstream tag into main as one signed merge commit instead of rebasing, so main is never force-pushed; a conflict stops before the build with a FORK-SYNC-CONFLICT marker`
 146. `BAD-680 PR nudges: the PR watcher's owning chat gets new review comments (fenced, deduplicated) and a rebase request per conflicted head; attempt-capped into the Decision inbox; off by default`
 147. `BAD-679 Spend caps for every agent: Codex chats and Claude Code or Codex terminals are priced into the ledger; caps per Run and per automation (run, day, 7 days); guards list shows every cap with its spend`
+148. `BAD-682 Goal loop: orca goal set keeps any agent going until a check command or a judge passes, under a round limit, a budget and a stall limit; a stop is told in chat and the Decision inbox`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3747,6 +3805,16 @@ Upstream files only get short hooks, which keeps merges small:
   `automation-launch-runner.ts` calls `forkAutomationNoteLaunch` once the run's agent exists. The
   four new settings are in `ForkAgentGuardSettings`, so `fork-global-settings.ts` is untouched;
   `settings-rows-fork.generated.ts` and `rpc-params-catalog.generated.ts` are regenerated.
+
+- Goal loop (BAD-682), small edits in stock files and fork files: `idle-recovery-classifier.ts`
+  exports `stopClassifier` for the judge; `idle-recovery-sources.ts`, `idle-recovery-wire.ts`,
+  `inbox-format.ts` and `ForkDecisionInboxRow.tsx` learn a `goal` row source;
+  `runtime-settle-hooks.ts` calls `startForkGoalLoop`. `src/cli/specs/index.ts` adds
+  `FORK_GOAL_LOOP_COMMAND_SPECS`; `fork-handler-groups.ts` adds the `fork-goal-loop` group and
+  `cli-command-names.ts` lists `goal`. `fork.goal.set`, `.clear` and `.list` are spread into
+  `FORK_BRANCH_CLASHES_METHODS`, so `rpc-method-registry.ts` is untouched;
+  `rpc-params-catalog.generated.ts` is regenerated. The eight settings are intersected in
+  `fork-global-settings.ts`; `settings-rows-fork.generated.ts` is regenerated.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

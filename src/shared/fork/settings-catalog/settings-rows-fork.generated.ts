@@ -141,6 +141,22 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Endpoint failover: ask a Blackfish server for its current LAN and Tailscale addresses; unset is on.","o":true}',
   forkEndpointLearnSameSubnetOnly:
     '{"t":{"k":"boolean"},"d":"Endpoint failover: use a learned address only when it is in a saved endpoint\'s /24 or is a Tailscale address; unset is on.","o":true}',
+  forkGoalJudgeCommand:
+    '{"t":{"k":"string"},"d":"Goal loop: the judge command for `--until-judge`. It is one shell line that reads a JSON object (criteria, agent_output) on stdin and prints met or not met with a reason. Unset is none, and `--until-judge` is refused. Set it in the Settings screen.","o":true}',
+  forkGoalLoop:
+    '{"t":{"k":"boolean"},"d":"Goal loop (BAD-682): `orca goal set` keeps an agent going until its check or judge passes. Off pauses every goal; unset is on.","o":true}',
+  forkGoalLoopIdleSeconds:
+    '{"t":{"k":"number"},"d":"Goal loop: seconds an agent rests after its turn before the goal is checked (5 to 600); unset is 15.","o":true}',
+  forkGoalLoopMaxRounds:
+    '{"t":{"k":"number"},"d":"Goal loop: continue messages sent before the loop stops, when the goal names none (1 to 200); unset is 10.","o":true}',
+  forkGoalLoopOutputLines:
+    '{"t":{"k":"number"},"d":"Goal loop: lines of a failing check\'s output sent back to the agent (5 to 200); unset is 40.","o":true}',
+  forkGoalLoopPostToChat:
+    '{"t":{"k":"boolean"},"d":"Goal loop: tell the agent in its chat why a goal stopped (it is told once, and its reply costs one turn); unset is on.","o":true}',
+  forkGoalLoopStallLimit:
+    '{"t":{"k":"number"},"d":"Goal loop: identical failures in a row that count as no progress (2 to 10); unset is 2.","o":true}',
+  forkGoalLoopTimeoutSeconds:
+    '{"t":{"k":"number"},"d":"Goal loop: seconds a check or the judge may run before it counts as failed (10 to 3600); unset is 600.","o":true}',
   forkIdleSweepClassifierCommand:
     '{"t":{"k":"string"},"d":"Idle recovery: the command that judges an ending (JSON on stdin, a JSON verdict on stdout); unset uses the built-in check. Set it in the Settings screen.","o":true}',
   forkIdleSweepClassifierTimeoutSeconds:

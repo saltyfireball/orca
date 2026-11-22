@@ -29,6 +29,9 @@ function detailLine(item: ForkIdleRecoveryInboxItem, now: number, t: Translate):
   if (item.source === 'contract') {
     return t('fork.decisionInbox.contractDetail', 'Done checks')
   }
+  if (item.source === 'goal') {
+    return t('fork.decisionInbox.goalDetail', 'Goal loop')
+  }
   const parts = [
     item.kind === 'chat'
       ? t('fork.decisionInbox.kind.chat', 'Chat')
@@ -170,7 +173,7 @@ export function ForkDecisionInboxRow({
               ? t('fork.decisionInbox.stopBabysit', 'Stop babysitting')
               : item.source === 'nudge'
                 ? t('fork.decisionInbox.stopNudge', 'Stop nudging')
-                : item.source === 'contract'
+                : item.source === 'contract' || item.source === 'goal'
                   ? t('fork.decisionInbox.dismissContract', 'Dismiss')
                   : item.paused
                     ? t('fork.decisionInbox.resume', 'Resume recovery')

@@ -18,6 +18,8 @@ import type { ChatHandoffRuntime } from './chat-handoff/chat-handoff-host'
 import { startForkDigest, type ForkDigestRuntime } from './digest/digest-runtime'
 import { startForkLetters } from './letters/letters-runner'
 import type { ForkLettersRuntime } from './letters/letters-deps'
+import { startForkGoalLoop } from './goal-loop/goal-live'
+import type { GoalLoopRuntime } from './goal-loop/goal-service'
 
 export function startForkRuntimeSettleServices(
   runtime: LimitResumeServiceRuntime &
@@ -26,7 +28,8 @@ export function startForkRuntimeSettleServices(
     ForkMainSyncRuntime &
     ChatHandoffRuntime &
     ForkDigestRuntime &
-    ForkLettersRuntime
+    ForkLettersRuntime &
+    GoalLoopRuntime
 ): void {
   // SLRM-2309: park chats and terminal agents stopped on a usage limit, resume at the reset.
   startForkLimitResume(runtime)
@@ -46,4 +49,6 @@ export function startForkRuntimeSettleServices(
   startForkDigest(runtime)
   // SLRM-2389: deliver letters a restart left queued, and collect answers from paired servers.
   startForkLetters(runtime)
+  // BAD-682: keep an agent going until its goal's check or judge passes, when a goal is set.
+  startForkGoalLoop(runtime)
 }
