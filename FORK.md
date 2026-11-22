@@ -1836,6 +1836,42 @@ ones `SLRM-123 `).
     (workspace permission; `--environment` for a paired server).
   - Code is in `src/shared/fork/command-guards*.ts` (rules, shell reader, settings, wire),
     `src/main/fork/command-guards/` and `src/cli/fork/command-guards-*`.
+- **Session export: a chat or agent session as Markdown, HTML or JSON, and an unlisted link
+  (BAD-688).** `orca agent export <id>` writes the conversation to a file; sharing is a separate,
+  explicit step. Idea from Pi's and goose's HTML export and the session sharing of OpenCode and
+  Kilo Code; only the idea is ported.
+  - **What is read.** A chat from its journal through the page reader every client uses
+    (`readChatHandoffRows`, back to the latest `/clear`): its requests and answers in full, each
+    tool call or file edit as one line, an earlier handoff message as a note. A terminal agent
+    through the same reader as `orca agent read`, so it holds that command's window (the newest
+    100 entries, text and tool names, no tool arguments). Reading never starts or wakes an agent.
+    `fork.sessionExport.read` returns one document (title, entries, the host's home folders); a
+    paired host's chat is read with `--environment`.
+  - **Formats.** `--format md` (default) puts one heading per turn and each run of tool lines in
+    one collapsed `<details>` block. `html` is a single file with inline CSS, no script and no
+    remote asset, and a Content-Security-Policy that forbids both; all text is escaped. `json` is
+    the document. Rendering and redaction run in the CLI (or the app), so the file is the same
+    whichever host holds the chat.
+  - **Where it goes.** The current folder, `orca-session-<id>.<ext>` (mode 0600), or `--out FILE`;
+    `--out -` prints it. Nothing is published unless `--share` is given.
+  - **Redaction** (`session-export-redact.ts`) removes API keys and tokens by shape (`sk-`,
+    GitHub, GitLab, Slack, AWS, Google, npm, JWT), values of names holding KEY, TOKEN, SECRET,
+    PASSWORD or CREDENTIAL, `Authorization` and `Bearer` values, private key blocks, credentials
+    in URLs, and any `/Users/NAME`, `/home/NAME`, `C:\Users\NAME` or the host's own home folder
+    (as `~`). It is on by default (`forkSessionExportRedact`); `--redact` and `--no-redact` decide
+    one export. A safety net, not a guarantee: read an export before you hand it on.
+  - **Share.** `orca agent export <id> --share` writes the redacted Markdown or HTML file and
+    publishes it through the existing artifacts RPC (`artifacts.share`, the signed-in desktop
+    account, `artifactSharingEnabled` respected) as an unlisted link, and prints the link with a
+    warning that anyone holding it can read the session. A share is always redacted
+    (`--no-redact` is refused), is never JSON, and runs on this desktop only.
+  - **Settings** (all `orca settings` keys): `forkSessionExportRedact` (on),
+    `forkSessionExportMaxEntries` (500, 10 to 5000, newest kept), `forkSessionExportIncludeActivity`
+    (on; off drops the tool lines).
+  - **App.** A native chat tab's right-click menu has "Copy chat as Markdown" (redaction per the
+    setting). Saving a file and sharing are the CLI's.
+  - Code is in `src/shared/fork/session-export/`, `src/main/fork/session-export/`,
+    `src/cli/fork/session-export-*` and `src/renderer/src/fork/session-export/`.
 - **Spend caps for every agent (BAD-679).** The spend cap of the agent guards no longer stops at
   native Claude chats. Every cap is off (0) until set; nothing here changes what runs today.
   - **Codex chats.** A native Codex chat's `thread/tokenUsage/updated` frame carries the thread's
@@ -2921,6 +2957,7 @@ Apply these in this order. Each one is a single commit.
 154. `BAD-737 Card routing: an owned card is never routed or asked about twice, the owner is inferred from the repos a card names, forkCardNoProjectBot; owner token for orca bot item answer from any shell`
 155. `BAD-687 Agent profiles: named launch bundles (agent, model, effort, permission mode, MCP profile, account, preamble, when-to-use note); --profile on agent launch, worktree create, worker-start and automations create; orca profiles list|show|set|remove|import|confirm; import from .claude/agents, .codex/agents and .agents/agents with the preamble held until confirmed`
 156. `BAD-742 Services mail a bot's chat as the owner: orchestration send --as-service`
+157. `BAD-688 Session export: orca agent export writes a chat or terminal agent session as Markdown, one self-contained HTML file or JSON with secrets and home paths redacted by default, and --share publishes the redacted file as an unlisted artifact link; Copy chat as Markdown in the chat tab menu`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4165,6 +4202,13 @@ Upstream files only get short hooks, which keeps merges small:
   (`fork-agent-guards.ts`), so `rpc-method-registry.ts` is untouched, and `FORK_COMMAND_GUARDS_COMMAND_SPECS` in `src/cli/specs/index.ts`; `fork-handler-groups.ts`
   adds the `fork-command-guards` group. The seven settings are intersected in
   `fork-global-settings.ts`; the settings and RPC params catalogs are regenerated.
+
+- Session export (BAD-688), two small edits in stock files: `SortableTabContextMenu.tsx` renders
+  `ForkSessionExportTabMenuItems` after the chat handoff items, and `src/cli/specs/index.ts` adds
+  `FORK_SESSION_EXPORT_COMMAND_SPECS`. `fork.sessionExport.read` is spread into
+  `FORK_CHAT_HANDOFF_METHODS` (`fork-chat-handoff.ts`), so `rpc-method-registry.ts` is untouched;
+  `fork-handler-groups.ts` adds the `fork-session-export` group. The three settings are
+  intersected in `fork-global-settings.ts`; the settings and RPC params catalogs are regenerated.
 
 - Card routing dedupe and owner token (BAD-737), small edits in stock files:
   `bots-items-owner-methods.ts` moves the body of `bots.items.owner.comment` into an exported

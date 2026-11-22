@@ -15,6 +15,7 @@ import {
   requireChatHandoffHost
 } from '../../../../fork/chat-handoff/chat-handoff-host'
 import { readChatHistoryPage } from '../../../../fork/chat-handoff/chat-handoff-history'
+import { FORK_SESSION_EXPORT_METHODS } from './fork-session-export'
 import { ensureStructuredHostInstalled } from '../structured-sessions/creation/structured-agent-session-gate'
 
 // A handoff creates a chat, which needs the accounts feature on orcad, as agentSession.create does.
@@ -25,7 +26,9 @@ async function service(ctx: RpcContext) {
   return forkChatHandoffService(ctx.runtime)
 }
 
+// BAD-688: the session export read rides along, so rpc-method-registry.ts is untouched.
 export const FORK_CHAT_HANDOFF_METHODS = [
+  ...FORK_SESSION_EXPORT_METHODS,
   defineMethod({
     name: 'fork.chatHandoff.start',
     permission: 'workspace',

@@ -133,6 +133,7 @@ import {
   ForkServersRunParams,
   ForkServersUpdateParams
 } from '../fork/server-update-wire'
+import { ForkSessionExportReadParams } from '../fork/session-export/session-export'
 import { ForkSettingsGetParams, ForkSettingsUpdateParams } from '../fork/settings-wire'
 import {
   ForkSleepersListParams,
@@ -1762,6 +1763,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.servers.rollback': ForkServersRollbackParams,
   'fork.servers.run': ForkServersRunParams,
   'fork.servers.update': ForkServersUpdateParams,
+  'fork.sessionExport.read': ForkSessionExportReadParams,
   'fork.settings.get': ForkSettingsGetParams,
   'fork.settings.update': ForkSettingsUpdateParams,
   'fork.sleepers.list': ForkSleepersListParams,

@@ -152,6 +152,12 @@ export const FORK_SETTINGS_ROWS_FORK_MORE = {
     '{"t":{"k":"string"},"d":"Server updates: where this host downloads releases from (https); unset is the fork\'s GitHub releases. Set it in the Settings file.","o":true}',
   forkServerUpdateTurnWaitMinutes:
     '{"t":{"k":"number"},"d":"Server updates: minutes a server waits for its running turns to finish before it gives up; unset is 30.","o":true}',
+  forkSessionExportIncludeActivity:
+    '{"t":{"k":"boolean"},"d":"Keep tool calls and file edits as collapsed lines in an export; unset is on.","o":true}',
+  forkSessionExportMaxEntries:
+    '{"t":{"k":"number"},"d":"Newest entries one export holds; unset is 500.","o":true}',
+  forkSessionExportRedact:
+    '{"t":{"k":"boolean"},"d":"Redact secrets and home paths in `orca agent export` files; unset is on. A share always redacts.","o":true}',
   forkShowAccountChip:
     '{"t":{"k":"boolean"},"d":"Show which Claude account each session runs on; unset is on.","o":true}',
   forkShowChildTally:

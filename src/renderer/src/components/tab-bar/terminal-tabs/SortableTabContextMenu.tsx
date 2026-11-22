@@ -18,6 +18,7 @@ import { useAllowAutoClose } from './use-allow-auto-close'
 import { CloseSplitPaneMenuItem } from '../pane-actions/CloseSplitPaneMenuItem'
 import { ForkMoveAccountTabMenuItems } from '@/fork/claude-account-move/ForkMoveAccountMenu'
 import { ForkChatHandoffTabMenuItems } from '@/fork/chat-handoff/ForkChatHandoffTabMenuItems'
+import { ForkSessionExportTabMenuItems } from '@/fork/session-export/ForkSessionExportTabMenuItems'
 
 const TAB_COLORS = [
   {
@@ -207,6 +208,13 @@ export function SortableTabContextMenu({
       {/* SLRM-2391: hand the chat to the other agent (FORK.md "Chat handoff"). */}
       {nativeChat ? (
         <ForkChatHandoffTabMenuItems worktreeId={tab.worktreeId} chat={nativeChat} />
+      ) : null}
+      {/* BAD-688: copy the chat as redacted Markdown (FORK.md "Session export"). */}
+      {nativeChat ? (
+        <ForkSessionExportTabMenuItems
+          worktreeId={tab.worktreeId}
+          sessionId={nativeChat.sessionId}
+        />
       ) : null}
       <ContextMenuSeparator />
       {closable && (canPin || isPinned) ? (

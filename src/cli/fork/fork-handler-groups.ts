@@ -294,5 +294,11 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-bot-item-answer',
     keys: ['bot item answer'],
     load: async () => (await import('./bot-item-answer.js')).FORK_BOT_ITEM_ANSWER_HANDLERS
+  },
+  // BAD-688: export a chat or agent session, or share it as a link (FORK.md "Session export").
+  {
+    name: 'fork-session-export',
+    keys: ['agent export'],
+    load: async () => (await import('./session-export-handlers.js')).FORK_SESSION_EXPORT_HANDLERS
   }
 ]
