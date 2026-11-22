@@ -1,0 +1,55 @@
+# Bytes of text Orca injects into every launched agent: bundled skill guides, installed skill
+# stubs, and the worker dispatch preamble. Each byte is paid by every worker on every turn.
+# This is a RATCHET: raise a row only on purpose, with `pnpm check:injected-context-ratchet --update`.
+# Format: <bytes> <path>
+1706 skill-guides/jira-tickets.md
+11189 skill-guides/linear-tickets.md
+45240 skill-guides/orca-cli.md
+1572 skill-guides/orca-cli/references/artifacts.md
+16869 skill-guides/orca-cli/references/automations.md
+13667 skill-guides/orca-cli/references/bot-import.md
+28027 skill-guides/orca-cli/references/bots.md
+14045 skill-guides/orca-cli/references/browser.md
+6111 skill-guides/orca-cli/references/composio.md
+13876 skill-guides/orca-cli/references/google-setup.md
+13026 skill-guides/orca-cli/references/plugins.md
+2415 skill-guides/orca-cli/references/skill-sharing.md
+26472 skill-guides/orca-computer-use.md
+8812 skill-guides/orca-emulator-android.md
+8547 skill-guides/orca-emulator.md
+9596 skill-guides/orca-jira.md
+10918 skill-guides/orca-linear.md
+23690 skill-guides/orca-per-workspace-env.md
+3096 skill-guides/orca-per-workspace-env/references/docker-ssh.md
+3652 skill-guides/orca-per-workspace-env/references/failure-modes.md
+9565 skill-guides/orca-per-workspace-env/references/provider-vercel.md
+7750 skill-guides/orca-per-workspace-env/references/ssh-host.md
+1304 skill-guides/orca-per-workspace-env/references/windows-scripts.md
+11760 skill-guides/orca-plugin-authoring.md
+3826 skill-guides/orca-plugin-authoring/references/cli.md
+12192 skill-guides/orca-plugin-authoring/references/components.md
+3187 skill-guides/orca-plugin-authoring/references/events.md
+30670 skill-guides/orca-plugin-authoring/references/host-api.md
+20527 skill-guides/orca-plugin-authoring/references/manifest.md
+10941 skill-guides/orca-plugin-authoring/references/recipes.md
+8894 skill-guides/orca-plugin-authoring/references/testing.md
+15299 skill-guides/orca-plugin-authoring/references/workflow.md
+8604 skill-guides/orchestration.md
+770 skill-guides/orchestration/references/coordinator-loop.md
+423 skill-guides/orchestration/references/low-level-topology.md
+435 skill-guides/orchestration/references/messaging-and-gates.md
+2257 skill-guides/orchestration/references/parallel-start.md
+9898 skill-guides/orchestration/references/placement-and-remote.md
+4504 skill-guides/orchestration/references/recovery-and-cleanup.md
+2640 skills/jira-tickets/SKILL.md
+2742 skills/linear-tickets/SKILL.md
+3140 skills/orca-cli/SKILL.md
+2838 skills/orca-computer-use/SKILL.md
+2745 skills/orca-emulator-android/SKILL.md
+2848 skills/orca-emulator/SKILL.md
+2591 skills/orca-jira/SKILL.md
+2599 skills/orca-linear/SKILL.md
+2768 skills/orca-per-workspace-env/SKILL.md
+2831 skills/orca-plugin-authoring/SKILL.md
+3928 skills/orchestration/SKILL.md
+10061 src/main/runtime/orchestration/workers/launch/worker-dispatch-preamble.ts

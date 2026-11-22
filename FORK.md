@@ -38,6 +38,15 @@ ones `SLRM-123 `).
 
 ## What the fork changes
 
+- **Injected-context ratchet (BAD-690).** Orca adds its own text to every agent it launches, and
+  every worker pays for each byte on every turn. `pnpm check:injected-context-ratchet` prints the
+  bytes of each bundled skill guide (`skill-guides/**/*.md`), each installed skill stub
+  (`skills/*/SKILL.md`) and the worker dispatch preamble source, plus the total, and fails when
+  any artifact grows past `config/injected-context-baseline.txt`. To grow one on purpose, run it
+  with `--update` and review the baseline diff; `--prune` lowers rows that shrank. MCP profile
+  tool lists come from user configuration, so they are not measured. The check is a fork-only
+  file under `config/scripts/static-analysis/ratchets/source-budget/`, so `run-ratchets.mjs`
+  finds it by name; `package.json` and `run-lint.mjs` each add one line for it.
 - **Run button on chat shell code blocks.** In a chat transcript, fenced blocks tagged `sh`,
   `bash`, `zsh`, `shell` or `console` get a Run button next to Copy.
   - The button flattens the fence to the one-line command that quick commands run.
@@ -2990,6 +2999,7 @@ Apply these in this order. Each one is a single commit.
 156. `BAD-742 Services mail a bot's chat as the owner: orchestration send --as-service`
 157. `BAD-688 Session export: orca agent export writes a chat or terminal agent session as Markdown, one self-contained HTML file or JSON with secrets and home paths redacted by default, and --share publishes the redacted file as an unlisted artifact link; Copy chat as Markdown in the chat tab menu`
 158. `BAD-689 Automation run triggers: automation.run_succeeded and automation.run_failed start a bot automation when another automation's run ends, with the run summary quoted as untrusted text, a per-automation switch (having the rule), a chain depth limit (forkAutomationChainMaxDepth, default 3) that records a skipped run when it stops a chain, and forkAutomationChaining to turn it off`
+159. `BAD-690 Injected-context ratchet: check:injected-context-ratchet fails when the skill guides, skill stubs or worker preamble Orca injects into agents grow past a baseline`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4266,6 +4276,11 @@ Upstream files only get short hooks, which keeps merges small:
   is in the fork settings pane. `forkCardNoProjectBot` is in `ForkCardRoutingSettings`, so
   `fork-global-settings.ts` is untouched; `settings-rows-fork.generated.ts` and
   `rpc-params-catalog.generated.ts` are regenerated.
+
+- Injected-context ratchet (BAD-690), small edits in stock files: `package.json` adds the
+  `check:injected-context-ratchet` script and `config/scripts/preflight/changed-checks/run-lint.mjs`
+  adds it to `LINT_STEPS`. The check, its test and `config/injected-context-baseline.txt` are new
+  fork files.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in
