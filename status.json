@@ -1,15 +1,13 @@
 {
   "schema": 1,
-  "state": "conflict",
-  "reason": "Rebasing the fork commits onto v1.4.270 stopped on conflicts.",
-  "upstreamVersion": "1.4.270",
-  "upstreamSha": "e2544d0df4e1f8e00cc363d4c2df828ec283558c",
-  "forkBaseVersion": "1.4.268",
-  "forkBaseSha": "5dc5548b4570b276f231d81fbb51f8f7a066e40d",
-  "conflicts": [
-    "src/main/native-chat/agent-session-wire/recovery/structured-agent-session-usage-limit-continue.ts"
-  ],
-  "since": "2026-11-22T17:16:22.017Z",
-  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/45048055396",
-  "checkedAt": "2026-11-22T17:16:22.017Z"
+  "state": "in-sync",
+  "reason": null,
+  "upstreamVersion": "1.4.271",
+  "upstreamSha": "6e73dac4be63619d7c870c21648f469a0998a54a",
+  "forkBaseVersion": "1.4.271",
+  "forkBaseSha": "6e73dac4be63619d7c870c21648f469a0998a54a",
+  "conflicts": [],
+  "since": null,
+  "runUrl": "https://github.com/saltyfireball/orca/actions/runs/45062402021",
+  "checkedAt": "2026-11-22T20:09:36.744Z"
 }
