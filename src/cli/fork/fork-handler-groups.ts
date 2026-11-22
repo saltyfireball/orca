@@ -18,6 +18,12 @@ export function withoutForkSharedHandlerKeys(
 }
 
 export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
+  // BAD-678: file checkpoints at each agent turn (FORK.md "Turn checkpoints").
+  {
+    name: 'fork-turn-checkpoints',
+    keys: ['checkpoint list', 'checkpoint diff', 'checkpoint restore', 'checkpoint undo'],
+    load: async () => (await import('./turn-checkpoints-handlers.js')).FORK_TURN_CHECKPOINT_HANDLERS
+  },
   // BAD-677: snapshots taken before a worktree is removed (FORK.md "Worktree snapshots").
   {
     name: 'fork-worktree-snapshots',

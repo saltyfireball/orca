@@ -1602,6 +1602,50 @@ named Orca Fork until SLRM-1367. `main` is always
   - Code: `src/shared/fork/worktree-snapshots.ts`, `src/main/fork/worktree-snapshots/`,
     `src/cli/fork/worktree-snapshots-*.ts`. The tests run real git in a temp repo.
 
+- **Turn checkpoints (BAD-678).** Rewind in stock Orca is a conversation rollback for Claude and
+  Codex chats; no agent got its file edits reverted, so one bad unattended turn meant hand git
+  work. Now every agent, terminal or chat, gets a file checkpoint per turn that can be diffed and
+  restored (Claude Code, Cline, Gemini CLI, OpenCode and Cursor give their own users the same).
+  - The host follows the agent status feed (`agentHookServer.subscribeEnrichedStatus`), which
+    carries terminal agents' turns (hooks, OSC 7501) and native chats' alike. A workspace's first
+    turn start takes a `baseline`; each turn end takes a `turn` checkpoint when the files differ
+    from the newest one, and none otherwise. Capture runs after the turn ended, off its path, and
+    one workspace's captures and restores run one at a time.
+  - A checkpoint is a commit of the whole working tree (tracked changes and untracked files,
+    never ignored ones, so `.env` stays out) in a shadow bare repository under the data folder
+    (`fork-turn-checkpoints/<hash>.git`, user-only permissions, never pushed) with its own index,
+    so a later snapshot only rereads files whose stat changed. The project's own `.git` (index,
+    refs, stash, objects) is never touched, and a folder workspace with no git works the same. The
+    project's `info/exclude` is honoured. New files over `forkTurnCheckpointMaxFileMb` (5) are
+    measured before git reads them and left out. Folders that are a home folder or a drive root are
+    skipped. Embedded git repositories inside a workspace are recorded as a pointer, not content.
+  - `orca checkpoint list|diff|restore|undo [--worktree S]`. `diff <id>` shows what the turn
+    changed against the checkpoint before it, and leaves out files a merge, pull, checkout, rebase
+    or reset brought in (read from the project's HEAD reflog since the previous checkpoint) and
+    counts them; `--now` compares with the files on disk, `--patch` adds the patch. `restore <id>`
+    first takes a `pre-restore` checkpoint of the files as they are (so edits made since the last
+    turn are not lost), deletes files the checkpoint lacks, writes the rest back, and records a
+    `restore` checkpoint. `undo` restores the state before the latest restore; run again it is a
+    redo. Files are written with `checkout-index`, which will not write through a symlinked
+    folder, and deletions refuse a path through one.
+  - Restore is refused while another agent of this host is `working` or `blocked` in the same
+    directory; `--force` overrides (a stale row would otherwise lock the user out).
+  - Retention: `forkTurnCheckpointKeep` (50) newest and `forkTurnCheckpointRetentionDays` (7)
+    per workspace, pruned (with a `gc`) after each checkpoint; the newest is always kept. A store
+    whose newest checkpoint expired is deleted at host start. `forkTurnCheckpoints` (on by default)
+    turns the feature off. Checkpoints keep the session id, agent and the start of the prompt, so a
+    chat's rewind can be paired with a file restore.
+  - Local checkouts only: the RPC (`fork.turnCheckpoints.list|diff|restore|undo`) answers on the
+    host that runs the workspace, so a paired server keeps and restores its own; a workspace on an
+    SSH host or in a WSL distro is not checkpointed. Not built yet: a Checkpoints list in the chat
+    or workspace UI.
+  - Measured (2026-11-22, a Mac laptop SSD, 1000 random 1 MB files = 1 GB): the first snapshot
+    took 16.9 s, a turn with no change 60 ms, and a turn that rewrote 3 files and added one 177 ms.
+    The perf contract test asserts an incremental snapshot of 4000 files stays under 2 s.
+  - Code: `src/shared/fork/turn-checkpoints.ts`, `src/main/fork/turn-checkpoints/`,
+    `src/main/runtime/rpc/methods/fork/fork-turn-checkpoints.ts` and
+    `src/cli/fork/turn-checkpoints-*.ts`. The tests run real git in temp folders.
+
 - **Worktree ports (SLRM-2383).** Each workspace holds a block of ports on the host that runs it,
   so many workers on one machine stop fighting over dev-server ports (Conductor gives each
   workspace 10 ports the same way). Stock Orca only finds ports once something listens on them.
@@ -2416,6 +2460,7 @@ Apply these in this order. Each one is a single commit.
 141. `BAD-734 Auto-close finished bot chats: card done, reported back or idle; the list clients get leaves closed chats out; orca bot chats-cleanup`
 142. `BAD-677 Worktree snapshots: save uncommitted, untracked and unpushed work under refs/orca/snapshots before any worktree removal; orca worktree snapshots and restore`
 143. `BAD-676 Completion contract: --done-check and --require-pr-checks on a Task; Orca runs them before a worker's done settles it, turns a failure back to the worker as untrusted output, and escalates after the rounds`
+144. `BAD-678 Turn checkpoints: shadow-git file checkpoints at the end of each agent turn for every harness; orca checkpoint list, diff, restore and undo`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3187,6 +3232,18 @@ Upstream files only get short hooks, which keeps rebases small:
   - `fork-handler-groups.ts` adds the `fork-worktree-snapshots` group and `specs/index.ts` spreads
     `FORK_WORKTREE_SNAPSHOT_COMMAND_SPECS`.
   - `ForkGlobalSettings` gains `ForkWorktreeSnapshotSettings`; the settings catalog is regenerated.
+
+- Turn checkpoints (BAD-678), from `src/shared/fork/turn-checkpoints.ts`,
+  `src/main/fork/turn-checkpoints/` and `src/cli/fork/turn-checkpoints-*.ts`:
+  - `installForkReady` and `installForkHeadlessHost` call `installForkTurnCheckpoints`;
+    `startForkRuntimeSettleServices` calls `startForkTurnCheckpoints` (it subscribes to
+    `agentHookServer.subscribeEnrichedStatus`, so no upstream status file changes).
+  - `fork-lost-work.ts` spreads `FORK_TURN_CHECKPOINT_METHODS` into `FORK_LOST_WORK_METHODS`
+    (`fork.turnCheckpoints.list|diff|restore|undo`); `rpc-params-catalog.generated.ts` is
+    regenerated with it.
+  - `fork-handler-groups.ts` adds the `fork-turn-checkpoints` group and `specs/index.ts` spreads
+    `FORK_TURN_CHECKPOINT_COMMAND_SPECS`.
+  - `ForkGlobalSettings` gains `ForkTurnCheckpointSettings`; the settings catalog is regenerated.
 
 - Worktree ports (SLRM-2383), from `src/shared/fork/worktree-ports*.ts`,
   `src/main/fork/worktree-ports/` and `src/cli/fork/worktree-ports-cli.ts`:

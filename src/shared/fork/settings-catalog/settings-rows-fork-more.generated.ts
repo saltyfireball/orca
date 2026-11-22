@@ -150,6 +150,14 @@ export const FORK_SETTINGS_ROWS_FORK_MORE = {
     '{"t":{"k":"boolean"},"d":"Sync status: say when the fork is behind upstream or its last sync failed; unset is on.","o":true}',
   forkSyncNoticeStaleDays:
     '{"t":{"k":"number"},"d":"Sync status: days without a new status before it is called stale; unset is 3, 0 is off.","o":true}',
+  forkTurnCheckpointKeep:
+    '{"t":{"k":"number"},"d":"Checkpoints kept per workspace, newest first (2 to 1000); unset is 50.","o":true}',
+  forkTurnCheckpointMaxFileMb:
+    '{"t":{"k":"number"},"d":"Files larger than this many MB are left out of checkpoints (1 to 1024); unset is 5.","o":true}',
+  forkTurnCheckpointRetentionDays:
+    '{"t":{"k":"number"},"d":"Days a checkpoint is kept (1 to 365); unset is 7.","o":true}',
+  forkTurnCheckpoints:
+    '{"t":{"k":"boolean"},"d":"Checkpoint a workspace\'s files at the end of each agent turn; unset is on.","o":true}',
   forkUsageCardPattern:
     '{"t":{"k":"string"},"d":"Regex over branch or workspace name; group 1 (or the match) is the card.","o":true}',
   forkUsagePrices:

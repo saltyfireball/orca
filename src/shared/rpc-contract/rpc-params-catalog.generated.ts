@@ -131,6 +131,12 @@ import {
   ForkSnoozeSetParams,
   ForkSnoozeWakeParams
 } from '../fork/snooze-wire'
+import {
+  ForkTurnCheckpointsDiffParams,
+  ForkTurnCheckpointsListParams,
+  ForkTurnCheckpointsRestoreParams,
+  ForkTurnCheckpointsUndoParams
+} from '../fork/turn-checkpoints'
 import { ForkUsageReportParams } from '../fork/usage-report'
 import {
   ForkWebhookAddParams,
@@ -1734,6 +1740,10 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.snooze.list': ForkSnoozeListParams,
   'fork.snooze.set': ForkSnoozeSetParams,
   'fork.snooze.wake': ForkSnoozeWakeParams,
+  'fork.turnCheckpoints.diff': ForkTurnCheckpointsDiffParams,
+  'fork.turnCheckpoints.list': ForkTurnCheckpointsListParams,
+  'fork.turnCheckpoints.restore': ForkTurnCheckpointsRestoreParams,
+  'fork.turnCheckpoints.undo': ForkTurnCheckpointsUndoParams,
   'fork.usageLedger.report': ForkUsageReportParams,
   'fork.webhooks.add': ForkWebhookAddParams,
   'fork.webhooks.list': ForkWebhookListParams,

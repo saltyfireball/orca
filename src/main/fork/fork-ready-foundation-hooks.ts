@@ -6,6 +6,7 @@ import { watchForkUsageRetention } from './usage-ledger/usage-ledger-service'
 import { installForkVisualFallbackSettings } from './visual-image/visual-image-settings'
 import { installForkWorktreePorts } from './worktree-ports/worktree-ports-service'
 import { installForkWorktreeSnapshots } from './worktree-snapshots/worktree-snapshot-service'
+import { installForkTurnCheckpoints } from './turn-checkpoints/turn-checkpoint-live'
 import { installForkPrBabysit } from './pr-babysit/pr-babysit-hooks'
 import { installForkQuickTask } from './quick-task/quick-task-app'
 
@@ -22,6 +23,7 @@ export async function installForkReady(
   installForkVisualFallbackSettings(store)
   installForkWorktreePorts(store)
   installForkWorktreeSnapshots(store)
+  installForkTurnCheckpoints(store)
   installForkPrBabysit(store)
   // SLRM-2428: the quick task box and its global shortcut.
   installForkQuickTask(store)
