@@ -34,7 +34,12 @@ const git: MainSyncGit = async (args, options) =>
 /** Checkouts with live terminals or a working agent, from the runtime's own workspace rows. */
 async function inUsePaths(runtime: ForkMainSyncRuntime): Promise<Set<string>> {
   const { worktrees } = await runtime.getWorktreePs()
-  const uses = lostWorkUseFromPs(worktrees, sleeperSourcesFromPs(worktrees, forkSleeperChatFacts()))
+  const uses = lostWorkUseFromPs(
+    worktrees,
+    sleeperSourcesFromPs(worktrees, forkSleeperChatFacts(), {
+      includeWorkers: true
+    })
+  )
   const paths = new Set<string>()
   for (const row of worktrees) {
     const use = uses.get(row.worktreeId)

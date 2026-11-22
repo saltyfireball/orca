@@ -70,6 +70,25 @@ describe('sleeperSourcesFromPs', () => {
     })
   })
 
+  it('lists a dispatched worker only when workers are asked for (BAD-542)', () => {
+    const worktrees = [
+      {
+        worktreeId: 'w1',
+        displayName: 'alpha',
+        repo: 'repo',
+        agents: [
+          agent({
+            paneKey: chatPane,
+            parentPaneKey: 'tab-2:leaf-1',
+            state: 'working'
+          })
+        ]
+      }
+    ]
+    expect(sleeperSourcesFromPs(worktrees, new Map())).toHaveLength(0)
+    expect(sleeperSourcesFromPs(worktrees, new Map(), { includeWorkers: true })).toHaveLength(1)
+  })
+
   it('reads a chat with no running provider as asleep and a remote host as not local', () => {
     const sources = sleeperSourcesFromPs(
       [
@@ -83,10 +102,18 @@ describe('sleeperSourcesFromPs', () => {
       ],
       new Map()
     )
-    expect(sources[0]).toMatchObject({ kind: 'chat', processAlive: false, local: false })
+    expect(sources[0]).toMatchObject({
+      kind: 'chat',
+      processAlive: false,
+      local: false
+    })
     expect(sources[0].workspace).toBe('repo')
     // A finished terminal agent with no live PTY has nothing left to sleep.
-    expect(sources[1]).toMatchObject({ kind: 'terminal', processAlive: false, local: false })
+    expect(sources[1]).toMatchObject({
+      kind: 'terminal',
+      processAlive: false,
+      local: false
+    })
   })
 
   it('counts a chat the runtime says its host owns as awake', () => {

@@ -13,6 +13,9 @@ import {
 } from '../../shared/fork/lost-work'
 import type { LostWorkUse } from '../../shared/fork/lost-work-use'
 
+// BAD-542: a scan of every project takes more than the stock 60 second RPC limit.
+const LOST_WORK_SCAN_TIMEOUT_MS = 10 * 60_000
+
 const RISK: Record<LostWorkRisk, string> = {
   'would-lose-work': 'would lose work',
   'needs-look': 'needs a look',
@@ -128,7 +131,9 @@ export const FORK_LOST_WORK_HANDLERS: Record<string, CommandHandler> = {
   'lost-work': async (ctx) => {
     const repo = getOptionalStringFlag(ctx.flags, 'repo')
     const result = await ctx.client
-      .call<LostWorkScanResult>('fork.lostWork.scan', repo ? { repo } : {})
+      .call<LostWorkScanResult>('fork.lostWork.scan', repo ? { repo } : {}, {
+        timeoutMs: LOST_WORK_SCAN_TIMEOUT_MS
+      })
       .catch((error: unknown) => {
         if (error instanceof RuntimeClientError && error.code === 'method_not_found') {
           throw new RuntimeClientError(
