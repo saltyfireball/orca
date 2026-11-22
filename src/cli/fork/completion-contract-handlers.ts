@@ -6,8 +6,11 @@ import { RuntimeClientError } from '../runtime/connection/types'
 import type { ForkCompletionContractShowResult } from '../../shared/fork/completion-contract-wire'
 
 export function formatForkContract(result: ForkCompletionContractShowResult): string {
+  const review = formatForkReview(result)
   if (!result.declared) {
-    return `Task ${result.taskId} declares no done checks.`
+    return result.review
+      ? review.join('\n')
+      : `Task ${result.taskId} declares no done checks and asks for no review.`
   }
   const lines = [
     `Task ${result.taskId}: ${result.checks.length} command check(s)${result.requirePrChecks ? ', pull request checks required' : ''}, ${result.failedRounds} failed round(s)${result.escalated ? ', escalated' : ''}`
@@ -27,7 +30,26 @@ export function formatForkContract(result: ForkCompletionContractShowResult): st
       }
     }
   }
-  return lines.join('\n')
+  return [...lines, ...review].join('\n')
+}
+
+function formatForkReview(result: ForkCompletionContractShowResult): string[] {
+  const { review } = result
+  if (!review) {
+    return []
+  }
+  const lines = [
+    `Task ${result.taskId}: review of focus ${review.focus} by ${review.agent ?? 'the other provider'}${review.escalated ? ', escalated' : ''}`
+  ]
+  for (const run of review.runs) {
+    lines.push(
+      `${run.startedAt} round ${run.round} ${run.reviewer} (${run.model}) at ${run.headSha.slice(0, 12)}: ${run.status}${run.status === 'findings' ? ` (${run.findingsCount})` : ''}`
+    )
+    if (run.output) {
+      lines.push(...run.output.split('\n').map((line) => `    ${line}`))
+    }
+  }
+  return lines
 }
 
 export const FORK_COMPLETION_CONTRACT_HANDLERS: Record<string, CommandHandler> = {

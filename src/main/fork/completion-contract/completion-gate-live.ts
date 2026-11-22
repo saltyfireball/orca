@@ -16,6 +16,7 @@ import { runCompletionGate, type GateDeps, type GateWorkspace } from './completi
 import { checkRunnerFor } from './check-runner'
 import type { PrChecksPort } from './pr-checks'
 import { notifyContractInboxChanged } from './contract-inbox'
+import { forkReviewWorkerDone, forkStoreReviewGate } from '../reviewer-gate/reviewer-gate-live'
 
 /** Saves a Task's declared contract; a request without one changes nothing. */
 export function forkStoreDoneContract(
@@ -27,6 +28,8 @@ export function forkStoreDoneContract(
   if (contract) {
     saveContract(db, taskId, contract)
   }
+  // BAD-683: a review the request asked for rides the same hook.
+  forkStoreReviewGate(db, taskId, rawParams)
 }
 
 function settingsOf(runtime: OrcaRuntimeService): CompletionContractSettings {
@@ -136,7 +139,7 @@ function workerOutcomeOf(payload: string | undefined): 'succeeded' | 'failed' {
  * Runs the Task's done checks for a worker_done. `answer` carries the receipt for a done that was
  * turned back; an escalation changes the message into an `escalation` so the Task is not settled.
  */
-export async function forkGateWorkerDone<P extends SendShape>(
+async function gateByContract<P extends SendShape>(
   runtime: OrcaRuntimeService,
   db: OrchestrationDb,
   params: P,
@@ -187,4 +190,27 @@ export async function forkGateWorkerDone<P extends SendShape>(
         }
       }
   }
+}
+
+/**
+ * The two gates a worker_done passes, in order: the done checks, then the reviewer (BAD-683),
+ * so a second agent is never asked to review work whose own checks fail.
+ */
+export async function forkGateWorkerDone<P extends SendShape>(
+  runtime: OrcaRuntimeService,
+  db: OrchestrationDb,
+  params: P,
+  dispatchId: string | undefined
+): Promise<{ kind: 'carry-on'; params: P } | { kind: 'answer'; receipt: unknown }> {
+  const contract = await gateByContract(runtime, db, params, dispatchId)
+  if (contract.kind === 'answer' || contract.params.type !== 'worker_done') {
+    return contract
+  }
+  return forkReviewWorkerDone(
+    runtime,
+    db,
+    contract.params,
+    dispatchId,
+    liveGateDeps(runtime, db).workspace
+  )
 }

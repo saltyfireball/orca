@@ -2420,6 +2420,58 @@ ones `SLRM-123 `).
     state machine, fencing and settings), `src/cli/fork/completion-contract-*.ts` and
     `src/main/runtime/rpc/methods/fork/fork-completion-contract.ts`.
 
+- **Reviewer gate: a second agent reviews a worker's head before its done settles the Task (BAD-683).**
+  Cross-model review was a ritual run by hand. A Task can now ask for it, and Orca runs it when the
+  worker reports done. A Task that asks for none (and with `forkReviewerGateAllTasks` off) behaves
+  exactly as before.
+  - **Asking.** `orchestration task-create` and `worker-start` take `--review`, `--review-focus
+    correctness|security|perf`, `--review-agent claude|codex` and `--review-max-rounds <1-10>`
+    (any of them asks for a review). The reviewer is the other provider than the worker's (Claude
+    worker, Codex reviewer; anything else is reviewed by Codex). `forkReviewerGateAllTasks` makes
+    every Task ask. The request is stored with the Task in two fork-owned tables of the
+    orchestration database (`fork_review_gates`, `fork_review_runs`, created on first use).
+  - **Order.** The completion contract (BAD-676) runs first: a second agent is never asked to
+    review work whose own done checks fail.
+  - **Review.** The first `worker_done` of a head (the checkout's commit plus its uncommitted
+    changes, hashed) starts exactly one reviewer on that head, in the worker's workspace on the
+    host the workspace lives on, and the report is turned back at once ("held", the Task stays
+    open). The reviewer is a command from settings, run with a prompt Orca writes (the head, the
+    focus, read-only rules; no worker text). Defaults are read-only by the tool's own flags:
+    `codex exec --sandbox read-only` and `claude -p --permission-mode plan` with read and
+    `git diff/log/show/status` tools only, `--disallowedTools Edit Write`. Orca also reads the
+    checkout before and after: a review that changed it is not trusted (an error run). The
+    reviewer ends with `VERDICT: CLEAN` or `VERDICT: FINDINGS <n>`.
+  - **Result.** It is sent to the worker's own chat (or terminal) as a message: findings fenced as
+    data from another agent, or "clean, report done again". A clean head settles the Task on the
+    worker's next report with `Reviewed by <reviewer> (<model>)` added to the done message; a
+    report of the same head with findings is turned back without a new review or a round.
+  - **Rounds.** Each review that finds something is a round, up to the Task's `--review-max-rounds`
+    else `forkReviewerGateMaxRounds` (2). A new head is reviewed again; past the limit (the
+    worker is told the rounds are used up) the next report is delivered to the coordinator as an
+    `escalation` and the Task stays open. A review that gave no verdict (timeout, no VERDICT line,
+    the checkout changed) is retried on the next report of the head, then escalates.
+  - **Evidence.** `orca contract show <task_id>` also lists the review request and every run:
+    reviewer, model, head, round, status, findings count and the findings text.
+  - **Settings** (Settings > Blackfish, `orca settings`): `forkReviewerGate` (on; off makes every
+    request a plain done), `forkReviewerGateAllTasks` (off), `forkReviewerGateMaxRounds` (2),
+    `forkReviewerGateTimeoutSeconds` (1200), `forkReviewerGateMaxConcurrent` (2 reviews at once on
+    a host; the rest wait), `forkReviewerGateOutputLines` (120), `forkReviewerClaudeCommand` and
+    `forkReviewerCodexCommand` (empty is the read-only default; `{prompt}` and `{model}` are filled
+    in; the line is run with `exec`), `forkReviewerGateModel` (empty is the tool's own default).
+  - **Security.** The command comes from settings and the prompt from Orca, never from a worker.
+    The reviewer's words reach the worker and the coordinator only inside a fence longer than any
+    backtick run in them. A reviewer that reads a hostile repository can be talked into a
+    wrong verdict: a clean verdict is evidence, not proof.
+  - **Limits.** Folder (non-git) workspaces have no commit, so they are not reviewed. The gate runs
+    on the host that holds the Task's database. The result message is sent when the worker is idle
+    (retried for about 8 minutes); a worker that never receives it is not stopped, but nothing
+    wakes it. The review does not use the agent launch queue (BAD-518); `forkReviewerGateMaxConcurrent`
+    bounds it. No Decision inbox row yet: an escalation is the message to the coordinator.
+  - Code is in `src/main/fork/reviewer-gate/` (`reviewer-gate.ts` the engine over the store,
+    `reviewer-store.ts`, `reviewer-gate-live.ts` the hooks), `src/shared/fork/reviewer-gate.ts`
+    (params, settings, prompt, verdict parser, the pure decision and texts),
+    `src/cli/fork/reviewer-gate-flag.ts` and the review part of `fork.completionContract.show`.
+
 - **Goal loop: keep any agent going until a check or a judge passes (BAD-682).** Goals were
   harness-native (Codex and Grok thread goals, Claude /goal), so a terminal agent or a provider
   without a goal mode could not be told "keep going until the tests pass", and nothing capped such a
@@ -2690,6 +2742,7 @@ Apply these in this order. Each one is a single commit.
 148. `BAD-682 Goal loop: orca goal set keeps any agent going until a check command or a judge passes, under a round limit, a budget and a stall limit; a stop is told in chat and the Decision inbox`
 149. `BAD-681 Worker retry policy: Orca restarts a worker that exited, was lost or hit a provider error in its workspace after an exponential backoff, up to a limit; per Run or by setting, off by default; orca retry policy and show`
 150. `BAD-684 Agent slice limits: on Linux the terminal host's systemd slice gets CPUWeight, IOWeight, TasksMax and MemoryHigh, so a runaway agent cannot take the server down`
+151. `BAD-683 Reviewer gate: --review on a Task has a second agent (the other provider) review the worker's exact head read-only before its done settles; findings go back to the worker as a message, rounds are capped, then the Task escalates`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3890,6 +3943,15 @@ Upstream files only get short hooks, which keeps merges small:
   `forkApplyAgentSlice(resolved, log)` right after the terminal scopes resolve. The limits are
   environment variables read by the terminal host, so there are no store settings and no catalog
   to regenerate.
+
+- Reviewer gate (BAD-683), small edits in stock files and fork files: `completion-gate-live.ts`
+  (`forkGateWorkerDone` runs the review after the contract passed; `forkStoreDoneContract` also
+  saves the request); `orchestration-params.ts` (`TaskCreateParams`) and
+  `orchestration-worker-start-params.ts` spread `ForkReviewGateShape`;
+  `readForkDoneContractFlags` and `withForkDoneContractFlags` carry the four `--review` flags, so
+  `task-handlers.ts`, `worker-launch-handler.ts` and `specs/index.ts` are untouched.
+  `fork.completionContract.show` gains a `review` field. The nine settings are intersected in
+  `fork-global-settings.ts`; `settings-rows-fork-more.generated.ts` is regenerated.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

@@ -1,4 +1,5 @@
 import { ForkDoneContractShape } from '../../fork/completion-contract'
+import { ForkReviewGateShape } from '../../fork/reviewer-gate'
 import { z } from 'zod'
 import {
   OptionalBoolean,
@@ -82,6 +83,7 @@ export const InboxParams = z.object({
 
 export const TaskCreateParams = z.object({
   ...ForkDoneContractShape,
+  ...ForkReviewGateShape,
   spec: requiredString('Missing --spec'),
   taskTitle: OptionalString,
   displayName: OptionalString,

@@ -3,6 +3,7 @@ import { OptionalFiniteNumber, OptionalString, requiredString } from '../rpc-par
 import { CrossStoreParentRefSchema } from '../workspaces/cross-store-parent-params'
 import { FORK_CARD_KEY_PATTERN } from '../../fork/card-routing'
 import { ForkDoneContractShape } from '../../fork/completion-contract'
+import { ForkReviewGateShape } from '../../fork/reviewer-gate'
 
 export const OptionalWorkerLaunchPreference = z
   .string()
@@ -44,6 +45,7 @@ export const WorkerStartParams = z
     /** Fork (BAD-694): the Linear card a new workspace is linked to, so its agent lists under the card. */
     forkCard: z.string().regex(FORK_CARD_KEY_PATTERN).optional(),
     ...ForkDoneContractShape,
+    ...ForkReviewGateShape,
     /** Only from the paired Orca coordinating this Run: its own ID for the Task this start creates or reopens. */
     adoptTaskId: OptionalString,
     /** Only from the paired Orca coordinating this Run: its own workspace, the parent of a new-child here. */
