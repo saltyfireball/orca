@@ -26,6 +26,7 @@ import {
   resolveOrchestrationTerminalHandle,
   throwNoActiveSenderTerminal
 } from '../identity/terminal-identity'
+import { assertServiceSend } from '../identity/service-sender'
 
 const WORKER_DONE_UNAVAILABLE_RETRY_MS = 120_000
 
@@ -106,8 +107,15 @@ export const ORCHESTRATION_SEND_HANDLER: Record<string, CommandHandler> = {
       throwNoActiveSenderTerminal()
     }
 
+    // Fork (BAD-742): a service with no terminal sends with no sender, as the owner.
+    const asService = flags.has('as-service')
+    if (asService) {
+      assertServiceSend(flags, to, type)
+    }
     // Preserve the env handle across remints for older runtimes' lifecycle ownership checks.
-    const from = await resolveOrchestrationTerminalHandle(flags, cwd, client, 'from')
+    const from = asService
+      ? undefined
+      : await resolveOrchestrationTerminalHandle(flags, cwd, client, 'from')
     const sendParams = {
       from,
       to,

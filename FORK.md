@@ -2685,6 +2685,23 @@ ones `SLRM-123 `).
   - Code is in `src/shared/fork/agent-profiles/`, `src/main/fork/agent-profiles/` and
     `src/cli/fork/agent-profile-*`.
 
+- **Services mail a bot's chat as the owner (BAD-742).** A background service that runs outside
+  every Orca terminal and chat (an MCP bridge, a scheduler) has no handle to send from, so
+  `orca orchestration send` refused it with `no_active_sender_terminal`.
+  - **Use.** `orca orchestration send --as-service --to bot:<name> [--chat <id> | --item <n>]
+    --subject ... --body-file -` sends with no sender: the host already treats a caller with no
+    terminal or chat as the owner's own orchestration, so the mail lands in the chat as the
+    owner's. Nothing is set by default; the flag is opt-in per command.
+  - **Refused when it could be misused.** From inside an Orca terminal or chat (any of
+    `ORCA_TERMINAL_HANDLE`, `ORCA_PANE_KEY`, its scrub-safe alias, `CODEX_THREAD_ID`, a chat
+    session marker or id, a bot tools token) it is refused, because that agent's mail is held to
+    whom its turn is for and `--as-service` would drop that. It is also refused with `--from`,
+    `--on`, a recipient that is not `bot:<name>`, and `worker_done` or `heartbeat`. Without the
+    flag, nothing changes: terminals send as their terminal and an identity-less process is
+    still refused. The caller reaches Orca the way every CLI call does, with the runtime's own
+    authentication.
+  - Code is in `src/cli/orchestration/identity/service-sender.ts`.
+
 - **Pause all: one switch that stops every unattended feature from starting work (BAD-685).**
   `orca pause-all` writes one persisted switch; while it is engaged, nothing unattended starts new
   work. Turns already running finish. `orca resume-all` releases it, and `orca pause-status` shows
@@ -2903,6 +2920,7 @@ Apply these in this order. Each one is a single commit.
 153. `BAD-686 Command guards: Orca-managed deny rules for an agent's shell commands (delete outside the workspace, force push, default-branch rewrites, worktree removal) in Claude Code's PreToolUse hook, with per-project allows, an audit list and a list of unguarded agents; orca command-guards`
 154. `BAD-737 Card routing: an owned card is never routed or asked about twice, the owner is inferred from the repos a card names, forkCardNoProjectBot; owner token for orca bot item answer from any shell`
 155. `BAD-687 Agent profiles: named launch bundles (agent, model, effort, permission mode, MCP profile, account, preamble, when-to-use note); --profile on agent launch, worktree create, worker-start and automations create; orca profiles list|show|set|remove|import|confirm; import from .claude/agents, .codex/agents and .agents/agents with the preamble held until confirmed`
+156. `BAD-742 Services mail a bot's chat as the owner: orchestration send --as-service`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4133,6 +4151,12 @@ Upstream files only get short hooks, which keeps merges small:
   `profiles`; `FORK_AGENT_PROFILE_METHODS` is spread into `FORK_LAUNCH_DEFAULTS_METHODS`
   (`rpc-method-registry.ts` is untouched) and `rpc-params-catalog.generated.ts` is regenerated. The two settings are intersected in
   `fork-global-settings.ts`; the settings catalog is regenerated.
+
+- Services mail a bot (BAD-742), two small edits in stock files, `message-send-handler.ts`
+  calls `assertServiceSend` when `--as-service` is given and then sends with no `from`, and
+  `withForkMcpProfileFlag` also calls `withForkServiceSendFlag` (`src/cli/fork/service-send-specs.ts`),
+  which adds the boolean `--as-service` flag, usage and note to the `orchestration send` spec, so
+  `src/cli/specs/orchestration.ts` is untouched. The host is untouched.
 
 - Command guards (BAD-686), one small edit in a stock file: `agent-tool-plugin-hooks.ts`
   (`respondAfterAgentToolPluginHooks`) asks `forkCommandGuardAnswer` before it reads the plugin
