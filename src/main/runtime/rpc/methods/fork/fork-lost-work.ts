@@ -25,10 +25,15 @@ async function withUse(result: LostWorkScanResult, ctx: RpcContext): Promise<Los
     const { worktrees } = await ctx.runtime.getWorktreePs()
     const uses = lostWorkUseFromPs(
       worktrees,
-      sleeperSourcesFromPs(worktrees, forkSleeperChatFacts())
+      sleeperSourcesFromPs(worktrees, forkSleeperChatFacts(), {
+        includeWorkers: true
+      })
     )
     const settings = resolveLostWorkSettings(forkLostWorkStore()?.getSettings().forkLostWork)
-    return { ...result, items: annotateLostWorkUse(result.items, uses, settings.inUse) }
+    return {
+      ...result,
+      items: annotateLostWorkUse(result.items, uses, settings.inUse)
+    }
   } catch {
     return result
   }

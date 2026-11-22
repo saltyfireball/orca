@@ -40,14 +40,17 @@ type PsWorktree = Pick<
 
 export function sleeperSourcesFromPs(
   worktrees: readonly PsWorktree[],
-  chatFacts: ReadonlyMap<string, SleeperChatHostFact>
+  chatFacts: ReadonlyMap<string, SleeperChatHostFact>,
+  // BAD-542: an orchestration worker's row has a parentPaneKey too, and a workspace with a live
+  // worker is in use, so the lost work checks ask for those rows as well.
+  options: { includeWorkers?: boolean } = {}
 ): SleeperSource[] {
   const sources: SleeperSource[] = []
   for (const worktree of worktrees) {
     const workspace = worktree.displayName || worktree.repo || worktree.worktreeId
     const localHost = !worktree.hostId || worktree.hostId === LOCAL_EXECUTION_HOST_ID
     for (const row of worktree.agents ?? []) {
-      if (row.parentPaneKey) {
+      if (row.parentPaneKey && !options.includeWorkers) {
         continue
       }
       const sessionId = sleeperChatSessionId(row.paneKey)

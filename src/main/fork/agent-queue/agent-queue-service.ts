@@ -10,6 +10,7 @@ import {
   type ForkAgentQueueStatus
 } from '../../../shared/fork/agent-queue'
 import type { ForkGlobalSettings } from '../../../shared/fork/fork-global-settings'
+import { parseOrcaSessionAddress } from '../../../shared/agent-session/identity/orca-session-address'
 import { structuredAgentSessionIdFromTabId } from '../../../shared/agent-session/view/structured-agent-session-tab-id'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { AgentLaunchGate } from './agent-launch-gate'
@@ -30,7 +31,10 @@ export type ForkAgentQueueTerminals = {
 }
 
 let readSettings: () => ForkGlobalSettings | undefined = () => undefined
-let terminals: ForkAgentQueueTerminals = { ptys: () => undefined, ptyIdOfHandle: () => undefined }
+let terminals: ForkAgentQueueTerminals = {
+  ptys: () => undefined,
+  ptyIdOfHandle: () => undefined
+}
 let gate: AgentLaunchGate | null = null
 const changeListeners = new Set<() => void>()
 const workers = new Map<string, WorkerNote>()
@@ -106,7 +110,12 @@ function parentKeyOf(from: string | undefined): string | undefined {
   if (!from) {
     return undefined
   }
-  const chat = structuredAgentSessionIdFromTabId(from) ?? workerHandles.get(from)
+  // BAD-524: a chat coordinator passes its `orca_session_id:<id>` mail address as `from`; without
+  // parsing it no worker ever linked to its coordinator and the usage rollup stayed flat.
+  const chat =
+    structuredAgentSessionIdFromTabId(from) ??
+    parseOrcaSessionAddress(from) ??
+    workerHandles.get(from)
   if (chat) {
     return chat
   }
