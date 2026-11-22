@@ -59,6 +59,15 @@ const WaitingSchema = z.object({
   since: time
 })
 
+const RetrySchema = z.object({
+  taskId: text,
+  title: text,
+  attempt: z.number().int().min(1),
+  reason: text,
+  status: z.enum(['scheduled', 'started', 'failed', 'cancelled']),
+  at: time
+})
+
 const CostSchema = z.object({
   days: z.number().int().min(1),
   chats: z.number().int().min(0),
@@ -72,6 +81,7 @@ export const ForkDigestSectionSchema = z.object({
   tasks: rows(TaskSchema),
   pullRequests: rows(PullRequestSchema),
   waiting: rows(WaitingSchema),
+  retries: rows(RetrySchema).optional(),
   cost: CostSchema.nullable().catch(null),
   notes: z.array(text).max(20).catch([])
 })

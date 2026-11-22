@@ -194,6 +194,14 @@ export const FORK_SETTINGS_ROWS_FORK_MORE = {
     '{"t":{"k":"boolean"},"d":"Worker cleanup: clean up once the worker reports done; unset is on.","o":true}',
   forkWorkerCleanupOnMerged:
     '{"t":{"k":"boolean"},"d":"Worker cleanup: clean up once the worker\'s branch is merged; unset is off.","o":true}',
+  forkWorkerRetry:
+    '{"t":{"k":"boolean"},"d":"Worker retry (BAD-681): restart a worker that exited, was lost or hit a provider error, in its workspace after a backoff, instead of waiting for the coordinator. A Run\'s own policy (`orca retry policy --run`) overrides it. Off unless true.","o":true}',
+  forkWorkerRetryBackoffSeconds:
+    '{"t":{"k":"number"},"d":"Worker retry: seconds before the first restart; each later one waits twice as long (1 to 3600); unset is 30.","o":true}',
+  forkWorkerRetryMax:
+    '{"t":{"k":"number"},"d":"Worker retry: restarts of one Task before it goes to the coordinator (0 to 10); unset is 2.","o":true}',
+  forkWorkerRetryMaxBackoffSeconds:
+    '{"t":{"k":"number"},"d":"Worker retry: longest wait between restarts, in seconds (1 to 86400); unset is 300.","o":true}',
   forkWorkerTerminalStopMinutes:
     '{"t":{"k":"number"},"d":"Worker archive: minutes after a worker reports before its idle terminal or agent is stopped; unset is 15.","o":true}',
   forkWorkspaceTagFilter:

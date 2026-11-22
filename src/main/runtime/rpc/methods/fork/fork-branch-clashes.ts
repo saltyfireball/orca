@@ -4,6 +4,7 @@
 import { defineMethod } from '../../core'
 import { FORK_COMPLETION_CONTRACT_METHODS } from './fork-completion-contract'
 import { FORK_GOAL_LOOP_METHODS } from './fork-goal-loop'
+import { FORK_WORKER_RETRY_METHODS } from './fork-worker-retry'
 import {
   buildForkClashes,
   forkClashRepoMatches,
@@ -68,5 +69,7 @@ export const FORK_BRANCH_CLASHES_METHODS = [
   // BAD-676: `fork.completionContract.show` rides in this list so the full registry file stays as it is.
   ...FORK_COMPLETION_CONTRACT_METHODS,
   // BAD-682: `fork.goal.set`, `.clear` and `.list` ride here too.
-  ...FORK_GOAL_LOOP_METHODS
+  ...FORK_GOAL_LOOP_METHODS,
+  // BAD-681: `fork.workerRetry.*` rides here for the same reason.
+  ...FORK_WORKER_RETRY_METHODS
 ] as const

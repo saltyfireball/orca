@@ -147,6 +147,12 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     keys: ['goal set', 'goal list', 'goal clear'],
     load: async () => (await import('./goal-loop-handlers.js')).FORK_GOAL_LOOP_HANDLERS
   },
+  // BAD-681: restart a worker that exited or hit a provider error (FORK.md "Worker retry policy").
+  {
+    name: 'fork-worker-retry',
+    keys: ['retry policy', 'retry show'],
+    load: async () => (await import('./worker-retry-handlers.js')).FORK_WORKER_RETRY_HANDLERS
+  },
   // SLRM-2269: snooze workspaces and chats out of the sidebar (FORK.md "Snooze").
   {
     name: 'fork-snooze',
