@@ -99,12 +99,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
     forkVisualImageMaxMiB?: number
     /** Fork (SLRM-1394): Claude chats keep running through an app restart. Off unless true. */
     forkChatSurvive?: boolean
-    /** Fork (SLRM-2268): workers and automation runs a restart cut carry on by themselves; unset is on. */
-    forkUnattendedResume?: boolean
-    /** Fork (SLRM-2268): automatic continuations of one chat in a row; unset is 3. */
-    forkUnattendedResumeMaxTries?: number
-    /** Fork (SLRM-2411): interactive chats a restart cut carry on by themselves too; unset follows forkChatSurvive. */
-    forkUnattendedResumeInteractive?: boolean
+    /** Fork (BAD-560): upstream's automatic continue after a restart also takes a person's own chats; unset is off, so only workers and automation runs carry on. */
+    forkAutoContinueInteractive?: boolean
     /** Fork (SLRM-2309): chats and terminal agents stopped on a usage limit resume at the reset; unset is on. */
     forkLimitResume?: boolean
     /** Fork (SLRM-2309): also read Claude Code and Codex terminal agents for limit stops; unset is on. */

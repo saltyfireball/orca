@@ -56,8 +56,8 @@ const AGENT_LIMITS: SettingsKey[] = [
   'forkLettersLoopEach',
   'forkLettersFromPaired',
   'forkBoardMaxOpenPerChat',
-  // SLRM-2411: continuing a person's own chats after a restart answers the restart offer for them.
-  'forkUnattendedResumeInteractive',
+  // BAD-560: continuing a person's own chats after a restart answers the restart offer for them.
+  'forkAutoContinueInteractive',
   // SLRM-2428: the bot every quick task goes to first; an agent must not redirect the owner's tasks.
   'forkQuickTaskRouterBot',
   // SLRM-2459: the rules every new bot starts with; an agent must not loosen them for the bots it makes.
