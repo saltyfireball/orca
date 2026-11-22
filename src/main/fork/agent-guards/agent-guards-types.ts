@@ -1,5 +1,9 @@
 // Agent guards (FORK.md, SLRM-2385): what the engine is given, and its per-agent lanes.
-import type { AgentGuardEntry, AgentGuardSettings } from '../../../shared/fork/agent-guards'
+import type {
+  AgentGuardCapScope,
+  AgentGuardEntry,
+  AgentGuardSettings
+} from '../../../shared/fork/agent-guards'
 import type { AgentGuardActPorts } from './agent-guards-act'
 import type { AgentGuardMeta } from './agent-guards-entries'
 import type { AgentGuardRecords } from './agent-guards-state'
@@ -19,6 +23,16 @@ export type AgentGuardSpend = {
   isWorker: boolean
 }
 
+/** A Run (BAD-679): a coordinator and the workers it dispatched, with what they spent together. */
+export type AgentGuardRun = { rootId: string; memberIds: string[]; totalUsd: number }
+
+/** What an automation's runs spent in the window of one cap, before any resume baseline. */
+export type AgentGuardAutomationSpend = {
+  scope: Extract<AgentGuardCapScope, 'automation-run' | 'automation-day' | 'automation-week'>
+  capUsd: number
+  spentUsd: number
+}
+
 export type AgentGuardEngineDeps = {
   ports: AgentGuardActPorts
   records: AgentGuardRecords
@@ -26,6 +40,12 @@ export type AgentGuardEngineDeps = {
   now: () => number
   settings: () => AgentGuardSettings
   spend: (sessionId: string) => AgentGuardSpend
+  /** The multi-agent Run this agent belongs to, or null when it is on its own (BAD-679). */
+  run?: (id: string) => AgentGuardRun | null
+  /** The automation caps that cover an agent started by this automation, with their spend. */
+  automationLimits?: (id: string, automationId: string) => AgentGuardAutomationSpend[]
+  /** Brings the ledger up to date for a terminal agent before its spend is read. */
+  refreshSpend?: (id: string) => Promise<void>
   /** Told once per pause; never throws into the engine. */
   notify: (entry: AgentGuardEntry) => void
   /** The entries or the held set changed. */

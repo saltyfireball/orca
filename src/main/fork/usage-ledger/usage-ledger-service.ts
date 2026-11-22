@@ -6,8 +6,10 @@ import { longContextTurnTokens } from '../../claude-usage/claude-model-pricing'
 import {
   forkUsageRetentionDays,
   type ForkCacheState,
-  type ForkUsageLedgerSettings
+  type ForkUsageLedgerSettings,
+  type ForkUsageTokens
 } from '../../../shared/fork/usage-ledger'
+import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { startForkBackoffTimer } from '../fork-backoff-timer'
 import { claudeUsageObservation } from './claude-usage-frames'
 import { LedgerFileWriter, readLedgerFile, writeLedgerFile } from './usage-ledger-file'
@@ -15,6 +17,7 @@ import { UsageLedger, type UsageChatMeta } from './usage-ledger'
 import type { UsageLedgerData } from './usage-ledger-model'
 import { cleanUsagePrices, usagePricer } from './usage-report'
 import { chatSpend } from './row-spend'
+import { codexChatUsageTotals } from './transcript-usage'
 
 export type UsageLedgerServiceDeps = {
   filePath: string
@@ -210,4 +213,52 @@ export function forkUsageLedgerClear(): void {
 
 export function forkUsageLedgerSettings(): ForkUsageLedgerSettings | undefined {
   return service?.readSettings()
+}
+
+/** BAD-679: counts one call read from a terminal agent's transcript under its pane key. */
+export function forkUsageLedgerObserveTranscriptCall(
+  paneKey: string,
+  agent: string,
+  call: Parameters<UsageLedger['observeTranscriptCall']>[2]
+): boolean {
+  return recordExternal(() => ledger?.observeTranscriptCall(paneKey, agent, call) ?? false)
+}
+
+/** BAD-679: counts tokens a terminal agent's transcript gained (Codex) under its pane key. */
+export function forkUsageLedgerObserveTranscriptDelta(
+  paneKey: string,
+  agent: string,
+  model: string | null,
+  delta: ForkUsageTokens
+): boolean {
+  return recordExternal(() => ledger?.observeTranscriptDelta(paneKey, agent, model, delta) ?? false)
+}
+
+function recordExternal(add: () => boolean): boolean {
+  try {
+    const added = add()
+    if (added) {
+      writer?.schedule()
+    }
+    return added
+  } catch (error) {
+    // Counting must never disturb the agent itself.
+    console.warn('[fork-usage-ledger] Could not record usage:', error)
+    return false
+  }
+}
+
+/**
+ * BAD-679 hook (Codex chat journal): the thread's token usage frame. Its `total` is the running
+ * total of the thread; the ledger adds only the growth, priced with the chat's model.
+ */
+export function forkUsageLedgerObserveCodexChatUsage(sessionId: string, params: unknown): void {
+  const total = codexChatUsageTotals(params)
+  if (!total || !ledger) {
+    return
+  }
+  const model = getStructuredAgentSessionHost()?.readStatusSummary(sessionId)?.model ?? null
+  if (recordExternal(() => ledger?.observeCumulative(sessionId, 'codex', model, total) ?? false)) {
+    refreshMeta(sessionId)
+  }
 }

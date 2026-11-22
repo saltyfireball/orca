@@ -40,6 +40,7 @@ import {
   DesktopBrowserBridgeResultParams
 } from '../browser/client-hosting/desktop-browser-bridge-protocol'
 import {
+  ForkGuardsAutomationCapParams,
   ForkGuardsCapParams,
   ForkGuardsListParams,
   ForkGuardsTargetParams
@@ -1683,6 +1684,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.digest.collect': ForkDigestCollectParams,
   'fork.digest.local': ForkDigestLocalParams,
   'fork.endpoints.addresses': ForkEndpointAddressesParams,
+  'fork.guards.automationCap': ForkGuardsAutomationCapParams,
   'fork.guards.cap': ForkGuardsCapParams,
   'fork.guards.list': ForkGuardsListParams,
   'fork.guards.resume': ForkGuardsTargetParams,

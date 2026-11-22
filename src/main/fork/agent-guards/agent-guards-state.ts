@@ -7,7 +7,9 @@ import { readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   agentGuardLabel,
+  isAgentGuardCapScope,
   normalizeAgentGuardCap,
+  type AgentGuardCapScope,
   type AgentGuardReason
 } from '../../../shared/fork/agent-guards'
 
@@ -22,6 +24,8 @@ export type AgentGuardPause = {
   tool?: string
   spentUsd?: number
   capUsd?: number
+  /** BAD-679: which cap a spend pause hit; absent on older records, which read as the chat's own. */
+  scope?: AgentGuardCapScope
   notInterrupted?: boolean
 }
 
@@ -35,6 +39,12 @@ export type AgentGuardRecord = {
   capUsd?: number
   /** Spend the last resume set aside: the cap counts from there. */
   baselineUsd?: number
+  /** BAD-679: a Run's own cap (`orca guards cap --run`), kept on the Run's coordinator. */
+  runCapUsd?: number
+  /** BAD-679: spend a resume set aside for the Run and automation caps, by cap. */
+  limitBaselines?: Partial<Record<AgentGuardCapScope, number>>
+  /** BAD-679: the automation whose run this agent is, so its automation caps cover it. */
+  automationId?: string
   /** Epoch ms the record last changed; records gone quiet for 30 days are dropped. */
   at: number
 }
@@ -71,10 +81,26 @@ function readPause(value: unknown): AgentGuardPause | undefined {
   if (num(raw.capUsd) !== undefined) {
     pause.capUsd = num(raw.capUsd)
   }
+  if (isAgentGuardCapScope(raw.scope)) {
+    pause.scope = raw.scope
+  }
   if (raw.notInterrupted === true) {
     pause.notInterrupted = true
   }
   return pause
+}
+
+function readLimitBaselines(value: unknown): AgentGuardRecord['limitBaselines'] {
+  if (typeof value !== 'object' || value === null) {
+    return undefined
+  }
+  const baselines: NonNullable<AgentGuardRecord['limitBaselines']> = {}
+  for (const [scope, spent] of Object.entries(value)) {
+    if (isAgentGuardCapScope(scope) && num(spent) !== undefined) {
+      baselines[scope] = num(spent)
+    }
+  }
+  return Object.keys(baselines).length > 0 ? baselines : undefined
 }
 
 export function parseAgentGuardRecords(text: string): AgentGuardRecords {
@@ -117,6 +143,17 @@ export function parseAgentGuardRecords(text: string): AgentGuardRecords {
     if (num(raw.baselineUsd) !== undefined) {
       record.baselineUsd = num(raw.baselineUsd)
     }
+    const runCap = normalizeAgentGuardCap(raw.runCapUsd)
+    if (runCap !== null) {
+      record.runCapUsd = runCap
+    }
+    const baselines = readLimitBaselines(raw.limitBaselines)
+    if (baselines) {
+      record.limitBaselines = baselines
+    }
+    if (typeof raw.automationId === 'string' && raw.automationId.length <= MAX_ID) {
+      record.automationId = raw.automationId
+    }
     records.set(id, record)
   }
   return records
@@ -134,7 +171,13 @@ export async function readAgentGuardRecords(path: string): Promise<AgentGuardRec
 export function pruneAgentGuardRecords(records: AgentGuardRecords, now: number): boolean {
   let changed = false
   for (const [id, record] of records) {
-    const empty = !record.paused && record.capUsd === undefined && record.baselineUsd === undefined
+    const empty =
+      !record.paused &&
+      record.capUsd === undefined &&
+      record.baselineUsd === undefined &&
+      record.runCapUsd === undefined &&
+      !record.limitBaselines &&
+      record.automationId === undefined
     if (empty || now - record.at > AGENT_GUARD_RECORD_TTL_MS) {
       records.delete(id)
       changed = true

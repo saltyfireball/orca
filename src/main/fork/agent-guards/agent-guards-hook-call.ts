@@ -71,6 +71,8 @@ export type AgentGuardHookCall = {
   worktreeId: string | null
   agent: string
   call: AgentGuardToolCall
+  /** BAD-679: the transcript file the agent named in the post, for its spend. */
+  transcriptPath: string | null
 }
 
 /** The finished call a hook post reports, or null for anything else (a before-tool event too). */
@@ -103,6 +105,7 @@ export function readAgentGuardHookCall(
     paneKey: owner.paneKey,
     worktreeId: owner.worktreeId ?? null,
     agent: source,
+    transcriptPath: typeof hook?.transcript_path === 'string' ? hook.transcript_path : null,
     call: {
       tool: call.payload.tool,
       input: call.payload.input,

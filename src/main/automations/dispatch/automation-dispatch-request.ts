@@ -34,6 +34,7 @@ import {
   ORCAD_FENCED_AUTOMATION
 } from '../ownership/orcad-fenced-automation'
 import { AutomationDispatchCancelledError } from './automation-dispatch-cancelled-error'
+import { forkAutomationCapRefusal } from '../../fork/agent-guards/agent-guards-scopes'
 import { withForkWebhookPayload } from '../../fork/webhooks/webhook-payload'
 
 export { AutomationDispatchCancelledError }
@@ -153,6 +154,12 @@ export async function requestAutomationDispatch(
     run.trigger === 'scheduled' ? await describeStoppedWslDistroRefusal(ctx.store, target) : null
   if (stopped) {
     return refuse(stopped)
+  }
+  // Fork (BAD-679, FORK.md "Spend caps for every agent"): past its daily or weekly spend cap an
+  // automation skips scheduled and event runs, and says why in run history.
+  const capped = forkAutomationCapRefusal(automation.id, run.trigger)
+  if (capped) {
+    return refuse({ error: capped })
   }
   await ctx.runs.updateRun({
     runId: run.id,

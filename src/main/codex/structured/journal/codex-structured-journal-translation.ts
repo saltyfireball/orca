@@ -1,4 +1,5 @@
 import { createCodexProviderActivityReader } from '../../../native-chat/agent-session-wire/providers/provider-frame-activity'
+import { forkUsageLedgerObserveCodexChatUsage } from '../../../fork/usage-ledger/usage-ledger-service'
 import { recordCodexContextUsage } from './codex-context-usage'
 import { CODEX_TOKEN_USAGE_METHOD } from '../background-work/codex-subagent-activity'
 import {
@@ -247,6 +248,10 @@ function createCodexTranslation(
           params: event.params,
           capturedAt: deps.now?.() ?? Date.now()
         })
+        // Fork (BAD-679): the usage ledger counts this chat's spend, so its guards can cap it.
+        if (deps.sessionId !== undefined && !deps.historyImport) {
+          forkUsageLedgerObserveCodexChatUsage(deps.sessionId, event.params)
+        }
       }
       if (event.method === 'item/started' || event.method === 'item/completed') {
         const routed = routeThreadItem(event)

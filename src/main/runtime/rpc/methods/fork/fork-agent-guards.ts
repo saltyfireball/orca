@@ -1,18 +1,22 @@
 // Agent guards (FORK.md, SLRM-2385): `orca guards`. List the agents a guard warned or paused and
-// the chats with a spend cap on this host, lift a pause, or set one chat its own cap. No call
+// the agents with a spend cap on this host, lift a pause, or set a chat, a Run or an automation
+// its own cap (BAD-679). No call
 // carries text to send to an agent.
 import { defineMethod } from '../../core'
 import {
+  ForkGuardsAutomationCapParams,
   ForkGuardsCapParams,
   ForkGuardsListParams,
   ForkGuardsTargetParams,
+  type ForkGuardsAutomationCapResult,
   type ForkGuardsCapResult,
   type ForkGuardsListResult,
   type ForkGuardsResumeResult
 } from '../../../../../shared/fork/agent-guards-wire'
 import {
-  forkAgentGuardEntries,
+  forkAgentGuardList,
   forkAgentGuardResume,
+  forkAgentGuardSetAutomationCap,
   forkAgentGuardSetCap
 } from '../../../../fork/agent-guards/agent-guards-service'
 
@@ -21,10 +25,7 @@ export const FORK_AGENT_GUARDS_METHODS = [
     name: 'fork.guards.list',
     permission: 'workspace',
     params: ForkGuardsListParams,
-    handler: async (): Promise<ForkGuardsListResult> => ({
-      now: Date.now(),
-      entries: forkAgentGuardEntries()
-    })
+    handler: async (): Promise<ForkGuardsListResult> => forkAgentGuardList()
   }),
   defineMethod({
     name: 'fork.guards.resume',
@@ -36,6 +37,18 @@ export const FORK_AGENT_GUARDS_METHODS = [
     name: 'fork.guards.cap',
     permission: 'workspace',
     params: ForkGuardsCapParams,
-    handler: (params): Promise<ForkGuardsCapResult> => forkAgentGuardSetCap(params.id, params.usd)
+    handler: (params): Promise<ForkGuardsCapResult> =>
+      forkAgentGuardSetCap(params.id, params.usd, params.run === true)
+  }),
+  defineMethod({
+    name: 'fork.guards.automationCap',
+    permission: 'workspace',
+    params: ForkGuardsAutomationCapParams,
+    handler: (params): Promise<ForkGuardsAutomationCapResult> =>
+      forkAgentGuardSetAutomationCap(params.id, {
+        runUsd: params.run,
+        dayUsd: params.day,
+        weekUsd: params.week
+      })
   })
 ] as const

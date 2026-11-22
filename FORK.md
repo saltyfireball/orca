@@ -1667,9 +1667,10 @@ named Orca Fork until SLRM-1367. `main` is always
     spend since its cap began reached the cap is paused there, between turns. The default cap
     covers orchestration workers (`forkAgentGuardSpendCapScope` `workers`) or every chat (`all`).
     Per dispatch: `orca guards cap <session id> <usd>` gives one chat its own cap, counted from
-    then; 0 drops it. Native Claude chats only: Codex chats and terminal agents have no ledger.
-    The ledger now also runs on a headless server (its own `fork-usage-ledger.json`), so caps
-    work there and `orca usage-report --environment NAME` answers.
+    then; 0 drops it. The ledger now also runs on a headless server (its own
+    `fork-usage-ledger.json`), so caps work there and `orca usage-report --environment NAME`
+    answers. Caps now cover more than native Claude chats (BAD-679, "Spend caps for every
+    agent" below).
   - **Paused.** A paused agent is held: idle recovery never wakes it, limit resume skips it. A paused chat that starts a turn another agent asked for (orchestration mail)
     is stopped at once; a turn a person starts lifts the pause. A terminal agent stays as the Esc
     left it. Each pause is listed in the Decision inbox under "Paused by a guard", whatever
@@ -1688,6 +1689,51 @@ named Orca Fork until SLRM-1367. `main` is always
     the spend a resume set aside; a record with nothing left is dropped, any after 30 days.
   - Code is in `src/shared/fork/agent-guards*.ts`, `src/main/fork/agent-guards/`,
     `src/cli/fork/guards-*` and `src/renderer/src/fork/agent-guards/`.
+- **Spend caps for every agent (BAD-679).** The spend cap of the agent guards no longer stops at
+  native Claude chats. Every cap is off (0) until set; nothing here changes what runs today.
+  - **Codex chats.** A native Codex chat's `thread/tokenUsage/updated` frame carries the thread's
+    running totals; the ledger keeps the last totals it saw and adds only the growth, so a
+    resumed chat that replays its totals adds nothing and a total that falls starts over. The
+    chat's model comes from its saved model. Priced with the Codex table (`gpt-*`, cached input
+    at the cached rate, long-context rates not applied) when the Claude table has no price for
+    the model; `forkUsagePrices` overrides apply to both. A model with no price adds nothing.
+  - **Terminal agents.** A Claude Code or Codex terminal names its transcript file in every hook
+    post (`transcript_path`, only an absolute `.jsonl` path is read). While a spend cap may cover
+    it, Orca reads what the file gained (up to 4 MB a pass, every hook post and each 15 s sweep)
+    and keeps only token counts, model and time in the ledger under the pane key. Only usage
+    from after Orca began watching counts, so resuming a long transcript is not paused for last
+    week's spend. At the end of the tool call that takes the agent past a cap it gets the polite
+    interrupt (Esc, never on a dialog) and is paused like a looping terminal. Other terminal
+    agents (OpenCode and the rest) are not counted yet: their hook posts name no transcript.
+    Terminal rows are hidden from the cache-cold cue.
+  - **Caps by scope.** An agent can be covered by several caps at once, each counting its own
+    spend from its last resume: its own (`forkAgentGuardSpendCapUsd` or `orca guards cap`), its
+    Run's and its automation's. The first one reached pauses it; the pause says which.
+  - **Run cap.** A Run is a coordinator and the workers it dispatched (the ledger's dispatch
+    chain, as in `orca usage-report --by coordinator`). `forkAgentGuardRunCapUsd` (0 = off) is the
+    default; `orca guards cap <id> <usd> --run` gives one Run its own on its coordinator. The
+    Run's total is every chat in it, finished ones included. At the cap every agent of the Run
+    still running is paused at once, one in a turn at the end of it. A resume counts the Run's
+    cap from what it had spent by then.
+  - **Automation caps.** `forkAutomationCapRunUsd`, `forkAutomationCapDayUsd` and
+    `forkAutomationCapWeekUsd` (0 = off) are defaults for every automation;
+    `orca guards automation-cap <id> [--per-run|--day|--week <usd|default>]` sets one
+    automation's own (kept in `fork-automation-caps.json`, mode 0600; 0 is none, `default`
+    follows the setting). Spend is what the ledger holds for each run's chat or terminal, by
+    local day, else the cost the run recorded when it finished; a reused session counts once.
+    Per run: the run's agent is paused at its turn's end (the agent is noted at launch, so a run
+    started before a cap was set is not covered). Per day (the local day) and per week (the last
+    7 days): a scheduled or event run is skipped, as `skipped_unavailable` with the spend and cap
+    in run history, until the window moves on or the cap is raised, and a run in progress is
+    paused; Run now is a person's act and still goes.
+  - **`orca guards list`** shows, for each capped agent, every cap that covers it with its spend
+    (`chat $2.00/$5.00, run $9.00/$10.00`), then the Runs with a cap and the automations with
+    caps (per run, today, 7 days, "skipping runs"). `fork.guards.list` carries `runs` and
+    `automations`; `fork.guards.cap` takes `run`; `fork.guards.automationCap` is new.
+  - Settings: Settings > Blackfish > Agents and workers, Agent guards.
+  - Code: `src/main/fork/usage-ledger/transcript-usage.ts`, `terminal-spend.ts`,
+    `src/main/fork/agent-guards/` (`agent-guards-limits.ts`, `agent-guards-enforce.ts`,
+    `agent-guards-scopes.ts`, `agent-guards-terminals.ts`, `automation-caps*.ts`).
 - **Keep main current (SLRM-2384).** Off by default. Each host (the desktop app, `orca serve` and
   orcad on a headless server) fetches the default branch of each of its local git projects on a
   timer and fast-forwards it, so new worktrees start from current main.
@@ -2416,6 +2462,7 @@ Apply these in this order. Each one is a single commit.
 141. `BAD-734 Auto-close finished bot chats: card done, reported back or idle; the list clients get leaves closed chats out; orca bot chats-cleanup`
 142. `BAD-677 Worktree snapshots: save uncommitted, untracked and unpushed work under refs/orca/snapshots before any worktree removal; orca worktree snapshots and restore`
 143. `BAD-676 Completion contract: --done-check and --require-pr-checks on a Task; Orca runs them before a worker's done settles it, turns a failure back to the worker as untrusted output, and escalates after the rounds`
+144. `BAD-679 Spend caps for every agent: Codex chats and Claude Code or Codex terminals are priced into the ledger; caps per Run and per automation (run, day, 7 days); guards list shows every cap with its spend`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3557,6 +3604,14 @@ Upstream files only get short hooks, which keeps rebases small:
   `FORK_BRANCH_CLASHES_METHODS`, so `rpc-method-registry.ts` is untouched;
   `rpc-params-catalog.generated.ts` is regenerated. The four settings are intersected in
   `fork-global-settings.ts`; `settings-rows-fork.generated.ts` is regenerated.
+
+- Spend caps for every agent (BAD-679), small edits in stock files:
+  `codex-structured-journal-translation.ts` calls `forkUsageLedgerObserveCodexChatUsage` after
+  it records a primary thread's token usage; `automation-dispatch-request.ts` asks
+  `forkAutomationCapRefusal` before launching a run and refuses it as `skipped_unavailable`;
+  `automation-launch-runner.ts` calls `forkAutomationNoteLaunch` once the run's agent exists. The
+  four new settings are in `ForkAgentGuardSettings`, so `fork-global-settings.ts` is untouched;
+  `settings-rows-fork.generated.ts` and `rpc-params-catalog.generated.ts` are regenerated.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

@@ -1,6 +1,10 @@
 // Agent guards (FORK.md, SLRM-2385): the entries the status line, the Decision inbox and
 // `orca guards list` show, built from the engine's records and memory. Pure.
-import type { AgentGuardEntry } from '../../../shared/fork/agent-guards'
+import {
+  tightestAgentGuardLimit,
+  type AgentGuardEntry,
+  type AgentGuardLimit
+} from '../../../shared/fork/agent-guards'
 import type { AgentGuardRecord, AgentGuardRecords } from './agent-guards-state'
 
 export type AgentGuardMeta = {
@@ -45,6 +49,7 @@ export function pausedAgentGuardEntry(
     ...(pause.tool ? { tool: pause.tool } : {}),
     ...(pause.spentUsd !== undefined ? { spentUsd: pause.spentUsd } : {}),
     ...(pause.capUsd !== undefined ? { capUsd: pause.capUsd } : {}),
+    ...(pause.scope ? { scope: pause.scope } : {}),
     ...(pause.notInterrupted ? { notInterrupted: true } : {})
   }
 }
@@ -53,8 +58,8 @@ export type AgentGuardEntriesInput = {
   records: AgentGuardRecords
   warned: ReadonlyMap<string, AgentGuardWarned>
   meta: ReadonlyMap<string, AgentGuardMeta>
-  /** A chat's cap and spend since it began, or null when no cap covers it or it has no spend. */
-  cap: (id: string) => { capUsd: number; spentUsd: number } | null
+  /** Every cap that covers an agent with its spend, or empty when none does or it has no spend. */
+  limits: (id: string) => AgentGuardLimit[]
 }
 
 /** Paused and warned agents, then chats with a cap, oldest first within each. */
@@ -83,14 +88,18 @@ export function buildAgentGuardEntries(input: AgentGuardEntriesInput): AgentGuar
   }
   const capped: AgentGuardEntry[] = []
   for (const [id, meta] of input.meta) {
-    const cap = meta.kind === 'chat' && !isPaused(id) ? input.cap(id) : null
-    if (cap) {
+    const limits = isPaused(id) ? [] : input.limits(id)
+    const tight = tightestAgentGuardLimit(limits)
+    if (tight) {
       capped.push({
         ...base(id, meta),
         state: 'capped',
         reason: null,
         since: input.records.get(id)?.at ?? 0,
-        ...cap
+        capUsd: tight.capUsd,
+        spentUsd: tight.spentUsd,
+        scope: tight.scope,
+        limits
       })
     }
   }
