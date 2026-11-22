@@ -47,6 +47,8 @@ export const FORK_SETTINGS_ROWS_AGENTS = {
     '{"t":{"k":"boolean"},"d":"True when the profile previously opted into the legacy Agents view.","o":true}',
   antigravityChatAuth:
     '{"t":{"k":"union","of":[{"k":"object","fields":{"method":{"k":"enum","values":["oauth-personal"]},"gcpProject":{"k":"string","optional":true},"gcpLocation":{"k":"string","optional":true}}},{"k":"object","fields":{"method":{"k":"enum","values":["oauth-business"]},"gcpProject":{"k":"string"},"gcpLocation":{"k":"string"}}},{"k":"object","fields":{"method":{"k":"enum","values":["gemini-api-key"]},"gcpProject":{"k":"string","optional":true},"gcpLocation":{"k":"string","optional":true}}},{"k":"object","fields":{"method":{"k":"enum","values":["agent-platform"]},"gcpProject":{"k":"string","optional":true},"gcpLocation":{"k":"string","optional":true}}}]},"d":"How Antigravity chat signs in; set through its account setup.","o":true}',
+  antigravityGoogleSignIn:
+    '{"t":{"k":"enum","values":["agy","auto","orca"]},"d":"How chats on the Google account method sign in: agy\'s own login, or Orca\'s built-in sign-in on Google\'s ACP server. Absent or \'auto\': the server where Orca\'s sign-in is already in use, else agy.","o":true}',
   antigravityManagedAgyEnabled:
     '{"t":{"k":"boolean"},"d":"Main-side kill switch for Orca\'s copy of agy. Off, it runs no chat and isn\'t updated: new chats use the user\'s own signed-in agy or Orca\'s server, and chats already on agy run the user\'s own agy (same history) or, where there is none, refuse as agy not found. Absent means on.","o":true}',
   claudeAccountSwitchRunningSessions:

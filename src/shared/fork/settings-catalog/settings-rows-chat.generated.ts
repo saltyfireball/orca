@@ -44,7 +44,9 @@ export const FORK_SETTINGS_ROWS_CHAT = {
   nativeChatAppearance:
     '{"t":{"k":"object","fields":{"fontFamily":{"k":"string","optional":true},"fontSize":{"k":"number","optional":true},"codeFontSize":{"k":"number","optional":true},"width":{"k":"enum","values":["comfortable","full","wide"],"optional":true},"contrast":{"k":"number","optional":true},"matchTerminalInterface":{"k":"boolean","optional":true}}},"d":"Fonts, sizes and colors of native chat.","o":true}',
   nativeChatAutoContinueAfterUsageLimit:
-    '{"t":{"k":"boolean"},"d":"Opt-in: when a chat stops on a usage limit with a known reset time, send it \\"Continue where you left off.\\" once the limit resets, unless that chat was told not to.","o":true}',
+    '{"t":{"k":"boolean"},"d":"On by default: when a chat stops on a usage limit with a known reset time, send it \\"Continue where you left off.\\" once the limit resets, unless that chat was told not to.","o":true}',
+  nativeChatAutoContinueAfterUsageLimitDefaultedOn:
+    '{"t":{"k":"boolean"},"d":"One-shot guard for the default-on rollout: a saved false from the old default turns on once; a later explicit false sticks.","o":true}',
   nativeChatAutoName:
     '{"t":{"k":"boolean"},"d":"Off keeps chats unnamed without running a naming agent. Absent means on.","o":true}',
   nativeChatCiResultLines:

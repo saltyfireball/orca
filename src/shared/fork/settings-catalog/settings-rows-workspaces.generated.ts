@@ -23,6 +23,8 @@ export const FORK_SETTINGS_ROWS_WORKSPACES = {
     '{"t":{"k":"boolean"},"d":"Deleting an artifact breaks a public link others may already hold; keep this skip separate from local deletions."}',
   skipDeleteAutomationConfirm:
     '{"t":{"k":"boolean"},"d":"Deleting an automation also deletes its run history; keep this skip separate from worktree deletion."}',
+  skipDeleteChatConfirm:
+    '{"t":{"k":"boolean"},"d":"A deleted chat never comes back; keep this skip separate from other deletions."}',
   skipDeleteWorktreeConfirm:
     '{"t":{"k":"boolean"},"d":"Worktree deletion removes the working directory, so confirmation is on by default."}',
   workspaceDir: '{"t":{"k":"string"},"d":"Folder that holds new workspaces."}',
