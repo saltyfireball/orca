@@ -30,6 +30,7 @@ import { ForkLaunchDefaultsSetting } from '../launch-defaults/ForkLaunchDefaults
 import { ForkMemorySettings } from '../memory-truth/ForkMemorySettings'
 import { ForkIdleRecoverySetting } from '../idle-recovery/ForkIdleRecoverySetting'
 import { ForkPrBabysitSetting } from '../pr-babysit/ForkPrBabysitSetting'
+import { ForkPrNudgeSetting } from '../pr-nudge/ForkPrNudgeSetting'
 import { ForkAccountChipSetting } from '../claude-account-chip/ForkAccountChipSetting'
 import { ForkUsageReportSettings } from '../usage-report/ForkUsageReportSettings'
 import { ForkPooledLimitsSetting } from '../pooled-limits/ForkPooledLimitsSetting'
@@ -110,7 +111,8 @@ const SECTION_CARDS: Record<
   ],
   'idle-recovery': [
     ['idle-recovery', ForkIdleRecoverySetting],
-    ['pr-babysit', ForkPrBabysitSetting]
+    ['pr-babysit', ForkPrBabysitSetting],
+    ['pr-nudge', ForkPrNudgeSetting]
   ],
   usage: [
     ['account-chip', ForkAccountChipSetting],

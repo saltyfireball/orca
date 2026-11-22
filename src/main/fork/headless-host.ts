@@ -18,6 +18,7 @@ import { installForkWorktreePorts } from './worktree-ports/worktree-ports-servic
 import { installForkWorktreeSnapshots } from './worktree-snapshots/worktree-snapshot-service'
 import { installForkTurnCheckpoints } from './turn-checkpoints/turn-checkpoint-live'
 import { installForkPrBabysit } from './pr-babysit/pr-babysit-hooks'
+import { installForkPrNudge } from './pr-nudge/pr-nudge-hooks'
 
 export type ForkHeadlessHostStore = {
   getSettings: () => NonNullable<ReturnType<BoundaryCompactionSettingsReader>>
@@ -34,6 +35,7 @@ export type ForkHeadlessHostStore = {
  * - Worktrees are snapshotted before removal by this host's own settings (BAD-677).
  * - Workspace files are checkpointed at each agent turn by this host's own settings (BAD-678).
  * - The PR babysitter acts on CI lines of this host's chats (SLRM-2386).
+ * - PR nudges send this host's chats their pull requests' new review comments and conflicts (BAD-680).
  * Returns what to run at shutdown.
  */
 export function installForkHeadlessHost(store: ForkHeadlessHostStore): () => void {
@@ -57,8 +59,10 @@ export function installForkHeadlessHost(store: ForkHeadlessHostStore): () => voi
   installForkWorktreeSnapshots(store)
   installForkTurnCheckpoints(store)
   const stopPrBabysit = installForkPrBabysit(store)
+  const stopPrNudge = installForkPrNudge(store)
   return () => {
     stopPrBabysit()
+    stopPrNudge()
     stopForkBoundaryCompactionService()
     stopForkServerHeartbeat()
     flushLedger?.()

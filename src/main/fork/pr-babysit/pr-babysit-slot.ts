@@ -3,6 +3,7 @@
 // nothing at run time, so the watcher (and its tests) load no fork code through it; the service
 // sets the line handler when it is installed, and until then a line is ignored.
 import type { PRWatchServiceDeps } from '../../github/pr-watch/pr-watch-types'
+import { forkPrNudgeAttach } from '../pr-nudge/pr-nudge-slot'
 
 export type ForkPrBabysitDelivery = {
   prKey: string
@@ -18,11 +19,11 @@ let lineHandler: LineHandler | null = null
 
 /** Hook around the PR watcher's deps in `pr-watch-runtime.ts`: how a chat's checkout is found.
  *  Returns the deps unchanged. */
-export function forkPrBabysitAttach<T extends Pick<PRWatchServiceDeps, 'chatWorkspace'>>(
-  deps: T
-): T {
+export function forkPrBabysitAttach<
+  T extends Pick<PRWatchServiceDeps, 'chatWorkspace' | 'database'>
+>(deps: T): T {
   chatWorkspace = deps.chatWorkspace
-  return deps
+  return forkPrNudgeAttach(deps)
 }
 
 /** Hook in the CI-line delivery: the line was just appended to the chat. Never throws. */

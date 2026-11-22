@@ -44,6 +44,16 @@ export const FORK_SETTINGS_ROWS_FORK_MORE = {
     '{"t":{"k":"array","of":{"k":"string"}},"d":"PR babysitter (SLRM-2386): owner/repo names whose pull requests are babysat, \\"*\\" for every repo; unset is none (off).","o":true}',
   forkPrBabysitWaitMinutes:
     '{"t":{"k":"number"},"d":"PR babysitter: minutes to wait for a new CI result after a fix request before it stops and asks you; unset is 120.","o":true}',
+  forkPrNudgeCommenters:
+    '{"t":{"k":"enum","values":["anyone","collaborators"]},"d":"PR nudges: whose comments count: \'collaborators\' (owner, member, collaborator; the default) or \'anyone\'.","o":true}',
+  forkPrNudgeConflicts:
+    '{"t":{"k":"boolean"},"d":"PR nudges: send a rebase request when the pull request conflicts (on by default once nudges are on).","o":true}',
+  forkPrNudgeEnabled:
+    '{"t":{"k":"boolean"},"d":"PR nudges (BAD-680): tell the owning chat about new review comments and merge conflicts on its pull request. Off unless true.","o":true}',
+  forkPrNudgeMaxAttempts:
+    '{"t":{"k":"number"},"d":"PR nudges: failed sends (and conflict requests in a row) before it stops and asks you (1 to 10); unset is 3.","o":true}',
+  forkPrNudgeReviews:
+    '{"t":{"k":"boolean"},"d":"PR nudges: send new review comments (on by default once nudges are on).","o":true}',
   forkPromptStash:
     '{"t":{"k":"boolean"},"d":"Prompt stash (SLRM-2397): Cmd+S (Ctrl+S) in a chat\'s message box sets the draft and its attachments aside, and brings the last one back when the box is empty; unset is on.","o":true}',
   forkQuickTask:

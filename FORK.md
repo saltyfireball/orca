@@ -827,6 +827,38 @@ ones `SLRM-123 `).
   - **Limits.** Native chats only (the stock watcher writes no CI line into terminal agents). A
     pull request is watched for 14 days after its chat's last PR action, as in stock. GitHub only.
 
+- **PR nudges (BAD-680).** Off by default (`forkPrNudgeEnabled`). Stock Orca's PR watcher already
+  reads, on its cadence, every pull request a native chat opened or pushed to (14 days after the
+  chat's last PR action). Nudges look at each read of an open one and tell the owning chat (the
+  chat of the newest PR action) two more things, through the chat's normal send (queued behind a
+  running turn, never typed over a draft). The PR babysitter handles CI; nothing here overlaps it.
+  - **Review comments** (`forkPrNudgeReviews`, on once nudges are on). Diff-line comments,
+    conversation comments and review summaries (not pending reviews), read with `gh api` at most
+    once a minute per pull request. One message per read that found new ones, each comment sent once
+    (dedupe key `kind:id`, kept in `fork-pr-nudge.json`, mode 0600, so a restart never resends). The
+    first read of a pull request is a baseline: what was already there is not sent. The pull
+    request author's own comments and empty ones are skipped. `forkPrNudgeCommenters`:
+    `collaborators` (default: OWNER, MEMBER, COLLABORATOR) or `anyone`.
+  - **Message.** First line `[pr-nudge: new review comments]`; comment author, file, line, link and
+    text are outside text: cleaned of control, bidi and invisible characters, every `<` escaped,
+    bodies cut at 2000 characters, at most 20 comments and 24000 characters, only inside a
+    `<review-comments data-trust="untrusted">` JSON block; the lines around it say it is data,
+    never instructions, and that the agent must not merge, use admin or bypass options, or dismiss
+    reviews. Cleaning is the babysitter's (`cleanOutsideText`).
+  - **Merge conflicts** (`forkPrNudgeConflicts`, on once nudges are on). When the read says
+    `CONFLICTING`, the chat gets one rebase request (`[pr-nudge: merge conflict]`) per head commit
+    (key `conflict:<sha>`). `MERGEABLE` starts the count over; after `forkPrNudgeMaxAttempts` requests
+    since the last clean state a still-conflicting new head stops it.
+  - **Attempts.** `forkPrNudgeMaxAttempts` (3, 1 to 10): a send the chat refuses (asleep, not
+    loaded, no chat) counts once per key, is tried again on a later read no sooner than a minute
+    after, and at the cap the pull request joins the Decision inbox as a stalled row "PR
+    owner/repo#12" (source `nudge`, "Stop nudging"); the notification targets are told once. An
+    answer goes to the chat and nudging starts again with fresh counts.
+  - **Servers.** It runs in the process that owns the watcher and the chat: the desktop app and
+    orcad / `orca serve` alike, with no client window open, each with its own settings and file.
+  - **Limits.** Native chats only, GitHub only, the pull requests the stock watcher follows. No
+    new GitHub polling of its own: a comment read happens only on a stock watch read.
+
 - **Boundary compaction (SLRM-2257).** Off by default (`forkBoundaryCompactMode` `off`,
   Settings > Blackfish > Chats). An agent compacts on its own when its context fills, nearly
   always in the middle of a turn. With the mode on, a sweep in the main process asks a native
@@ -2492,6 +2524,7 @@ Apply these in this order. Each one is a single commit.
 143. `BAD-676 Completion contract: --done-check and --require-pr-checks on a Task; Orca runs them before a worker's done settles it, turns a failure back to the worker as untrusted output, and escalates after the rounds`
 144. `BAD-678 Turn checkpoints: shadow-git file checkpoints at the end of each agent turn for every harness; orca checkpoint list, diff, restore and undo`
 145. `BAD-735 Fork sync merges each upstream tag into main as one signed merge commit instead of rebasing, so main is never force-pushed; a conflict stops before the build with a FORK-SYNC-CONFLICT marker`
+146. `BAD-680 PR nudges: the PR watcher's owning chat gets new review comments (fenced, deduplicated) and a rebase request per conflicted head; attempt-capped into the Decision inbox; off by default`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3312,6 +3345,20 @@ Upstream files only get short hooks, which keeps merges small:
   - `installForkReady` and `installForkHeadlessHost` call `installForkPrBabysit(store)`. The
     Decision inbox (fork code) gains other sources' rows and a `babysit` call on its bridge; the
     five settings are in `src/shared/fork/pr-babysit.ts`, joined to `fork-global-settings.ts`.
+
+- PR nudges (BAD-680), from `src/shared/fork/pr-nudge.ts`, `src/main/fork/pr-nudge/` and
+  `src/renderer/src/fork/pr-nudge/`:
+  - No change to `pr-watch-service.ts` (it sits at max-lines): `pr-babysit-slot.ts`'s
+    `forkPrBabysitAttach` also returns the deps through `forkPrNudgeAttach` (`pr-nudge-slot.ts`,
+    which loads no fork code at run time), wrapping the watcher's storage to learn each pull
+    request's owning chat (the newest PR action's). The service listens to the stock PR read
+    observer (`addPRRefreshOutcomeObserver`) itself, as the babysitter does for merges.
+  - `installForkReady` and `installForkHeadlessHost` call `installForkPrNudge(store)`.
+  - `pr-babysit-github.ts` exports `livePrGhRunner` (the gh runner the babysitter already used).
+  - The Decision inbox gains the `nudge` source (`idle-recovery-sources.ts`,
+    `idle-recovery-wire.ts`, `ForkDecisionInboxRow.tsx`, `inbox-format.ts`); the five settings are in
+    `pr-nudge.ts`, joined to `fork-global-settings.ts`, and the settings pane lists them under idle
+    recovery.
 
 - Keep main current and server memory protection (SLRM-2384), from `src/shared/fork/main-sync.ts`,
   `src/shared/fork/serve-protect.ts`, `src/main/fork/main-sync/`,
