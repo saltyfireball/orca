@@ -70,6 +70,11 @@ import {
   ForkClaudeAccountMoveParams,
   ForkClaudeAccountWhichParams
 } from '../fork/claude-account-move'
+import {
+  ForkCommandGuardsAllowParams,
+  ForkCommandGuardsListParams,
+  ForkCommandGuardsStatusParams
+} from '../fork/command-guards-wire'
 import { ForkCompletionContractShowParams } from '../fork/completion-contract-wire'
 import { ForkDeviceListParams, ForkDeviceTargetParams } from '../fork/device-approval'
 import { ForkDigestCollectParams, ForkDigestLocalParams } from '../fork/digest'
@@ -1684,6 +1689,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.claudeAccount.cancel': ForkClaudeAccountCancelParams,
   'fork.claudeAccount.move': ForkClaudeAccountMoveParams,
   'fork.claudeAccount.which': ForkClaudeAccountWhichParams,
+  'fork.commandGuards.allow': ForkCommandGuardsAllowParams,
+  'fork.commandGuards.list': ForkCommandGuardsListParams,
+  'fork.commandGuards.status': ForkCommandGuardsStatusParams,
   'fork.completionContract.show': ForkCompletionContractShowParams,
   'fork.devices.approve': ForkDeviceTargetParams,
   'fork.devices.deny': ForkDeviceTargetParams,

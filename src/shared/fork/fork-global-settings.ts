@@ -15,6 +15,7 @@ import type { ForkWebhookSettings } from './webhooks'
 import type { ForkServerHealthSettings } from './server-health'
 import type { ForkServerUpdateSettings } from './server-update'
 import type { ForkAgentGuardSettings } from './agent-guards'
+import type { ForkCommandGuardSettings } from './command-guards'
 import type { ForkWorktreePortsSettings } from './worktree-ports'
 import type { ForkWorktreeSnapshotSettings } from './worktree-snapshots'
 import type { ForkTurnCheckpointSettings } from './turn-checkpoints'
@@ -63,6 +64,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkServerUpdateSettings &
   /** Fork (SLRM-2385): the failure-loop guard and the spend cap. */
   ForkAgentGuardSettings &
+  /** Fork (BAD-686): deny destructive agent shell commands. */
+  ForkCommandGuardSettings &
   /** Fork (SLRM-2383): a block of ports per workspace, exported as ORCA_PORT and ORCA_PORT_0..N-1. */
   ForkWorktreePortsSettings &
   /** Fork (BAD-677): snapshot a worktree's work before it is removed, and for how long. */

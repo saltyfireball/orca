@@ -185,6 +185,17 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     keys: ['guards list', 'guards resume', 'guards cap'],
     load: async () => (await import('./guards-handlers.js')).FORK_GUARDS_HANDLERS
   },
+  // BAD-686: deny destructive agent shell commands (FORK.md "Command guards").
+  {
+    name: 'fork-command-guards',
+    keys: [
+      'command-guards list',
+      'command-guards status',
+      'command-guards allow',
+      'command-guards disallow'
+    ],
+    load: async () => (await import('./command-guards-handlers.js')).FORK_COMMAND_GUARDS_HANDLERS
+  },
   // SLRM-2384: keep each project's default branch current (FORK.md "Keep main current").
   {
     name: 'fork-main-sync',

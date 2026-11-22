@@ -3,6 +3,7 @@
 // its own cap (BAD-679). No call
 // carries text to send to an agent.
 import { defineMethod } from '../../core'
+import { FORK_COMMAND_GUARDS_METHODS } from './fork-command-guards'
 import {
   ForkGuardsAutomationCapParams,
   ForkGuardsCapParams,
@@ -20,7 +21,9 @@ import {
   forkAgentGuardSetCap
 } from '../../../../fork/agent-guards/agent-guards-service'
 
+// BAD-686: the command guards' methods ride along, so rpc-method-registry.ts is untouched.
 export const FORK_AGENT_GUARDS_METHODS = [
+  ...FORK_COMMAND_GUARDS_METHODS,
   defineMethod({
     name: 'fork.guards.list',
     permission: 'workspace',

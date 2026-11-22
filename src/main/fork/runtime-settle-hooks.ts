@@ -12,6 +12,10 @@ import {
 } from './worktree-ports/worktree-ports-service'
 import { startForkTurnCheckpoints } from './turn-checkpoints/turn-checkpoint-live'
 import { startForkAgentGuards } from './agent-guards/agent-guards-service'
+import {
+  startForkCommandGuards,
+  type ForkCommandGuardsRuntime
+} from './command-guards/command-guards-live'
 import { startForkMainSync, type ForkMainSyncRuntime } from './main-sync/main-sync-live'
 import { startForkChatHandoffOnLimit } from './chat-handoff/chat-handoff-on-limit'
 import type { ChatHandoffRuntime } from './chat-handoff/chat-handoff-host'
@@ -26,6 +30,7 @@ export function startForkRuntimeSettleServices(
     ForkServersRuntime &
     ForkWorktreePortsRuntime &
     ForkMainSyncRuntime &
+    ForkCommandGuardsRuntime &
     ChatHandoffRuntime &
     ForkDigestRuntime &
     ForkLettersRuntime &
@@ -41,6 +46,8 @@ export function startForkRuntimeSettleServices(
   startForkTurnCheckpoints()
   // SLRM-2385: warn and pause agents stuck in a failure loop or past their spend cap.
   startForkAgentGuards(runtime)
+  // BAD-686: deny destructive shell commands of agents whose hook can block a call.
+  startForkCommandGuards(runtime)
   // SLRM-2384: fetch and fast-forward each local project's default branch, when on.
   startForkMainSync(runtime)
   // SLRM-2391: hand a chat parked on a usage limit to the other agent, when set to 'auto'.
