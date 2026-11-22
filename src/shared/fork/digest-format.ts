@@ -64,6 +64,12 @@ function hostLines(host: ForkDigestHost): string[] {
       row.source === 'babysit' ? '[PR babysitter] ' : row.verdict === 'guard' ? '[guard] ' : ''
     return `${tag}${clip(row.title || row.chatId, 60)}: ${clip(what)}`
   })
+  block(
+    'Worker retries',
+    section.retries ?? [],
+    (retry) =>
+      `${when(retry.at)}  ${clip(retry.title)}: retry ${retry.attempt} ${retry.status} (${clip(retry.reason, 80)})`
+  )
   block('Failed', failed, (task) => `${when(task.at)}  ${clip(task.title)}`)
   block('Finished', finished, (task) => `${when(task.at)}  ${clip(task.title)}`)
   block('Merged', merged, (pr) => `${pr.repo}#${pr.number} ${clip(pr.title)}  ${pr.url}`)

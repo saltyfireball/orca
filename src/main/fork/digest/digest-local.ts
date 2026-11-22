@@ -8,6 +8,7 @@ import type {
   ForkDigestTask,
   ForkDigestWaiting
 } from '../../../shared/fork/digest'
+import type { ForkDigestRetry } from '../../../shared/fork/worker-retry'
 import { forkDigestLedgerDays } from '../../../shared/fork/digest'
 import type { ForkIdleRecoveryInboxResult } from '../../../shared/fork/idle-recovery-wire'
 import type { ForkUsageReport } from '../../../shared/fork/usage-report'
@@ -20,6 +21,8 @@ export type ForkDigestLocalDeps = {
     since: number
   ) => Promise<{ pullRequests: ForkDigestPullRequest[]; skipped: number }>
   inbox: () => Promise<ForkIdleRecoveryInboxResult>
+  /** BAD-681: automatic worker restarts since a time; absent where none are read. */
+  retries?: (since: number) => ForkDigestRetry[]
   /** Throws where no usage ledger runs. */
   usage: (days: number) => ForkUsageReport
 }
@@ -62,6 +65,12 @@ export async function readForkDigestLocal(
   } catch {
     notes.push('The orchestration tasks could not be read.')
   }
+  let retries: ForkDigestRetry[] = []
+  try {
+    retries = deps.retries?.(since) ?? []
+  } catch {
+    notes.push('The worker retries could not be read.')
+  }
   let pullRequests: ForkDigestPullRequest[] = []
   if (params.pullRequests !== false) {
     try {
@@ -95,5 +104,5 @@ export async function readForkDigestLocal(
   } catch {
     // Only the desktop app keeps a usage ledger; a server's part has no cost, which is not news.
   }
-  return { tasks, pullRequests, waiting, cost, notes }
+  return { tasks, pullRequests, waiting, ...(retries.length ? { retries } : {}), cost, notes }
 }

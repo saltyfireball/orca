@@ -37,6 +37,7 @@ import type { ForkBotChatListingSettings } from './bot-chat-listing'
 import type { ForkBotChatAutoCloseSettings } from './bot-chat-auto-close'
 import type { ForkCardRoutingSettings } from './card-routing'
 import type { ForkCompletionContractSettings } from './completion-contract'
+import type { ForkWorkerRetrySettings } from './worker-retry'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -98,7 +99,9 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   /** Fork (BAD-694): Linear project or team to the bot that takes its cards. */
   ForkCardRoutingSettings &
   /** Fork (BAD-676): done checks a Task can declare, and how many failed reports go back to a worker. */
-  ForkCompletionContractSettings & {
+  ForkCompletionContractSettings &
+  /** Fork (BAD-681): restart a worker that exited, was lost or hit a provider error, after a backoff. */
+  ForkWorkerRetrySettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */
     forkLostWork?: LostWorkSettings
     /** Fork (SLRM-2265): moving a workspace and its chats to another host; unset keys take the defaults. */

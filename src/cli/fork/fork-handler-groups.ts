@@ -141,6 +141,12 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     load: async () =>
       (await import('./completion-contract-handlers.js')).FORK_COMPLETION_CONTRACT_HANDLERS
   },
+  // BAD-681: restart a worker that exited or hit a provider error (FORK.md "Worker retry policy").
+  {
+    name: 'fork-worker-retry',
+    keys: ['retry policy', 'retry show'],
+    load: async () => (await import('./worker-retry-handlers.js')).FORK_WORKER_RETRY_HANDLERS
+  },
   // SLRM-2269: snooze workspaces and chats out of the sidebar (FORK.md "Snooze").
   {
     name: 'fork-snooze',

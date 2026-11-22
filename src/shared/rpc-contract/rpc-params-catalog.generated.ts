@@ -148,6 +148,7 @@ import {
   ForkWorkerArchiveStatusParams,
   ForkWorkerCleanupRunParams
 } from '../fork/worker-archive'
+import { ForkWorkerRetryPolicyParams, ForkWorkerRetryShowParams } from '../fork/worker-retry'
 import {
   ForkWorktreeMoveExportParams,
   ForkWorktreeMoveImportParams,
@@ -1752,6 +1753,8 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.workerCleanup.focus': ForkWorkerArchiveFocusParams,
   'fork.workerCleanup.run': ForkWorkerCleanupRunParams,
   'fork.workerCleanup.status': ForkWorkerArchiveStatusParams,
+  'fork.workerRetry.policy': ForkWorkerRetryPolicyParams,
+  'fork.workerRetry.show': ForkWorkerRetryShowParams,
   'fork.worktreeMove.export': ForkWorktreeMoveExportParams,
   'fork.worktreeMove.import': ForkWorktreeMoveImportParams,
   'fork.worktreeMove.inspect': ForkWorktreeMoveInspectParams,

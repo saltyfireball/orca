@@ -2374,6 +2374,42 @@ ones `SLRM-123 `).
     state machine, fencing and settings), `src/cli/fork/completion-contract-*.ts` and
     `src/main/runtime/rpc/methods/fork/fork-completion-contract.ts`.
 
+- **Worker retry policy: Orca restarts a failed worker after a backoff (BAD-681).** A worker that
+  exited, was lost or stopped on a provider error used to raise an escalation and wait for the
+  coordinator or you, so one flaky provider error overnight stalled a whole batch. With a retry
+  policy on, Orca restarts the worker itself. Off by default.
+  - **Policy.** `forkWorkerRetry` (Settings > Blackfish, off) switches it on for every Run; a Run's
+    own policy overrides it either way: `orca retry policy --run <run_id> [--on | --off]
+    [--max <0-10>] [--backoff <seconds>] [--clear]` (stored in the fork-owned
+    `fork_run_retry_policy` table). Without `--run` it shows what the settings give. Other
+    settings: `forkWorkerRetryMax` (2 restarts per Task), `forkWorkerRetryBackoffSeconds` (30: the
+    first wait, doubling each time) and `forkWorkerRetryMaxBackoffSeconds` (300: the cap).
+  - **What is retried.** A stop reported as `exited` or `lost`, and an `errored` stop whose chat
+    request failed with a transient provider kind (`providerUnavailable`, `providerResponseFailed`,
+    `providerExited`, `restartFailed`). Never retried: a worker that sent its own worker_done
+    (succeeded or failed on purpose), a Task that already completed or failed, a worker that never
+    started (the start breaker has its own count), an exit the user or the app chose (`user-close`,
+    `quit`), a usage limit, an untyped error, a finished or waiting worker, and a Task past its
+    restarts. The decision table is `decideWorkerRetry` in `src/shared/fork/worker-retry.ts`.
+  - **How it restarts.** The same path as a message to a finished worker: the worker's own
+    workspace, its saved conversation when its agent keeps one, and a new Task whose brief says why
+    and repeats the original spec unchanged. No new permissions and no new spec. The restarts of
+    one worker chain, so the limit counts across them.
+  - **What the coordinator sees.** Instead of the demand to act, a normal status notice "Worker
+    ended; Orca is retrying it" with the reason, the wait and "retry N of M", which tells it not
+    to start the worker itself. When the retry cannot start, or the limit is reached, it gets the
+    usual escalation (the limit case is the unchanged stop report).
+  - **Visibility.** `orca retry show [--task] [--run]` (RPC `fork.workerRetry.show`) lists every
+    retry with its reason, state (scheduled, started, failed, cancelled) and the Dispatch it
+    started; the digest has a "Worker retries" block per host. Retries waiting for their time
+    arm again after an app restart.
+  - **Not done.** Moving the retry to another host (placement) or to the other provider (chat
+    handoff) is not part of this change: a retry stays in its own workspace.
+  - Code is in `src/main/fork/worker-retry/` (`worker-retry-live.ts` the hooks and the timers,
+    `retry-store.ts`, `retry-digest.ts`), `src/shared/fork/worker-retry.ts`,
+    `src/cli/fork/worker-retry-*.ts` and
+    `src/main/runtime/rpc/methods/fork/fork-worker-retry.ts`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -2525,6 +2561,7 @@ Apply these in this order. Each one is a single commit.
 144. `BAD-678 Turn checkpoints: shadow-git file checkpoints at the end of each agent turn for every harness; orca checkpoint list, diff, restore and undo`
 145. `BAD-735 Fork sync merges each upstream tag into main as one signed merge commit instead of rebasing, so main is never force-pushed; a conflict stops before the build with a FORK-SYNC-CONFLICT marker`
 146. `BAD-680 PR nudges: the PR watcher's owning chat gets new review comments (fenced, deduplicated) and a rebase request per conflicted head; attempt-capped into the Decision inbox; off by default`
+147. `BAD-681 Worker retry policy: Orca restarts a worker that exited, was lost or hit a provider error in its workspace after an exponential backoff, up to a limit; per Run or by setting, off by default; orca retry policy and show`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3692,6 +3729,17 @@ Upstream files only get short hooks, which keeps merges small:
   `FORK_BRANCH_CLASHES_METHODS`, so `rpc-method-registry.ts` is untouched;
   `rpc-params-catalog.generated.ts` is regenerated. The four settings are intersected in
   `fork-global-settings.ts`; `settings-rows-fork.generated.ts` is regenerated.
+
+- Worker retry policy (BAD-681), small edits in stock files: `worker-turn-stop-report.ts` calls
+  `forkWorkerRetryOnStop` in `mailWorkerReport` and mails a scheduled retry as a notice instead of
+  an escalation; `runtime-orchestration-database-access.ts` calls `installForkWorkerRetry` where
+  the database opens. `src/cli/specs/index.ts` adds `FORK_WORKER_RETRY_COMMAND_SPECS`;
+  `fork-handler-groups.ts` adds the `fork-worker-retry` group and `cli-command-names.ts` lists
+  `retry`. `fork.workerRetry.policy` and `.show` are spread into `FORK_BRANCH_CLASHES_METHODS`,
+  so `rpc-method-registry.ts` is untouched. The four settings are intersected in
+  `fork-global-settings.ts`; the settings catalog is regenerated. The digest section gains an
+  optional `retries` list (`digest.ts`, `digest-schema.ts`, `digest-format.ts`,
+  `digest-local.ts`, `digest-runtime.ts`).
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

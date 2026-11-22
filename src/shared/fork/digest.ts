@@ -4,6 +4,7 @@
 // CLI, the desktop dialog and the phone screen.
 import * as z from 'zod'
 import { forkHttpUrlOrNull } from './server-health'
+import type { ForkDigestRetry } from './worker-retry'
 
 export type ForkDigestSettings = {
   /** Fork (SLRM-2388): send a digest of finished, failed, merged, cost and waiting work once a day to the notification targets. Off unless true. */
@@ -95,6 +96,8 @@ export type ForkDigestSection = {
   tasks: ForkDigestTask[]
   pullRequests: ForkDigestPullRequest[]
   waiting: ForkDigestWaiting[]
+  /** BAD-681: automatic worker restarts in the window; absent from hosts that predate them. */
+  retries?: ForkDigestRetry[]
   /** Null where no usage ledger runs (a headless server). */
   cost: ForkDigestCost | null
   /** What could not be read here, said plainly. */

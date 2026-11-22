@@ -11,6 +11,7 @@ import { runLifecycleWriteTransaction } from '../../db/lifecycle-write-transacti
 import type { WorkerApprovalPayload } from '../../../../../shared/orchestration/approvals/worker-approval-payload'
 import { describeApprovalClosed } from './worker-approval-text'
 import { describeStop, WORKER_STOP_SUBJECTS } from './worker-turn-stop-wording'
+import { forkWorkerRetryOnStop } from '../../../../fork/worker-retry/worker-retry-live'
 
 export type WorkerTurnStopReason =
   | 'finished'
@@ -166,6 +167,14 @@ function mailWorkerReport(
   deps: WorkerTurnStopReportDeps,
   woken: [string, string][]
 ): boolean {
+  // Fork (BAD-681): a retry the policy scheduled is news, not a request to act.
+  const retry = forkWorkerRetryOnStop(db, dispatch, {
+    reason: stop.reason,
+    cause: stop.cause,
+    requestErrorKind: stop.requestError?.kind,
+    neverStarted: stop.neverStarted,
+    settled: stop.settled
+  })
   escalateWorkerFailure(
     db,
     dispatch,
@@ -173,18 +182,22 @@ function mailWorkerReport(
       id,
       from: stop.from,
       mailbox: () => dispatchReportMailbox(db, dispatch),
-      describe: (task) => ({
-        subject,
-        body: describeStop(stop, {
-          task,
-          taskId: dispatch.task_id,
-          dispatchId: dispatch.id,
-          chatCoordinator: deps.isChatMailbox?.(dispatchReportMailbox(db, dispatch)) === true,
-          taskReady: db.getTask(dispatch.task_id)?.status === 'ready',
-          coordinatorApprovals: deps.coordinatorApprovals?.() === true
-        })
-      }),
-      payload: { taskId: dispatch.task_id, ...payload }
+      ...(retry ? { notice: true as const } : {}),
+      describe: (task) =>
+        retry
+          ? { subject: retry.subject, body: retry.body(task) }
+          : {
+              subject,
+              body: describeStop(stop, {
+                task,
+                taskId: dispatch.task_id,
+                dispatchId: dispatch.id,
+                chatCoordinator: deps.isChatMailbox?.(dispatchReportMailbox(db, dispatch)) === true,
+                taskReady: db.getTask(dispatch.task_id)?.status === 'ready',
+                coordinatorApprovals: deps.coordinatorApprovals?.() === true
+              })
+            },
+      payload: { taskId: dispatch.task_id, ...payload, ...(retry ? { retrying: true } : {}) }
     },
     (handle, type) => woken.push([handle, type])
   )

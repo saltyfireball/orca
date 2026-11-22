@@ -1,6 +1,8 @@
 // Digest (SLRM-2388, FORK.md): the digest wired to a runtime (the desktop app, `orca serve` and
 // orcad), and the start of the daily send (digest-schedule.ts). Keep electron out of this file:
 // orcad loads it too, and the desktop notification comes through the notify targets' slot.
+import { readForkDigestRetries } from '../worker-retry/retry-digest'
+import type { RetryDbHandle } from '../worker-retry/retry-store'
 import { listEnvironments } from '../../../shared/remote-runtime/host-store/runtime-environment-store'
 import { isFolderRepo } from '../../../shared/repository/repo-kind'
 import {
@@ -77,6 +79,8 @@ export function readForkDigestLocalPart(
     {
       now: Date.now,
       tasks: (since) => readForkDigestTasks(runtime.getOrchestrationDb().db, since),
+      retries: (since) =>
+        readForkDigestRetries(runtime.getOrchestrationDb() as unknown as RetryDbHandle, since),
       pullRequests: (since) =>
         readForkDigestPullRequests(localRepos(runtime), since, async (args, repo, signal) => {
           const { stdout } = await ghExecFileAsync(args, {
