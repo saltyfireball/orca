@@ -167,7 +167,7 @@ describe('forkHeadlessSettingRefusal', () => {
     for (const key of [
       'forkBoundaryCompactMode',
       'forkBoundaryCompactThresholdTokens',
-      'forkUnattendedResume',
+      'forkLimitResume',
       'terminalFontSize'
     ]) {
       expect(forkHeadlessSettingRefusal(key), key).toBeNull()

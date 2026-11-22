@@ -38,6 +38,8 @@ export type StructuredAgentSessionLaunchContinuationDeps = {
   /** When the run that just ended started; unknown when no earlier run left a record. */
   previousRunStartedAt: () => Promise<number | undefined>
   resumeWorkOnRestart: () => boolean
+  /** Fork (BAD-560): the chats this start may continue; absent or undefined means every cut chat. */
+  chatsToContinue?: () => Promise<readonly string[] | undefined>
 }
 
 export async function continueStructuredAgentSessionsAtLaunch(
@@ -85,7 +87,7 @@ export async function continueStructuredAgentSessionsAtLaunch(
       return { continued: new Set(), cutByLastRun: new Set() }
     }
     const answer = await deps.restartResume.continueAfterRestart(
-      undefined,
+      await deps.chatsToContinue?.(),
       STRUCTURED_AGENT_SESSION_LAUNCH_CONTINUATION_OWNER,
       undefined,
       // Only the run that just ended cut what this start may continue on its own; with that run
@@ -116,7 +118,8 @@ export async function continueStructuredAgentSessionsAtLaunch(
 /** What an installed host continues with; no host means nothing to continue this start. */
 export function structuredAgentSessionLaunchContinuationDeps(
   host: StructuredAgentSessionHost | null,
-  resumeWorkOnRestart: () => boolean
+  resumeWorkOnRestart: () => boolean,
+  chatsToContinue?: StructuredAgentSessionLaunchContinuationDeps['chatsToContinue']
 ): StructuredAgentSessionLaunchContinuationDeps | undefined {
   return host
     ? {
@@ -128,7 +131,8 @@ export function structuredAgentSessionLaunchContinuationDeps(
             host.deps.journalDatabase.stateDirectory,
             agentSessionRuntimeIncarnation()
           ),
-        resumeWorkOnRestart
+        resumeWorkOnRestart,
+        chatsToContinue
       }
     : undefined
 }

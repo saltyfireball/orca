@@ -90,11 +90,8 @@ describe('fork settings access', () => {
     expect(forkSettingReadOnlyReason('terminalFontSize')).toBeNull()
   })
 
-  it("keeps continuing a person's own chats out of reach of agents (SLRM-2411)", () => {
-    expect(forkSettingReadOnlyReason('forkUnattendedResumeInteractive')).toMatch(
-      /limits what agents/
-    )
-    expect(forkSettingReadOnlyReason('forkUnattendedResume')).toBeNull()
+  it("keeps continuing a person's own chats out of reach of agents (BAD-560)", () => {
+    expect(forkSettingReadOnlyReason('forkAutoContinueInteractive')).toMatch(/limits what agents/)
   })
 
   it('treats every one-time marker as read-only', () => {
