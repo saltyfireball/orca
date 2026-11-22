@@ -14,10 +14,60 @@ export const ForkGuardsTargetParams = z.object({ id: z.string().trim().min(1).ma
 /** A chat session id (or a unique prefix) and its own cap in USD; 0 drops the chat's own cap. */
 export const ForkGuardsCapParams = z.object({
   id: z.string().trim().min(1).max(600),
-  usd: z.number().min(0).max(AGENT_GUARD_MAX_CAP_USD)
+  usd: z.number().min(0).max(AGENT_GUARD_MAX_CAP_USD),
+  /** BAD-679: cap the whole Run the chat belongs to (its coordinator and workers together). */
+  run: z.boolean().optional()
 })
 
-export type ForkGuardsListResult = { now: number; entries: AgentGuardEntry[] }
+const AutomationCapValue = z.number().min(0).max(AGENT_GUARD_MAX_CAP_USD).nullable().optional()
+
+/**
+ * BAD-679: one automation's own caps in USD. A number sets that cap (0 is none), null follows the
+ * default setting again, and a key left out is unchanged.
+ */
+export const ForkGuardsAutomationCapParams = z.object({
+  id: z.string().trim().min(1).max(200),
+  run: AutomationCapValue,
+  day: AutomationCapValue,
+  week: AutomationCapValue
+})
+
+/** A Run (BAD-679): a coordinator and its workers, with a cap that covers them together. */
+export type ForkGuardsRunRow = {
+  rootId: string
+  title: string
+  agents: number
+  spentUsd: number
+  capUsd: number
+}
+
+/** An automation's caps and what its runs have spent (BAD-679); a cap of 0 is none. */
+export type ForkGuardsAutomationRow = {
+  id: string
+  name: string
+  runCapUsd: number
+  dayCapUsd: number
+  weekCapUsd: number
+  daySpentUsd: number
+  weekSpentUsd: number
+  /** Further scheduled runs are skipped now. */
+  skipping: boolean
+}
+
+export type ForkGuardsListResult = {
+  now: number
+  entries: AgentGuardEntry[]
+  /** Runs with a cap, and automations with one (BAD-679); absent from an older host. */
+  runs?: ForkGuardsRunRow[]
+  automations?: ForkGuardsAutomationRow[]
+}
+
+export type ForkGuardsAutomationCapResult = {
+  id: string
+  runCapUsd: number
+  dayCapUsd: number
+  weekCapUsd: number
+}
 
 /**
  * - resumed: the pause is lifted (a chat's spend counts again from now).
@@ -27,6 +77,8 @@ export type ForkGuardsResumeResult = { id: string; outcome: 'resumed' | 'not-pau
 
 export type ForkGuardsCapResult = {
   id: string
+  /** BAD-679: `run` when the cap covers the chat's whole Run (id is then its coordinator). */
+  scope?: 'chat' | 'run'
   /** The chat's own cap now, or null when it follows the default again. */
   capUsd: number | null
   spentUsd: number

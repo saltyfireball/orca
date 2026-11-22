@@ -9,6 +9,8 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"number"},"d":"Failures of the same call (same tool, input and error) before the warning; unset is 6.","o":true}',
   forkAgentGuardNotify:
     '{"t":{"k":"boolean"},"d":"Tell the Decision inbox\'s notify targets when a guard pauses an agent; unset is on.","o":true}',
+  forkAgentGuardRunCapUsd:
+    '{"t":{"k":"number"},"d":"Estimated USD a Run (a coordinator and its workers together) may spend before every member is paused; 0 or unset is off.","o":true}',
   forkAgentGuardSpendCapScope:
     '{"t":{"k":"enum","values":["all","workers"]},"d":"Which chats the default spend cap covers: orchestration workers or all chats; unset is workers.","o":true}',
   forkAgentGuardSpendCapUsd:
@@ -35,6 +37,12 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Archive on merge (SLRM-2397): archive a workspace once its pull request merges, through the stock archive. Off unless true.","o":true}',
   forkAutoContinueInteractive:
     '{"t":{"k":"boolean"},"d":"Upstream\'s automatic continue after a restart also takes a person\'s own chats; unset is off, so only workers and automation runs carry on.","o":true}',
+  forkAutomationCapDayUsd:
+    '{"t":{"k":"number"},"d":"Estimated USD an automation\'s runs may spend in one local day before further runs are skipped; 0 or unset is off.","o":true}',
+  forkAutomationCapRunUsd:
+    '{"t":{"k":"number"},"d":"Estimated USD one run of an automation may spend before its agent is paused; 0 or unset is off.","o":true}',
+  forkAutomationCapWeekUsd:
+    '{"t":{"k":"number"},"d":"Estimated USD an automation\'s runs may spend in the last 7 local days before further runs are skipped; 0 or unset is off.","o":true}',
   forkBatchStart:
     '{"t":{"k":"boolean"},"d":"A Batch switch in the new-workspace composer for rapid prompts; unset is on.","o":true}',
   forkBatchStartAutoHost:

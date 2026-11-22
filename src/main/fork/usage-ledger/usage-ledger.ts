@@ -94,7 +94,7 @@ export class UsageLedger {
   private addCall(
     chat: UsageChatRecord,
     call: Extract<ClaudeUsageObservation, { kind: 'call' }>
-  ): void {
+  ): boolean {
     const now = this.deps.now()
     const index = chat.recentCalls.findIndex(([id]) => id === call.callId)
     const before = index !== -1 ? chat.recentCalls[index][1] : readTokens(null)
@@ -115,15 +115,7 @@ export class UsageLedger {
       const { longContext: _drop, ...flat } = delta
       delta.longContext = flat
     }
-    if (TOKEN_FIELDS.some((field) => delta[field] > 0)) {
-      const day = (chat.days[this.dayKey(now)] ??= {})
-      const model = call.model ?? UNKNOWN_MODEL
-      const cell = day[model]
-      day[model] = {
-        tokens: cell ? addTokens(cell.tokens, delta) : delta,
-        calls: (cell?.calls ?? 0) + (index !== -1 ? 0 : 1)
-      }
-    }
+    const added = this.addToDay(chat, call.model, delta, index === -1)
     chat.lastAt = now
     if (call.root) {
       chat.contextTokens = claudeCallContextTokens(highest)
@@ -132,6 +124,84 @@ export class UsageLedger {
         chat.ttl = call.ttl
       }
     }
+    return added
+  }
+
+  /** Adds token counts to today's cell of the model; `newCall` counts one more provider call. */
+  private addToDay(
+    chat: UsageChatRecord,
+    model: string | null,
+    delta: ForkUsageTokens,
+    newCall: boolean
+  ): boolean {
+    if (!TOKEN_FIELDS.some((field) => delta[field] > 0)) {
+      return false
+    }
+    const day = (chat.days[this.dayKey(this.deps.now())] ??= {})
+    const key = model ?? UNKNOWN_MODEL
+    const cell = day[key]
+    day[key] = {
+      tokens: cell ? addTokens(cell.tokens, delta) : delta,
+      calls: (cell?.calls ?? 0) + (newCall ? 1 : 0)
+    }
+    return true
+  }
+
+  /** BAD-679: a chat or terminal agent the stream frames do not cover. */
+  private externalChat(sessionId: string, agent: string, terminal: boolean): UsageChatRecord {
+    const chat = this.chat(sessionId)
+    chat.agent = agent
+    if (terminal) {
+      chat.terminal = true
+    }
+    return chat
+  }
+
+  /**
+   * BAD-679: one provider call read from a terminal agent's transcript (Claude Code). Repeated
+   * rows of the same call add nothing, as with frames. Returns whether anything was added.
+   */
+  observeTranscriptCall(
+    sessionId: string,
+    agent: string,
+    call: Extract<ClaudeUsageObservation, { kind: 'call' }>
+  ): boolean {
+    const chat = this.externalChat(sessionId, agent, true)
+    return this.addCall(chat, { ...call, root: false })
+  }
+
+  /** BAD-679: tokens a terminal agent spent since the last read (Codex rollout deltas). */
+  observeTranscriptDelta(
+    sessionId: string,
+    agent: string,
+    model: string | null,
+    delta: ForkUsageTokens
+  ): boolean {
+    const chat = this.externalChat(sessionId, agent, true)
+    chat.lastAt = this.deps.now()
+    return this.addToDay(chat, model, delta, true)
+  }
+
+  /**
+   * BAD-679: a native chat whose provider reports running totals (Codex's thread token usage).
+   * Only the growth since the last report is added, and a total that fell is a new thread.
+   */
+  observeCumulative(
+    sessionId: string,
+    agent: string,
+    model: string | null,
+    total: ForkUsageTokens
+  ): boolean {
+    const chat = this.externalChat(sessionId, agent, false)
+    const before = chat.cumulative ?? readTokens(null)
+    const reset = TOKEN_FIELDS.some((field) => total[field] < before[field])
+    const delta = readTokens(null)
+    for (const field of TOKEN_FIELDS) {
+      delta[field] = reset ? total[field] : total[field] - before[field]
+    }
+    chat.cumulative = total
+    chat.lastAt = this.deps.now()
+    return this.addToDay(chat, model, delta, true)
   }
 
   /** A turn opened (the user sent, or a queued send started). */
@@ -166,7 +236,9 @@ export class UsageLedger {
     return (
       Object.values(this.data.chats)
         // A compacted chat stays listed (context 0) so its row keeps its spend (SLRM-2390).
-        .filter((chat) => chat.contextTokens > 0 || Object.keys(chat.days).length > 0)
+        .filter(
+          (chat) => !chat.terminal && (chat.contextTokens > 0 || Object.keys(chat.days).length > 0)
+        )
         .map((chat) => ({
           sessionId: chat.sessionId,
           lastAt: chat.lastAt,

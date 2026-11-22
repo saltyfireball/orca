@@ -17,6 +17,41 @@ import {
 import { useTranslate } from '@/i18n/use-translate'
 import { ForkNumberInput } from '../cache-cold/ForkNumberInput'
 
+const SETTING_KEYS = {
+  runCapUsd: 'forkAgentGuardRunCapUsd',
+  automationRunCapUsd: 'forkAutomationCapRunUsd',
+  automationDayCapUsd: 'forkAutomationCapDayUsd',
+  automationWeekCapUsd: 'forkAutomationCapWeekUsd'
+} as const
+
+// Fork (BAD-679): caps beyond one chat. All 0 (off) unless set.
+const RUN_AND_AUTOMATION_CAPS = [
+  {
+    key: 'runCap',
+    field: 'runCapUsd',
+    label: 'Spend cap per Run (USD)',
+    help: '0 is off. A coordinator and its workers together; at the cap every agent in the Run is paused. orca guards cap --run sets one Run its own.'
+  },
+  {
+    key: 'automationRunCap',
+    field: 'automationRunCapUsd',
+    label: 'Automation spend cap per run (USD)',
+    help: '0 is off. One run of an automation; its agent is paused at the end of the turn that passes it. orca guards automation-cap sets one automation its own.'
+  },
+  {
+    key: 'automationDayCap',
+    field: 'automationDayCapUsd',
+    label: 'Automation spend cap per day (USD)',
+    help: '0 is off. What an automation spent today (local time); past it further runs are skipped and run history says why.'
+  },
+  {
+    key: 'automationWeekCap',
+    field: 'automationWeekCapUsd',
+    label: 'Automation spend cap per 7 days (USD)',
+    help: '0 is off. What an automation spent over the last 7 days; past it further runs are skipped until older spend ages out.'
+  }
+] as const
+
 type Props = {
   settings: GlobalSettings
   updateSettings: (updates: Partial<GlobalSettings>) => void
@@ -76,7 +111,7 @@ export function ForkAgentGuardsSetting({ settings, updateSettings }: Props): Rea
         label={capLabel}
         description={t(
           'fork.agentGuards.capHelp',
-          '0 is off. Estimated from the usage ledger at per-token prices; a chat past it is paused when its turn ends. Native Claude chats only. orca guards cap sets one chat its own.'
+          '0 is off. Estimated from the usage ledger at per-token prices; a chat past it is paused when its turn ends, and a Claude Code or Codex terminal agent is stopped after its next tool call. Claude and Codex chats and terminals are counted. orca guards cap sets one chat its own.'
         )}
         control={
           <ForkNumberInput
@@ -104,6 +139,23 @@ export function ForkAgentGuardsSetting({ settings, updateSettings }: Props): Rea
           />
         }
       />
+      {RUN_AND_AUTOMATION_CAPS.map(({ key, field, label, help }) => (
+        <SettingsRow
+          key={key}
+          label={t(`fork.agentGuards.${key}`, label)}
+          description={t(`fork.agentGuards.${key}Help`, help)}
+          control={
+            <ForkNumberInput
+              value={config[field]}
+              label={t(`fork.agentGuards.${key}`, label)}
+              min={0}
+              max={AGENT_GUARD_MAX_CAP_USD}
+              decimal
+              onCommit={(next) => updateSettings({ [SETTING_KEYS[field]]: next })}
+            />
+          }
+        />
+      ))}
       <SettingsSwitchRow
         label={t('fork.agentGuards.notify', 'Notify when a guard pauses an agent')}
         description={t(

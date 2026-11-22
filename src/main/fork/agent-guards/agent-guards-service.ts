@@ -7,30 +7,40 @@
 // Keep electron out of this file.
 import type { AgentHookSource } from '../../../shared/agent-hook-listener/transport/agent-hook-relay'
 import {
+  agentGuardAnyCapSet,
   readAgentGuardSettings,
   type AgentGuardEntry,
   type AgentGuardSettingsSource
 } from '../../../shared/fork/agent-guards'
 import type {
   ForkGuardsCapResult,
+  ForkGuardsListResult,
   ForkGuardsResumeResult
 } from '../../../shared/fork/agent-guards-wire'
+import type { Automation } from '../../../shared/automations/automation-definition'
+import type { AutomationRun } from '../../../shared/automations/history/automation-run'
 import type { ForkGlobalSettings } from '../../../shared/fork/fork-global-settings'
 import type { IdleRecoverySettingsSource } from '../../../shared/fork/idle-recovery-settings'
 import { sleeperChatSessionId } from '../../../shared/fork/sleepers-ps-sources'
 import type { AgentToolCallOwner } from '../../agent-hooks/tool-events/agent-tool-call-reader'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
-import { forkAgentQueueWorkerParent } from '../agent-queue/agent-queue-service'
 import { startForkBackoffTimer } from '../fork-backoff-timer'
 import type { LimitResumeRuntime } from '../limit-resume/limit-resume-host'
-import {
-  forkUsageLedgerData,
-  forkUsageLedgerSettings,
-  onForkUsageLedgerTurn
-} from '../usage-ledger/usage-ledger-service'
-import { cleanUsagePrices, estimateChatCostUsd, usagePricer } from '../usage-ledger/usage-report'
+import { onForkUsageLedgerTurn } from '../usage-ledger/usage-ledger-service'
 import { liveAgentGuardActPorts } from './agent-guards-act'
-import { AgentGuardEngine, type AgentGuardSpend } from './agent-guards-engine'
+import { AgentGuardEngine } from './agent-guards-engine'
+import {
+  agentGuardAutomationLimits,
+  agentGuardList,
+  agentGuardRunOf,
+  agentGuardSpendOf,
+  configureAgentGuardScopes,
+  loadAgentGuardScopeState,
+  noteAgentGuardAutomationLaunch,
+  setAgentGuardLiveIds
+} from './agent-guards-scopes'
+import { automationCapsPath } from './automation-caps-state'
+import { AgentGuardTerminals } from './agent-guards-terminals'
 import { readAgentGuardHookCall } from './agent-guards-hook-call'
 import { setForkAgentGuardHeld } from './agent-guards-holds'
 import { notifyAgentGuardPaused, readAgentGuardRows } from './agent-guards-host'
@@ -48,6 +58,9 @@ export type AgentGuardsServiceRuntime = LimitResumeRuntime & {
   requireStore: () => {
     getSettings: () => unknown
     onSettingsChanged?: (listener: (updates: Partial<ForkGlobalSettings>) => void) => unknown
+    /** BAD-679: the automation caps read the runs and names of automations. */
+    listAutomationRuns?: (automationId: string) => AutomationRun[]
+    listAutomations?: () => Automation[]
   }
 }
 
@@ -57,6 +70,7 @@ let runtime: AgentGuardsServiceRuntime | null = null
 let engine: AgentGuardEngine | null = null
 let starting = false
 let lastSent = '[]'
+const terminals = new AgentGuardTerminals()
 const listeners = new Set<Listener>()
 const changeListeners = new Set<() => void>()
 
@@ -72,26 +86,27 @@ function guardSettings() {
   return readAgentGuardSettings(settingsObject() as AgentGuardSettingsSource)
 }
 
-function anyGuardOn(): boolean {
-  const settings = guardSettings()
-  return settings.loop || settings.capUsd > 0 || (engine?.hasOwnCaps() ?? false)
+/** True when some spend cap may cover an agent, so a terminal agent's transcript is worth reading. */
+function anySpendCapOn(): boolean {
+  return agentGuardAnyCapSet(guardSettings()) || (engine?.hasOwnCaps() ?? false)
 }
 
-/** Estimated spend from the usage ledger, priced as the usage report prices it. */
-function spendOf(sessionId: string): AgentGuardSpend {
-  const chat = forkUsageLedgerData()?.chats[sessionId]
-  const isWorker = Boolean(chat?.parentSessionId ?? forkAgentQueueWorkerParent(sessionId))
-  if (!chat) {
-    return { totalUsd: null, isWorker }
-  }
-  const pricer = usagePricer(cleanUsagePrices(forkUsageLedgerSettings()?.forkUsagePrices))
-  return { totalUsd: estimateChatCostUsd(chat, pricer), isWorker }
+function anyGuardOn(): boolean {
+  return guardSettings().loop || anySpendCapOn()
 }
 
 /** Every guarded agent on this host: paused, warned, then capped. */
 export function forkAgentGuardEntries(): AgentGuardEntry[] {
   return engine?.entries() ?? []
 }
+
+export const forkAgentGuardList = (): ForkGuardsListResult => agentGuardList(engine)
+
+/** Hook (automation launch): the agent a run started, so its automation's caps cover it. */
+export const forkAutomationNoteLaunch = (
+  automationId: string,
+  launched: Parameters<typeof noteAgentGuardAutomationLaunch>[2]
+): void => noteAgentGuardAutomationLaunch(engine, automationId, launched)
 
 export function onForkAgentGuardsChanged(listener: Listener): () => void {
   listeners.add(listener)
@@ -131,8 +146,6 @@ function publish(): void {
   }
 }
 
-let terminalTitles = new Map<string, string>()
-
 async function pass(): Promise<boolean> {
   const live = runtime
   if (!live || !engine) {
@@ -145,12 +158,14 @@ async function pass(): Promise<boolean> {
     return false
   }
   const rows = await readAgentGuardRows(live)
-  terminalTitles = rows.terminals
+  terminals.titles = rows.terminals
+  setAgentGuardLiveIds(rows.live)
   let busy = paused
   for (const row of rows.chats) {
     busy ||= row.working
     await engine.sweepChat(row)
   }
+  await terminals.sweep(engine, rows.live, anySpendCapOn())
   engine.forgetMissing(rows.live)
   publish()
   return busy || forkAgentGuardEntries().length > 0
@@ -177,6 +192,11 @@ async function startEngine(): Promise<void> {
   const path = agentGuardsPath(getProfileUserDataPath())
   const records = await readAgentGuardRecords(path)
   pruneAgentGuardRecords(records, Date.now())
+  configureAgentGuardScopes({
+    settings: guardSettings,
+    store: () => runtime?.requireStore() ?? null
+  })
+  await loadAgentGuardScopeState(automationCapsPath(getProfileUserDataPath()))
   let saving: Promise<void> = Promise.resolve()
   engine = new AgentGuardEngine({
     ports: liveAgentGuardActPorts(() => runtime),
@@ -189,7 +209,10 @@ async function startEngine(): Promise<void> {
     },
     now: Date.now,
     settings: guardSettings,
-    spend: spendOf,
+    spend: agentGuardSpendOf,
+    run: agentGuardRunOf,
+    automationLimits: agentGuardAutomationLimits,
+    refreshSpend: (id) => terminals.read(id),
     notify: (entry) =>
       notifyAgentGuardPaused(entry, settingsObject() as IdleRecoverySettingsSource),
     changed: publish,
@@ -230,25 +253,22 @@ export function forkAgentGuardsObserveHook(
   owner: AgentToolCallOwner | null
 ): void {
   try {
-    if (!engine || !owner || !guardSettings().loop || sleeperChatSessionId(owner.paneKey)) {
+    const loop = guardSettings().loop
+    if (!engine || !owner || !(loop || anySpendCapOn()) || sleeperChatSessionId(owner.paneKey)) {
       return
     }
     const read = readAgentGuardHookCall(source, body, owner, Date.now())
     if (!read) {
       return
     }
-    void engine
-      .observe(
-        read.paneKey,
-        {
-          kind: 'terminal',
-          agent: read.agent,
-          title: terminalTitles.get(read.paneKey) ?? read.paneKey,
-          worktreeId: read.worktreeId
-        },
-        read.call
-      )
-      .then(publish)
+    terminals.note(read)
+    if (anySpendCapOn()) {
+      // BAD-679: the agent's transcript is where its spend is; read it and stop it past a cap.
+      void engine.observeTerminalSpend(read.paneKey, terminals.meta(read.paneKey)).then(publish)
+    }
+    if (loop) {
+      void engine.observe(read.paneKey, terminals.meta(read.paneKey), read.call).then(publish)
+    }
   } catch (error) {
     console.warn('[fork-agent-guards] could not read a hook post', error)
   }
@@ -298,10 +318,14 @@ export async function forkAgentGuardResume(query: string): Promise<ForkGuardsRes
   return { id, outcome }
 }
 
-/** `orca guards cap <session id> <usd>`: a chat's own cap; 0 goes back to the default. */
+/**
+ * `orca guards cap <id> <usd>`: a chat's own cap, or with `run` the cap of the whole Run the chat
+ * belongs to (kept on its coordinator); 0 goes back to the default.
+ */
 export async function forkAgentGuardSetCap(
   query: string,
-  usd: number
+  usd: number,
+  run = false
 ): Promise<ForkGuardsCapResult> {
   if (!engine) {
     throw new Error('Agent guards are not running on this host yet; try again in a moment.')
@@ -315,7 +339,15 @@ export async function forkAgentGuardSetCap(
   if (!getStructuredAgentSessionHost()?.deps.store.getRecord(sessionId)) {
     throw new Error(`No chat "${query.slice(0, 80)}" on this host. Name a chat by its session id.`)
   }
+  if (run) {
+    const result = await engine.caps.setRunCap(sessionId, usd)
+    publish()
+    return { id: result.rootId, scope: 'run', capUsd: result.capUsd, spentUsd: result.spentUsd }
+  }
   const result = await engine.setCap(sessionId, usd)
   publish()
-  return { id: sessionId, ...result }
+  return { id: sessionId, scope: 'chat', ...result }
 }
+
+/** `orca guards automation-cap <automation id> ...`: one automation's own caps. */
+export { setAgentGuardAutomationCap as forkAgentGuardSetAutomationCap } from './agent-guards-scopes'

@@ -27,7 +27,12 @@ describe('readAgentGuardSettings', () => {
       pauseAfterWarning: true,
       capUsd: 0,
       capScope: 'workers',
-      notify: true
+      notify: true,
+      // BAD-679: every cap beyond one chat is off by default.
+      runCapUsd: 0,
+      automationRunCapUsd: 0,
+      automationDayCapUsd: 0,
+      automationWeekCapUsd: 0
     })
   })
 

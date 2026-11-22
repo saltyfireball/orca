@@ -5,6 +5,7 @@ import {
   MODEL_PRICING,
   normalizeModelForPricing
 } from '../../claude-usage/claude-model-pricing'
+import { estimateCostUsd as estimateCodexCostUsd } from '../../codex-usage/codex-usage-cost-estimate'
 import { FORK_USAGE_NO_TOKENS, type ForkUsagePrice } from '../../../shared/fork/usage-ledger'
 import type {
   ForkUsageReport,
@@ -84,7 +85,22 @@ export function usagePricer(overrides: Record<string, ForkUsagePrice>): UsagePri
       return null
     }
     const own = overrides[model] ?? overrides[normalizeModelForPricing(model) ?? '']
-    return own ? priceWith(own, tokens) : estimateCostUsd(model, tokens)
+    if (own) {
+      return priceWith(own, tokens)
+    }
+    // BAD-679: a Codex model is priced with the Codex table. The ledger keeps a Codex call's
+    // uncached input as input and its cached input as cache reads; Codex counts both as input.
+    return (
+      estimateCostUsd(model, tokens) ??
+      estimateCodexCostUsd(model, {
+        inputTokens: tokens.inputTokens + tokens.cacheReadTokens,
+        cachedInputTokens: tokens.cacheReadTokens,
+        outputTokens: tokens.outputTokens,
+        longContextInputTokens: 0,
+        longContextCachedInputTokens: 0,
+        longContextOutputTokens: 0
+      })
+    )
   }
 }
 

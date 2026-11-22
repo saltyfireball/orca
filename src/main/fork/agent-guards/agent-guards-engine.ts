@@ -9,7 +9,6 @@
 //   turn a person started lifts the pause. A paused terminal agent is left as the interrupt left it.
 import {
   AGENT_GUARD_LOOP_MESSAGE,
-  agentGuardCapFor,
   agentGuardLabel,
   newAgentGuardLoopTrack,
   noteAgentGuardWarned,
@@ -26,12 +25,13 @@ import {
   roundUsd,
   type AgentGuardWarned
 } from './agent-guards-entries'
+import { enforceAgentGuardSpend } from './agent-guards-enforce'
+import { AgentGuardLimits } from './agent-guards-limits'
 import {
   AgentGuardLanes,
   type AgentGuardAgentMeta,
   type AgentGuardChatRow,
-  type AgentGuardEngineDeps,
-  type AgentGuardSpend
+  type AgentGuardEngineDeps
 } from './agent-guards-types'
 import {
   pruneAgentGuardRecords,
@@ -46,10 +46,6 @@ export type {
   AgentGuardSpend
 } from './agent-guards-types'
 
-/** Spend since the last resume or cap change set a baseline. */
-const spentSince = (record: AgentGuardRecord | undefined, spend: AgentGuardSpend): number =>
-  Math.max(0, (spend.totalUsd ?? 0) - (record?.baselineUsd ?? 0))
-
 const BARE_CHAT: AgentGuardAgentMeta = { kind: 'chat', agent: '', title: '', worktreeId: null }
 
 export class AgentGuardEngine {
@@ -58,17 +54,26 @@ export class AgentGuardEngine {
   private readonly seen = new Map<string, Set<string>>()
   private readonly meta = new Map<string, AgentGuardAgentMeta>()
   private readonly lanes = new AgentGuardLanes()
+  /** The caps that cover each agent: Run caps and automation caps are read and set here. */
+  readonly caps: AgentGuardLimits
 
-  constructor(private readonly deps: AgentGuardEngineDeps) {}
+  constructor(private readonly deps: AgentGuardEngineDeps) {
+    this.caps = new AgentGuardLimits(deps, (id, meta) => this.record(id, meta ?? this.metaOf(id)))
+  }
 
   /** The ids the fork's automatic senders leave alone. */
   heldIds(): string[] {
     return [...this.deps.records].filter(([, record]) => record.paused).map(([id]) => id)
   }
 
-  /** True when some chat has a cap of its own, which applies with the default cap off. */
+  /** True when some agent has a cap or an automation of its own, which apply with the default caps off. */
   hasOwnCaps(): boolean {
-    return [...this.deps.records.values()].some((record) => record.capUsd !== undefined)
+    return [...this.deps.records.values()].some(
+      (record) =>
+        record.capUsd !== undefined ||
+        record.runCapUsd !== undefined ||
+        record.automationId !== undefined
+    )
   }
 
   isPaused(id: string): boolean {
@@ -253,29 +258,42 @@ export class AgentGuardEngine {
     }
   }
 
-  /** A chat's cap and its spend since the cap began, or null when no cap covers it or no spend. */
-  private capState(
-    id: string,
-    spend: AgentGuardSpend
-  ): { capUsd: number; spentUsd: number } | null {
-    const record = this.deps.records.get(id)
-    const cap = agentGuardCapFor(record?.capUsd, spend.isWorker, this.deps.settings())
-    return cap === null || spend.totalUsd === null
-      ? null
-      : { capUsd: cap, spentUsd: roundUsd(spentSince(record, spend)) }
+  /** Between turns: pause a chat whose spend reached a cap that covers it. */
+  private async checkSpend(sessionId: string): Promise<void> {
+    if (!this.deps.ports.chatInTurn(sessionId)) {
+      await this.enforceSpend(sessionId, false)
+    }
   }
 
-  /** Between turns: pause a chat whose spend reached its cap. */
-  private async checkSpend(sessionId: string): Promise<void> {
-    const state = this.capState(sessionId, this.deps.spend(sessionId))
-    if (!state || state.spentUsd < state.capUsd || this.deps.ports.chatInTurn(sessionId)) {
-      return
-    }
-    await this.pause(sessionId, this.metaOf(sessionId), {
-      reason: 'spend',
-      at: this.deps.now(),
-      ...state
+  /** A terminal agent finished a tool call: read its transcript, and stop it past a cap. */
+  observeTerminalSpend(id: string, meta: AgentGuardAgentMeta): Promise<void> {
+    this.noteMeta(id, meta)
+    return this.lane(id, async () => {
+      await this.deps.refreshSpend?.(id)
+      if (!this.isPaused(id)) {
+        await this.enforceSpend(id, true)
+      }
     })
+  }
+
+  private enforceSpend(id: string, interrupt: boolean): Promise<void> {
+    return enforceAgentGuardSpend(
+      {
+        deps: this.deps,
+        caps: this.caps,
+        isPaused: (member) => this.isPaused(member),
+        metaOf: (member) => this.metaOf(member),
+        lane: (member, task) => this.lane(member, task),
+        pause: (member, meta, pause) => this.pause(member, meta, pause)
+      },
+      id,
+      interrupt
+    )
+  }
+
+  /** An automation started this agent: its automation caps cover it from now (BAD-679). */
+  noteAutomation(id: string, kind: 'chat' | 'terminal', automationId: string): Promise<void> {
+    return this.caps.noteAutomation(id, automationId, { ...this.metaOf(id), kind })
   }
 
   /** Lift a pause. A chat's spend counts again from now. */
@@ -284,14 +302,14 @@ export class AgentGuardEngine {
     if (!record?.paused) {
       return 'not-paused'
     }
+    const scope = record.paused.scope
     delete record.paused
     record.at = this.deps.now()
-    if (record.kind === 'chat') {
-      const total = this.deps.spend(id).totalUsd
-      if (total !== null) {
-        record.baselineUsd = roundUsd(total)
-      }
+    const total = this.deps.spend(id).totalUsd
+    if (total !== null) {
+      record.baselineUsd = roundUsd(total)
     }
+    this.caps.setBaseline(id, record, scope, (member) => this.metaOf(member))
     this.tracks.delete(id)
     this.warned.delete(id)
     pruneAgentGuardRecords(this.deps.records, this.deps.now())
@@ -301,26 +319,8 @@ export class AgentGuardEngine {
   }
 
   /** A chat's own cap; 0 drops it so the default applies again. Its spend counts from now. */
-  async setCap(
-    sessionId: string,
-    usd: number
-  ): Promise<{ capUsd: number | null; spentUsd: number }> {
-    const record = this.record(sessionId, this.metaOf(sessionId))
-    const total = this.deps.spend(sessionId).totalUsd ?? 0
-    if (usd > 0) {
-      record.capUsd = roundUsd(usd)
-      record.baselineUsd = roundUsd(total)
-    } else {
-      delete record.capUsd
-    }
-    record.at = this.deps.now()
-    pruneAgentGuardRecords(this.deps.records, this.deps.now())
-    await this.deps.save()
-    this.deps.changed()
-    return {
-      capUsd: record.capUsd ?? null,
-      spentUsd: roundUsd(spentSince(record, this.deps.spend(sessionId)))
-    }
+  setCap(sessionId: string, usd: number): Promise<{ capUsd: number | null; spentUsd: number }> {
+    return this.caps.setChatCap(sessionId, usd, this.metaOf(sessionId))
   }
 
   /** Paused and warned agents, then chats with a cap, oldest first within each. */
@@ -329,7 +329,7 @@ export class AgentGuardEngine {
       records: this.deps.records,
       warned: this.warned,
       meta: this.meta,
-      cap: (id) => this.capState(id, this.deps.spend(id))
+      limits: (id) => this.caps.of(id).limits
     })
   }
 

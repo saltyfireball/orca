@@ -27,6 +27,14 @@ export type ForkAgentGuardSettings = {
   forkAgentGuardSpendCapScope?: AgentGuardSpendScope
   /** Fork (SLRM-2385): tell the Decision inbox's notify targets when a guard pauses an agent; unset is on. */
   forkAgentGuardNotify?: boolean
+  /** Fork (BAD-679): estimated USD a Run (a coordinator and its workers together) may spend before every member is paused; 0 or unset is off. */
+  forkAgentGuardRunCapUsd?: number
+  /** Fork (BAD-679): estimated USD one run of an automation may spend before its agent is paused; 0 or unset is off. */
+  forkAutomationCapRunUsd?: number
+  /** Fork (BAD-679): estimated USD an automation's runs may spend in one local day before further runs are skipped; 0 or unset is off. */
+  forkAutomationCapDayUsd?: number
+  /** Fork (BAD-679): estimated USD an automation's runs may spend in the last 7 local days before further runs are skipped; 0 or unset is off. */
+  forkAutomationCapWeekUsd?: number
 }
 
 export type AgentGuardSettings = {
@@ -36,6 +44,12 @@ export type AgentGuardSettings = {
   capUsd: number
   capScope: AgentGuardSpendScope
   notify: boolean
+  /** Per-Run default cap (BAD-679); 0 is off. */
+  runCapUsd: number
+  /** Defaults for every automation (BAD-679); 0 is off. */
+  automationRunCapUsd: number
+  automationDayCapUsd: number
+  automationWeekCapUsd: number
 }
 
 export type AgentGuardSettingsSource =
@@ -58,8 +72,28 @@ export function readAgentGuardSettings(source: AgentGuardSettingsSource): AgentG
     pauseAfterWarning: source?.forkAgentGuardLoopPause !== false,
     capUsd: normalizeAgentGuardCap(cap) ?? 0,
     capScope: source?.forkAgentGuardSpendCapScope === 'all' ? 'all' : 'workers',
-    notify: source?.forkAgentGuardNotify !== false
+    notify: source?.forkAgentGuardNotify !== false,
+    runCapUsd: normalizeAgentGuardCap(source?.forkAgentGuardRunCapUsd) ?? 0,
+    automationRunCapUsd: normalizeAgentGuardCap(source?.forkAutomationCapRunUsd) ?? 0,
+    automationDayCapUsd: normalizeAgentGuardCap(source?.forkAutomationCapDayUsd) ?? 0,
+    automationWeekCapUsd: normalizeAgentGuardCap(source?.forkAutomationCapWeekUsd) ?? 0
   }
+}
+
+/** True when a setting gives some agent, Run or automation a default spend cap (BAD-679). */
+export function agentGuardAnyCapSet(
+  settings: Pick<
+    AgentGuardSettings,
+    'capUsd' | 'runCapUsd' | 'automationRunCapUsd' | 'automationDayCapUsd' | 'automationWeekCapUsd'
+  >
+): boolean {
+  return (
+    settings.capUsd > 0 ||
+    settings.runCapUsd > 0 ||
+    settings.automationRunCapUsd > 0 ||
+    settings.automationDayCapUsd > 0 ||
+    settings.automationWeekCapUsd > 0
+  )
 }
 
 /** A cap in USD, or null for none (0, negative, not a number or past the ceiling). */
@@ -99,6 +133,55 @@ export function agentGuardCapFor(
 
 export type AgentGuardReason = 'loop' | 'spend'
 
+/**
+ * What a cap counts (BAD-679):
+ * - chat: one agent's own spend (the default cap, or `orca guards cap`).
+ * - run: a coordinator and all its workers together.
+ * - automation-run / automation-day / automation-week: what an automation's runs spent.
+ */
+export type AgentGuardCapScope =
+  | 'chat'
+  | 'run'
+  | 'automation-run'
+  | 'automation-day'
+  | 'automation-week'
+
+export const AGENT_GUARD_CAP_SCOPES: readonly AgentGuardCapScope[] = [
+  'chat',
+  'run',
+  'automation-run',
+  'automation-day',
+  'automation-week'
+]
+
+export function isAgentGuardCapScope(value: unknown): value is AgentGuardCapScope {
+  return AGENT_GUARD_CAP_SCOPES.some((scope) => scope === value)
+}
+
+const SCOPE_WORDS: Record<AgentGuardCapScope, string> = {
+  chat: 'its',
+  run: "its Run's",
+  'automation-run': "its automation run's",
+  'automation-day': "its automation's daily",
+  'automation-week': "its automation's weekly"
+}
+
+/** One cap that covers an agent and what has been spent against it. */
+export type AgentGuardLimit = { scope: AgentGuardCapScope; capUsd: number; spentUsd: number }
+
+/** The limit closest to (or past) its cap, by share used. */
+export function tightestAgentGuardLimit(
+  limits: readonly AgentGuardLimit[]
+): AgentGuardLimit | null {
+  let best: AgentGuardLimit | null = null
+  for (const limit of limits) {
+    if (!best || limit.spentUsd / limit.capUsd > best.spentUsd / best.capUsd) {
+      best = limit
+    }
+  }
+  return best
+}
+
 /** One guarded agent, as the status line, the inbox and `orca guards list` show it. */
 export type AgentGuardEntry = {
   /** `chat:<session id>` for a native chat, else the terminal pane key. */
@@ -122,9 +205,12 @@ export type AgentGuardEntry = {
   repeats?: number
   /** Tool of the looping call, capped and stripped of control characters. */
   tool?: string
-  /** Estimated USD since the cap began or was last reset, for a chat with a cap. */
+  /** Estimated USD since the cap began or was last reset, for an agent with a cap (the tightest one). */
   spentUsd?: number
   capUsd?: number
+  /** Which cap spentUsd and capUsd are, and every cap that covers the agent with its spend (BAD-679). */
+  scope?: AgentGuardCapScope
+  limits?: AgentGuardLimit[]
   /** True when a pause could not interrupt the agent (a terminal agent with no key to stop it). */
   notInterrupted?: boolean
 }
@@ -140,7 +226,8 @@ export function agentGuardLabel(text: string, max = 80): string {
 export function agentGuardReasonText(entry: AgentGuardEntry): string {
   const money = (value: number | undefined): string => `$${(value ?? 0).toFixed(2)}`
   if (entry.reason === 'spend') {
-    return `Paused: estimated spend ${money(entry.spentUsd)} passed its cap of ${money(entry.capUsd)}.`
+    const whose = SCOPE_WORDS[entry.scope ?? 'chat']
+    return `Paused: estimated spend ${money(entry.spentUsd)} passed ${whose} cap of ${money(entry.capUsd)}.`
   }
   if (entry.reason === 'loop') {
     const tool = entry.tool ? ` (${entry.tool})` : ''

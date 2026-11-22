@@ -31,6 +31,10 @@ export type UsageChatRecord = {
   ttl?: ForkCacheTtl
   /** Latest calls seen, with the highest counts each reported, so repeated frames add nothing. */
   recentCalls: [string, ForkUsageTokens][]
+  /** BAD-679: a terminal agent (its id is a pane key), counted from its transcript, not a chat. */
+  terminal?: true
+  /** BAD-679: the running totals a provider reported last (Codex), so a replay adds nothing. */
+  cumulative?: ForkUsageTokens
 }
 
 export type UsageLedgerData = { version: 1; chats: Record<string, UsageChatRecord> }
@@ -129,7 +133,9 @@ function readChat(sessionId: string, value: unknown): UsageChatRecord | null {
     workspaceName: str(raw.workspaceName),
     parentSessionId: str(raw.parentSessionId),
     billing,
-    ttl
+    ttl,
+    terminal: raw.terminal === true ? true : undefined,
+    cumulative: raw.cumulative === undefined ? undefined : readTokens(raw.cumulative)
   }
   return {
     sessionId,

@@ -15,6 +15,7 @@ import {
   automationRunFailure,
   type AutomationRunFailure
 } from '../../../shared/automations/history/automation-run-failure-copy'
+import { forkAutomationNoteLaunch } from '../../fork/agent-guards/agent-guards-service'
 import { parseWslDistroHold } from '../../../shared/remote-runtime/wsl-hosts/wsl-distro-stopped-hold'
 
 type RunTarget = Extract<AutomationRunTargetResult, { ok: true }>
@@ -89,6 +90,8 @@ export async function runAutomationLaunch<Target extends RunTarget>(
     }).run
   }
   const launchRunTarget = launchRunTargetOf(launch)
+  // Fork (BAD-679): the run's agent is covered by its automation's spend caps.
+  forkAutomationNoteLaunch(automation.id, launch)
   if (launch.delivery) {
     // A startup dialog can hold delivery, so link the terminal while the run is still dispatching.
     const linked = ctx.transition({

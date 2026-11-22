@@ -5,6 +5,7 @@ import { printResult } from '../output/command-result-output'
 import { RuntimeClientError } from '../runtime/connection/types'
 import { agentGuardReasonText, type AgentGuardEntry } from '../../shared/fork/agent-guards'
 import type {
+  ForkGuardsAutomationCapResult,
   ForkGuardsCapResult,
   ForkGuardsListResult,
   ForkGuardsResumeResult
@@ -25,17 +26,83 @@ function ago(ms: number): string {
   return minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h${minutes % 60}m`
 }
 
+const money = (usd: number): string => `$${usd.toFixed(2)}`
+
+/** `chat $1.00/$5.00, run $12.00/$20.00`: every cap that covers the agent with its spend. */
+function limitsText(entry: AgentGuardEntry): string {
+  const limits = entry.limits ?? []
+  return limits.length > 0
+    ? limits
+        .map((limit) => `${limit.scope} ${money(limit.spentUsd)}/${money(limit.capUsd)}`)
+        .join(', ')
+    : `chat ${money(entry.spentUsd ?? 0)}/${money(entry.capUsd ?? 0)}`
+}
+
 function state(entry: AgentGuardEntry, now: number): string {
   if (entry.state === 'capped') {
-    return `capped $${(entry.spentUsd ?? 0).toFixed(2)}/$${(entry.capUsd ?? 0).toFixed(2)}`
+    return `capped ${limitsText(entry)}`
   }
   const what = `${entry.state} (${entry.reason}) ${ago(now - entry.since)}`
   return entry.notInterrupted ? `${what}, not interrupted` : what
 }
 
+function table(rows: string[][]): string[] {
+  const widths = rows[0].map((_, col) => Math.max(...rows.map((cells) => cells[col].length)))
+  return rows.map((cells) =>
+    cells
+      .map((cell, col) => cell.padEnd(widths[col]))
+      .join('  ')
+      .trimEnd()
+  )
+}
+
+/** The cap of a kind and its spend, or a dash for none. */
+function windowCell(cap: number, spent: number | null): string {
+  if (cap <= 0) {
+    return '-'
+  }
+  return spent === null ? money(cap) : `${money(spent)}/${money(cap)}`
+}
+
+function formatCapSections(result: ForkGuardsListResult): string[] {
+  const sections: string[] = []
+  if ((result.runs ?? []).length > 0) {
+    sections.push(
+      '',
+      ...table([
+        ['RUN', 'NAME', 'AGENTS', 'SPEND'],
+        ...(result.runs ?? []).map((run) => [
+          run.rootId,
+          run.title.slice(0, 40),
+          String(run.agents),
+          `${money(run.spentUsd)}/${money(run.capUsd)}`
+        ])
+      ])
+    )
+  }
+  if ((result.automations ?? []).length > 0) {
+    sections.push(
+      '',
+      ...table([
+        ['AUTOMATION', 'NAME', 'PER RUN', 'TODAY', '7 DAYS', ''],
+        ...(result.automations ?? []).map((row) => [
+          row.id,
+          row.name.slice(0, 40),
+          windowCell(row.runCapUsd, null),
+          windowCell(row.dayCapUsd, row.daySpentUsd),
+          windowCell(row.weekCapUsd, row.weekSpentUsd),
+          row.skipping ? 'skipping runs' : ''
+        ])
+      ])
+    )
+  }
+  return sections
+}
+
 export function formatGuardsList(result: ForkGuardsListResult): string {
+  const sections = formatCapSections(result)
   if (result.entries.length === 0) {
-    return 'No agent is warned, paused or capped.'
+    return ['No agent is warned, paused or capped.', ...sections].join('\n')
   }
   const rows = [
     ['ID', 'AGENT', 'NAME', 'STATE'],
@@ -46,17 +113,10 @@ export function formatGuardsList(result: ForkGuardsListResult): string {
       state(entry, result.now)
     ])
   ]
-  const widths = rows[0].map((_, col) => Math.max(...rows.map((cells) => cells[col].length)))
-  const table = rows.map((cells) =>
-    cells
-      .map((cell, col) => cell.padEnd(widths[col]))
-      .join('  ')
-      .trimEnd()
-  )
   const reasons = result.entries
     .filter((entry) => entry.state !== 'capped')
     .map((entry) => `  ${entry.id}: ${agentGuardReasonText(entry)}`)
-  return [...table, ...(reasons.length > 0 ? ['', ...reasons] : [])].join('\n')
+  return [...table(rows), ...(reasons.length > 0 ? ['', ...reasons] : []), ...sections].join('\n')
 }
 
 function requireId(ctx: HandlerContext): string {
@@ -73,6 +133,27 @@ export function parseGuardsUsd(raw: string | undefined): number {
     throw new RuntimeClientError(
       'invalid_argument',
       'Give the cap in USD, from 0 (back to the default) to 10000: orca guards cap <id> <usd>.'
+    )
+  }
+  return usd
+}
+
+/** A cap flag: a USD amount from 0, or `default` to follow the setting; undefined when not given. */
+export function parseAutomationCapFlag(
+  raw: string | undefined,
+  flag: string
+): number | null | undefined {
+  if (raw === undefined) {
+    return undefined
+  }
+  if (raw.trim().toLowerCase() === 'default') {
+    return null
+  }
+  const usd = Number(raw.trim().replace(/^\$/, ''))
+  if (!Number.isFinite(usd) || usd < 0 || usd > 10_000) {
+    throw new RuntimeClientError(
+      'invalid_argument',
+      `--${flag} takes USD from 0 (no cap) to 10000, or "default".`
     )
   }
   return usd
@@ -96,12 +177,45 @@ export const FORK_GUARDS_HANDLERS: Record<string, CommandHandler> = {
   'guards cap': async (ctx) => {
     const usd = parseGuardsUsd(getOptionalStringFlag(ctx.flags, 'usd'))
     const reply = await ctx.client
-      .call<ForkGuardsCapResult>('fork.guards.cap', { id: requireId(ctx), usd })
+      .call<ForkGuardsCapResult>('fork.guards.cap', {
+        id: requireId(ctx),
+        usd,
+        ...(ctx.flags.get('run') === true ? { run: true } : {})
+      })
       .catch(incompatible)
-    printResult(reply, ctx.json, (r) =>
-      r.capUsd === null
-        ? `${r.id}: follows the default cap again`
-        : `${r.id}: capped at $${r.capUsd.toFixed(2)} ($${r.spentUsd.toFixed(2)} spent since)`
+    printResult(reply, ctx.json, (r) => {
+      const what = r.scope === 'run' ? `Run ${r.id}` : r.id
+      return r.capUsd === null
+        ? `${what}: follows the default cap again`
+        : `${what}: capped at $${r.capUsd.toFixed(2)} ($${r.spentUsd.toFixed(2)} spent since)`
+    })
+  },
+  'guards automation-cap': async (ctx) => {
+    const flag = (name: string) =>
+      parseAutomationCapFlag(getOptionalStringFlag(ctx.flags, name), name)
+    const run = flag('per-run')
+    const day = flag('day')
+    const week = flag('week')
+    if (run === undefined && day === undefined && week === undefined) {
+      throw new RuntimeClientError(
+        'invalid_argument',
+        'Give at least one of --per-run, --day or --week.'
+      )
+    }
+    const reply = await ctx.client
+      .call<ForkGuardsAutomationCapResult>('fork.guards.automationCap', {
+        id: requireId(ctx),
+        ...(run !== undefined ? { run } : {}),
+        ...(day !== undefined ? { day } : {}),
+        ...(week !== undefined ? { week } : {})
+      })
+      .catch(incompatible)
+    const cap = (usd: number): string => (usd > 0 ? `$${usd.toFixed(2)}` : 'none')
+    printResult(
+      reply,
+      ctx.json,
+      (r) =>
+        `${r.id}: per run ${cap(r.runCapUsd)}, per day ${cap(r.dayCapUsd)}, per 7 days ${cap(r.weekCapUsd)}`
     )
   }
 }
