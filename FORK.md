@@ -1795,6 +1795,47 @@ ones `SLRM-123 `).
     the spend a resume set aside; a record with nothing left is dropped, any after 30 days.
   - Code is in `src/shared/fork/agent-guards*.ts`, `src/main/fork/agent-guards/`,
     `src/cli/fork/guards-*` and `src/renderer/src/fork/agent-guards/`.
+- **Command guards: deny destructive shell commands of agents (BAD-686).** On by default
+  (`forkCommandGuards`). Orca's own rules, run in the PreToolUse hook Orca already installs, so
+  they travel to every host Orca manages (paired servers too) and sit beside a person's own hooks
+  without replacing them: Claude Code runs every PreToolUse hook and any `deny` wins. Ideas from
+  Claude Code hooks, Codex execpolicy and Hermes guards; only the ideas are ported.
+  - **Not a sandbox.** The guard reads the command text and never runs it. It catches mistakes,
+    not an agent set on getting around it (a script written to disk, a tool that is not Bash,
+    symlinks, a variable it cannot see through, which it refuses for the delete verbs).
+  - **Rules** (`orca command-guards status` lists them):
+    `delete-outside-workspace` (`rm`, `rmdir`, `unlink`, `shred`, `rimraf`, `find -delete` and
+    `find -exec rm` on a path outside the workspace root; the system temp folders and
+    `forkCommandGuardAllowedDeleteRoots` are fine, `forkCommandGuardAllowTempDeletes` turns the
+    temp exception off; a path from a variable, `~user`, xargs or an unreadable `cd` is refused),
+    `force-push` (`--force`, `-f`, `--force-with-lease`, `--mirror`, a `+refspec`),
+    `default-branch-rewrite` (`reset --hard`, `rebase` and `commit --amend` while the default
+    branch is checked out; `branch -f/-D/-M`, `checkout -B`, `switch -C`, `update-ref` and
+    `push --delete` on it; `filter-branch` and `filter-repo` anywhere. The default branch is the
+    repo's `origin/HEAD`, else `main` and `master`, or `forkCommandGuardProtectedBranches`; the
+    current branch comes from `.git/HEAD`, so git is never run),
+    `remove-worktree` (`git worktree remove`, `orca worktree rm`), `guard-config` (an agent
+    changing `forkCommandGuard*` settings or `orca command-guards allow`) and
+    `unreadable-command` (unbalanced quotes or nesting too deep, with a verb the guard watches).
+    Wrappers are looked through: `sudo`, `env`, `command`, `nohup`, `xargs`, `bash -c`, `eval`,
+    `$(...)`, backticks, and `cd` before the call.
+  - **Overrides.** `forkCommandGuardDisabledRules` (comma list, every project) and
+    `orca command-guards allow|disallow <rule> [--project NAME|PATH|ID]` (per project, kept in
+    `forkCommandGuardProjectRules` by project id). All are `orca settings` keys too.
+  - **A block.** Claude shows the agent a `deny` with the rule and reason in the chat, and tells
+    it not to look for a way around. Each block is one line of the audit list
+    (`orca command-guards list`; `forkCommandGuardAuditLimit`, 200 kept) in
+    `fork-command-guard-audit.json` in the data folder (mode 0600; commands cut to 400
+    characters).
+  - **Who is guarded.** Only an agent whose hook script reads Orca's answer: Claude Code on macOS
+    and Linux. `orca command-guards status` lists every other hook agent as unguarded (their
+    scripts discard the reply; Claude's Windows script, and SSH and WSL hosts, post to a relay
+    that cannot answer). Adding an agent means its hook contract allows a deny, a script that
+    prints it, and a row in `commandGuardCoverage`.
+  - **CLI.** `orca command-guards list|status|allow|disallow` over `fork.commandGuards.*`
+    (workspace permission; `--environment` for a paired server).
+  - Code is in `src/shared/fork/command-guards*.ts` (rules, shell reader, settings, wire),
+    `src/main/fork/command-guards/` and `src/cli/fork/command-guards-*`.
 - **Spend caps for every agent (BAD-679).** The spend cap of the agent guards no longer stops at
   native Claude chats. Every cap is off (0) until set; nothing here changes what runs today.
   - **Codex chats.** A native Codex chat's `thread/tokenUsage/updated` frame carries the thread's
@@ -2779,6 +2820,7 @@ Apply these in this order. Each one is a single commit.
 150. `BAD-684 Agent slice limits: on Linux the terminal host's systemd slice gets CPUWeight, IOWeight, TasksMax and MemoryHigh, so a runaway agent cannot take the server down`
 151. `BAD-683 Reviewer gate: --review on a Task has a second agent (the other provider) review the worker's exact head read-only before its done settles; findings go back to the worker as a message, rounds are capped, then the Task escalates`
 152. `BAD-685 Pause all: orca pause-all stops schedulers, automations, idle-recovery wakes, babysitter and nudge sends, unattended resume, goal steps, worker retries and worker launches from starting work, here and on paired servers; running turns finish; a switch that cannot be read counts as paused; status-bar toggle, digest line`
+153. `BAD-686 Command guards: Orca-managed deny rules for an agent's shell commands (delete outside the workspace, force push, default-branch rewrites, worktree removal) in Claude Code's PreToolUse hook, with per-project allows, an audit list and a list of unguarded agents; orca command-guards`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4001,6 +4043,14 @@ Upstream files only get short hooks, which keeps merges small:
   `fork.pauseAll.set` and `.status` are spread into `FORK_BRANCH_CLASHES_METHODS`, so
   `rpc-method-registry.ts` is untouched; `rpc-params-catalog.generated.ts` is regenerated. The one
   setting is intersected in `fork-global-settings.ts`; the settings catalog is regenerated.
+
+- Command guards (BAD-686), one small edit in a stock file: `agent-tool-plugin-hooks.ts`
+  (`respondAfterAgentToolPluginHooks`) asks `forkCommandGuardAnswer` before it reads the plugin
+  hooks and answers with its `deny` when a rule blocks. `startForkCommandGuards(runtime)` is one
+  line in `runtime-settle-hooks.ts`; `fork.commandGuards.*` is spread into `FORK_AGENT_GUARDS_METHODS`
+  (`fork-agent-guards.ts`), so `rpc-method-registry.ts` is untouched, and `FORK_COMMAND_GUARDS_COMMAND_SPECS` in `src/cli/specs/index.ts`; `fork-handler-groups.ts`
+  adds the `fork-command-guards` group. The seven settings are intersected in
+  `fork-global-settings.ts`; the settings and RPC params catalogs are regenerated.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

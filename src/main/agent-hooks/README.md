@@ -109,5 +109,9 @@ proceeds as if Orca were not there. Every other script discards the reply, so fo
 | Gemini (BeforeTool/AfterTool), Cursor (preToolUse, beforeShellExecution, …), Kiro, Jcode (pre_tool, posted in the background) | their own names                  | no                                                  |
 | Amp, Hermes (plugins)                                                                                                         | tool.call / pre_tool_call        | no: posts are not awaited for a decision            |
 
+Fork (BAD-686): Orca's own command guards run first on that same path, for Claude Code (POSIX)
+only, and deny a destructive shell command. `orca command-guards status` lists every other agent as
+unguarded.
+
 SSH and WSL agents post to a relay on their host, which answers locally and forwards status
 only, so their tool calls are not hooked yet.

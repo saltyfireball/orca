@@ -111,6 +111,20 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Finished children count toward that total; unset is on.","o":true}',
   forkChildTallyCountTasks:
     '{"t":{"k":"boolean"},"d":"Background shell tasks and monitors count as children; unset is on.","o":true}',
+  forkCommandGuardAllowTempDeletes:
+    '{"t":{"k":"boolean"},"d":"Let deletes in the system temp folders through; unset is on.","o":true}',
+  forkCommandGuardAllowedDeleteRoots:
+    '{"t":{"k":"string"},"d":"Extra absolute folders, comma-separated, where an agent may delete.","o":true}',
+  forkCommandGuardAuditLimit:
+    '{"t":{"k":"number"},"d":"Blocked commands kept in the audit list; unset is 200.","o":true}',
+  forkCommandGuardDisabledRules:
+    '{"t":{"k":"string"},"d":"Comma-separated rule ids to turn off everywhere: delete-outside-workspace, force-push, default-branch-rewrite, remove-worktree, guard-config, unreadable-command.","o":true}',
+  forkCommandGuardProjectRules:
+    '{"t":{"k":"record","of":{"k":"string"}},"d":"Rule ids a project allows, comma-separated, by project id; set with `orca command-guards allow`.","o":true}',
+  forkCommandGuardProtectedBranches:
+    '{"t":{"k":"string"},"d":"Branch names, comma-separated, the history rules protect; empty finds each repo\'s default branch (main or master when unknown).","o":true}',
+  forkCommandGuards:
+    '{"t":{"k":"boolean"},"d":"Deny an agent\'s destructive shell commands (a safety net, not a sandbox); unset is on.","o":true}',
   forkCompletionContract:
     '{"t":{"k":"boolean"},"d":"Completion contract (BAD-676): run a Task\'s done checks before its worker\'s done settles it. Off turns every contract into a plain done; unset is on.","o":true}',
   forkCompletionContractMaxRounds:

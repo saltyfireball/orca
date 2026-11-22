@@ -8,6 +8,7 @@ import {
   runPluginHook
 } from '../../plugins/hooks/plugin-hook-dispatch'
 import { readAgentToolCall, type AgentToolCallOwner } from './agent-tool-call-reader'
+import { forkCommandGuardAnswer } from '../../fork/command-guards/command-guards-live'
 
 /** Sent by hook scripts that print Orca's answer as Claude Code's PreToolUse decision. */
 export const AGENT_TOOL_DECISION_HEADER = 'x-orca-hook-decision'
@@ -95,6 +96,20 @@ export async function respondAfterAgentToolPluginHooks(
   headers: IncomingHttpHeaders,
   owner: AgentToolCallOwner | null
 ): Promise<void> {
+  // Fork (BAD-686): a command guard may deny a destructive shell command before any plugin sees it.
+  const guarded = owner
+    ? forkCommandGuardAnswer(
+        source,
+        body,
+        owner,
+        source === 'claude' && headers[AGENT_TOOL_DECISION_HEADER] === CLAUDE_PRE_TOOL_USE_DECISION
+      )
+    : null
+  if (guarded) {
+    res.writeHead(200, { 'content-type': 'application/json' })
+    res.end(guarded)
+    return
+  }
   // The usual case: no plugin listens, so answer at once without reading the call.
   if (!owner || (!pluginHookWanted('agent.tool.before') && !pluginHookWanted('agent.tool.after'))) {
     res.writeHead(204)
