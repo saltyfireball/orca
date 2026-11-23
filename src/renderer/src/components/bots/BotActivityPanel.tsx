@@ -126,13 +126,14 @@ function BotActivityTab({ bot }: { bot: Bot }): React.JSX.Element {
     setReturnTo(null)
     walk.open(uid)
   }
-  // A chat's item chip asks for an item: open it here when it is this bot's.
-  useBotItemOpenRequest(bot, openItem)
   const back = (): void => {
     const left = walk.close()
     const listed = BOT_ITEM_GROUP_IDS.flatMap((id) => list.groups[id].map((item) => item.uid))
     setReturnTo(left ? botItemWalkReturnRow(left.walk, left.uid, listed) : null)
   }
+  // A chat's item chip asks for an item: open it here when it is this bot's. Fork (BAD-759): a bot
+  // row's click can ask for the list instead.
+  useBotItemOpenRequest(bot, openItem, back)
   const scroll = React.useRef<HTMLDivElement | null>(null)
   const gutterResize = useRightSidebarGutterResize(scroll)
   const automationRows = useMemo(

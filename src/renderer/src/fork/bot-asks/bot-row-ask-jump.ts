@@ -1,17 +1,19 @@
-// Bot row ask jump (FORK.md "Idle recovery", SLRM-2472): a click on a bot's sidebar row opens the
-// bot as upstream does and, while the bot has items waiting on the owner (upstream's own count, the
-// row's "N needs you"), also shows the first on its Home tab with its ask card in view, as the
-// Decision inbox's Open does (SLRM-2453). A click while that ask shows moves to the next. With
-// nothing waiting, or `forkBotRowAskJump` off, the click is upstream's alone.
+// Bot row click (FORK.md "Idle recovery", SLRM-2472, BAD-759): a click on a bot's sidebar row opens
+// the bot as upstream does and, while the bot has items waiting on the owner (upstream's own count,
+// the row's "N needs you"), by `forkBotRowAskJump`: 'list' shows its Home list with Needs you on top
+// (a panel inside an item goes back to it), 'item' shows the first waiting item on its Home tab with
+// its ask card in view, as the Decision inbox's Open does (SLRM-2453), and a click while that ask
+// shows moves to the next. 'off', or nothing waiting: the click is upstream's alone.
 import { useAppStore } from '@/store'
 import { botRefKey, callBotRpc } from '@/lib/bot-hosts'
 import { readBots } from '@/lib/bot-catalog'
 import { readBotItemsNeedingOwner } from '@/lib/bot-catalog-snapshot'
 import { findBotByWorkspace } from '@/components/bots/bot-workspace'
-import { openBotItem } from '@/components/bots/items/bot-item-open'
+import { closeBotItem, openBotItem } from '@/components/bots/items/bot-item-open'
+import { forgetBotItemWalk } from '@/components/bots/items/use-bot-item-walk'
 import type { Bot } from '../../../../shared/bot-types'
 import type { BotItemsListRead } from '../../../../shared/bots/bot-item-schema'
-import { readForkBotRowAskJump } from '../../../../shared/fork/bot-row-ask-jump'
+import { readForkBotRowClick } from '../../../../shared/fork/bot-row-ask-jump'
 import { readForkBotAsks } from './bot-asks-store'
 import { forkBotAsksOf, forkBotRowAskPick, type ForkBotAsk } from './bot-asks-view'
 
@@ -51,7 +53,7 @@ async function asksOf(bot: Bot): Promise<ForkBotAsk[]> {
 }
 
 /** Scrolls the newly drawn ask card into view; `before` is the card on screen before the jump. */
-function revealAskCard(before: Element | null): void {
+export function revealAskCard(before: Element | null): void {
   if (typeof requestAnimationFrame === 'undefined') {
     return
   }
@@ -80,18 +82,28 @@ async function jump(bot: Bot, shownUid: string | null): Promise<void> {
   revealAskCard(before)
 }
 
+/** Shows the bot's Home list: an item left open is forgotten, and a mounted panel goes back to the list. */
+function showHomeList(bot: Bot): void {
+  lastShown.delete(botRefKey(bot))
+  forgetBotItemWalk(botRefKey(bot))
+  closeBotItem(bot)
+}
+
 /**
  * The bot row's click (upstream hook in `BotRow.tsx`): runs upstream's `open`, then, when it opened
- * the bot and the bot has asks waiting, shows the first (or the next, when one already shows).
+ * the bot and the bot has asks waiting, shows its list, or the first ask (or the next, when one
+ * already shows), by `forkBotRowAskJump`.
  */
 export function forkOpenBotRow(bot: Bot, open: () => boolean): boolean {
-  const on =
-    readForkBotRowAskJump(useAppStore.getState().settings) &&
-    (readBotItemsNeedingOwner(bot) ?? 0) > 0
+  const click = readForkBotRowClick(useAppStore.getState().settings)
+  const waiting = (readBotItemsNeedingOwner(bot) ?? 0) > 0
+  const item = click === 'item' && waiting
   // Read before upstream's open switches the active workspace.
-  const shownUid = on ? shownAskUid(bot) : null
+  const shownUid = item ? shownAskUid(bot) : null
   const opened = open()
-  if (opened && on) {
+  if (opened && click === 'list' && waiting) {
+    showHomeList(bot)
+  } else if (opened && item) {
     void jump(bot, shownUid).catch((error: unknown) => {
       console.warn('[fork bot row ask jump] reading the bot items failed', error)
     })

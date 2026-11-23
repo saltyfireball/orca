@@ -26,6 +26,10 @@ export const FORK_SETTINGS_ROWS_FORK_MORE = {
     '{"t":{"k":"enum","values":["critical","off","warn"]},"d":"Memory pressure level that raises the warning.","o":true}',
   forkMemoryWarnSwapGb:
     '{"t":{"k":"number"},"d":"Swap in use, in GB, that raises the memory warning.","o":true}',
+  forkNeedsYou:
+    '{"t":{"k":"boolean"},"d":"The Needs you list (shortcut, status bar control, palette entries) over the Decision inbox\'s data; the sidebar\'s inbox icon folds into it; unset is on.","o":true}',
+  forkNeedsYouQuickAnswers:
+    '{"t":{"k":"boolean"},"d":"Quick answer buttons and a text answer on an ask in the Needs you list; unset is on.","o":true}',
   forkPauseAllPairedServers:
     '{"t":{"k":"boolean"},"d":"Pause all (BAD-685): when true, `orca pause-all` also pauses every paired server that is online; false pauses this host only. Unset is true.","o":true}',
   forkPlacement:

@@ -23,6 +23,7 @@ import { StatusBarVisibilityMenu } from './composition/StatusBarVisibilityMenu'
 import { isPairedWebClientWindow } from '@/app-shell/chrome/desktop-window-chrome'
 import { GitBlameStatusSegment } from './GitBlameStatusSegment'
 import { ForkPauseAllStatusSegment } from '../../fork/pause-all/ForkPauseAllStatusSegment'
+import { ForkNeedsYouStatusSegment } from '../../fork/needs-you/ForkNeedsYouControl'
 
 const PetStatusSegment = lazyWithRetry(() =>
   import('./PetStatusSegment').then((module) => ({ default: module.PetStatusSegment }))
@@ -108,6 +109,8 @@ export function StatusBarSurface({
         className="-mx-1 flex min-w-0 items-center self-stretch overflow-x-auto scrollbar-none"
       >
         <div className="flex w-max items-center gap-3 px-1">
+          {/* Fork: Needs you (FORK.md). First, so a narrow bar scrolls the rest away from it. */}
+          <ForkNeedsYouStatusSegment />
           {!isPairedWebClientWindow() ? (
             <>
               <PluginsStatusSegment />

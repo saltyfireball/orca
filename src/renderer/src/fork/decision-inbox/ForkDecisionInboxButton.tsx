@@ -20,6 +20,7 @@ import {
   decisionInboxWaitingCount
 } from './decision-inbox-view'
 import { useForkBoard, useForkBoardEnabled } from '../letters/board-store'
+import { useNeedsYouEnabled } from '../needs-you/needs-you-store'
 
 function Counted({
   recovery,
@@ -88,13 +89,15 @@ function Counted({
 }
 
 export function ForkDecisionInboxButton(): React.JSX.Element | null {
+  // BAD-759: the Needs you control replaces this icon, so there is one count; it is reached from the list's footer.
+  const needsYou = useNeedsYouEnabled()
   const on = useForkDecisionInboxOn()
   const board = useForkBoardEnabled()
   const recovery = on && forkIdleRecoveryBridge() !== null
   // Bot asks are read by the always-mounted watcher; the button shows while any waits (SLRM-2453).
   const botAsks = useForkDecisionInboxBotAsks().length
   // The counts are read only inside `Counted`, so nothing is read while the inbox and the board are off.
-  return recovery || board || botAsks > 0 ? (
+  return !needsYou && (recovery || board || botAsks > 0) ? (
     <Counted recovery={recovery} board={board} botAsks={botAsks} />
   ) : null
 }

@@ -73,7 +73,8 @@ function installBridge(asks: ForkBoardViewAsk[]) {
 }
 
 beforeEach(() => {
-  state.current = { settings: {}, unifiedTabsByWorktree: {} }
+  // These tests are of the sidebar button; Needs you (BAD-759) folds it away while on.
+  state.current = { settings: { forkNeedsYou: false }, unifiedTabsByWorktree: {} }
   vi.clearAllMocks()
 })
 
@@ -127,12 +128,12 @@ describe('ForkBoardTray', () => {
   })
 
   it('reads nothing while the board is off or the chat has no ask', async () => {
-    state.current.settings = { forkBoard: false }
+    state.current.settings = { forkBoard: false, forkNeedsYou: false }
     const bridge = installBridge([ask('a1', 'session-1')])
     const view = render(<ForkBoardTray sessionId="session-1" />)
     expect(view.container.textContent).toBe('')
     expect(bridge.board).not.toHaveBeenCalled()
-    state.current.settings = {}
+    state.current.settings = { forkNeedsYou: false }
     cleanup()
     const empty = render(<ForkBoardTray sessionId="nobody" />)
     await waitFor(() => expect(bridge.board).toHaveBeenCalled())
