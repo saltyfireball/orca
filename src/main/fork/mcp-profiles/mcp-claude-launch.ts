@@ -3,6 +3,7 @@
 // profile's servers: `--strict-mcp-config` plus `--mcp-config <file>` with the kept servers'
 // own definitions. Nothing here ever fails a launch; a profile that cannot apply runs the chat
 // with every server and says why on the chat.
+import { createHash } from 'node:crypto'
 import {
   FORK_MCP_PROFILE_ALL,
   FORK_MCP_PROFILE_NONE,
@@ -14,6 +15,7 @@ import {
 import { discoverClaudeMcpServers, loadableClaudeMcpServers } from './claude-mcp-discovery'
 import {
   claudeConfigPaths,
+  FORK_MCP_TERMINAL_FILE_PREFIX,
   hasManagedMcpPolicy,
   managedMcpPolicyFiles,
   writeLaunchMcpConfig
@@ -109,16 +111,12 @@ export async function forkMcpClaudeLaunchArgs(input: ForkMcpClaudeLaunch): Promi
     return { [STRICT]: null }
   }
   try {
-    const paths = claudeConfigPaths({
+    const { kept, file } = await writeKeptServers(state.launchFolder, choice.profile, {
+      cwd: input.cwd,
       configDir: input.configDir,
-      configDirSet: !!input.env.CLAUDE_CONFIG_DIR?.trim()
+      configDirSet: !!input.env.CLAUDE_CONFIG_DIR?.trim(),
+      fileId: input.sessionId
     })
-    const loadable = loadableClaudeMcpServers(
-      await discoverClaudeMcpServers({ folder: input.cwd, ...paths })
-    )
-    const kept = selectForkMcpServers(config, choice.profile, [...loadable.keys()])
-    const servers = new Map(kept.map((name) => [name, loadable.get(name)!] as const))
-    const file = await writeLaunchMcpConfig(state.launchFolder, input.sessionId, servers)
     record({ applied: true, servers: kept })
     return { [STRICT]: null, [CONFIG]: file }
   } catch (error) {
@@ -130,5 +128,73 @@ export async function forkMcpClaudeLaunchArgs(input: ForkMcpClaudeLaunch): Promi
       servers: []
     })
     return {}
+  }
+}
+
+/** The profile's kept servers' own definitions in `<folder>/<fileId>.json` (0600). */
+async function writeKeptServers(
+  folder: string,
+  profile: string,
+  input: { cwd: string; configDir: string; configDirSet: boolean; fileId: string }
+): Promise<{ kept: string[]; file: string }> {
+  const paths = claudeConfigPaths({ configDir: input.configDir, configDirSet: input.configDirSet })
+  const loadable = loadableClaudeMcpServers(
+    await discoverClaudeMcpServers({ folder: input.cwd, ...paths })
+  )
+  const kept = selectForkMcpServers(forkMcpConfig(), profile, [...loadable.keys()])
+  const servers = new Map(kept.map((name) => [name, loadable.get(name)!] as const))
+  return { kept, file: await writeLaunchMcpConfig(folder, input.fileId, servers) }
+}
+
+export type ForkMcpTerminalLaunch = {
+  profile: string
+  cwd: string
+  configDir: string
+  configDirSet: boolean
+  /** The Claude arguments the launch already has, from Settings or the caller. */
+  launchArgs: string
+  policyFiles?: readonly string[]
+}
+
+/**
+ * BAD-741: the arguments that narrow a Claude terminal to `profile`'s servers, or a refusal that
+ * names why it cannot. A resumed terminal replays its arguments, so its config file has a stable
+ * name per profile, account folder and folder, is rewritten on every launch and is kept on quit.
+ */
+export async function forkMcpClaudeTerminalArgs(
+  input: ForkMcpTerminalLaunch
+): Promise<{ args: string[] } | { refused: string }> {
+  const state = forkMcpServiceState()
+  if (!state) {
+    return { refused: 'MCP profiles are not loaded on this computer' }
+  }
+  if (/(^|\s)--(strict-)?mcp-config(\s|=|$)/.test(input.launchArgs)) {
+    return { refused: 'the Claude launch arguments in Settings already set an MCP config' }
+  }
+  if (await hasManagedMcpPolicy(input.policyFiles ?? managedMcpPolicyFiles())) {
+    return {
+      refused:
+        'an enterprise MCP policy is installed, and Claude refuses a narrowed MCP config with one'
+    }
+  }
+  if (input.profile === FORK_MCP_PROFILE_NONE) {
+    return { args: [`--${STRICT}`] }
+  }
+  const fileId = `${FORK_MCP_TERMINAL_FILE_PREFIX}${createHash('sha256')
+    .update(`${input.profile}\0${input.configDir}\0${input.cwd}`)
+    .digest('hex')
+    .slice(0, 32)}`
+  try {
+    const { file } = await writeKeptServers(state.launchFolder, input.profile, {
+      cwd: input.cwd,
+      configDir: input.configDir,
+      configDirSet: input.configDirSet,
+      fileId
+    })
+    return { args: [`--${STRICT}`, `--${CONFIG}`, file] }
+  } catch (error) {
+    // The message only: server definitions never reach a log.
+    console.warn('[fork-mcp-profiles] could not build the MCP config', (error as Error).message)
+    return { refused: 'its MCP config could not be written' }
   }
 }

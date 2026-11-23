@@ -10,6 +10,10 @@ import { join, resolve } from 'node:path'
 const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/
 /** A running Claude read its file at start; older files only linger after a crash. */
 const STALE_MS = 24 * 60 * 60 * 1000
+/** BAD-741: a Claude terminal's file. A resume replays its path, so a quit keeps it and only a
+ *  month unused removes it; every launch rewrites it. */
+export const FORK_MCP_TERMINAL_FILE_PREFIX = 'terminal-'
+const TERMINAL_STALE_MS = 30 * STALE_MS
 
 export async function ensurePrivateFolder(folder: string): Promise<void> {
   await mkdir(folder, { recursive: true, mode: 0o700 })
@@ -70,8 +74,13 @@ export async function sweepLaunchMcpConfigs(
       continue
     }
     const path = join(folder, name)
+    const terminal = name.startsWith(FORK_MCP_TERMINAL_FILE_PREFIX) && name.endsWith('.json')
     try {
-      if (!options.all && now - (await stat(path)).mtimeMs < STALE_MS) {
+      if (terminal && options.all) {
+        continue
+      }
+      const stale = terminal ? TERMINAL_STALE_MS : STALE_MS
+      if (!options.all && now - (await stat(path)).mtimeMs < stale) {
         continue
       }
       await rm(path, { force: true })

@@ -40,6 +40,7 @@ import { resolveWslSessionContext } from '../../../daemon/pty-subprocess/wsl-ses
 import { isTuiAgentEnabled } from '../../../../shared/agent-launch/catalog/tui-agent-selection'
 import { resolveWslHostAgentLaunchInputs } from './wsl-host-agent-terminal-launch'
 import { forkAgentProfileTerminalLaunch } from '../../../fork/agent-profiles/agent-profile-launch-apply'
+import { forkMcpTerminalLaunch } from '../../../fork/mcp-profiles/mcp-terminal-launch'
 
 /** No launch command could be built for a requested `startupAgent`. */
 export class AgentLaunchUnbuildableError extends Error {}
@@ -180,6 +181,14 @@ async function buildRuntimeAgentTerminalStartupOptions(
   if (opts.startupPrompt && !forceLine && !agentPromptRidesLaunchCommand(agent)) {
     throw new Error(`Agent ${agent} does not take a startup prompt on its launch command.`)
   }
+  // Fork (BAD-741): a Claude terminal with an MCP profile loads only its servers (FORK.md).
+  opts = await forkMcpTerminalLaunch(opts, agent, {
+    workspace,
+    wslDistro: runtime.pty.terminalWindowsWslDistro,
+    shell: agentLaunchQuotingShell(runtime),
+    settings,
+    sessionOptions: sessionOptions ?? host.toSessionOptions(opts.launchPreferences)
+  })
   const scope = {
     inputs: resolveWslHostAgentLaunchInputs(
       resolveAgentStartupPlanInputs({

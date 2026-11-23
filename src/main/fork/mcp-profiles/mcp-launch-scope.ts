@@ -58,7 +58,7 @@ export function runInForkMcpLaunchScope<T>(next: ForkMcpLaunchScope, run: () => 
 
 let profileCheck: ((name: string) => boolean) | null = null
 
-/** Set by the service at install; without it a named profile is ignored, as an older host would. */
+/** Set by the service at install; without it a named profile is refused (BAD-741). */
 export function setForkMcpProfileCheck(check: ((name: string) => boolean) | null): void {
   profileCheck = check
 }
@@ -72,41 +72,28 @@ const AGENT_FIELDS: Readonly<Record<string, string>> = {
 }
 
 /**
- * BAD-741: an MCP profile narrows only a Claude chat started on this host. Where a launch could
- * not apply it, it is refused with the reason instead of running with every server.
+ * BAD-741: an MCP profile narrows only Claude's servers. A launch of another agent that names one
+ * is refused with the reason instead of running with every server.
  */
 export function assertForkMcpProfileApplies(
   profile: string | undefined,
-  where: { agent?: string; on?: string; terminal?: boolean }
+  where: { agent?: string }
 ): void {
-  if (!profile || profile === FORK_MCP_PROFILE_ALL) {
-    return
-  }
-  const refuse = (why: string, after: string): never => {
-    throw new InvalidArgumentError(`MCP profile "${profile}" ${why}. ${after}`)
-  }
-  if (where.on) {
-    refuse(
-      `cannot be applied on paired server ${where.on} yet, so the worker would load every MCP server there`,
-      'Start the worker here, or without the MCP profile. Nothing was started.'
-    )
-  }
-  if (where.agent && where.agent !== 'claude') {
-    refuse(
-      `applies only to Claude chats, and ${where.agent} takes none`,
-      'Start it without the MCP profile. Nothing was started.'
-    )
-  }
-  if (where.terminal) {
-    refuse(
-      'applies only to Claude chats, and this start runs Claude in a terminal',
-      'Start it as a chat, or without the MCP profile. Nothing was launched.'
+  if (profile && profile !== FORK_MCP_PROFILE_ALL && where.agent && where.agent !== 'claude') {
+    throw new InvalidArgumentError(
+      `MCP profile "${profile}" applies only to Claude, and ${where.agent} takes none. Start it without the MCP profile. Nothing was started.`
     )
   }
 }
 
 /** Refuses an MCP profile this host does not have, before anything starts. */
 export function assertForkMcpProfileKnown(profile: string, refusedBecause = ''): void {
+  if (!profileCheck && profile !== FORK_MCP_PROFILE_ALL) {
+    // BAD-741: a host that has not loaded MCP profiles (headless orcad) would drop it.
+    throw new InvalidArgumentError(
+      `${refusedBecause}MCP profiles are not loaded on this computer, so MCP profile "${profile}" cannot apply. Start it without the MCP profile. Nothing was started.`
+    )
+  }
   if (profileCheck && !profileCheck(profile)) {
     throw new InvalidArgumentError(
       `${refusedBecause}Unknown MCP profile "${profile}". See \`orca mcp-profile list\` for this host's profiles.`
@@ -136,16 +123,18 @@ function mcpLaunchScope<T>(
   }
   const profile = forkMcpProfileParamOf(call.request.params)
   if (profile) {
-    assertForkMcpProfileKnown(profile)
-    const params = call.request.params as Record<string, unknown>
+    const params: Record<string, unknown> = Object.fromEntries(
+      Object.entries(call.request.params ?? {})
+    )
     const text = (name: string | undefined): string | undefined => {
       const value = name ? params[name] : undefined
       return typeof value === 'string' && value.trim() ? value.trim() : undefined
     }
-    assertForkMcpProfileApplies(profile, {
-      agent: text(AGENT_FIELDS[call.request.method]),
-      on: call.request.method === 'orchestration.workerStart' ? text('on') : undefined
-    })
+    // A start placed on a paired server is checked against that server's profiles.
+    if (call.request.method !== 'orchestration.workerStart' || !text('on')) {
+      assertForkMcpProfileKnown(profile)
+    }
+    assertForkMcpProfileApplies(profile, { agent: text(AGENT_FIELDS[call.request.method]) })
   }
   return runInForkMcpLaunchScope({ kind, ...(profile ? { profile } : {}) }, run)
 }

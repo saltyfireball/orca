@@ -30,6 +30,7 @@ describe('launch scope', () => {
     expect(withForkMcpLaunchScope(call('repo.list'), () => currentForkMcpLaunchScope())).toBe(
       undefined
     )
+    setForkMcpProfileCheck((name) => name === 'web')
     const seen = await withForkMcpLaunchScope(
       call('agent.launch', { forkMcpProfile: 'web' }),
       async () => {
@@ -53,9 +54,17 @@ describe('launch scope', () => {
     expect(named).toEqual({ kind: 'background', profile: 'web' })
   })
 
-  it('refuses an unknown profile once a check is installed', () => {
+  it('refuses an unknown profile, and any named one where profiles are not loaded', () => {
     const launch = call('orchestration.workerStart', { forkMcpProfile: 'nope' })
-    expect(withForkMcpLaunchScope(launch, () => 'ran')).toBe('ran')
+    expect(() => withForkMcpLaunchScope(launch, () => 'ran')).toThrow(
+      /MCP profiles are not loaded on this computer/
+    )
+    expect(
+      withForkMcpLaunchScope(
+        call('orchestration.workerStart', { forkMcpProfile: 'all' }),
+        () => 'ran'
+      )
+    ).toBe('ran')
     setForkMcpProfileCheck((name) => name === 'web')
     expect(() => withForkMcpLaunchScope(launch, () => 'ran')).toThrow(/Unknown MCP profile "nope"/)
   })

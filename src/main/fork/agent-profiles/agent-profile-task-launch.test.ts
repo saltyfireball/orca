@@ -4,7 +4,7 @@
 // real retry -> startWorkerFollowUp -> startWorker -> startLocalWorker; only the placement of the
 // agent, which needs a whole runtime, is stood in for. It runs the real terminal plan and chat
 // creation hooks in the scope the start placed it in.
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -23,16 +23,16 @@ import { agentSessionRecordIdentityFields } from '../../runtime/agent-session/re
 import { installForkWorkerRetry } from '../worker-retry/worker-retry-live'
 import { listRetries } from '../worker-retry/retry-store'
 import { forkStoreDoneContract } from '../completion-contract/completion-gate-live'
-import {
-  currentForkMcpLaunchScope,
-  setForkMcpProfileCheck,
-  withForkMcpLaunchScope
-} from '../mcp-profiles/mcp-launch-scope'
+import { currentForkMcpLaunchScope, withForkMcpLaunchScope } from '../mcp-profiles/mcp-launch-scope'
 import {
   ClaudeSessionAccountPins,
   setClaudeSessionAccountPinsForTests
 } from '../claude-account-move/claude-session-account-pins'
 import { forkPinnedClaudeAccountHome } from '../claude-account-move/claude-pinned-launch'
+import {
+  installForkMcpProfiles,
+  uninstallForkMcpProfilesForTests
+} from '../mcp-profiles/mcp-profiles-service'
 import { installForkAgentProfileLaunch } from './agent-profile-launch-scope'
 import { forkWithTaskProfileLaunch } from './agent-profile-task-launch'
 import { ORCHESTRATION_WORKER_START_METHODS } from '../../runtime/rpc/methods/orchestration/worker/worker-start-method'
@@ -45,21 +45,27 @@ vi.mock('../pause-all/pause-all-state', () => ({ isForkPauseAllEngaged: () => fa
 
 type Seen = {
   command?: string
-  env?: Record<string, string>
+  env?: TerminalCreateOptions['env']
   terminalRefused?: string
-  chat?: unknown
+  chat?: { options?: Record<string, string>; pin?: string | null }
   mcp?: string
 }
-const placed = vi.hoisted(() => ({
-  seen: [] as unknown[],
-  inScope: null as null | (() => unknown)
-}))
+const placed = vi.hoisted(() => {
+  const state: { seen: Seen[]; inScope: null | (() => Promise<Seen>) } = {
+    seen: [],
+    inScope: null
+  }
+  return state
+})
 vi.mock(
   '../../runtime/rpc/methods/orchestration/worker/start/placement/worker-start-agent-placement',
   async (importActual) => ({
     ...(await importActual<Record<string, unknown>>()),
     placeWorkerAgent: async () => {
-      placed.seen.push(await placed.inScope?.())
+      const seen = await placed.inScope?.()
+      if (seen) {
+        placed.seen.push(seen)
+      }
       throw new Error('placement stands in for a whole runtime')
     }
   })
@@ -87,11 +93,11 @@ const PROFILE = {
 
 let settings: Record<string, unknown>
 const signedIn = new Set<string>()
-const mcpProfiles = new Set<string>()
 let activeDb: OrchestrationDb
 let pinFolder: string
 let pins: ClaudeSessionAccountPins
 
+// oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the start reads only these runtime members.
 const runtime = {
   getOrchestrationDb: () => activeDb,
   getNestedWorkerMaxDepth: () => 4,
@@ -105,7 +111,13 @@ const runtime = {
   notifyMessageArrived: vi.fn()
 } as unknown as OrcaRuntimeService
 
-const workspace = {
+const workspace: {
+  id: string
+  path: string
+  connectionId: string | null
+  repo: null
+  folderWorkspace: null
+} = {
   id: 'wt_1',
   path: '/work/app',
   connectionId: null,
@@ -151,7 +163,7 @@ async function launchInScope(): Promise<Seen> {
   return {
     ...('refused' in built ? { terminalRefused: built.refused } : {}),
     ...('command' in built && built.command ? { command: built.command } : {}),
-    ...('env' in built && built.env ? { env: built.env as Record<string, string> } : {}),
+    ...('env' in built && built.env ? { env: built.env } : {}),
     chat: { options: createdChats[0]?.options, pin: pins.get('chat-retry') },
     ...(currentForkMcpLaunchScope()?.profile ? { mcp: currentForkMcpLaunchScope()!.profile } : {})
   }
@@ -164,6 +176,7 @@ function rig(withMcp = false) {
   const run = db.createRun({
     objective: 'retry',
     coordinatorHandle: 'term_coordinator',
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: a well-formed pane key; the brand only marks it as parsed.
     coordinatorPaneKey: 'tab-c::22222222-2222-4222-8222-222222222222' as never
   })
   const task = db.createTask({ spec: 'Review the parser.', runId: run.id })
@@ -203,7 +216,10 @@ function rig(withMcp = false) {
   return { db, run, task, dispatch, kill }
 }
 
-beforeEach(() => {
+const REVIEW_TOOLS = { name: 'review-tools', mode: 'allow', servers: ['lint'] }
+let savedConfigDir: string | undefined
+
+beforeEach(async () => {
   vi.useFakeTimers()
   placed.seen = []
   placed.inScope = launchInScope
@@ -212,17 +228,35 @@ beforeEach(() => {
     agentPermissionDefault: 'own',
     forkAgentProfilePermissionCap: 'accept-edits',
     forkAgentProfiles: [PROFILE],
+    forkMcpProfiles: [REVIEW_TOOLS],
     claudeManagedAccounts: [ACCOUNT]
   }
   signedIn.clear()
   signedIn.add('acct-1')
-  mcpProfiles.clear()
-  mcpProfiles.add('review-tools')
-  setForkMcpProfileCheck((name) => mcpProfiles.has(name))
   pinFolder = mkdtempSync(join(tmpdir(), 'fork-profile-pins-'))
+  // A made-up Claude config folder with two user servers; the real one is never read.
+  savedConfigDir = process.env.CLAUDE_CONFIG_DIR
+  process.env.CLAUDE_CONFIG_DIR = join(pinFolder, 'claude')
+  mkdirSync(process.env.CLAUDE_CONFIG_DIR)
+  writeFileSync(
+    join(process.env.CLAUDE_CONFIG_DIR, '.claude.json'),
+    JSON.stringify({
+      mcpServers: {
+        lint: { command: 'lint-mcp', env: { LINT_TOKEN: 'not-a-real-token' } },
+        docs: { command: 'docs-mcp' }
+      }
+    })
+  )
+  await installForkMcpProfiles({
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the test settings hold the fields these readers take.
+    readSettings: () => settings as never,
+    dataFolder: join(pinFolder, 'mcp'),
+    chatStateFile: null
+  })
   pins = new ClaudeSessionAccountPins(join(pinFolder, 'pins.json'))
   setClaudeSessionAccountPinsForTests(pins)
   installForkAgentProfileLaunch({
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the test settings hold the fields these readers take.
     readSettings: () => settings as never,
     claudeRouter: () => ({
       accountLogin: (id: string) => (signedIn.has(id) ? { email: ACCOUNT.email } : null),
@@ -233,8 +267,14 @@ beforeEach(() => {
 
 afterEach(async () => {
   vi.useRealTimers()
-  setForkMcpProfileCheck(null)
+  uninstallForkMcpProfilesForTests()
+  if (savedConfigDir === undefined) {
+    delete process.env.CLAUDE_CONFIG_DIR
+  } else {
+    process.env.CLAUDE_CONFIG_DIR = savedConfigDir
+  }
   setClaudeSessionAccountPinsForTests(null)
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the queued pin writes, awaited so the folder is removed after them.
   await (pins as unknown as { writes: Promise<void> }).writes
   rmSync(pinFolder, { recursive: true, force: true })
 })
@@ -245,7 +285,7 @@ describe('an automatic retry of a worker started with --profile', () => {
     kill()
     await vi.advanceTimersByTimeAsync(31_000)
     expect(placed.seen, JSON.stringify(listRetries(db))).toHaveLength(1)
-    const seen = placed.seen[0] as Seen
+    const seen = placed.seen[0]!
     expect(seen.command).toContain("'--permission-mode' 'acceptEdits'")
     expect(seen.env?.ORCA_FORK_CLAUDE_ACCOUNT).toBe('acct-1')
   })
@@ -267,10 +307,19 @@ describe('an automatic retry of a worker started with --profile', () => {
     })
     kill()
     await vi.advanceTimersByTimeAsync(31_000)
-    expect(placed.seen, JSON.stringify(listRetries(db))).toHaveLength(1)
-    const seen = placed.seen[0] as Seen
-    // A terminal cannot take the MCP profile, so a terminal start refuses rather than drop it.
-    expect(seen.terminalRefused).toMatch(/MCP profile "review-tools" applies only to Claude chats/)
+    await vi.waitFor(() => expect(placed.seen, JSON.stringify(listRetries(db))).toHaveLength(1))
+    const seen = placed.seen[0]!
+    // The terminal loads only the profile's servers, from a private file named on its command.
+    expect(seen.command).toContain("'--permission-mode' 'acceptEdits'")
+    expect(seen.command).toMatch(
+      /'--strict-mcp-config' '--mcp-config' '[^']+terminal-[0-9a-f]+\.json'/
+    )
+    expect(seen.command).not.toContain('not-a-real-token')
+    const file = /'--mcp-config' '([^']+)'/.exec(seen.command ?? '')![1]!
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({
+      mcpServers: { lint: { command: 'lint-mcp', env: { LINT_TOKEN: 'not-a-real-token' } } }
+    })
+    expect(statSync(file).mode & 0o777).toBe(0o600)
     expect(seen.chat).toEqual({
       options: { model: 'sonnet', permissionMode: 'accept-edits' },
       pin: 'acct-1'
@@ -288,9 +337,9 @@ describe('an automatic retry of a worker started with --profile', () => {
     settings = { ...settings, agentPermissionDefault: 'ask' }
     kill()
     await vi.advanceTimersByTimeAsync(31_000)
-    const seen = placed.seen[0] as Seen
+    const seen = placed.seen[0]!
     expect(seen.command).not.toContain('acceptEdits')
-    expect((seen.chat as { options: Record<string, string> }).options.permissionMode).toBe('ask')
+    expect(seen.chat!.options!.permissionMode).toBe('ask')
   })
 
   it('does not start on a signed-out account, and says why', async () => {
@@ -310,7 +359,7 @@ describe('an automatic retry of a worker started with --profile', () => {
 
   it('does not start when the MCP profile is gone from this host', async () => {
     const { db, kill } = rig(true)
-    mcpProfiles.clear()
+    settings = { ...settings, forkMcpProfiles: [] }
     kill()
     await vi.advanceTimersByTimeAsync(31_000)
     expect(placed.seen).toHaveLength(0)
@@ -327,11 +376,12 @@ describe('a follow-up and --retry-of without --profile', () => {
     await startWorkerFollowUp({
       ctx: { runtime },
       db,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: checked to be a start plan just above.
       plan: plan as Extract<typeof plan, { kind: 'start' }> & object,
       from: 'term_coordinator',
       message: { subject: 'Also the lexer', body: 'Also the lexer.' }
     }).catch(() => undefined)
-    const seen = placed.seen[0] as Seen
+    const seen = placed.seen[0]!
     expect(seen.command).toContain("'--permission-mode' 'acceptEdits'")
     expect(seen.env?.ORCA_FORK_CLAUDE_ACCOUNT).toBe('acct-1')
   })
@@ -373,6 +423,7 @@ describe('a chat worker', () => {
       systemDefaultHome: () => '/homes/system',
       pointerPath: '/homes/pointer'
     }
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: spies on the private write to count saves.
     const write = vi.spyOn(pins as never, 'write' as never)
     let homeAtCreate: unknown
     vi.mocked(createdChats).length = 0
@@ -390,8 +441,10 @@ describe('a chat worker', () => {
       )
       // The chat's first start reads the pin synchronously, as the launch does, before any save.
       homeAtCreate = forkPinnedClaudeAccountHome(
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the record fields the pin read takes.
         { sessionId: 'chat-new', provider: 'claude', location: {} } as never,
         {},
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the router methods the pin route reads.
         router as never,
         pins
       )
@@ -406,7 +459,7 @@ describe('a chat worker', () => {
     // a resume too, launches on the permission mode saved on its record at creation.
     const { db, task } = rig()
     const seen = await forkWithTaskProfileLaunch(db, { task: task.id }, undefined, launchInScope)
-    const options = (seen.chat as { options: Record<string, string> }).options
+    const options = seen.chat!.options!
     const record = agentSessionRecordIdentityFields(
       // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: only the fields the record keeps for this.
       { sessionId: 'chat-retry', provider: 'claude', location: {}, options } as never,
@@ -430,27 +483,60 @@ describe('an MCP profile where it cannot apply', () => {
       () => 'ran'
     )
 
-  it('refuses worker-start --on, and a start of an agent with no MCP profiles, before running', () => {
-    expect(() =>
-      start({ agent: 'claude', on: 'server-a', forkMcpProfile: 'review-tools' })
-    ).toThrow(/cannot be applied on paired server server-a yet.*Nothing was started/)
+  it('refuses a start of another agent before running, at the call and at its terminal', async () => {
     expect(() => start({ agent: 'codex', forkMcpProfile: 'review-tools' })).toThrow(
-      /applies only to Claude chats, and codex takes none/
+      /applies only to Claude, and codex takes none.*Nothing was started/
     )
-    mcpProfiles.add('all')
-    expect(start({ agent: 'claude', on: 'server-a', forkMcpProfile: 'all' })).toBe('ran')
+    expect(start({ agent: 'codex', forkMcpProfile: 'all' })).toBe('ran')
+    const codexTerminal = withForkMcpLaunchScope(
+      {
+        request: {
+          method: 'orchestration.workerStart',
+          params: { forkMcpProfile: 'review-tools' }
+        }
+      },
+      () =>
+        resolveAgentTerminalCreateOptions(
+          workspace,
+          { ...terminalOpts, startupAgent: 'codex' },
+          {
+            // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the terminal plan reads only getSettings.
+            store: { getSettings: () => settings } as never,
+            hostIdentity: 'host-1',
+            toSessionOptions: () => undefined
+          }
+        )
+    )
+    await expect(codexTerminal).rejects.toThrow(/applies only to Claude, and codex takes none/)
   })
 
-  it('refuses a --retry-of --on of a Task first started with one', async () => {
-    const { db, dispatch } = rig(true)
-    expect(() =>
-      forkWithTaskProfileLaunch(
-        db,
-        { retryOf: dispatch.id, on: 'server-a' },
-        undefined,
-        () => 'ran'
+  it('refuses a Claude terminal it cannot reach, naming why', async () => {
+    const named = {
+      request: { method: 'orchestration.workerStart', params: { forkMcpProfile: 'review-tools' } }
+    }
+    const plan = (scope: typeof workspace, wsl: string | null) =>
+      withForkMcpLaunchScope(named, () =>
+        resolveAgentTerminalCreateOptions(
+          scope,
+          {
+            ...terminalOpts,
+            launchRuntime: {
+              platform: 'darwin',
+              pty: { shellOverride: undefined, terminalWindowsWslDistro: wsl }
+            }
+          },
+          {
+            // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the terminal plan reads only getSettings.
+            store: { getSettings: () => settings } as never,
+            hostIdentity: 'host-1',
+            toSessionOptions: () => undefined
+          }
+        )
       )
-    ).toThrow(/cannot be applied on paired server server-a/)
+    await expect(plan({ ...workspace, connectionId: 'ssh-1' }, null)).rejects.toThrow(
+      /cannot be applied to this Claude terminal: it runs on a remote host/
+    )
+    await expect(plan(workspace, 'Ubuntu')).rejects.toThrow(/it runs inside WSL/)
   })
 
   it('leaves a terminal launch with no MCP profile byte for byte as it was', async () => {
@@ -488,7 +574,7 @@ describe('worker-start --task --retry-of through the real method', () => {
       )
       .catch((error: Error) => error.message)
     expect(placed.seen, String(outcome)).toHaveLength(1)
-    const seen = placed.seen[0] as Seen
+    const seen = placed.seen[0]!
     expect(seen.command).toContain("'--permission-mode' 'acceptEdits'")
     expect(seen.env?.ORCA_FORK_CLAUDE_ACCOUNT).toBe('acct-1')
   })

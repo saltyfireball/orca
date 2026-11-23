@@ -740,13 +740,29 @@ ones `SLRM-123 `).
     `orca mcp-profile list [--folder <path>]`, `orca mcp-profile show <session>` and
     `orca mcp-profile set <session> <profile|default>`, all with `--json`, over runtime RPC
     (`fork.mcpProfiles.list`, `.chat`, `.set`).
+  - **Terminals (BAD-741).** A Claude terminal launched with a named profile (not one chosen
+    by default, so a terminal without one is byte for byte stock) gets `--strict-mcp-config`
+    and, unless the profile is "none", `--mcp-config <file>` after its own arguments. The file
+    holds only the kept servers' definitions (0600, never in argv), from the Claude folder of
+    the terminal's pinned account or the default one. A resume replays its arguments, so the
+    file is `launch/terminal-<hash of profile, Claude folder and folder>.json`, rewritten on each
+    launch, kept on quit and swept after 30 days unused. Refused with the reason: a terminal on
+    a remote host or in WSL, Claude launch arguments in Settings that set an MCP config, an
+    enterprise MCP policy, and a config that could not be written.
+  - **Paired servers (BAD-741).** `worker-start --on` sends only the name (`forkMcpProfile`) to a
+    server that owns its workers and has `orchestration.fork-mcp-profile-launch.v1`. Before
+    anything is created the home asks the server for its profiles (`fork.mcpProfiles.list`), so
+    a name the server lacks refuses with no effects; the server's own profile of that name then
+    decides what loads, for a chat or a terminal. An older server (one without the capability,
+    or that takes the attach start) is refused with no effects. The home's own list is not used.
   - **Settings** (Settings > Blackfish > MCP profiles): `forkMcpProfiles` ([]),
     `forkMcpDefaultInteractive`, `forkMcpDefaultWorker` and `forkMcpDefaultBackground` ("all"),
     and `forkMcpProjectProfiles` ([]).
-  - **Not covered.** Claude terminal (TUI) launches, Codex and other agents, chats inside WSL,
-    remote and paired hosts (they install nothing, so their chats load every server) and
-    plugin or claude.ai connector servers, which Claude adds on its own and which any profile
-    but "all" leaves out. Headless orcad installs nothing and passes every launch through.
+  - **Not covered.** Codex and other agents, chats inside WSL, Claude terminals on remote hosts
+    or in WSL, and plugin or claude.ai connector servers, which Claude adds on its own and which
+    any profile but "all" leaves out. A launch that names a profile where it cannot apply is
+    refused with the reason (BAD-741), and so is one on a host that has not loaded MCP profiles
+    (headless orcad); a launch that names none passes through unchanged.
 - **Agent lifecycle, joined up (SLRM-2136).** The fork's chat lifecycle features now work as one
   set.
   - Memory pause queues instead of refusing: with "Pause new agents while over" (Memory) and the
@@ -3113,10 +3129,12 @@ ones `SLRM-123 `).
     `--agent` wins. The row a retry copies is the first one, so a narrower policy never sticks.
     A chat worker reopened in its own session keeps its mode: the session record holds the mode
     it was created with and every start of it launches on that.
-  - **MCP profile where it cannot apply.** An MCP profile narrows only a Claude chat, so a start
-    that names one (`--mcp-profile`, or a profile's) is refused with the reason, never run with
-    every server: another agent (at the call, and again at its chat or terminal), a Claude
-    terminal, and `worker-start --on`. The built-in `all` is never refused.
+  - **MCP profile on every surface.** A start that names one (`--mcp-profile`, or a profile's)
+    applies it to a Claude chat and a Claude terminal (see "MCP profiles", Terminals) and, with
+    `--on`, on the server (see "MCP profiles", Paired servers). Where it cannot apply it is refused
+    with the reason, never run with every server: another agent (at the call, and again at its
+    chat or terminal), a remote or WSL terminal, and an older server or one without that profile.
+    The built-in `all` is never refused.
   - **Not covered yet.** A UI start does not switch accounts.
   - Code is in `src/shared/fork/agent-profiles/`, `src/main/fork/agent-profiles/` and
     `src/cli/fork/agent-profile-*`.
@@ -3441,6 +3459,7 @@ Apply these in this order. Each one is a single commit.
 185. `BAD-681 Retries in the crew view and the Task history: a worker's crew row says which try, why it ended and whether Orca waits (and until when), restarted it or gave up; orca contract show lists the Task's retries and the retry that started it`
 186. `BAD-785 Command guards read heredoc bodies as data unless a shell may run them, follow a literal variable set earlier in the command, and say what part of an unreadable command could not be read`
 187. `BAD-741 Agent profiles hold on a retry and a follow-up: the Task keeps the mode, account and MCP profile its worker first started with, capped and checked again on each restart, which refuses with the reason when the account is signed out or missing; an MCP profile that cannot apply is refused, never dropped`
+188. `BAD-741 MCP profiles on Claude terminals and paired servers: a named profile narrows a Claude terminal through a private per-profile config file, and worker-start --on sends only the name to a server that checks it before anything is created; where it cannot apply it is refused with the reason`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4735,6 +4754,10 @@ Upstream files only get short hooks, which keeps merges small:
   `startWorker` wrapped in `forkTaskProfileStart`: the `orchestration.workerStart` handler in
   `worker-start-method.ts` (`--retry-of`, `--task`) and `startWorkerFollowUp` in
   `worker-follow-up.ts` (follow-ups and automatic retries).
+  MCP profiles on terminals and paired servers (BAD-741): `runtime-agent-terminal-startup.ts`
+  passes the plan's options through `forkMcpTerminalLaunch` before the startup inputs are built,
+  and `orchestration-runtime-capabilities.ts` lists `orchestration.fork-mcp-profile-launch.v1`;
+  the name rides the existing `forkAgentProfileRemoteOwnedCarry` spread in `remote-owned-start.ts`.
 
 - Services mail a bot (BAD-742), two small edits in stock files, `message-send-handler.ts`
   calls `assertServiceSend` when `--as-service` is given and then sends with no `from`, and

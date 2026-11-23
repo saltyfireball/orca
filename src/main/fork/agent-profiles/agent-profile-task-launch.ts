@@ -50,11 +50,14 @@ export function forkWithTaskProfileLaunch<T>(
   let next = run
   const mcpProfile = stored.mcpProfile
   if (mcpProfile && !currentForkMcpLaunchScope()?.profile) {
-    assertForkMcpProfileKnown(
-      mcpProfile,
-      `This Task's worker was first started with MCP profile "${mcpProfile}", which this computer no longer has: `
-    )
-    assertForkMcpProfileApplies(mcpProfile, { agent: params.agent, on: params.on })
+    // A start placed on a paired server is checked against that server's profiles.
+    if (!params.on) {
+      assertForkMcpProfileKnown(
+        mcpProfile,
+        `This Task's worker was first started with MCP profile "${mcpProfile}", which this computer no longer has: `
+      )
+    }
+    assertForkMcpProfileApplies(mcpProfile, { agent: params.agent })
     next = () => runInForkMcpLaunchScope({ kind: 'worker', profile: mcpProfile }, run)
   }
   const launch = forkAgentProfileLaunchOfTask(stored, params.agent, Boolean(params.on))

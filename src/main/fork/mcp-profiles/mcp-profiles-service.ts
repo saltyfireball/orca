@@ -1,6 +1,6 @@
 // FORK.md "MCP profiles": the app's profile state and the calls the hooks, IPC and RPC make.
-// Without install (headless hosts, tests of upstream code) every hook passes through, so chats
-// load every server as stock does.
+// Without install (headless hosts, tests of upstream code) a launch that names no profile passes
+// through, so chats load every server as stock does; one that names a profile is refused.
 import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, dirname, join } from 'node:path'

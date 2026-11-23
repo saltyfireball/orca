@@ -34,10 +34,9 @@ export function forkAgentProfileTerminalLaunch<O extends TerminalLaunch, S>(
   sessionOptions: Readonly<Record<string, S | string>> | undefined
 ): { opts: O; sessionOptions: Readonly<Record<string, S | string>> | undefined } {
   if (opts.startupAgent) {
-    // An MCP profile narrows only a Claude chat; a terminal start of any agent refuses it.
+    // An MCP profile narrows only Claude; a terminal of any other agent refuses it.
     assertForkMcpProfileApplies(currentForkMcpLaunchScope()?.profile, {
-      agent: opts.startupAgent,
-      terminal: true
+      agent: opts.startupAgent
     })
   }
   const launch = currentForkAgentProfileLaunch()

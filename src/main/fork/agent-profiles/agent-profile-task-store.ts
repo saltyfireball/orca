@@ -41,9 +41,10 @@ function ensureTable(db: Database.Database): Database.Database {
     `)
     // Tables made before the mode and account were kept get the columns here.
     const have = new Set(
-      (db.prepare('PRAGMA table_info(fork_task_agent_profiles)').all() as { name: string }[]).map(
-        (column) => column.name
-      )
+      db
+        .prepare('PRAGMA table_info(fork_task_agent_profiles)')
+        .all()
+        .map((column) => Object.fromEntries(Object.entries(column ?? {})).name)
     )
     for (const column of COLUMNS) {
       if (!have.has(column)) {
@@ -83,8 +84,10 @@ function read(db: Database.Database, taskId: string): ForkTaskLaunch | null {
   if (!row || typeof row !== 'object') {
     return null
   }
-  const fields = row as Record<string, unknown>
-  const mode = text(fields, 'permission_mode')
+  const fields: Record<string, unknown> = Object.fromEntries(Object.entries(row))
+  const mode = FORK_AGENT_PROFILE_PERMISSION_MODES.find(
+    (entry) => entry === text(fields, 'permission_mode')
+  )
   const agent = text(fields, 'agent')
   const account = text(fields, 'account')
   const mcpProfile = text(fields, 'mcp_profile')
@@ -92,9 +95,7 @@ function read(db: Database.Database, taskId: string): ForkTaskLaunch | null {
     profile: text(fields, 'profile') ?? '',
     preamble: text(fields, 'preamble') ?? '',
     ...(agent ? { agent } : {}),
-    ...(mode && (FORK_AGENT_PROFILE_PERMISSION_MODES as readonly string[]).includes(mode)
-      ? { permissionMode: mode as ForkAgentProfilePermissionMode }
-      : {}),
+    ...(mode ? { permissionMode: mode } : {}),
     ...(account ? { account } : {}),
     ...(mcpProfile ? { mcpProfile } : {})
   }
