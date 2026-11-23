@@ -170,7 +170,7 @@ async function launchInScope(): Promise<Seen> {
 }
 
 /** A Task whose first worker started under --profile reviewer, with its MCP profile or not. */
-function rig(withMcp = false) {
+function rig(withMcp = false, withProfile = true) {
   const db = new OrchestrationDb(':memory:')
   activeDb = db
   const run = db.createRun({
@@ -187,7 +187,7 @@ function rig(withMcp = false) {
         method: 'orchestration.workerStart',
         params: {
           agent: 'claude',
-          forkAgentProfile: 'reviewer',
+          ...(withProfile ? { forkAgentProfile: 'reviewer' } : {}),
           ...(withMcp ? { forkMcpProfile: 'review-tools' } : {})
         }
       }
@@ -408,6 +408,31 @@ describe('a follow-up and --retry-of without --profile', () => {
       () => seen({ retryOf: dispatch.id })
     )
     expect(own.command).not.toContain('--permission-mode')
+  })
+})
+
+describe('a start that reuses an existing terminal', () => {
+  it('refuses the Task profile it cannot apply, before anything starts', () => {
+    const withMcp = rig(true, false)
+    const ran = vi.fn()
+    expect(() =>
+      forkWithTaskProfileLaunch(
+        withMcp.db,
+        { task: withMcp.task.id, terminal: 'term_existing' },
+        undefined,
+        ran
+      )
+    ).toThrow(/already running/)
+    const withMode = rig()
+    expect(() =>
+      forkWithTaskProfileLaunch(
+        withMode.db,
+        { retryOf: withMode.dispatch.id, terminal: 'term_existing' },
+        undefined,
+        ran
+      )
+    ).toThrow(/already running/)
+    expect(ran).not.toHaveBeenCalled()
   })
 })
 

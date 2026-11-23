@@ -17,7 +17,7 @@ export const FORK_MCP_PROFILE_COMMAND_SPECS: CommandSpec[] = [
       'Reads Claude Code config the way Claude does: user servers, local servers for the folder, and approved .mcp.json servers from the folder up. Nothing is changed.',
       'Without --folder only user servers are listed. Server env, headers and arguments are never shown.',
       'Profiles are set in Settings > Blackfish > MCP profiles. "all" (every server, as stock) and "none" are built in.',
-      'Profiles apply to Claude chats only. Terminal agents, Codex and other agents load their servers as usual.'
+      'Profiles apply to Claude chats and Claude terminals (also on a paired server with --on). Codex and other agents, terminals on remote hosts or in WSL load their servers as usual, and a launch that names a profile for them is refused.'
     ],
     examples: ['orca mcp-profile list', 'orca mcp-profile list --folder /projects/myapp --json']
   },
@@ -49,7 +49,7 @@ export const FORK_MCP_PROFILE_COMMAND_SPECS: CommandSpec[] = [
 const LAUNCH_PATHS = ['agent launch', 'worktree create', 'orchestration worker-start']
 
 const FLAG_NOTE =
-  '--mcp-profile <name> picks the MCP profile a Claude chat starts with (see `orca mcp-profile list`). An unknown name is refused; a terminal launch or another agent ignores it.'
+  '--mcp-profile <name> picks the MCP profile a Claude chat or Claude terminal starts with (see `orca mcp-profile list`). An unknown name is refused, and so is a launch it cannot apply to (another agent, a remote host or WSL, or worker-start --terminal, whose agent is already running); "all" is never refused.'
 
 /** Adds --mcp-profile to the commands that start agents; one hook on the spec list. */
 export function withForkMcpProfileFlag(specs: CommandSpec[]): CommandSpec[] {

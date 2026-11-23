@@ -762,7 +762,10 @@ ones `SLRM-123 `).
     or in WSL, and plugin or claude.ai connector servers, which Claude adds on its own and which
     any profile but "all" leaves out. A launch that names a profile where it cannot apply is
     refused with the reason (BAD-741), and so is one on a host that has not loaded MCP profiles
-    (headless orcad); a launch that names none passes through unchanged.
+    (headless orcad), and so is `orchestration worker-start --terminal` with a named profile (or a
+    retry or follow-up whose Task stored one, or a mode or account): that agent is already
+    running, so nothing would apply; `all` is never refused. A launch that names none passes
+    through unchanged.
 - **Agent lifecycle, joined up (SLRM-2136).** The fork's chat lifecycle features now work as one
   set.
   - Memory pause queues instead of refusing: with "Pause new agents while over" (Memory) and the

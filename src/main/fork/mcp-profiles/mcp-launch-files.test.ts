@@ -64,6 +64,21 @@ describe('sweepLaunchMcpConfigs', () => {
   })
 })
 
+describe('sweepLaunchMcpConfigs and terminal files', () => {
+  it('keeps terminal files on quit and removes them only after 30 days', async () => {
+    const terminal = join(root, 'terminal-abc.json')
+    await writeFile(terminal, '{}')
+    const day = 24 * 60 * 60 * 1000
+    const written = Date.now()
+    await utimes(terminal, new Date(written), new Date(written))
+    expect(await sweepLaunchMcpConfigs(root, { all: true })).toBe(0)
+    expect(await sweepLaunchMcpConfigs(root, { now: written + 29 * day })).toBe(0)
+    expect(await readdir(root)).toEqual(['terminal-abc.json'])
+    expect(await sweepLaunchMcpConfigs(root, { now: written + 31 * day })).toBe(1)
+    expect(await readdir(root)).toEqual([])
+  })
+})
+
 describe('claudeConfigPaths', () => {
   it('uses ~/.claude.json only for the unset default folder', () => {
     const home = '/h'

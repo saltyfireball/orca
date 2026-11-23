@@ -3,10 +3,12 @@
 // `--retry-of`, `--task`) runs in that profile's launch scope again: the same agent, mode, account
 // and MCP profile, checked against this host as it is now. A refusal stops the start before
 // anything is created, and an automatic retry reports it (`orca retry show`, the coordinator).
+import { InvalidArgumentError } from '../../runtime/rpc/core'
 import type { OrchestrationDb } from '../../runtime/orchestration/db/orchestration-db'
 import {
   assertForkMcpProfileApplies,
   assertForkMcpProfileKnown,
+  assertForkMcpProfileNotForExistingTerminal,
   currentForkMcpLaunchScope,
   runInForkMcpLaunchScope
 } from '../mcp-profiles/mcp-launch-scope'
@@ -17,7 +19,13 @@ import {
 } from './agent-profile-launch-scope'
 import { forkContinuedTaskId, forkReadTaskLaunch } from './agent-profile-task-store'
 
-type StartParams = { task?: string; retryOf?: string; agent?: string; on?: string }
+type StartParams = {
+  task?: string
+  retryOf?: string
+  agent?: string
+  on?: string
+  terminal?: string
+}
 
 /** The hook: `startWorker` run through `forkWithTaskProfileLaunch`. */
 export function forkTaskProfileStart<
@@ -50,6 +58,7 @@ export function forkWithTaskProfileLaunch<T>(
   let next = run
   const mcpProfile = stored.mcpProfile
   if (mcpProfile && !currentForkMcpLaunchScope()?.profile) {
+    assertForkMcpProfileNotForExistingTerminal(mcpProfile, params.terminal)
     // A start placed on a paired server is checked against that server's profiles.
     if (!params.on) {
       assertForkMcpProfileKnown(
@@ -61,5 +70,14 @@ export function forkWithTaskProfileLaunch<T>(
     next = () => runInForkMcpLaunchScope({ kind: 'worker', profile: mcpProfile }, run)
   }
   const launch = forkAgentProfileLaunchOfTask(stored, params.agent, Boolean(params.on))
+  if (
+    launch &&
+    params.terminal &&
+    (launch.permissionMode || launch.account || launch.carry?.account)
+  ) {
+    throw new InvalidArgumentError(
+      `This Task's profile "${launch.name}" sets a permission mode or account, which a worker reusing --terminal cannot take: that agent is already running. Start a new worker instead. Nothing was started.`
+    )
+  }
   return launch ? runInForkAgentProfileLaunch(launch, next) : next()
 }

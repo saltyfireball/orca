@@ -12,6 +12,21 @@ afterEach(() => setForkMcpProfileCheck(null))
 
 const call = (method: string, params?: unknown) => ({ request: { method, params } })
 
+describe('a worker start that reuses an existing terminal', () => {
+  it('refuses a named MCP profile, with or without --on, and never refuses all', () => {
+    setForkMcpProfileCheck(() => true)
+    const start = (params: Record<string, unknown>) =>
+      withForkMcpLaunchScope(call('orchestration.workerStart', params), () => 'ran')
+    expect(() => start({ forkMcpProfile: 'web', terminal: 'term_1' })).toThrow(/already running/)
+    expect(() => start({ forkMcpProfile: 'web', terminal: 'term_1', on: 'box' })).toThrow(
+      /already running/
+    )
+    expect(start({ forkMcpProfile: 'all', terminal: 'term_1' })).toBe('ran')
+    expect(start({ terminal: 'term_1' })).toBe('ran')
+    expect(start({ forkMcpProfile: 'web' })).toBe('ran')
+  })
+})
+
 describe('launch scope', () => {
   it('maps launch methods to kinds', () => {
     expect(forkMcpLaunchKindOfMethod('agent.launch')).toBe('interactive')

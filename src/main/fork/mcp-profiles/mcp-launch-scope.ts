@@ -86,6 +86,21 @@ export function assertForkMcpProfileApplies(
   }
 }
 
+/**
+ * BAD-741: a worker start that reuses an existing terminal launches nothing, so an MCP profile it
+ * names (or a Task's stored one) would be dropped; it is refused before anything is created.
+ */
+export function assertForkMcpProfileNotForExistingTerminal(
+  profile: string | undefined,
+  terminal: string | undefined
+): void {
+  if (profile && profile !== FORK_MCP_PROFILE_ALL && terminal) {
+    throw new InvalidArgumentError(
+      `MCP profile "${profile}" cannot apply to --terminal: that agent is already running. Start a new worker instead. Nothing was started.`
+    )
+  }
+}
+
 /** Refuses an MCP profile this host does not have, before anything starts. */
 export function assertForkMcpProfileKnown(profile: string, refusedBecause = ''): void {
   if (!profileCheck && profile !== FORK_MCP_PROFILE_ALL) {
@@ -129,6 +144,9 @@ function mcpLaunchScope<T>(
     const text = (name: string | undefined): string | undefined => {
       const value = name ? params[name] : undefined
       return typeof value === 'string' && value.trim() ? value.trim() : undefined
+    }
+    if (call.request.method === 'orchestration.workerStart') {
+      assertForkMcpProfileNotForExistingTerminal(profile, text('terminal'))
     }
     // A start placed on a paired server is checked against that server's profiles.
     if (call.request.method !== 'orchestration.workerStart' || !text('on')) {
