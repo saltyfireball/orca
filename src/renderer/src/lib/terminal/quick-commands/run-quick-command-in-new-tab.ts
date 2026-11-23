@@ -20,6 +20,8 @@ export type RunQuickCommandInNewTabArgs = {
   groupId?: string | null
   /** Pins the terminal tab to this host instead of the copy selected at launch. */
   executionHostId?: ExecutionHostId
+  /** Fork BAD-747: paste the command as written and stop, with no Enter and no one-line flattening. */
+  typeOnly?: boolean
 }
 
 function resolveQuickCommandGroupId(
@@ -51,6 +53,7 @@ export function runQuickCommandInNewTab({
   worktreeId,
   groupId,
   executionHostId,
+  typeOnly = false,
   historyId = command.id
 }: RunQuickCommandInNewTabArgs): { tabId: string } | null {
   const targetGroupId = groupId ?? undefined
@@ -99,7 +102,9 @@ export function runQuickCommandInNewTab({
   const store = useAppStore.getState()
   const tab = store.createTab(worktreeId, targetGroupId, undefined, {
     quickCommandLabel: command.label,
-    pendingStartup: { command: flattenTerminalQuickCommand(command).command },
+    pendingStartup: typeOnly
+      ? { command: command.command, delivery: 'terminal-paste', typeOnly: true }
+      : { command: flattenTerminalQuickCommand(command).command },
     ...(executionHostId ? { executionHostId } : {})
   })
 

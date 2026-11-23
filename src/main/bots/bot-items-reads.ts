@@ -1,6 +1,11 @@
 // Item reads beyond one row: a bot's list with exact counts, links by what they point at, and the rows
 // item views need in one round trip.
-import type { BotItemLinkKind, BotItemStatus } from '../../shared/bots/bot-items'
+import {
+  botItemEventId,
+  type BotItemLinkKind,
+  type BotItemStatus
+} from '../../shared/bots/bot-items'
+import { botItemStepsOfRows, type BotItemStepsView } from '../../shared/bots/bot-item-steps'
 import {
   eventRecordOf,
   integer,
@@ -115,6 +120,8 @@ export class BotItemsReads extends BotItemsTables {
     links: Record<string, BotItemLinkRecord[]>
     questions: Record<string, BotItemEventRecord>
     othersLast: Record<string, number>
+    /** Fork BAD-747: each open item's steps, folded from its newest `steps` event and the marks after it. */
+    steps: Record<string, BotItemStepsView>
   } {
     const ids = JSON.stringify(uids)
     const rows = this.db
@@ -148,6 +155,44 @@ export class BotItemsReads extends BotItemsTables {
       const event = eventRecordOf(row)
       questions[event.itemUid] = event
     }
-    return { items, links, questions, othersLast }
+    const steps: Record<string, BotItemStepsView> = {}
+    for (const [uid, found] of Object.entries(this.openSteps(items))) {
+      const view = botItemStepsOfRows(found, botItemEventId)
+      if (view) {
+        steps[uid] = view
+      }
+    }
+    return { items, links, questions, othersLast, steps }
+  }
+
+  /** The newest steps event of each open item, with the marks written since: only open items show steps. */
+  protected openSteps(
+    items: readonly BotItemRecord[]
+  ): Record<string, { set: BotItemEventRecord; marks: BotItemEventRecord[] }> {
+    const open = JSON.stringify(
+      items.filter((item) => item.status !== 'done' && item.status !== 'canceled').map((i) => i.uid)
+    )
+    const out: Record<string, { set: BotItemEventRecord; marks: BotItemEventRecord[] }> = {}
+    for (const row of this.db
+      .prepare(
+        `SELECT * FROM item_events WHERE id IN (
+           SELECT MAX(id) FROM item_events
+            WHERE kind = 'steps' AND item_uid IN (SELECT value FROM json_each(?)) GROUP BY item_uid)`
+      )
+      .all(open)) {
+      const set = eventRecordOf(row)
+      out[set.itemUid] = { set, marks: [] }
+    }
+    const withSteps = JSON.stringify(Object.keys(out))
+    for (const row of this.db
+      .prepare(
+        `SELECT * FROM item_events WHERE kind = 'step' AND item_uid IN (SELECT value FROM json_each(?))
+          ORDER BY id`
+      )
+      .all(withSteps)) {
+      const mark = eventRecordOf(row)
+      out[mark.itemUid]?.marks.push(mark)
+    }
+    return out
   }
 }

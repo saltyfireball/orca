@@ -163,7 +163,10 @@ export function bindDeferredColdRestoreAndSnapshot(session: ConnectPanePtySessio
     if (result.status !== 'pasted' || !current() || !isStartupPasteTargetCurrent(ptyId)) {
       return false
     }
-    return session.transport.sendInput('\r', 'launch')
+    // Fork BAD-747: a typed-only command waits for the person's Enter.
+    return session.pendingStartupCommand?.typeOnly === true
+      ? true
+      : session.transport.sendInput('\r', 'launch')
   }
   session.schedulePendingStartupCommandDelivery = (): void => {
     const startup = session.pendingStartupCommand

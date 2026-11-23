@@ -24,6 +24,11 @@ import { ForkIdleRecoveryPausedList } from './ForkIdleRecoveryPausedList'
 import { ForkTextSetting as TextSetting } from './ForkTextSetting'
 import { readForkInboxBotAsksSettings } from '../../../../shared/fork/inbox-bot-asks'
 import { readForkBotRowAskJump } from '../../../../shared/fork/bot-row-ask-jump'
+import {
+  readForkBotOwnerSteps,
+  readForkBotOwnerStepsAutoAnswer,
+  readForkBotOwnerStepsOpenInTerminal
+} from '../../../../shared/fork/bot-owner-steps'
 
 type Props = {
   settings: GlobalSettings
@@ -52,6 +57,9 @@ export function ForkIdleRecoverySetting({ settings, updateSettings }: Props): Re
   const targetsOff = off && !botAsks.enabled
   // SLRM-2472: a bot row's click shows its first waiting ask.
   const botRowAskJump = readForkBotRowAskJump(settings)
+  const ownerSteps = readForkBotOwnerSteps(settings)
+  const ownerStepsTerminal = readForkBotOwnerStepsOpenInTerminal(settings)
+  const ownerStepsAnswer = readForkBotOwnerStepsAutoAnswer(settings)
   const noWake = current.mode !== 'wake'
   const idleLabel = t('fork.idleRecovery.idleLabel', 'Idle time before a look (seconds)')
   const timeoutLabel = t('fork.idleRecovery.timeoutLabel', 'Classifier time limit (seconds)')
@@ -202,6 +210,35 @@ export function ForkIdleRecoverySetting({ settings, updateSettings }: Props): Re
         )}
         checked={botRowAskJump}
         onChange={() => updateSettings({ forkBotRowAskJump: !botRowAskJump })}
+      />
+      <SettingsSwitchRow
+        label={t('fork.botOwnerSteps.settingLabel', 'Bot steps as a checklist')}
+        description={t(
+          'fork.botOwnerSteps.settingHelp',
+          'Commands and manual acts a bot asks you to do show as a numbered checklist on its item, with Copy and Done. Off: they are written into the comment as a list instead.'
+        )}
+        checked={ownerSteps}
+        onChange={() => updateSettings({ forkBotOwnerSteps: !ownerSteps })}
+      />
+      <SettingsSwitchRow
+        label={t('fork.botOwnerSteps.terminalLabel', 'Open a step in a terminal')}
+        description={t(
+          'fork.botOwnerSteps.terminalHelp',
+          'A step with a command can open a terminal on its computer with the command typed in. It is never run: you press Enter.'
+        )}
+        checked={ownerStepsTerminal}
+        disabled={!ownerSteps}
+        onChange={() => updateSettings({ forkBotOwnerStepsOpenInTerminal: !ownerStepsTerminal })}
+      />
+      <SettingsSwitchRow
+        label={t('fork.botOwnerSteps.answerLabel', 'Answer the ask when the last step is done')}
+        description={t(
+          'fork.botOwnerSteps.answerHelp',
+          "Ticking the last step answers the bot's question as done when one of its options plainly says so. Otherwise the bot is only told."
+        )}
+        checked={ownerStepsAnswer}
+        disabled={!ownerSteps}
+        onChange={() => updateSettings({ forkBotOwnerStepsAutoAnswer: !ownerStepsAnswer })}
       />
       <SettingsSwitchRow
         label={t('fork.idleRecovery.notifyDesktopLabel', 'Notify when a chat waits on me')}

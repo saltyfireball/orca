@@ -67,6 +67,8 @@ export type TerminalState = {
       /** Absent when the startup carries only spawn env, e.g. a paired viewer's plain terminal (#39852). */
       command?: string
       delivery?: 'terminal-paste'
+      /** Fork BAD-747: with `delivery`, paste the command and stop: no Enter, so the person presses it. */
+      typeOnly?: true
       startupCommandDelivery?: StartupCommandDelivery
       env?: Record<string, string>
       envToDelete?: string[]

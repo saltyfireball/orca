@@ -8,6 +8,7 @@ import { NativeChatCopyButton } from '../../messages/actions/NativeChatCopyButto
 import { NativeChatMarkdownRowKeyContext } from '../native-chat-markdown-row-identity'
 import { useNativeChatDisclosure } from '../../messages/disclosure/native-chat-disclosure-store'
 import { NativeChatRunButton } from '../../fork/NativeChatRunButton'
+import { looksLikeShellCommand } from '../../../../../../shared/bots/bot-item-command-advice'
 import { NativeChatHighlightedCode } from './NativeChatHighlightedCode'
 
 /** Code fences need their own copy target rather than the whole chat message. */
@@ -32,6 +33,8 @@ export function NativeChatCodeBlock({
       : `code-wrap:${rowKey}:${sourceLine}`,
     false
   )
+  // Fork BAD-747: a command with no language tag keeps its Copy showing, hover or touch.
+  const commandWithoutTag = !language && looksLikeShellCommand(code)
   const actions = code ? (
     <>
       <NativeChatCodeWrapButton wrapped={wrapped} onToggle={() => setWrapped(!wrapped)} />
@@ -73,7 +76,12 @@ export function NativeChatCodeBlock({
         )}
       </pre>
       {code && !language ? (
-        <div className="absolute right-2 top-2 flex items-center gap-0.5 opacity-100 transition-opacity can-hover:pointer-events-none can-hover:opacity-0 group-hover/code:pointer-events-auto group-hover/code:opacity-100 [[class~='group/code']:has(:focus-visible)_&]:pointer-events-auto [[class~='group/code']:has(:focus-visible)_&]:opacity-100">
+        <div
+          className={cn(
+            "absolute right-2 top-2 flex items-center gap-0.5 opacity-100 transition-opacity group-hover/code:pointer-events-auto group-hover/code:opacity-100 [[class~='group/code']:has(:focus-visible)_&]:pointer-events-auto [[class~='group/code']:has(:focus-visible)_&]:opacity-100",
+            !commandWithoutTag && 'can-hover:pointer-events-none can-hover:opacity-0'
+          )}
+        >
           {actions}
         </div>
       ) : null}

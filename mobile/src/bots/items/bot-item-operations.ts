@@ -69,6 +69,16 @@ const itemsStatus = bindDeferredRpcOperation(
   })
 )
 
+const itemStep = bindDeferredRpcOperation(
+  defineRpcOperation({
+    name: 'bots.items.owner.step',
+    method: 'bots.items.owner.step',
+    acceptance: 'require-result-or-throw-message',
+    barrier: 'after-caller-barrier',
+    read: rpcResultVariant('bot-item-step', z.unknown())
+  })
+)
+
 const itemsSnooze = bindDeferredRpcOperation(
   defineRpcOperation({
     name: 'bots.items.owner.snooze',
@@ -237,6 +247,36 @@ export function snoozeBotItems(
     )
     try {
       itemsSnooze.interpret(reply)
+      return null
+    } catch (error) {
+      return error instanceof Error ? error : new Error(String(error))
+    }
+  })
+}
+
+/** Fork BAD-747: ticks, unticks or fails one step of the item's current set. `set` is the steps event the
+ *  phone showed, so a newer set is refused rather than marked. The last tick mails the bot's chat once. */
+export function markBotItemStep(
+  client: RpcClient,
+  item: Pick<BotItem, 'uid' | 'steps'>,
+  index: number,
+  state: 'open' | 'done' | 'failed',
+  error?: string
+): Promise<BotItemWriteOutcome> {
+  return write(async () => {
+    const reply = await itemStep.request(
+      client,
+      {
+        item: item.uid,
+        set: item.steps?.eventId ?? '',
+        index,
+        state,
+        ...(error ? { error } : {})
+      },
+      { failWhenDisconnected: true }
+    )
+    try {
+      itemStep.interpret(reply)
       return null
     } catch (error) {
       return error instanceof Error ? error : new Error(String(error))

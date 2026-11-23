@@ -44,6 +44,8 @@ import { useBotItemPendingComments } from './use-bot-item-pending-comments'
 import { BotItemsReadFailed } from './BotItemsReadFailed'
 import { BotItemNavRow } from './BotItemStepper'
 import { BotItemLoading } from './BotItemLoading'
+import { BotItemStepsPanel } from './BotItemStepsPanel'
+import { CloseNote } from './BotItemCloseNote'
 
 const NO_FOLDERS: never[] = []
 
@@ -348,6 +350,7 @@ export function BotItemBody({
                           </>
                         ) : null}
                       </dl>
+                      {deleted ? null : <BotItemStepsPanel bot={bot} item={item} />}
                       <section className="pb-2">
                         <h3 className="mb-1.5 text-xs text-muted-foreground">
                           {t('bots.items.view.activity', 'Activity')}
@@ -411,20 +414,5 @@ export function BotItemBody({
       />
       {snoozing.dialog}
     </div>
-  )
-}
-
-function CloseNote({ item }: { item: BotItem }): React.JSX.Element | null {
-  const t = useTranslate()
-  if (!item.closeNote) {
-    return null
-  }
-  return (
-    <p className="rounded-md bg-muted px-2.5 py-2 text-xs text-muted-foreground">
-      {item.status === 'canceled'
-        ? t('bots.items.view.canceledNote', 'Canceled:')
-        : t('bots.items.view.doneNote', 'Done:')}{' '}
-      <span className="text-foreground">{item.closeNote}</span>
-    </p>
   )
 }

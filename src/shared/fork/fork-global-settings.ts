@@ -36,6 +36,7 @@ import type { ForkQuickTaskSettings } from './quick-task'
 import type { ForkBotStartingRulesSettings } from './bot-starting-rules'
 import type { ForkInboxBotAsksSettings } from './inbox-bot-asks'
 import type { ForkBotRowAskJumpSettings } from './bot-row-ask-jump'
+import type { ForkBotOwnerStepsSettings } from './bot-owner-steps'
 import type { ForkBotRowBadgeSettings } from './bot-row-badges'
 import type { ForkBotChatListingSettings } from './bot-chat-listing'
 import type { ForkBotChatAutoCloseSettings } from './bot-chat-auto-close'
@@ -102,6 +103,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkInboxBotAsksSettings &
   /** Fork (SLRM-2472): a bot row's click shows its first waiting ask. */
   ForkBotRowAskJumpSettings &
+  /** Fork (BAD-747): owner steps on bot items. */
+  ForkBotOwnerStepsSettings &
   /** Fork (BAD-658): bot row count badges, an idle look, and a color per bot. */
   ForkBotRowBadgeSettings &
   /** Fork (BAD-658): bot chats with no open tab that still list under their bot. */

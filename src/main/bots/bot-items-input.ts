@@ -8,6 +8,7 @@ import {
   type BotItemStatus
 } from '../../shared/bots/bot-items'
 import { BotItemAskSchema, botItemAskText, type BotItemAsk } from '../../shared/bots/bot-item-ask'
+import type { BotItemStepInput } from '../../shared/bots/bot-item-steps'
 import { BotItemError } from './bot-item-error'
 import type { BotItemMadeBy, BotItemRecord, BotItemSource } from './bot-items-schema'
 
@@ -31,6 +32,8 @@ export type BotItemAddInput = {
   doneMeans?: string
   status: 'planned' | 'working'
   links: BotItemLinkInput[]
+  /** Fork BAD-747: steps for the owner, checked by the caller. */
+  steps?: BotItemStepInput[]
 }
 
 export type BotItemSetInput = {
@@ -48,6 +51,8 @@ export type BotItemSetInput = {
   ask?: BotItemAsk
   /** On the comment `comment` or `ask` writes; admitted and claimed on the host first. */
   images?: readonly BotItemCommentImage[]
+  /** Fork BAD-747: a new set of owner steps, replacing the open ones; an empty list clears them. */
+  steps?: BotItemStepInput[]
 }
 
 /** What a write did. */

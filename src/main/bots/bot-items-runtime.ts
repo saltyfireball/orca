@@ -262,6 +262,7 @@ export class BotItemsHost {
           : null,
         question: question ? botItemQuestionView(botItemEventId(question.id), question.data) : null,
         closeNote: summary ? null : item.closeNote,
+        steps: rows.steps[item.uid] ?? null,
         links: (rows.links[item.uid] ?? []).map((link) =>
           this.join.linkView(link, workers.get(link.ref))
         ),

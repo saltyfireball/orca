@@ -8,6 +8,7 @@ import {
   type BotItemLinkView,
   type BotItemStatus
 } from '../../shared/bots/bot-items'
+import { botItemStepsDoneCount } from '../../shared/bots/bot-item-steps'
 
 export type BotItemWriteView = {
   item: BotItem
@@ -122,8 +123,31 @@ function snoozedUntil(item: BotItem, now: number): string | null {
     : null
 }
 
+function stepsSummary(item: BotItem): string[] {
+  const view = item.steps
+  return view ? [`steps ${botItemStepsDoneCount(view)}/${view.steps.length} done`] : []
+}
+
+/** The open steps, numbered, each with its host, note and command exactly as the owner will copy it. */
+function stepLines(item: BotItem): string[] {
+  const view = item.steps
+  if (!view) {
+    return []
+  }
+  const marks = { open: 'to do', done: 'done', failed: 'did not work' } as const
+  return [
+    `Steps for your owner (${botItemStepsDoneCount(view)} of ${view.steps.length} done, set ${view.eventId}):`,
+    ...view.steps.flatMap((step) => [
+      `  ${step.index + 1}. ${step.title}${step.host ? ` [on ${step.host}]` : ''} - ${step.command ? marks[step.state] : `${marks[step.state]}, manual`}`,
+      ...(step.note ? [`     ${step.note}`] : []),
+      ...(step.command ? step.command.split('\n').map((line) => `     $ ${line}`) : []),
+      ...(step.error ? [`     error they pasted: ${step.error.split('\n')[0]}`] : [])
+    ])
+  ]
+}
+
 export function formatBotItemRow(item: BotItem, now: number): string {
-  const what = [item.title, ...linkSummary(item.links)].join(' · ')
+  const what = [item.title, ...linkSummary(item.links), ...stepsSummary(item)].join(' · ')
   const until = snoozedUntil(item, now)
   const snoozed = until ? `\n    snoozed ${snoozedWords(until)}` : ''
   const question = item.question ? `\n    asks: ${item.question.text.split('\n')[0]}` : ''
@@ -159,7 +183,7 @@ function linkLine(link: BotItemLinkView): string {
   }
 }
 
-function eventLine(event: BotItemEvent): string {
+function eventLine(event: BotItemEvent, currentSet: string | undefined): string {
   const who = event.actor.kind === 'bot' ? '' : event.actor.kind === 'owner' ? 'Owner: ' : 'Orca: '
   const data = event.data
   const words = (() => {
@@ -182,6 +206,20 @@ function eventLine(event: BotItemEvent): string {
           : 'snoozed'
       case 'unsnoozed':
         return data.early ? 'back from snooze early' : 'unsnoozed'
+      case 'steps': {
+        const count = Array.isArray(data.steps) ? data.steps.length : 0
+        return event.id === currentSet
+          ? `set ${count} steps for your owner (current)`
+          : `set ${count} steps for your owner (replaced by a newer set, no longer live)`
+      }
+      case 'step': {
+        const number = typeof data.index === 'number' ? data.index + 1 : '?'
+        return data.state === 'failed'
+          ? `step ${number} did not work: ${String(data.error ?? '').split('\n')[0]}`
+          : `step ${number} marked ${String(data.state)}`
+      }
+      case 'steps_done':
+        return 'ticked every step'
     }
   })()
   return `${event.id}  ${who}${words}`
@@ -195,11 +233,12 @@ export function formatBotItemShow(view: BotItemShowView, now = Date.now()): stri
     ...(until ? [`Snoozed ${snoozedWords(until)}.`] : []),
     ...(item.description ? [item.description] : []),
     ...(item.doneMeans ? [`Done means: ${item.doneMeans}`] : []),
+    ...stepLines(item),
     ...(item.question ? [`Asks your owner: ${item.question.text}`] : []),
     ...(item.closeNote ? [`Closed: ${item.closeNote}`] : []),
     ...item.links.map((link) => `  ${linkLine(link)}`),
     '',
-    ...view.events.map(eventLine),
+    ...view.events.map((event) => eventLine(event, item.steps?.eventId)),
     ...(view.nextCursor ? [`More: --after ${view.nextCursor}`] : [])
   ]
   return lines.join('\n')

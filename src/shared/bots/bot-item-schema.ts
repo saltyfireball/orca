@@ -19,6 +19,7 @@ import {
   type BotItemStatus,
   type BotItemWorkerState
 } from './bot-items'
+import type { BotItemStep, BotItemStepsView } from './bot-item-steps'
 
 const WORKER_STATES = hostUnionArms<BotItemWorkerState>({
   working: true,
@@ -43,7 +44,10 @@ const EVENT_KINDS = hostUnionArms<BotItemEventKind>({
   commented: true,
   linked: true,
   snoozed: true,
-  unsnoozed: true
+  unsnoozed: true,
+  steps: true,
+  step: true,
+  steps_done: true
 })
 
 const PR_STATES = hostUnionArms<Extract<BotItemPullRequest, { shown: true }>['state']>({
@@ -54,6 +58,22 @@ const PR_STATES = hostUnionArms<Extract<BotItemPullRequest, { shown: true }>['st
 })
 
 const statusSchema = z.enum(BOT_ITEM_STATUSES)
+
+// Fork BAD-747: a step the owner is asked to do; one a newer host shaped otherwise drops, not the item.
+const stepSchema: z.ZodType<BotItemStep, unknown> = z.looseObject({
+  title: z.string(),
+  command: salvagedOptional('command', z.string()),
+  host: salvagedOptional('host', z.string()),
+  note: salvagedOptional('note', z.string()),
+  index: z.number(),
+  state: z.enum(['open', 'done', 'failed']).catch('open'),
+  error: salvagedOptional('error', z.string())
+})
+
+const stepsViewSchema: z.ZodType<BotItemStepsView, unknown> = z.looseObject({
+  eventId: z.string(),
+  steps: salvagingArray(stepSchema)
+})
 
 const prSchema: z.ZodType<BotItemPullRequest, unknown> = z.union([
   z.looseObject({
@@ -129,6 +149,7 @@ export const BotItemSchema: z.ZodType<BotItem, unknown> = z.looseObject({
     .nullable(),
   question: z.looseObject({ eventId: z.string(), text: z.string() }).nullable(),
   closeNote: z.string().nullable(),
+  steps: salvagedOptional('steps', stepsViewSchema.nullable()),
   links: salvagingArray(linkSchema),
   version: z.number(),
   lastEventId: z.string(),

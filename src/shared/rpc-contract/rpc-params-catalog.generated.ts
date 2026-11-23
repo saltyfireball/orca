@@ -310,6 +310,7 @@ import {
   BotItemsOwnerShow,
   BotItemsOwnerSnooze,
   BotItemsOwnerStatus,
+  BotItemsOwnerStep,
   BotItemsSet,
   BotItemsShow
 } from './bots-items-params'
@@ -1402,6 +1403,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'bots.items.owner.show': BotItemsOwnerShow,
   'bots.items.owner.snooze': BotItemsOwnerSnooze,
   'bots.items.owner.status': BotItemsOwnerStatus,
+  'bots.items.owner.step': BotItemsOwnerStep,
   'bots.items.set': BotItemsSet,
   'bots.items.show': BotItemsShow,
   'bots.kickoff.retry': BotChat,

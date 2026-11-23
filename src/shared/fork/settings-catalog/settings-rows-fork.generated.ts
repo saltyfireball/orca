@@ -81,6 +81,12 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"number"},"d":"Minutes a bot\'s chat with no open tab stays listed under it after its last activity (a running or new one always lists); unset is 60, 0 lists only chats with an open tab.","o":true}',
   forkBotHiddenChats:
     '{"t":{"k":"record","of":{"k":"number"}},"d":"Chats the owner hid from the sidebar, by chat id and when; one that needs the owner again lists again.","o":true}',
+  forkBotOwnerSteps:
+    '{"t":{"k":"boolean"},"d":"Keep the ordered steps an agent sets on an item as a checklist for you, with Copy, Done and Did not work; unset is on. Off: steps are written into the comment as a numbered list instead.","o":true}',
+  forkBotOwnerStepsAutoAnswer:
+    '{"t":{"k":"boolean"},"d":"When you tick the last step, answer the item\'s ask as done if one of its options plainly says so; unset is on.","o":true}',
+  forkBotOwnerStepsOpenInTerminal:
+    '{"t":{"k":"boolean"},"d":"A step with a command can open a terminal on its computer with the command typed in, never run; unset is on.","o":true}',
   forkBotRowAskJump:
     '{"t":{"k":"boolean"},"d":"Clicking a bot row that has items waiting on you also opens the first on its Home tab, and a second click the next; unset is on.","o":true}',
   forkBotRowBadges:

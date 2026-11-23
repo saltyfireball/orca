@@ -62,7 +62,12 @@ export function botItemChangeMail(
   // The mail carries every comment's images in order, so each comment's [Image #N] counts past the last's.
   let imagesBefore = 0
   const body = lines.map(({ event, item, what }) => {
-    const said = event.kind === 'commented' ? commentWords(event, imagesBefore) : ''
+    const said =
+      event.kind === 'commented'
+        ? commentWords(event, imagesBefore)
+        : event.kind === 'step' && event.data.state === 'failed'
+          ? `:\n${fenceQuotedText(str(event.data.error) ?? '')}`
+          : ''
     imagesBefore += event.kind === 'commented' ? botItemCommentImages(event.data).length : 0
     return `- ${itemName(item)}: ${what} (event ${botItemEventId(event.id)})${said}`
   })
@@ -94,6 +99,12 @@ export function botItemChangeMail(
       : null,
     replied
       ? "Your owner replied to your question, so the item moved to In progress. If your question still stands, set it to Needs you again with only what's left."
+      : null,
+    lines.some(({ event }) => event.kind === 'step' && event.data.state === 'failed')
+      ? 'A step did not work: fix it, then set Needs you again with a new set of steps (only the current version, one command per step).'
+      : null,
+    lines.some(({ event }) => event.kind === 'steps_done') && !answered
+      ? 'Your owner ticked every step: carry on from there.'
       : null,
     tos.some(isClosed)
       ? 'If something linked to a closed item is still running, stop or redirect it.'
@@ -168,6 +179,21 @@ function changeWords(event: BotItemEventRecord): string | null {
       const note = str(event.data.note)
       const words = statusWords(statusOf(event.data.from), statusOf(event.data.to))
       return `${words}${note ? `: "${inlineUntrusted(note, 400)}"` : ''}`
+    }
+    case 'step': {
+      // Only a step that did not work is mailed: a tick is recorded, and the last one mails once as steps_done.
+      const number = typeof event.data.index === 'number' ? event.data.index + 1 : 0
+      const title = inlineUntrusted(str(event.data.title) ?? '', 120)
+      return event.data.state === 'failed'
+        ? `says step ${number}${title ? ` ("${title}")` : ''} did not work, with this error`
+        : null
+    }
+    case 'steps_done': {
+      const titles = Array.isArray(event.data.titles) ? event.data.titles.map(String) : []
+      const named = titles
+        .map((title, at) => `${at + 1}. ${inlineUntrusted(title, 120)}`)
+        .join('; ')
+      return `finished every step you gave them (${named || 'all of them'})`
     }
     case 'edited':
       return 'edited it'

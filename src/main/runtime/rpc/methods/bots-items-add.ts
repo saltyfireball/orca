@@ -7,6 +7,7 @@ import type { BotItemsAddParams } from '../../../../shared/rpc-contract/bots-ite
 import { BotItemError } from '../../../bots/bot-item-error'
 import { botItemRequestMail } from '../../../bots/bot-items-mail-text'
 import { assertBotItemAddable, uniqueBotItemLinks } from '../../../bots/bot-items-input'
+import { resolveItemSteps, withStepsMarkdown } from './bots-items-steps-input'
 import { sessionCallerOf } from '../../orchestration/addressing/orchestration-caller-identity'
 import type { RpcContext } from '../core'
 import { botChatAddress } from './orchestration/messaging/bot-chat-address'
@@ -30,9 +31,12 @@ export async function addItem(
   const target = params.forBot
     ? botNamed(params.forBot, writer.bot, runtime.bots.list())
     : writer.bot
+  const resolved = resolveItemSteps(runtime, params.steps)
+  const description = withStepsMarkdown(params.description, resolved.markdown)
   const fields = {
     title: params.title,
-    ...(params.description !== undefined ? { description: params.description } : {}),
+    ...(description !== undefined ? { description } : {}),
+    ...(resolved.steps ? { steps: resolved.steps } : {}),
     ...(params.doneMeans !== undefined ? { doneMeans: params.doneMeans } : {}),
     status: params.status ?? 'planned',
     links

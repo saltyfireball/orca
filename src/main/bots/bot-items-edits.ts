@@ -70,6 +70,13 @@ export class BotItemsEdits extends BotItemsReads {
       now
     )
     this.insertLinks(uid, input.links, eventId)
+    if (input.steps?.length) {
+      return {
+        uid,
+        eventId: this.appendEvent(uid, 'steps', actor, { steps: input.steps }, false, now),
+        created: true
+      }
+    }
     return { uid, eventId, created: true }
   }
 
@@ -115,7 +122,12 @@ export class BotItemsEdits extends BotItemsReads {
         (changes.status === 'needs_you' && commentData !== undefined))
         ? changes.status
         : undefined
-    if (!edited && status === undefined && commentData === undefined) {
+    if (
+      !edited &&
+      status === undefined &&
+      commentData === undefined &&
+      changes.steps === undefined
+    ) {
       return { uid, eventId: null, unchanged: true }
     }
     const closing = status === 'done' || status === 'canceled'
@@ -133,6 +145,10 @@ export class BotItemsEdits extends BotItemsReads {
       this.writeFields(item, fields)
       const note = changes.note && status !== 'done' ? { note: changes.note } : {}
       eventId = this.appendEvent(uid, 'edited', actor, { fields, ...note }, mail, now)
+    }
+    if (changes.steps !== undefined) {
+      // Before the comment, so the checklist reads above the ask.
+      eventId = this.appendEvent(uid, 'steps', actor, { steps: changes.steps }, mail, now)
     }
     const comment =
       commentData === undefined
@@ -178,6 +194,9 @@ export function assertBotItemSetInput(changes: BotItemSetInput): void {
       'invalid_argument',
       '--comment goes with --status; otherwise use `orca bot item comment`.'
     )
+  }
+  if (changes.steps !== undefined && (changes.status === 'done' || changes.status === 'canceled')) {
+    throw new BotItemError('invalid_argument', 'Steps are for an open item, not a closing one.')
   }
   if (changes.title !== undefined && !changes.title.trim()) {
     throw new BotItemError('invalid_argument', 'An item needs a title.')

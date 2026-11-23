@@ -5,6 +5,7 @@ import {
   BOT_ITEM_STATUSES
 } from '../bots/bot-items'
 import { BotItemAskSchema } from '../bots/bot-item-ask'
+import { BOT_ITEM_STEP_LIMITS, BotItemStepsSchema } from '../bots/bot-item-steps'
 import { AGENT_SESSION_MESSAGE_IMAGE_MAX_COUNT } from '../agent-session/agent-session-attachments'
 import {
   MAX_SKILL_REFS,
@@ -41,7 +42,9 @@ export const BotItemsAdd = z.object({
   /** `--for bot:<name>`: the item is made for that bot, through its request mail. */
   forBot: OptionalString,
   /** With `--for`, that bot's chat; alone, another chat of the caller's bot. */
-  chat: OptionalString
+  chat: OptionalString,
+  /** Fork BAD-747: the steps the owner is asked to do (`--steps-file`). */
+  steps: BotItemStepsSchema.optional()
 })
 
 export const BotItemsSet = z.object({
@@ -59,7 +62,9 @@ export const BotItemsSet = z.object({
   /** With needs-you: the comment's body (`--comment`), its question lines (`--ask`) and quick replies (`--option`). */
   ask: BotItemAskSchema.optional(),
   /** Attached to the comment `comment` or `ask` writes. */
-  files: Files
+  files: Files,
+  /** Fork BAD-747: a new set of owner steps, replacing the open ones; an empty list clears them. */
+  steps: BotItemStepsSchema.optional()
 })
 
 export const BotItemsComment = z
@@ -169,6 +174,17 @@ export const BotItemsOwnerStatus = z.object({
   status: z.enum(BOT_ITEM_STATUSES),
   reason: OptionalString,
   comment: OptionalString
+})
+
+/** Fork BAD-747: tick a step of the item's current set, untick it, or mark it as not working with the
+ *  error the owner pasted. `set` is the steps event the view showed. */
+export const BotItemsOwnerStep = z.object({
+  ...Owner,
+  item: Item,
+  set: requiredString('Missing steps set'),
+  index: z.number().int().min(0).max(99),
+  state: z.enum(['open', 'done', 'failed']),
+  error: z.string().max(BOT_ITEM_STEP_LIMITS.error).optional()
 })
 
 /** Snooze items until `until` (epoch ms), or bring them back with null. Each item names the newest

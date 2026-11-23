@@ -1,6 +1,7 @@
 // An item's description or comment as Markdown, with links and file paths opening as they do in chat.
 import CommentMarkdown from '@/components/comment-markdown/CommentMarkdown'
 import { useNativeChatLinkClick } from '../../native-chat/links/actions/native-chat-link-click-context'
+import { BotItemCodeBlock } from './BotItemCodeBlock'
 import { useNativeChatFileLinkExists } from '../../native-chat/links/actions/use-native-chat-file-link-existence'
 
 export function BotItemMarkdown({ text }: { text: string }): React.JSX.Element {
@@ -12,6 +13,7 @@ export function BotItemMarkdown({ text }: { text: string }): React.JSX.Element {
       onLinkClick={onLinkClick}
       allowFileUriLinks={onLinkClick !== undefined}
       fileLinkExists={fileLinkExists}
+      renderCodeBlock={BotItemCodeBlock}
       className="text-[13px] leading-[19px] text-foreground"
     />
   )

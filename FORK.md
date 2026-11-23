@@ -38,6 +38,58 @@ ones `SLRM-123 `).
 
 ## What the fork changes
 
+- **Owner steps: commands for the owner are data, not prose (BAD-747).** An agent that needs
+  its owner to run commands or do something by hand puts them on the item as an ordered list:
+  `orca bot item set <n> --status needs-you --steps-file <file>` (also on `bot item add`).
+  - **Steps as data.** A step has a title, an optional command (exact text, may be several lines),
+    an optional host (which computer) and an optional note; no command means a manual step (a login,
+    a click). `--steps-file` takes JSON (`[{title, command, host, note}]`) or a text form of
+    `step:`, `host:`, `note:` and `command:` lines with the command indented under it, so quotes,
+    pipes and backslashes need no escaping; `-` reads stdin, `[]` clears. A new set replaces the
+    item's open one: the older sets stay in the activity as "replaced" with no command shown, so
+    nothing stale looks live. `list` adds `steps 2/5 done`, `show` prints the open steps and the
+    activity says which set is current, `--json` carries `item.steps`.
+  - **Stored as events.** No migration: a `steps` event holds a set, the owner's `step` events mark
+    it (done, open, failed with the pasted error), and `steps_done` records the last tick. Only an
+    open item shows steps; the mark names the set it saw and a newer set refuses it (`item_changed`).
+  - **Item panel.** One numbered checklist above the activity (and so the ask): the first step not
+    done is open and prominent, later ones are dimmed and open on a click. Each step has its title,
+    a host badge, its command in a wrapping monospace block that is one text node (never linked)
+    with Copy, a Done check, and "Did not work", which takes a pasted error. "Done" shows `2 of 5
+    done`.
+  - **Open in terminal (desktop).** Opens a terminal on the step's computer and pastes the command
+    without Enter and without a trailing newline: the owner presses Enter, Orca never runs it. The
+    host name is matched to this computer (machine name, `local`) or a host Orca knows by label; a
+    step naming none opens in the bot's own workspace, and an unknown host turns the button off
+    (Copy still works). A command with a control, escape, bidi or invisible character is refused at
+    the write and again here, and a command with a line not continued by a trailing backslash is
+    not typed (a shell without bracketed paste would run those lines): Copy it. The typing path is
+    `typeOnly` on the pending startup (`delivery: 'terminal-paste'`), which skips the Enter.
+  - **Ticking.** Ticks persist and mail nobody. The last tick mails the bot's chat once for every
+    step, and answers the ask as done when it has one question with exactly one option that plainly
+    says so (`Done`, `All done`, `Finished`...); otherwise it is only recorded. A step marked "Did
+    not work" mails the chat at once with its number and the pasted error, and hands a Needs you
+    item back as In progress. Only the owner's panel marks steps (`bots.items.owner.step`, the
+    same owner check as quick replies, allowed from a paired phone); an agent's CLI is refused.
+  - **Phone.** The same checklist with Copy, Done and Did not work, no Open in terminal.
+  - **Prose commands.** A fenced shell block in an item comment or description shows as the same
+    command block with Copy always visible; a block with no language tag that looks like a command
+    keeps Copy visible in chat; a path inside inline code that is a command is not linked
+    (`looksLikeShellCommand`). A Tip after `bot item set --status needs-you` fires when the comment
+    holds numbered "(1) ... (2) ..." commands outside steps and fenced blocks, and names
+    `--steps-file`.
+  - **Settings** (Settings, Blackfish, bot asks): `forkBotOwnerSteps` (on; off keeps no steps and
+    writes them into the comment as a numbered list with each command fenced),
+    `forkBotOwnerStepsOpenInTerminal` (on) and `forkBotOwnerStepsAutoAnswer` (on).
+  - **Agent text.** The bot Rules say commands for the owner go in steps, one complete command per
+    step with its computer named, only the current version. The orchestration guides and the worker
+    preamble do not cover asking the owner, so they are unchanged.
+  - Code is in `src/shared/bots/bot-item-steps*.ts`, `bot-item-step-terminal.ts` and
+    `bot-item-command-advice.ts`, `src/shared/fork/bot-owner-steps.ts`,
+    `src/main/bots/bot-items-owner.ts` (`ownerStep`), `src/main/runtime/rpc/methods/bots-items-steps-input.ts`,
+    `src/renderer/src/components/bots/items/BotItemSteps.tsx` and `BotItemCommandBlock.tsx`,
+    `src/renderer/src/fork/bot-owner-steps/` and `mobile/src/bots/items/MobileBotItemSteps.tsx`.
+
 - **Worktree reclaim: free disk inside idle workspaces without removing them (BAD-691).**
   `orca workspace reclaim [--idle 3d] [--repo R] [--worktree W] [--dry-run]` and a Reclaim
   button on the Space page delete the regenerable, git-ignored paths of idle workspaces
@@ -3048,6 +3100,7 @@ Apply these in this order. Each one is a single commit.
 159. `BAD-690 Injected-context ratchet: check:injected-context-ratchet fails when the skill guides, skill stubs or worker preamble Orca injects into agents grow past a baseline`
 160. `BAD-691 Worktree reclaim: orca workspace reclaim and a Space page button remove regenerable git-ignored paths (node_modules, build output, caches; orca.yaml worktree.reclaim overrides the list) from idle workspaces, skipping ones in use, never touching env files, tracked or non-ignored files; off by default (forkWorktreeReclaim), dry run always available`
 161. `BAD-740 Tests: real-git fixtures use their own global git config, the test setup clears Orca session variables, and the reviewer gate reads defaults when no store is attached`
+162. `BAD-747 Owner steps: orca bot item set/add --steps-file keeps the commands and manual acts an agent needs its owner to do as an ordered checklist (title, command, host, note) with Copy, Done, Did not work and a typed-never-run Open in terminal, on desktop and phone; a new set replaces the open one; the last tick answers the ask as done or mails the chat once; fenced shell blocks get Copy; a Tip names --steps-file when commands sit in prose`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4333,6 +4386,20 @@ Upstream files only get short hooks, which keeps merges small:
   is spread into `FORK_LOST_WORK_METHODS`, so `rpc-method-registry.ts` is untouched;
   `rpc-params-catalog.generated.ts` is regenerated. The three settings are intersected in
   `fork-global-settings.ts`; the settings catalog is regenerated.
+- Owner steps (BAD-747), small edits in stock files: `NativeChatCodeBlock.tsx` keeps Copy visible
+  on an untagged block that looks like a command; `native-chat-file-link-tree.ts` skips linking a
+  command in inline code; `pty-pane-startup.ts`, `terminal-state.ts`, `startup-draft-paste.ts` and
+  `deferred-cold-restore-and-snapshot.ts` add `typeOnly` (paste the startup command, send no Enter);
+  `run-quick-command-in-new-tab.ts` takes `typeOnly`; `bot-item-schema.ts`, `bot-items.ts`,
+  `bots-items-params.ts`, `bot-items-ops.ts`, `bot-items-edits.ts`, `bot-items-owner.ts`,
+  `bot-items-reads.ts`, `bot-items-runtime.ts`, `bot-items-mail-text.ts`, `bots-items-add.ts`,
+  `bots-items-write-methods.ts` and `bots-items-owner-methods.ts` carry the steps (the owner method
+  is in `runtime-rpc-mobile-bot-methods.ts`'s phone list); `BotItemView.tsx`,
+  `BotItemActivityList.tsx` and `BotItemMarkdown.tsx` render them; `bot-items.ts` and
+  `specs/bot-items.ts` in the CLI add `--steps-file`; `MobileBotItemPage.tsx` and
+  `bot-item-operations.ts` show and mark them on the phone; `bot-preamble.ts` adds the rule;
+  `ForkIdleRecoverySetting.tsx` has the three switches. The settings are intersected in
+  `fork-global-settings.ts`; the settings and RPC params catalogs are regenerated.
 - Injected-context ratchet (BAD-690), small edits in stock files: `package.json` adds the
   `check:injected-context-ratchet` script and `config/scripts/preflight/changed-checks/run-lint.mjs`
   adds it to `LINT_STEPS`. The check, its test and `config/injected-context-baseline.txt` are new

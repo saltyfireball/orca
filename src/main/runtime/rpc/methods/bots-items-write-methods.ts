@@ -9,6 +9,11 @@ import {
 } from '../../../../shared/rpc-contract/bots-items-params'
 
 import { botItemAskAdvice } from '../../../../shared/bots/bot-item-ask-advice'
+import {
+  BOT_ITEM_COMMAND_TIP,
+  botItemCommentHoldsCommands
+} from '../../../../shared/bots/bot-item-command-advice'
+import { resolveItemSteps, withStepsMarkdown } from './bots-items-steps-input'
 import { linksOutsideLinkedChains } from '../../../bots/bot-item-dispatch-facts'
 import { defineMethod } from '../core'
 import { addItem } from './bots-items-add'
@@ -36,6 +41,15 @@ const SET = defineMethod({
     const item = await resolveItem(store, params.item)
     const { title, description, doneMeans, status, note, reason } = params
     let { comment, ask } = params
+    // Fork BAD-747: steps for the owner; with the setting off they join the comment as a numbered list.
+    const resolved = resolveItemSteps(context.runtime, params.steps)
+    if (resolved.markdown) {
+      if (ask) {
+        ask = { ...ask, context: withStepsMarkdown(ask.context, resolved.markdown) }
+      } else {
+        comment = withStepsMarkdown(comment, resolved.markdown)
+      }
+    }
     if (params.files?.length && !comment?.trim() && !ask) {
       throw new BotItemError('invalid_argument', '--file goes with --comment. Nothing was posted.')
     }
@@ -53,16 +67,36 @@ const SET = defineMethod({
       comment = attached.text
     }
     const images = attached.images.length > 0 ? attached.images : undefined
-    const changes = { title, description, doneMeans, status, note, reason, comment, ask, images }
+    const changes = {
+      title,
+      description,
+      doneMeans,
+      status,
+      note,
+      reason,
+      comment,
+      ask,
+      images,
+      steps: resolved.steps
+    }
     const defined = Object.fromEntries(
       Object.entries(changes).filter(([, value]) => value !== undefined)
     )
     const outcome = await store.set(item.uid, defined, writer.actor)
     const result = await writeResult(context.runtime, outcome, writer)
     // A tip back to the bot when its ask may be hard to read; the ask is already posted as written.
-    const advice =
-      status === 'needs_you' && result.eventId !== null ? botItemAskAdvice({ comment, ask }) : null
-    return advice ? { ...result, advice } : result
+    const asking = status === 'needs_you' && result.eventId !== null
+    const advice = asking ? botItemAskAdvice({ comment, ask }) : null
+    // Fork BAD-747: commands in prose, outside steps and fenced blocks, get a tip naming --steps-file.
+    const commandTip =
+      asking &&
+      !advice &&
+      !params.steps &&
+      botItemCommentHoldsCommands(ask?.context ?? comment ?? '')
+        ? { codes: ['commands_in_prose'], tip: BOT_ITEM_COMMAND_TIP }
+        : null
+    const tip = advice ?? commandTip
+    return tip ? { ...result, advice: tip } : result
   }
 })
 

@@ -22,6 +22,7 @@ import { RuntimeClientError } from '../runtime/connection/types'
 import { callerChat } from '../automations/automation-caller-chat'
 import { callBots, findBot } from './bot'
 import { botItemAskFromFlags, botItemAskParams } from './bot-item-ask-flags'
+import { parseBotItemStepsInput } from '../../shared/bots/bot-item-steps-text'
 import { BOT_ITEM_ASK_BOOLEAN_FLAGS } from '../specs/bot-items'
 import {
   formatBotItemList,
@@ -78,6 +79,19 @@ function files(flags: Flags, cwd: string): { files?: string[] } {
   return paths.length > 0 ? { files: paths } : {}
 }
 
+/** `--steps-file <file|->` (or `--steps <text>`): JSON or the text form; an empty list clears the steps. */
+async function stepsParam(flags: Flags, cwd: string): Promise<{ steps?: unknown }> {
+  const content = await readTextOrFileFlag(flags, cwd, 'steps', false)
+  if (content === undefined) {
+    return {}
+  }
+  const parsed = parseBotItemStepsInput(content)
+  if (!parsed.ok) {
+    throw new RuntimeClientError('invalid_argument', `--steps-file: ${parsed.error}`)
+  }
+  return { steps: parsed.steps }
+}
+
 export const BOT_ITEM_HANDLERS: Record<string, CommandHandler> = {
   'bot item add': async (ctx) => {
     const { flags, cwd } = ctx
@@ -90,7 +104,8 @@ export const BOT_ITEM_HANDLERS: Record<string, CommandHandler> = {
       ...(status ? { status: statusFlag(status) } : {}),
       ...(links.length > 0 ? { links } : {}),
       ...optional('forBot', getOptionalStringFlag(flags, 'for')),
-      ...optional('chat', getOptionalStringFlag(flags, 'chat'))
+      ...optional('chat', getOptionalStringFlag(flags, 'chat')),
+      ...(await stepsParam(flags, cwd))
     })
   },
   'bot item set': async (ctx) => {
@@ -107,6 +122,7 @@ export const BOT_ITEM_HANDLERS: Record<string, CommandHandler> = {
       ...optional('note', await readTextOrFileFlag(flags, cwd, 'note', false)),
       ...optional('reason', await readTextOrFileFlag(flags, cwd, 'reason', false)),
       ...(ask ? botItemAskParams(ask, comment) : optional('comment', comment)),
+      ...(await stepsParam(flags, cwd)),
       ...files(flags, cwd)
     })
   },

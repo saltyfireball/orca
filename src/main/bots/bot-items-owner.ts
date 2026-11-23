@@ -10,14 +10,14 @@ import {
 } from '../../shared/bots/bot-items'
 import { BOT_ITEM_SNOOZE_MAX_MS } from '../../shared/bots/bot-item-snooze'
 import { BotItemError } from './bot-item-error'
-import { BotItemsWrites } from './bot-items-writes'
+import { BotItemsOwnerWrites } from './bot-items-owner-writes'
 import {
   assertBotItemText,
   type BotItemOwnerActor,
   type BotItemWriteOutcome
 } from './bot-items-input'
 import { eventRecordOf } from './bot-items-rows'
-import type { BotItemMail, BotItemRecord } from './bot-items-schema'
+import type { BotItemMail } from './bot-items-schema'
 
 const OWED_MAIL_PAGE = 50
 
@@ -37,7 +37,7 @@ export type BotItemOwnerSnoozeInput = {
   until: number | null
 }
 
-export class BotItemsOwner extends BotItemsWrites {
+export class BotItemsOwner extends BotItemsOwnerWrites {
   /** `images` were admitted and claimed on the host first; attachments alone make a comment.
    *  `requestId`: the sender's id for this comment; sent again (a retry after a lost answer), it
    *  returns the comment it already made instead of a second one. */
@@ -107,12 +107,6 @@ export class BotItemsOwner extends BotItemsWrites {
     })
   }
 
-  /** The owner's own Needs you note is no question to answer. */
-  private askedByBot(eventId: number): boolean {
-    const row = this.db.prepare('SELECT * FROM item_events WHERE id = ?').get(eventId)
-    return row !== undefined && eventRecordOf(row).actor.kind === 'bot'
-  }
-
   private ownerCommentByRequest(uid: string, requestId: string): number | null {
     const row: unknown = this.db
       .prepare(
@@ -123,28 +117,6 @@ export class BotItemsOwner extends BotItemsWrites {
     return typeof row === 'object' && row !== null && 'id' in row && typeof row.id === 'number'
       ? row.id
       : null
-  }
-
-  private writeOwnerComment(
-    item: BotItemRecord,
-    commentText: string,
-    actor: BotItemOwnerActor,
-    now: number,
-    images: readonly BotItemCommentImage[] = [],
-    requestId?: string,
-    answers?: string,
-    plain = false,
-    skills: readonly BotItemCommentSkill[] = []
-  ): number {
-    const data = {
-      text: commentText,
-      ...(images.length > 0 ? { images } : {}),
-      ...(requestId === undefined ? {} : { requestId }),
-      ...(answers === undefined ? {} : { answers }),
-      ...(plain ? { plain: true } : {}),
-      ...(skills.length > 0 ? { skills } : {})
-    }
-    return this.appendEvent(item.uid, 'commented', actor, data, true, now)
   }
 
   /** One status for every item named, each its own event, in one transaction. */

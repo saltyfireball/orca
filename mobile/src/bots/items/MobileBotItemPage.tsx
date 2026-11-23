@@ -2,7 +2,7 @@
 // (three lines, Show more), the close note, Status (and Snoozed while it is) and Chat, Done means, Links, Activity, and the comment
 // box docked at the bottom. Back returns to the list; up and down step through it, "4 of 6".
 import { useEffect, useRef, useState } from 'react'
-import { Keyboard, Pressable, ScrollView, Text, View, type ScrollViewInstance } from 'react-native'
+import { Keyboard, ScrollView, Text, View, type ScrollViewInstance } from 'react-native'
 import { House, MessageSquare } from 'lucide-react-native'
 import { BOTS_ITEM_COMMENT_ATTACHMENTS_RUNTIME_CAPABILITY } from '../../../../src/shared/bot-runtime-capabilities'
 import {
@@ -15,7 +15,6 @@ import { botItemStatusName } from '../../../../src/shared/bots/bot-item-status-n
 import type { BotChatTreeWorker } from '../../../../src/shared/bots/bot-chat-tree'
 import { ListGroup, ListRow, SectionHeader } from '../../components/list/ListGroup'
 import { MobileEdgeFade } from '../../components/list/MobileEdgeFade'
-import { MobileMarkdown } from '../../components/markdown/MobileMarkdown'
 import { useRouteCapability } from '../../worktree/execution-hosts/use-route-capability'
 import { useMobileTranslation } from '../../i18n/use-mobile-translation'
 import type { RpcClient } from '../../transport/rpc/rpc-client-contract'
@@ -33,7 +32,9 @@ import { MobileNativeChatPromptStrip } from '../../session/native-chat/input/pro
 import { MobileBotItemActivity } from './MobileBotItemActivity'
 import { useMobileBotItemAskSlot } from './MobileBotItemAskCard'
 import { MobileBotItemCommentBox, type BotItemCommentBoxHandle } from './MobileBotItemCommentBox'
+import { ClampedDescription } from './MobileBotItemDescription'
 import { MobileBotItemLinks } from './MobileBotItemLinks'
+import { MobileBotItemStepsPanel } from './MobileBotItemSteps'
 import { botItemChatName, type BotItemSheet } from './MobileBotItemSheets'
 import { MobileBotItemStatusIcon } from './MobileBotItemStatusIcon'
 import { formatPhoneSnoozeTime } from './bot-item-snooze-time'
@@ -43,8 +44,6 @@ import type { PhoneBotItemStepper } from './use-phone-bot-item-walk'
 import { MobileBotItemPageHeader } from './MobileBotItemPageHeader'
 import { MobileBotItemSubtitle } from './MobileBotItemSubtitle'
 import { usePhoneBotItemPendingComments } from './use-phone-bot-item-pending-comments'
-
-const DESCRIPTION_LINES_HEIGHT = 3 * 20
 
 export function MobileBotItemPage({
   client,
@@ -260,6 +259,15 @@ export function MobileBotItemPage({
               <Text style={styles.doneMeansText}>{item.doneMeans}</Text>
             </View>
           ) : null}
+          {closed ? null : (
+            <MobileBotItemStepsPanel
+              client={client}
+              item={item}
+              online={online && !view.failed}
+              hostName={hostName}
+              showToast={showToast}
+            />
+          )}
           {item.links.length > 0 ? (
             <>
               <SectionHeader
@@ -341,32 +349,6 @@ function useJumpToEnd() {
   }
 }
 
-/** The description's first three lines, then Show more; Markdown, as the desktop draws it. */
-function ClampedDescription({ text }: { text: string }) {
-  const t = useMobileTranslation()
-  const [open, setOpen] = useState(false)
-  const [height, setHeight] = useState(0)
-  const clamps = height > DESCRIPTION_LINES_HEIGHT + 4
-  return (
-    <View style={styles.description}>
-      <View style={!open && clamps ? styles.clamped : undefined}>
-        <View onLayout={(event) => setHeight(event.nativeEvent.layout.height)}>
-          <MobileMarkdown content={text} />
-        </View>
-      </View>
-      {clamps ? (
-        <Pressable onPress={() => setOpen(!open)} accessibilityRole="button" hitSlop={6}>
-          <Text style={styles.showMore}>
-            {open
-              ? t('bots.items.view.showLess', 'Show less')
-              : t('bots.items.view.showMore', 'Show more')}
-          </Text>
-        </Pressable>
-      ) : null}
-    </View>
-  )
-}
-
 const styles = themedStyleSheet(() => ({
   page: { flex: 1, backgroundColor: colors.sheetSurface },
   hidden: { display: 'none' },
@@ -378,9 +360,6 @@ const styles = themedStyleSheet(() => ({
   head: { paddingHorizontal: spacing.xs, gap: spacing.xs },
   title: { fontSize: typography.titleSize, fontWeight: '600', color: colors.textPrimary },
   number: { fontWeight: '400', color: colors.textMuted, fontVariant: ['tabular-nums'] },
-  description: { marginTop: spacing.xs, gap: spacing.xs },
-  clamped: { maxHeight: DESCRIPTION_LINES_HEIGHT, overflow: 'hidden' },
-  showMore: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
   note: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,

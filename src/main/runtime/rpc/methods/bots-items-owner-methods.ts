@@ -28,18 +28,9 @@ import type { BotItemOwnerActor } from '../../../bots/bot-items-input'
 import type { BotItemRecord } from '../../../bots/bot-items-schema'
 import type { BotItemsRemote } from '../../../bots/bot-items-ops'
 import { defineMethod, type RpcContext } from '../core'
-import { ownerOnly } from './bots-caller-gates'
+import { ownerActor } from './bots-items-owner-actor'
+import { STEP } from './bots-items-owner-step-method'
 import { parseCursor, resolveItem } from './bots-items-write-support'
-
-const REFUSAL = 'Only your owner changes items this way, in Orca.'
-
-function ownerActor(context: RpcContext): BotItemOwnerActor {
-  ownerOnly(context, REFUSAL)
-  context.runtime.bots.assertEnabled()
-  return context.pairedDeviceId
-    ? { kind: 'owner', device: context.pairedDeviceId }
-    : { kind: 'owner' }
-}
 
 /** Every open item of the bot (or its chats), however many, read a page at a time. */
 async function allOpenItems(
@@ -297,4 +288,4 @@ const OPENED = defineMethod({
   }
 })
 
-export const BOT_ITEMS_OWNER_METHODS = [LIST, SHOW, COMMENT, STATUS, SNOOZE, OPENED]
+export const BOT_ITEMS_OWNER_METHODS = [LIST, SHOW, COMMENT, STATUS, STEP, SNOOZE, OPENED]

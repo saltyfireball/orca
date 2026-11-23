@@ -71,7 +71,9 @@ function handleMarkdownImageClick(
 
 export function createCompactCommentMarkdownComponents(
   onLinkClick?: CommentMarkdownLinkClickHandler,
-  expandImages = false
+  expandImages = false,
+  // Fork BAD-747: a surface that draws its own fenced blocks (an item's commands) opts in.
+  renderCodeBlock?: DocumentCodeBlockRenderer
 ): Components {
   return {
     // Avoid paragraph margins in dense cards.
@@ -95,11 +97,16 @@ export function createCompactCommentMarkdownComponents(
         {children}
       </code>
     ),
-    pre: ({ children }) => (
-      <pre className="my-1 max-h-32 max-w-full overflow-x-auto rounded bg-accent p-1.5 text-[10px] font-mono">
-        {children}
-      </pre>
-    ),
+    pre: ({ children }) =>
+      renderCodeBlock ? (
+        <CommentMarkdownDocumentPre renderCodeBlock={renderCodeBlock}>
+          {children}
+        </CommentMarkdownDocumentPre>
+      ) : (
+        <pre className="my-1 max-h-32 max-w-full overflow-x-auto rounded bg-accent p-1.5 text-[10px] font-mono">
+          {children}
+        </pre>
+      ),
     ul: ({ children }) => <ul className="my-0.5 ml-3 list-disc space-y-0">{children}</ul>,
     ol: ({ children, start }) => (
       <ol start={start} className="my-0.5 ml-3 list-decimal space-y-0">
@@ -365,7 +372,7 @@ export function selectCommentMarkdownComponents({
       ? createDocumentCommentMarkdownComponents(onLinkClick, renderCodeBlock)
       : documentCommentMarkdownComponents
   }
-  return onLinkClick || expandImages
-    ? createCompactCommentMarkdownComponents(onLinkClick, expandImages)
+  return onLinkClick || expandImages || renderCodeBlock
+    ? createCompactCommentMarkdownComponents(onLinkClick, expandImages, renderCodeBlock)
     : compactCommentMarkdownComponents
 }

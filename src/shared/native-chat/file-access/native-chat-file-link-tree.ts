@@ -6,6 +6,7 @@ import {
   type ParsedTerminalFileLink
 } from '../../terminal/links/terminal-links'
 import { ROOTED_PATH_START_PATTERN } from '../../terminal/links/terminal-file-link-detection-ranges'
+import { looksLikeShellCommand } from '../../bots/bot-item-command-advice'
 import { preferLongestNonOverlappingMatches } from '../../text/longest-non-overlapping-matches'
 
 /**
@@ -235,7 +236,8 @@ function splitTextNode(value: string, exists: FileLinkExists): MarkdownNode[] {
 
 function inlineCodeFileLink(node: MarkdownNode, exists: FileLinkExists): MarkdownNode | null {
   const value = node.value?.trim()
-  if (!value) {
+  // Fork BAD-747: a command in inline code stays one selectable piece; only a lone path links.
+  if (!value || looksLikeShellCommand(value)) {
     return null
   }
   // Dotted bare words still need separators, keeping versions/model names plain.

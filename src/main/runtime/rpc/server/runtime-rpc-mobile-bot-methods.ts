@@ -64,6 +64,7 @@ export const MOBILE_BOT_RPC_METHODS = [
   'bots.items.owner.show',
   'bots.items.owner.snooze',
   'bots.items.owner.status',
+  'bots.items.owner.step',
   'bots.kickoff.retry',
   'bots.linear.members',
   'bots.linear.setDefaultBot',

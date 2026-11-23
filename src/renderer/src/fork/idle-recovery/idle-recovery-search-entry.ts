@@ -28,7 +28,10 @@ export function idleRecoverySearchEntry(t: Translate = translate): SettingsSearc
       'forkIdleSweepMode',
       'forkInboxBotAsks',
       'bot row',
-      'forkBotRowAskJump'
+      'forkBotRowAskJump',
+      'forkBotOwnerSteps',
+      'bot steps',
+      'checklist'
     )
   }
 }

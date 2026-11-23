@@ -16,6 +16,8 @@ export type PtyPaneStartup = {
   /** Renderer-delivered startup input for callers that need xterm paste
    *  semantics before the submit Enter. */
   delivery?: 'terminal-paste'
+  /** Fork BAD-747: with `delivery`, paste the command and stop: no Enter, so the person presses it. */
+  typeOnly?: true
   startupCommandDelivery?: StartupCommandDelivery
   env?: Record<string, string>
   envToDelete?: string[]

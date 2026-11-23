@@ -8,6 +8,7 @@ import {
   CircleCheck,
   CircleX,
   Link,
+  ListChecks,
   Pencil,
   Play,
   Plus
@@ -169,6 +170,41 @@ function EventBody({ event, item }: { event: BotItemEvent; item: BotItem }): Rea
             : t('bots.items.activity.snoozedBare', 'snoozed this')}
         </>
       )
+    case 'steps': {
+      const count = Array.isArray(data.steps) ? data.steps.length : 0
+      // An older set shows as replaced: its commands are no longer live, so none is shown.
+      return event.id === item.steps?.eventId ? (
+        <>
+          {by} {t('bots.items.activity.steps', 'set {{count}} steps for you', { count })}
+        </>
+      ) : (
+        <span className="opacity-70">
+          {by}{' '}
+          {t('bots.items.activity.stepsReplaced', 'set {{count}} steps for you (replaced)', {
+            count
+          })}
+        </span>
+      )
+    }
+    case 'step': {
+      const number = typeof data.index === 'number' ? data.index + 1 : 0
+      return (
+        <>
+          {by}{' '}
+          {data.state === 'failed'
+            ? t('bots.items.activity.stepFailed', 'said step {{n}} did not work', { n: number })
+            : data.state === 'done'
+              ? t('bots.items.activity.stepDone', 'ticked step {{n}}', { n: number })
+              : t('bots.items.activity.stepUndone', 'unticked step {{n}}', { n: number })}
+        </>
+      )
+    }
+    case 'steps_done':
+      return (
+        <>
+          {by} {t('bots.items.activity.stepsDone', 'ticked every step')}
+        </>
+      )
     case 'unsnoozed':
       // Ended early by a new question, a close or the owner's own move: the next line says which.
       return data.early ? (
@@ -238,6 +274,10 @@ function EntryIcon({
       const status = BOT_ITEM_STATUSES.find((entry) => entry === event.data.to)
       return status ? <BotItemStatusIcon status={status} /> : null
     }
+    case 'steps':
+    case 'step':
+    case 'steps_done':
+      return <ListChecks className="size-3" />
     case 'commented':
       return null
   }

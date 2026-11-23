@@ -17,7 +17,11 @@ export function bindStartupDraftPaste(session: ConnectPanePtySession): void {
   // Providers own startup delivery across renderer replacement; only explicit terminal paste stays renderer-owned.
   session.pendingStartupCommand = session.shouldDeliverStartupViaTerminalPaste
     ? session.paneStartup?.command
-      ? { command: session.paneStartup.command, resumeSource: session.paneStartup.resumeSource }
+      ? {
+          command: session.paneStartup.command,
+          resumeSource: session.paneStartup.resumeSource,
+          ...(session.paneStartup.typeOnly ? { typeOnly: true as const } : {})
+        }
       : null
     : null
   const startupSource = session.paneStartup?.resumeSource

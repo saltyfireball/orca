@@ -17,7 +17,7 @@ export const BOT_ITEM_COMMAND_SPECS: CommandSpec[] = [
     hidden: true,
     summary: 'Track a deliverable or a decision for your owner as an item',
     usage:
-      'orca bot item add --title <text> [--description <markdown>] [--done-means <text>] [--status planned|in-progress] [--link <ref>]... [--for bot:<name>] [--chat <id>] [--json]',
+      'orca bot item add --title <text> [--description <markdown>] [--done-means <text>] [--status planned|in-progress] [--link <ref>]... [--for bot:<name>] [--chat <id>] [--steps-file <file>] [--json]',
     allowedFlags: [
       ...WRITE_FLAGS,
       'title',
@@ -28,7 +28,9 @@ export const BOT_ITEM_COMMAND_SPECS: CommandSpec[] = [
       'status',
       'link',
       'for',
-      'chat'
+      'chat',
+      'steps',
+      'steps-file'
     ],
     repeatableFlags: ['link'],
     notes: [
@@ -43,7 +45,7 @@ export const BOT_ITEM_COMMAND_SPECS: CommandSpec[] = [
     hidden: true,
     summary: "Change an item's title, description, done-means or status",
     usage:
-      'orca bot item set <id> [--title <text>] [--description <markdown>] [--done-means <text>] [--status planned|in-progress|needs-you|done|canceled] [--comment <text> [--file <path>]...] [--ask <question> [--option <label>[ | <detail>]]... [--recommended <n>] [--multi]]... [--note <why>] [--reason <why>] [--json]',
+      'orca bot item set <id> [--title <text>] [--description <markdown>] [--done-means <text>] [--status planned|in-progress|needs-you|done|canceled] [--comment <text> [--file <path>]...] [--ask <question> [--option <label>[ | <detail>]]... [--recommended <n>] [--multi]]... [--steps-file <file>] [--note <why>] [--reason <why>] [--json]',
     repeatableFlags: ['ask', 'option', 'recommended', 'file'],
     booleanFlags: [...BOT_ITEM_ASK_BOOLEAN_FLAGS],
     allowedFlags: [
@@ -65,13 +67,16 @@ export const BOT_ITEM_COMMAND_SPECS: CommandSpec[] = [
       'option',
       'recommended',
       'multi',
-      'file'
+      'file',
+      'steps',
+      'steps-file'
     ],
     positionalArgs: ['id'],
     notes: [
       ...ITEM_NOTES,
       'Needs you is one normal comment for your owner: --status needs-you --comment "<context>" --ask "<question>" --option "<choice>" --option "<choice>" [--recommended <n>], e.g. --status needs-you --comment "The reviewer is out until Monday." --ask "Merge without the review?" --option "Merge now" --option "Wait for Monday" --recommended 2. --comment is the context, --ask the question line under it (one line under 140 characters, ending in ?), and each --option a quick-reply button under that question ("<label> | <detail>" adds a hint). One decision per --ask; several --ask in one set are fine, each with its own options, and each waits for its own answer. --multi lets your owner pick several options of that question (on the phone, in one reply; on desktop, one at a time). A Tip after the write means it posted but may be hard to read. --status needs-you with only --comment, or nothing, is fine.',
       "Your owner answers with a quick reply or in their own words, as a normal comment; it comes in your mail and moves the item to In progress. If your question still stands, set needs-you again with only what's left.",
+      'Commands or manual acts for your owner go in steps, not prose: --steps-file <file|-> takes JSON ([{"title","command","host","note"}]) or lines `step: <title>`, `host: <computer>`, `note: <text>`, `command:` then the command indented below (so quotes, pipes and backslashes need no escaping). One command per step, complete and copyable, the computer named in host, no command for a manual step (a login, a click). The owner sees one numbered checklist with Copy and Done; a new set replaces the open one (the older one shows as replaced), so write only the current version. --steps-file [] clears them. With --status needs-you the checklist shows above your ask; they tick steps in Orca and you get one mail when the last is ticked, or at once when a step did not work.',
       '--comment goes with any --status and is recorded with the move, with any --file attached to it. --status done is `done`; --status canceled needs --reason, like `cancel`.',
       'Reopen your closed item with --status planned or in-progress (field changes on a closed item come only with a reopen); one your owner canceled, ask about on the item instead. --description "" clears it.'
     ]

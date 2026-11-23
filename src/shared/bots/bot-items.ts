@@ -2,6 +2,7 @@
 // item belongs to one bot and one of its chats. The host's store is the truth; this is the wire shape.
 import type { BotItemDecision } from './bot-item-ask'
 import type { ForkBotItemServerWorker } from '../fork/bot-server-worker'
+import type { BotItemStepsView } from './bot-item-steps'
 
 export const BOT_ITEM_STATUSES = ['planned', 'working', 'needs_you', 'done', 'canceled'] as const
 export type BotItemStatus = (typeof BOT_ITEM_STATUSES)[number]
@@ -148,7 +149,11 @@ export const BOT_ITEM_EVENT_KINDS = [
   'commented',
   'linked',
   'snoozed',
-  'unsnoozed'
+  'unsnoozed',
+  // Fork BAD-747: an agent's owner steps, and the owner's marks on them.
+  'steps',
+  'step',
+  'steps_done'
 ] as const
 export type BotItemEventKind = (typeof BOT_ITEM_EVENT_KINDS)[number]
 
@@ -217,6 +222,8 @@ export type BotItem = {
    *  question lines (`--ask`) and their quick replies (`--option`). */
   question: { eventId: string; text: string; gist?: string; decisions?: BotItemDecision[] } | null
   closeNote: string | null
+  /** Fork BAD-747: the steps the owner is asked to do, while the item is open; absent from hosts before. */
+  steps?: BotItemStepsView | null
   links: BotItemLinkView[]
   version: number
   lastEventId: string
