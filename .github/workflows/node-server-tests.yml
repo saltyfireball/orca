@@ -627,6 +627,7 @@ jobs:
       - name: Wait for every template qualification lane
         uses: actions/github-script@v8
         with:
+          retries: 6
           script: |
             const deadline = Date.now() + 25 * 60_000
             const expected = {

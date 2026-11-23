@@ -3332,6 +3332,7 @@ Apply these in this order. Each one is a single commit.
 177. `BAD-766 BAD-767 Follow-up: worker links survive a restart (read from the orchestration database), Lost work snapshot failures say what to do instead of forcing, and the hooks of both are covered by tests`
 178. `BAD-684 Agent slice finish: the slice log line says what is not covered, the daemon hook and the log are tested, and real-systemd tests prove MemoryHigh throttling and the kill -9 scope cleanup`
 179. `BAD-783 PR nudge and babysitter messages end with one sentence that grants no permission to merge and places no hold; the conflict request merges the base in by default, never mentions a force push, and forkPrNudgeConflictUpdate chooses rebase`
+180. `BAD-780 A failed GitHub API call no longer ends a fork release: the run's waits retry a 5xx, 429 or network error until their own deadline (fork-run-gate.mjs, fork-sync.sh released, upstream's lane-wait step with github-script retries), while a real lane failure or an auth or 4xx error still fails at once`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4920,6 +4921,13 @@ runs in a fork, never in the upstream repository (`stablyai/orca`). Every third-
    orcad-template, in the same three cases, installs while the lanes run, then waits in a step
    (`fork-run-gate.mjs lanes`) until upstream's `desktop_template` job reports that every lane
    passed. It fails as soon as a lane fails.
+   - A failed API call does not end a wait (BAD-780). The gate retries a network error, HTTP 429 or
+     any 5xx, pausing 5s, 10s, 20s, then 30s, until its own 45-minute deadline, which a run of errors
+     never extends or shortens. A failed lane, a 401, 403, 404 or other 4xx still fails at once.
+     `fork-sync.sh released` does the same for its release list (300s, `FORK_SYNC_API_DEADLINE`).
+     Upstream's own lane-wait step in `node-server-tests.yml` runs with github-script
+     `retries: 6` (see Upstream hook, below). The fork's `release create` and `release upload`
+     calls, and the workflow guard's calls, are not retried.
 4. **build-mac** (macos-15) runs in three cases: `main` changed, `main` has no fork release
    yet, or `force_build` is set. The second case retries a failed build without waiting for a
    new upstream tag. It starts beside the template jobs, since nothing before packaging reads
@@ -5039,6 +5047,17 @@ those often. So the sync job checks out and pushes over SSH with a write deploy 
 
 `GITHUB_TOKEN` is still used for the release and workflow API calls and the status branch push.
 Its permissions are `contents: write` and `actions: write`.
+
+### Upstream hook: node-server-tests.yml (BAD-780)
+
+One line in upstream's `.github/workflows/node-server-tests.yml`: the "Wait for every template
+qualification lane" step (`actions/github-script`) has `retries: 6`. It had github-script's default
+of 0, so one HTTP 502 from the jobs API ended the lane wait and the run. With retries on, the
+Octokit retry plugin tries a failed request again after 1, 4, 9, 16, 25 and 36 seconds (about 90s)
+for any status of 400 or more that is not in `retry-exempt-status-codes` (default 400, 401, 403,
+404, 422), so 429 and every 5xx are retried, and a network error too (Octokit reports it as a
+status 500 error). The retries are per request, inside the step's own 25-minute deadline. The
+fork keeps the default exempt list. A merge conflict here keeps both lines.
 
 ### Upstream workflows stay off
 
