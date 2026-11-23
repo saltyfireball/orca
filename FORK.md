@@ -2020,6 +2020,22 @@ ones `SLRM-123 `).
     `unreadable-command` (unbalanced quotes or nesting too deep, with a verb the guard watches).
     Wrappers are looked through: `sudo`, `env`, `command`, `nohup`, `xargs`, `bash -c`, `eval`,
     `$(...)`, backticks, and `cd` before the call.
+    **Heredocs and variables (BAD-785).** A heredoc body is data (never tokenized, however many
+    quotes or backticks it holds) unless its reader may run it: a shell (`sh`, `bash`, `zsh`,
+    `dash`, `ksh`, `fish`, also through `sudo`/`env`/`nohup`/`timeout`/`xargs`), `ssh`, `su`,
+    `eval`, `source`, a runner naming a shell (`docker exec ... bash`), a pipe into any of those
+    or into a loop, a process substitution, a function defined in the same command, or the end of
+    a loop (`done <<EOF`). Then the body is read as commands and the rules apply. An unquoted
+    delimiter's body is also read for `$( )` and backticks, a heredoc with no closing line is
+    read as commands, `$((1<<2))` and `${x:-<<EOF}` are not heredocs, and a literal assigned
+    earlier in the same command (`S=/tmp/x; rm -rf $S/sub`) is followed for paths, the last
+    assignment winning; one that is conditional, in a subshell or compound, appended, computed,
+    spaced, or reset by `eval`/`read`/`for` is not. `unreadable-command` now names the part and
+    why. Still open (not a sandbox): a script written by one command and run by another
+    (`tee run.sh <<EOF && bash run.sh`), a data command that prints shell text into a pipe (a
+    `python3` heredoc piped to `bash` is read as shell text, so it only catches what is plain),
+    `echo`/`printf` text fed to `bash -c "$(...)"`, an interpreter running its own heredoc
+    (`python3 -` calling `os.system`), and pipes into a shell that follow a subshell or `&&`.
   - **Overrides.** `forkCommandGuardDisabledRules` (comma list, every project) and
     `orca command-guards allow|disallow <rule> [--project NAME|PATH|ID]` (per project, kept in
     `forkCommandGuardProjectRules` by project id). All are `orca settings` keys too.
@@ -3352,6 +3368,7 @@ Apply these in this order. Each one is a single commit.
 180. `BAD-780 A failed GitHub API call no longer ends a fork release: the run's waits retry a 5xx, 429 or network error until their own deadline (fork-run-gate.mjs, fork-sync.sh released, upstream's lane-wait step with github-script retries), while a real lane failure or an auth or 4xx error still fails at once`
 181. `BAD-686 Command guards in the agent's info: a shield on each agent row and a command guard line in orca agent list|show say guarded or unguarded with the reason, from the host's status; a gap workspace clears once it has no live agent`
 182. `BAD-682 Goal loop on a paired server: a test sets, lists and clears a goal with --environment through the real client and pairing, and the server's loop runs the check there and stops on success, max rounds and the budget`
+183. `BAD-785 Command guards read heredoc bodies as data unless a shell may run them, follow a literal variable set earlier in the command, and say what part of an unreadable command could not be read`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

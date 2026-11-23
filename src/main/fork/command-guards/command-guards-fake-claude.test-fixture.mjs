@@ -1,11 +1,15 @@
 // A stand-in Claude Code CLI for command-guards-native-chat.test.ts: it speaks the stream-json
 // control protocol, and on the first user message asks the SDK's PreToolUse hook about a force
 // push, then writes the hook's answer to the file named by the first argument after `--`.
-import { appendFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 
 const answerFile = process.env.GUARD_FAKE_ANSWER_FILE
 const say = (frame) => process.stdout.write(`${JSON.stringify(frame)}\n`)
+const command = () =>
+  existsSync(`${answerFile}.command`)
+    ? readFileSync(`${answerFile}.command`, 'utf8')
+    : 'git push --force origin main'
 let hookIds = []
 let asked = false
 const sessionId =
@@ -92,7 +96,7 @@ createInterface({ input: process.stdin }).on('line', (line) => {
           transcript_path: '',
           cwd: process.cwd(),
           tool_name: 'Bash',
-          tool_input: { command: 'git push --force origin main' },
+          tool_input: { command: command() },
           tool_use_id: 'tool-1'
         }
       }
