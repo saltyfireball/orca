@@ -23,6 +23,7 @@ import { getForkClaudeMoveQuickActions } from '@/fork/claude-account-move/fork-c
 import { getForkLostWorkQuickActions } from '@/fork/lost-work/fork-lost-work-quick-actions'
 import { getForkSleepersQuickActions } from '@/fork/sleepers/fork-sleepers-quick-actions'
 import { getForkDecisionInboxQuickActions } from '@/fork/decision-inbox/fork-decision-inbox-quick-actions'
+import { getForkNeedsYouQuickActions } from '@/fork/needs-you/fork-needs-you-quick-actions'
 import { getForkUsageReportQuickActions } from '@/fork/usage-report/fork-usage-report-quick-actions'
 import { getForkBestOfQuickActions } from '@/fork/best-of/fork-best-of-quick-actions'
 
@@ -188,6 +189,7 @@ export const getCmdJQuickActions = createLocalizedCatalog((): CmdJQuickAction[] 
   // Fork: open the Sleepers dialog (FORK.md).
   ...getForkSleepersQuickActions(),
   ...getForkDecisionInboxQuickActions(),
+  ...getForkNeedsYouQuickActions(),
   ...getForkLostWorkQuickActions(),
   // SLRM-2104: open the usage report (FORK.md).
   ...getForkUsageReportQuickActions(),

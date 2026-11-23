@@ -23,7 +23,8 @@ import { ForkNumberInput } from '../cache-cold/ForkNumberInput'
 import { ForkIdleRecoveryPausedList } from './ForkIdleRecoveryPausedList'
 import { ForkTextSetting as TextSetting } from './ForkTextSetting'
 import { readForkInboxBotAsksSettings } from '../../../../shared/fork/inbox-bot-asks'
-import { readForkBotRowAskJump } from '../../../../shared/fork/bot-row-ask-jump'
+import { readForkBotRowClick, type ForkBotRowClick } from '../../../../shared/fork/bot-row-ask-jump'
+import { readForkNeedsYouSettings } from '../../../../shared/fork/needs-you'
 import {
   readForkBotOwnerSteps,
   readForkBotOwnerStepsAutoAnswer,
@@ -36,6 +37,17 @@ type Props = {
 }
 
 const MODES: readonly IdleRecoveryMode[] = ['off', 'inbox', 'wake']
+const BOT_ROW_CLICKS: readonly ForkBotRowClick[] = ['list', 'item', 'off']
+
+function botRowClickLabel(click: ForkBotRowClick, t: Translate): string {
+  if (click === 'item') {
+    return t('fork.botRowAskJump.item', 'Its oldest waiting item')
+  }
+  if (click === 'off') {
+    return t('fork.botRowAskJump.off', 'Only open the bot')
+  }
+  return t('fork.botRowAskJump.list', 'Its Home list, Needs you on top')
+}
 
 function modeLabel(mode: IdleRecoveryMode, t: Translate): string {
   if (mode === 'inbox') {
@@ -55,8 +67,10 @@ export function ForkIdleRecoverySetting({ settings, updateSettings }: Props): Re
   // SLRM-2453: bot asks use the same notify targets, so they stay editable while bot asks are on.
   const botAsks = readForkInboxBotAsksSettings(settings)
   const targetsOff = off && !botAsks.enabled
-  // SLRM-2472: a bot row's click shows its first waiting ask.
-  const botRowAskJump = readForkBotRowAskJump(settings)
+  // SLRM-2472, BAD-759: what a bot row's click shows while the bot has asks waiting.
+  const botRowClick = readForkBotRowClick(settings)
+  const botRowClickId = useId()
+  const needsYou = readForkNeedsYouSettings(settings)
   const ownerSteps = readForkBotOwnerSteps(settings)
   const ownerStepsTerminal = readForkBotOwnerStepsOpenInTerminal(settings)
   const ownerStepsAnswer = readForkBotOwnerStepsAutoAnswer(settings)
@@ -202,14 +216,53 @@ export function ForkIdleRecoverySetting({ settings, updateSettings }: Props): Re
         disabled={!botAsks.enabled}
         onChange={() => updateSettings({ forkInboxBotAsksPhone: !botAsks.phone })}
       />
-      <SettingsSwitchRow
-        label={t('fork.botRowAskJump.settingLabel', 'Clicking a bot that needs you shows its ask')}
+      <SettingsRow
+        label={t('fork.botRowAskJump.settingLabel', 'Clicking a bot that needs you shows')}
         description={t(
           'fork.botRowAskJump.settingHelp',
-          'A bot row with items waiting on you also opens the first on its Home tab, and a second click the next. Off: the click only opens the bot.'
+          'What a click on a bot row with items waiting on you opens. Its Home list puts Needs you at the top, and leaves an open item for the list. Its oldest waiting item opens that item, and a second click the next. Off: the click only opens the bot.'
         )}
-        checked={botRowAskJump}
-        onChange={() => updateSettings({ forkBotRowAskJump: !botRowAskJump })}
+        labelId={botRowClickId}
+        control={
+          <Select
+            value={botRowClick}
+            onValueChange={(value) =>
+              updateSettings({
+                forkBotRowAskJump: value === 'item' || value === 'off' ? value : 'list'
+              })
+            }
+          >
+            <SelectTrigger size="sm" className="min-w-32" aria-labelledby={botRowClickId}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {BOT_ROW_CLICKS.map((click) => (
+                <SelectItem key={click} value={click}>
+                  {botRowClickLabel(click, t)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
+      <SettingsSwitchRow
+        label={t('fork.needsYou.settingLabel', 'Needs you list')}
+        description={t(
+          'fork.needsYou.settingHelp',
+          'One list of everything that waits on you, opened from a shortcut (Settings > Shortcuts) or the Needs you control in the status bar, with a jump to each one. Off: the Decision inbox icon returns to the sidebar.'
+        )}
+        checked={needsYou.enabled}
+        onChange={() => updateSettings({ forkNeedsYou: !needsYou.enabled })}
+      />
+      <SettingsSwitchRow
+        label={t('fork.needsYou.quickAnswersLabel', 'Quick answers in the Needs you list')}
+        description={t(
+          'fork.needsYou.quickAnswersHelp',
+          'An ask with options shows them as buttons in the list, and any ask takes a typed answer. Nothing is sent until you press an option or Send.'
+        )}
+        checked={needsYou.quickAnswers}
+        disabled={!needsYou.enabled}
+        onChange={() => updateSettings({ forkNeedsYouQuickAnswers: !needsYou.quickAnswers })}
       />
       <SettingsSwitchRow
         label={t('fork.botOwnerSteps.settingLabel', 'Bot steps as a checklist')}

@@ -25,6 +25,11 @@ type Open = {
 // unmounts the panel, and coming back reopens it.
 const openByBot = new Map<string, Open>()
 
+/** Fork (BAD-759): forgets a bot's open item, so its panel remounts on the list. */
+export function forgetBotItemWalk(botKey: string): void {
+  openByBot.delete(botKey)
+}
+
 export type BotItemWalkState = {
   uid: string | null
   /** 1-based place and total, or null without a walk. */

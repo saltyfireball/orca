@@ -29,6 +29,9 @@ export function idleRecoverySearchEntry(t: Translate = translate): SettingsSearc
       'forkInboxBotAsks',
       'bot row',
       'forkBotRowAskJump',
+      'forkNeedsYou',
+      'forkNeedsYouQuickAnswers',
+      'shortcut',
       'forkBotOwnerSteps',
       'bot steps',
       'checklist'

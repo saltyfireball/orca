@@ -5,6 +5,30 @@ const WINDOWS_LINUX_TOGGLE_BINDINGS = ['Mod+Shift+F11', 'Mod+Shift+J']
 
 export const KEYBINDING_DEFINITION_CORE_4: readonly KeybindingDefinition[] = [
   {
+    // Fork (BAD-759, FORK.md "Needs you list"): the list of everything waiting on the owner.
+    id: 'needsYou.open',
+    title: 'Needs you',
+    group: 'Global',
+    scope: 'global',
+    searchKeywords: [
+      'shortcut',
+      'global',
+      'needs you',
+      'waiting',
+      'asks',
+      'approval',
+      'question',
+      'agents',
+      'bots',
+      'inbox',
+      'decision'
+    ],
+    // Why: Mod+Shift+L is unused on macOS, Windows and Linux (Mod+L is the right sidebar), and a
+    // system or terminal never owns it. It runs in terminals, chat composers and browser pages.
+    defaultBindings: platformBindings(['Mod+Shift+L']),
+    allowInTerminal: true
+  },
+  {
     id: 'terminal.expandPane',
     title: 'Expand / collapse pane',
     group: 'Terminal Panes',
