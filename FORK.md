@@ -2702,6 +2702,11 @@ ones `SLRM-123 `).
     `done-checks`) until the Task completes or you dismiss it. It has no chat to answer: the
     reason names `orca contract show`. The inbox source is installed where the orchestration
     database opens, so it lists after a restart once orchestration has been used.
+  - **Deadline.** A check runs in its own process group (Windows: `taskkill /t`), so at the
+    time limit the shell and what it started are ended together, and the run settles then even
+    if a stray process in another group holds the output pipes. (Under dash a command is a child
+    of the shell, so killing only the shell left it running.) The idle-recovery notify command
+    ends the same way.
   - **Limits.** The gate runs on the host that holds the Task's database: a worker started
     `--on` a paired server is judged there only when that server runs this fork build and
     receives the flags.
@@ -3169,6 +3174,7 @@ Apply these in this order. Each one is a single commit.
 164. `BAD-768 Public repo: owner-private bot, host and item names replaced by neutral ones in fork tests, fixtures, help text and FORK.md; check:private-names reads its private list from outside the repo`
 165. `BAD-759 Needs you list: one list of everything waiting on the owner (bots on this computer and paired servers, chats, agents on an approval or a question, board asks), opened from anywhere by Mod+Shift+L or a status bar control, with a jump to each, Next and Back, quick answers through the owner path, and the bot row click chooses list, item or off`
 166. `BAD-769 Fork sync releases main as it is when the upstream merge conflicts (the run still ends red with FORK-SYNC-CONFLICT), and a skip_upstream run input ships a fix without the merge`
+167. `BAD-771 A done check or notify command past its time limit is ended with everything it started (own process group, taskkill /t on Windows) and the run settles at the deadline, also where sh is dash`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
