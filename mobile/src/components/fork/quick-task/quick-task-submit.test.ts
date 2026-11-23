@@ -48,8 +48,8 @@ describe('appendQuickTaskDictation', () => {
   })
 
   it('adds after typed text with one space', () => {
-    expect(appendQuickTaskDictation('For Cassie:  ', 'add a dark mode')).toBe(
-      'For Cassie: add a dark mode'
+    expect(appendQuickTaskDictation('For Ada:  ', 'add a dark mode')).toBe(
+      'For Ada: add a dark mode'
     )
   })
 
@@ -65,11 +65,11 @@ describe('appendQuickTaskDictation', () => {
 
 describe('submitQuickTask', () => {
   it('sends the trimmed text as a mobile task and reads the bot', async () => {
-    const client = fakeClient(ok({ botName: 'Cassandra', chatId: 'chat-1', note: 'kif is free' }))
+    const client = fakeClient(ok({ botName: 'Aria', chatId: 'chat-1', note: 'alpha is free' }))
     await expect(submitQuickTask(client, '  add a page  ')).resolves.toEqual({
-      botName: 'Cassandra',
+      botName: 'Aria',
       chatId: 'chat-1',
-      note: 'kif is free'
+      note: 'alpha is free'
     })
     expect(client.sendRequest).toHaveBeenCalledWith(
       QUICK_TASK_SUBMIT_METHOD,

@@ -28,7 +28,7 @@ vi.mock('./recipient-routing', async (importOriginal) =>
   )
 )
 
-// BAD-742: a service with no terminal or chat (Cassandra's bot_chat_reply) mails a bot's chat as the owner.
+// BAD-742: a service with no terminal or chat (Aria's bot_chat_reply) mails a bot's chat as the owner.
 describe('mail to a bot chat from a sender with no terminal', () => {
   const h = createOrchestrationRpcHarness()
   let db: OrchestrationDb

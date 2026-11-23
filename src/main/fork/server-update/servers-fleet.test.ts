@@ -31,7 +31,7 @@ function job(phase: 'downloading' | 'restarting' | 'done' | 'failed', message?: 
 }
 
 describe('ssh-managed servers', () => {
-  // kif: an orca serve service. m2mac: desktop-deployed orcad over an SSH tunnel, no service.
+  // alpha: an orca serve service. studio: desktop-deployed orcad over an SSH tunnel, no service.
   function deps(calls: string[] = []): ForkServersDeps {
     const sshStatus: ForkServerUpdateStatus = {
       ...status('1.4.262001'),
@@ -41,12 +41,12 @@ describe('ssh-managed servers', () => {
     }
     return {
       listEnvironments: async () => [
-        { id: 'kif', name: 'kif' },
-        { id: 'm2mac', name: 'm2mac', connectionDependency: 'ssh-tunnel' }
+        { id: 'alpha', name: 'alpha' },
+        { id: 'studio', name: 'studio', connectionDependency: 'ssh-tunnel' }
       ],
       call: async (id, method) => {
         calls.push(`${id} ${method}`)
-        return id === 'kif' ? status('1.4.262001') : sshStatus
+        return id === 'alpha' ? status('1.4.262001') : sshStatus
       },
       localVersion: () => '1.4.262001',
       turnWaitMinutes: () => 30,
@@ -58,34 +58,34 @@ describe('ssh-managed servers', () => {
   it('lists them as ssh-managed rather than an error, and compares release versions', async () => {
     const list = await listForkServers(deps())
     expect(list.servers.map((row) => [row.name, row.versus, row.sshManaged ?? false])).toEqual([
-      ['kif', 0, false],
-      ['m2mac', 0, true]
+      ['alpha', 0, false],
+      ['studio', 0, true]
     ])
   })
 
   it('skips them in an update run without asking them to install', async () => {
     const calls: string[] = []
     const rows = await runForkServers(deps(calls), { kind: 'update', version: '1.4.263001' })
-    expect(rows.find((row) => row.name === 'm2mac')).toMatchObject({
+    expect(rows.find((row) => row.name === 'studio')).toMatchObject({
       outcome: 'skipped',
       message: 'ssh-managed (use orca environment update)'
     })
-    expect(calls).not.toContain('m2mac fork.serverUpdate.apply')
+    expect(calls).not.toContain('studio fork.serverUpdate.apply')
   })
 })
 
 describe('runForkServers', () => {
   it('updates servers one at a time; one that fails or is down does not stop the rest', async () => {
     const calls: string[] = []
-    // kif: updates and is briefly down while it restarts. m2mac: down. wsl: its download fails.
+    // alpha: updates and is briefly down while it restarts. studio: down. wsl: its download fails.
     const replies: Record<string, unknown[]> = {
-      kif: [
+      alpha: [
         status('1.4.259010'),
         { job: job('downloading') },
         'down',
         status('1.4.261002', job('done'))
       ],
-      m2mac: ['down'],
+      studio: ['down'],
       wsl: [
         status('1.4.259010'),
         { job: job('downloading') },
@@ -95,9 +95,9 @@ describe('runForkServers', () => {
     let clock = 0
     const deps: ForkServersDeps = {
       listEnvironments: async () => [
-        { id: 'kif', name: 'kif' },
-        { id: 'm2mac', name: 'm2mac' },
-        { id: 'wsl', name: 'wsl-work' }
+        { id: 'alpha', name: 'alpha' },
+        { id: 'studio', name: 'studio' },
+        { id: 'wsl', name: 'winbox' }
       ],
       call: async (id, method) => {
         calls.push(`${id} ${method}`)
@@ -116,25 +116,25 @@ describe('runForkServers', () => {
     }
     const rows = await runForkServers(deps, { kind: 'update', version: '1.4.261002', servers: [] })
     expect(rows.map((row) => [row.name, row.outcome, row.version, row.message ?? ''])).toEqual([
-      ['kif', 'updated', '1.4.261002', ''],
-      ['m2mac', 'failed', undefined, 'it did not answer'],
-      ['wsl-work', 'failed', '1.4.259010', 'checksum mismatch']
+      ['alpha', 'updated', '1.4.261002', ''],
+      ['studio', 'failed', undefined, 'it did not answer'],
+      ['winbox', 'failed', '1.4.259010', 'checksum mismatch']
     ])
     // Strictly in order: each server finishes before the next is asked.
-    expect(calls.findIndex((call) => call.startsWith('m2mac'))).toBeGreaterThan(
-      calls.lastIndexOf('kif fork.serverUpdate.status')
+    expect(calls.findIndex((call) => call.startsWith('studio'))).toBeGreaterThan(
+      calls.lastIndexOf('alpha fork.serverUpdate.status')
     )
   })
 })
 
 describe('a paired server that never answers (SLRM-2447)', () => {
-  // wsl-work: an SSH-managed server whose SSH target sits in "connecting", so the call never settles.
+  // winbox: an SSH-managed server whose SSH target sits in "connecting", so the call never settles.
   function deps(asked: string[] = []): ForkServersDeps {
     return {
       listEnvironments: async () => [
-        { id: 'kif', name: 'kif' },
-        { id: 'wsl', name: 'wsl-work', connectionDependency: 'ssh-tunnel' },
-        { id: 'm2mac', name: 'm2mac' }
+        { id: 'alpha', name: 'alpha' },
+        { id: 'wsl', name: 'winbox', connectionDependency: 'ssh-tunnel' },
+        { id: 'studio', name: 'studio' }
       ],
       call: async (id) => {
         asked.push(id)
@@ -156,14 +156,14 @@ describe('a paired server that never answers (SLRM-2447)', () => {
         settled = true
       })
       await vi.advanceTimersByTimeAsync(0)
-      expect(asked).toEqual(['kif', 'wsl', 'm2mac'])
+      expect(asked).toEqual(['alpha', 'wsl', 'studio'])
       await vi.advanceTimersByTimeAsync(9_999)
       expect(settled).toBe(false)
       await vi.advanceTimersByTimeAsync(1)
       expect((await list).servers.map((row) => [row.name, row.error ?? null, row.versus])).toEqual([
-        ['kif', null, 0],
-        ['wsl-work', 'unreachable', null],
-        ['m2mac', null, 0]
+        ['alpha', null, 0],
+        ['winbox', 'unreachable', null],
+        ['studio', null, 0]
       ])
     } finally {
       vi.useRealTimers()
@@ -176,12 +176,12 @@ describe('a paired server that never answers (SLRM-2447)', () => {
       const run = runForkServers(deps(), {
         kind: 'update',
         version: '1.4.262001',
-        servers: ['wsl-work', 'kif']
+        servers: ['winbox', 'alpha']
       })
       await vi.advanceTimersByTimeAsync(10_000)
       expect((await run).map((row) => [row.name, row.outcome, row.message ?? ''])).toEqual([
-        ['wsl-work', 'failed', 'it did not answer'],
-        ['kif', 'current', '']
+        ['winbox', 'failed', 'it did not answer'],
+        ['alpha', 'current', '']
       ])
     } finally {
       vi.useRealTimers()

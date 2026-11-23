@@ -14,7 +14,7 @@ function deps(overrides: Partial<ForkBatchStartDeps> = {}): ForkBatchStartDeps {
     pick: vi.fn(async () => ({ picked: candidate('local', 'this machine'), ranked: [] })),
     readySetupHosts: vi.fn(() => ['local']),
     localRepo: vi.fn(() => 'id:r1'),
-    localLabel: () => 'm2mac',
+    localLabel: () => 'studio',
     launch: vi.fn(async () => ({
       worktreeId: `w${++n}`,
       outcome: { kind: 'structured', sessionId: `s${n}` }
@@ -40,7 +40,7 @@ describe('runForkBatchStart', () => {
     const d = deps({ queuePosition: vi.fn(async (id: string) => (id === 's2' ? 4 : null)) })
     const result = await runForkBatchStart(d, here)
     expect(result.hostKey).toBe('local')
-    expect(result.hostLabel).toBe('m2mac')
+    expect(result.hostLabel).toBe('studio')
     expect(result.tasks).toEqual([
       { agent: 'claude', ok: true, worktreeId: 'w1', name: 'fix-login-claude-ab12' },
       {
@@ -79,7 +79,7 @@ describe('runForkBatchStart', () => {
         agents: ['claude'],
         placement: 'here'
       })
-    ).rejects.toThrow('no ready setup on m2mac')
+    ).rejects.toThrow('no ready setup on studio')
   })
 
   it('auto: runs here when this machine is picked, from the project setup', async () => {
@@ -98,12 +98,12 @@ describe('runForkBatchStart', () => {
   it('auto: forwards to the picked server as here, by project only', async () => {
     const forward = vi.fn(async () => ({
       hostKey: 'local',
-      hostLabel: 'kif-host',
+      hostLabel: 'alpha-host',
       tasks: [{ agent: 'claude' as const, ok: true as const, worktreeId: 'w', name: 'n' }]
     }))
     const d = deps({
       pick: async (): Promise<ForkPlacementPickResult> => ({
-        picked: candidate('runtime:s1', 'kif'),
+        picked: candidate('runtime:s1', 'alpha'),
         ranked: []
       }),
       forward
@@ -121,7 +121,7 @@ describe('runForkBatchStart', () => {
       agents: ['claude'],
       placement: 'here'
     })
-    expect(result).toMatchObject({ hostKey: 'runtime:s1', hostLabel: 'kif' })
+    expect(result).toMatchObject({ hostKey: 'runtime:s1', hostLabel: 'alpha' })
     expect(d.launch).not.toHaveBeenCalled()
   })
 
@@ -131,7 +131,7 @@ describe('runForkBatchStart', () => {
       order.push('setUp')
       return {
         hostKey: 'runtime:s1',
-        serverName: 'kif',
+        serverName: 'alpha',
         cloned: true,
         clonePath: '/home/k/development/orca',
         readiness: { missing: ['pnpm'], notes: [] }
@@ -141,12 +141,12 @@ describe('runForkBatchStart', () => {
       order.push('forward')
       return {
         hostKey: 'local',
-        hostLabel: 'kif-host',
+        hostLabel: 'alpha-host',
         tasks: [{ agent: 'claude' as const, ok: true as const, worktreeId: 'w', name: 'n' }]
       }
     })
     const pick = vi.fn(async (): Promise<ForkPlacementPickResult> => ({
-      picked: { ...candidate('runtime:s1', 'kif'), needsSetup: true },
+      picked: { ...candidate('runtime:s1', 'alpha'), needsSetup: true },
       ranked: []
     }))
     const result = await runForkBatchStart(deps({ pick, setUp, forward }), {
@@ -166,7 +166,7 @@ describe('runForkBatchStart', () => {
       placement: 'here'
     })
     expect(result.setupNote).toBe(
-      'Set up on kif: cloned into /home/k/development/orca. Missing: pnpm'
+      'Set up on alpha: cloned into /home/k/development/orca. Missing: pnpm'
     )
   })
 
@@ -176,7 +176,7 @@ describe('runForkBatchStart', () => {
       runForkBatchStart(
         deps({
           pick: async () => ({
-            picked: { ...candidate('runtime:s1', 'kif'), needsSetup: true },
+            picked: { ...candidate('runtime:s1', 'alpha'), needsSetup: true },
             ranked: []
           }),
           setUp: vi.fn(async () => {
@@ -192,7 +192,7 @@ describe('runForkBatchStart', () => {
           setupMissing: true
         }
       )
-    ).rejects.toThrow('Could not set up the project on kif: clone refused')
+    ).rejects.toThrow('Could not set up the project on alpha: clone refused')
     expect(forward).not.toHaveBeenCalled()
   })
 
@@ -201,14 +201,14 @@ describe('runForkBatchStart', () => {
     await expect(
       runForkBatchStart(
         deps({
-          pick: async () => ({ picked: candidate('runtime:s1', 'kif'), ranked: [] }),
+          pick: async () => ({ picked: candidate('runtime:s1', 'alpha'), ranked: [] }),
           forward: vi.fn(async () => {
             throw methodMissing
           })
         }),
         { project: { id: 'p1' }, prompt: 'x', agents: ['claude'], placement: 'auto' }
       )
-    ).rejects.toThrow('kif runs a Blackfish without batch start')
+    ).rejects.toThrow('alpha runs a Blackfish without batch start')
     await expect(
       runForkBatchStart(deps({ pick: async () => ({ picked: null, ranked: [] }) }), {
         project: { id: 'p1' },

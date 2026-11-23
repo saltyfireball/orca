@@ -31,7 +31,7 @@ function host(
 ): ForkClashHostResult {
   return {
     hostId,
-    hostName: hostId === 'local' ? 'this machine' : 'kif',
+    hostName: hostId === 'local' ? 'this machine' : 'alpha',
     status: 'ok',
     repos: [{ repoId: `${hostId}-repo`, name: 'r', projectKey, baseRef: 'origin/main', branches }]
   }
@@ -91,7 +91,7 @@ describe('buildForkClashes', () => {
     const result = buildForkClashes(
       [
         host('local', [branch('a', ['src/x.ts', 'only-a.ts'])]),
-        host('runtime:kif', [branch('b', ['src/x.ts'])])
+        host('runtime:alpha', [branch('b', ['src/x.ts'])])
       ],
       20,
       5
@@ -103,7 +103,7 @@ describe('buildForkClashes', () => {
         participantsTruncated: false,
         participants: [
           expect.objectContaining({ hostId: 'local', branch: 'a' }),
-          expect.objectContaining({ hostId: 'runtime:kif', branch: 'b' })
+          expect.objectContaining({ hostId: 'runtime:alpha', branch: 'b' })
         ]
       }
     ])
@@ -111,7 +111,10 @@ describe('buildForkClashes', () => {
 
   it('keeps repos without a remote apart per host', () => {
     const result = buildForkClashes(
-      [host('local', [branch('a', ['x'])], null), host('runtime:kif', [branch('b', ['x'])], null)],
+      [
+        host('local', [branch('a', ['x'])], null),
+        host('runtime:alpha', [branch('b', ['x'])], null)
+      ],
       20,
       5
     )
@@ -145,17 +148,17 @@ describe('buildForkClashes', () => {
 describe('forkClashRowMarks', () => {
   it('marks each participant with the other branches, naming other hosts', () => {
     const result = buildForkClashes(
-      [host('local', [branch('a', ['x'])]), host('runtime:kif', [branch('b', ['x'], 30)])],
+      [host('local', [branch('a', ['x'])]), host('runtime:alpha', [branch('b', ['x'], 30)])],
       20,
       5
     )
     const marks = forkClashRowMarks(result)
     expect(marks.get(forkClashRowKey('local', '/w/a'))).toEqual({
-      files: [{ file: 'x', others: ['b @ kif'] }],
+      files: [{ file: 'x', others: ['b @ alpha'] }],
       behind: null,
       stale: false
     })
-    expect(marks.get(forkClashRowKey('runtime:kif', '/w/b'))).toEqual({
+    expect(marks.get(forkClashRowKey('runtime:alpha', '/w/b'))).toEqual({
       files: [{ file: 'x', others: ['a @ this machine'] }],
       behind: 30,
       stale: true

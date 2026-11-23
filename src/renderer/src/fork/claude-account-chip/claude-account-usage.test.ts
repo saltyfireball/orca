@@ -64,7 +64,7 @@ const localSettings = {
   activeClaudeManagedAccountId: 'acct-a',
   activeClaudeManagedAccountIdsByRuntime: { host: 'acct-a', wsl: { Ubuntu: 'acct-w' } }
 }
-const kif: ClaudeHostSnapshot = {
+const alpha: ClaudeHostSnapshot = {
   claude: { accounts: [], activeAccountId: null },
   rateLimits: state({
     claude: limits(70),
@@ -78,7 +78,7 @@ function used(id: string, ownerKey: string): number | undefined {
   return accountUsage(
     { id, ownerKey },
     { rateLimits: localState, settings: localSettings },
-    ownerKey.startsWith('environment:') ? kif : undefined
+    ownerKey.startsWith('environment:') ? alpha : undefined
   )?.session?.usedPercent
 }
 
@@ -86,9 +86,9 @@ describe('account chip usage', () => {
   it('splits owner keys into this desktop, its WSL distros and remote hosts', () => {
     expect(ownerPlace('local')).toEqual({ kind: 'local', distro: null })
     expect(ownerPlace('local:wsl:Ubuntu')).toEqual({ kind: 'local', distro: 'Ubuntu' })
-    expect(ownerPlace('environment:env-kif')).toEqual({
+    expect(ownerPlace('environment:env-alpha')).toEqual({
       kind: 'remote',
-      target: { kind: 'environment', environmentId: 'env-kif' }
+      target: { kind: 'environment', environmentId: 'env-alpha' }
     })
   })
 
@@ -101,8 +101,8 @@ describe('account chip usage', () => {
   })
 
   it('reads a remote account from that host, never the desktop', () => {
-    expect(used(SYSTEM_DEFAULT_ACCOUNT_ID, 'environment:env-kif')).toBe(70)
-    expect(used('acct-a', 'environment:env-kif')).toBe(80)
-    expect(used('acct-b', 'environment:env-kif')).toBeUndefined()
+    expect(used(SYSTEM_DEFAULT_ACCOUNT_ID, 'environment:env-alpha')).toBe(70)
+    expect(used('acct-a', 'environment:env-alpha')).toBe(80)
+    expect(used('acct-b', 'environment:env-alpha')).toBeUndefined()
   })
 })

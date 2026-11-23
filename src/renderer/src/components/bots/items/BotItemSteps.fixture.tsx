@@ -22,14 +22,14 @@ const view: BotItemStepsView = {
       index: 1,
       title: 'Grant the build box read access',
       host: 'laptop',
-      command: 'secret-setup grant build-box laptop',
+      command: 'vault-setup grant build-box laptop',
       state: 'open'
     },
     {
       index: 2,
       title: 'Grant the second box read access',
       host: 'laptop',
-      command: 'secret-setup grant gpu-box laptop',
+      command: 'vault-setup grant gpu-box laptop',
       state: 'open'
     },
     {
@@ -70,7 +70,7 @@ export const fencedBlockInComment = defineFixture({
     <div className="bg-sidebar p-3.5">
       <BotItemMarkdown
         text={
-          "Run this on the laptop:\n\n```sh\ntr -d '\\n' < ~/projects/app/private/token | secret set APP_TOKEN\n```\n\nThen `secret-setup grant build-box laptop`."
+          "Run this on the laptop:\n\n```sh\ntr -d '\\n' < ~/projects/app/private/token | secret set APP_TOKEN\n```\n\nThen `vault-setup grant build-box laptop`."
         }
       />
     </div>
@@ -85,7 +85,7 @@ const askView: BotItemStepsView = {
     {
       index: 0,
       title:
-        'Open chat.example.sh in a browser and send the test message below, then wait for her to finish',
+        'Open chat.example.sh in a browser and send the test message from step 2, then wait for the reply',
       command: 'open https://chat.example.sh',
       host: 'laptop',
       state: 'open'
@@ -93,7 +93,7 @@ const askView: BotItemStepsView = {
     {
       index: 1,
       title: 'Send this exact message in the chat',
-      text: 'whats the status',
+      text: 'hello test',
       state: 'open'
     },
     { index: 2, title: 'Reload the page and watch for ten seconds', state: 'open' }
@@ -106,13 +106,13 @@ const askEvents: BotItemEvent[] = [
     kind: 'commented',
     actor: by,
     data: {
-      text: 'Text exactly: whats the status. It is the same line you sent at 8:15, so it tests the same thing. Do the three steps in order.',
+      text: 'Send the exact line shown in step 2, then check the reply. Do the three steps in order.',
       ask: {
         context:
-          'Text exactly: whats the status. It is the same line you sent at 8:15, so it tests the same thing. Do the three steps in order.',
+          'Send the exact line shown in step 2, then check the reply. Do the three steps in order.',
         questions: [
           {
-            prompt: 'Did her answer stay on the page and read as normal text?',
+            prompt: 'Did the reply stay on the page and read as normal text?',
             options: [{ label: 'Yes' }, { label: 'It vanished' }, { label: 'No answer came' }]
           }
         ]
@@ -124,8 +124,8 @@ const askEvents: BotItemEvent[] = [
 ]
 const askItem = makeTestBotItem(100, {
   status: 'needs_you',
-  owner: { botId: fixtureCos.id, name: 'Cassandra' },
-  question: { eventId: 'e2', text: 'Did her answer stay on the page and read as normal text?' },
+  owner: { botId: fixtureCos.id, name: 'Release helper' },
+  question: { eventId: 'e2', text: 'Did the reply stay on the page and read as normal text?' },
   steps: askView
 })
 

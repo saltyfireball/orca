@@ -22,7 +22,7 @@ function newStore(): ForkBestOfStore {
 }
 
 const attempts = [
-  { index: 2, agent: 'codex', host: 'kif', dispatchId: 'd2', taskId: 't2' },
+  { index: 2, agent: 'codex', host: 'alpha', dispatchId: 'd2', taskId: 't2' },
   { index: 1, agent: 'claude', host: 'here', dispatchId: 'd1', taskId: 't1' }
 ]
 
@@ -88,7 +88,7 @@ describe('forkBestOfFacts', () => {
     const facts = forkBestOfFacts(
       [
         { index: 1, agent: 'claude', host: 'here', dispatchId: 'd1', taskId: 't1' },
-        { index: 2, agent: 'codex', host: 'kif', dispatchId: 'd2', taskId: 't2' },
+        { index: 2, agent: 'codex', host: 'alpha', dispatchId: 'd2', taskId: 't2' },
         { index: 3, agent: 'claude', host: 'here', startError: 'refused' }
       ],
       {
@@ -98,7 +98,7 @@ describe('forkBestOfFacts', () => {
             : { worktree_id: 'local-mirror', state: 'active', last_error: null },
         federated: (id) =>
           id === 'd2'
-            ? { environment_id: 'env', environment_name: 'kif', remote_worktree_id: 'r::/b' }
+            ? { environment_id: 'env', environment_name: 'alpha', remote_worktree_id: 'r::/b' }
             : undefined,
         task: (id) =>
           id === 't1' ? { status: 'completed', result: 'Tests: pass\nChecks: fail' } : undefined,
@@ -140,7 +140,7 @@ describe('forkBestOfFacts', () => {
     expect(facts[1]).toMatchObject({
       worktreeId: 'r::/b',
       environmentId: 'env',
-      hostLabel: 'kif',
+      hostLabel: 'alpha',
       cost: null
     })
     expect(facts[2]).toMatchObject({ worktreeId: null, workerError: 'refused' })

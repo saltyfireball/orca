@@ -38,7 +38,7 @@ function rig(answers: Record<string, 'ok' | 'down' | 'old' | 'forbidden'>) {
 
 describe('setPauseAllEverywhere', () => {
   it('engages here first, relays to every server, and names the ones it could not reach', async () => {
-    const r = rig({ kif: 'ok', roberto: 'down', old: 'old', locked: 'forbidden' })
+    const r = rig({ alpha: 'ok', bravo: 'down', old: 'old', locked: 'forbidden' })
     const result = await setPauseAllEverywhere(r.deps, {
       engaged: true,
       note: 'maintenance',
@@ -46,8 +46,8 @@ describe('setPauseAllEverywhere', () => {
     })
     expect(result.state.engaged).toBe(true)
     expect(result.hosts).toEqual([
-      { name: 'kif', status: 'applied', engaged: true },
-      { name: 'roberto', status: 'unreachable' },
+      { name: 'alpha', status: 'applied', engaged: true },
+      { name: 'bravo', status: 'unreachable' },
       { name: 'old', status: 'refused', detail: 'this server has no pause-all; update it' },
       { name: 'locked', status: 'refused', detail: 'not allowed to change it' }
     ])
@@ -59,7 +59,7 @@ describe('setPauseAllEverywhere', () => {
   })
 
   it('stays on this host when asked, and resumes everywhere', async () => {
-    const r = rig({ kif: 'ok' })
+    const r = rig({ alpha: 'ok' })
     expect(
       (await setPauseAllEverywhere(r.deps, { engaged: true, note: null, localOnly: true })).hosts
     ).toEqual([])
@@ -70,11 +70,11 @@ describe('setPauseAllEverywhere', () => {
       localOnly: false
     })
     expect(resumed.state.engaged).toBe(false)
-    expect(resumed.hosts).toEqual([{ name: 'kif', status: 'applied', engaged: false }])
+    expect(resumed.hosts).toEqual([{ name: 'alpha', status: 'applied', engaged: false }])
   })
 
   it('reads the fleet for a status check without changing anything', async () => {
-    const r = rig({ kif: 'ok' })
+    const r = rig({ alpha: 'ok' })
     const read = await readPauseAllEverywhere(r.deps, true)
     expect(read.state.engaged).toBe(false)
     expect(r.calls[0]).toMatchObject({ method: 'fork.pauseAll.status' })

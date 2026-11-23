@@ -183,12 +183,12 @@ describe('runWorkerArchivePass', () => {
 
   it('limits a bot cleanup to that bot, and reports a failed removal', async () => {
     const botOf = (rec: WorkerWorkspaceRecord) =>
-      rec.worktreeId === 'a' ? { id: 'b1', name: 'Cassandra' } : null
+      rec.worktreeId === 'a' ? { id: 'b1', name: 'Aria' } : null
     const failing = setup([record('a'), record('b')], [worktree('a'), worktree('b')], { botOf })
     failing.remove.mockRejectedValueOnce(new Error('pty stop not proven'))
-    const { rows } = await runWorkerArchivePass(failing.deps, { ...auto, bot: 'cassandra' })
+    const { rows } = await runWorkerArchivePass(failing.deps, { ...auto, bot: 'aria' })
     expect(rows).toMatchObject([
-      { worktreeId: 'a', botName: 'Cassandra', outcome: 'failed', error: 'pty stop not proven' }
+      { worktreeId: 'a', botName: 'Aria', outcome: 'failed', error: 'pty stop not proven' }
     ])
   })
 })

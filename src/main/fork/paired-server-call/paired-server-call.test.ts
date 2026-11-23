@@ -32,8 +32,8 @@ it('passes an answer and a rejection through unchanged', async () => {
     }
     return { environmentId, method, params, timeoutMs }
   })
-  await expect(call('kif', 'm', { a: 1 }, 4_000)).resolves.toEqual({
-    environmentId: 'kif',
+  await expect(call('alpha', 'm', { a: 1 }, 4_000)).resolves.toEqual({
+    environmentId: 'alpha',
     method: 'm',
     params: { a: 1 },
     timeoutMs: 4_000

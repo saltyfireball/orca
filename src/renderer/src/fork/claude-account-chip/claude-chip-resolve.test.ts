@@ -20,7 +20,7 @@ const { accountColourForId, combineResolutions, SYSTEM_DEFAULT_ACCOUNT_ID } =
 const { resolveAllEvidence, resolveEvidence } = await import('./claude-chip-resolve')
 
 const LOCAL: RuntimeClientTarget = { kind: 'local' }
-const KIF: RuntimeClientTarget = { kind: 'environment', environmentId: 'env-kif' }
+const ALPHA: RuntimeClientTarget = { kind: 'environment', environmentId: 'env-alpha' }
 
 function saved(id: string, email: string, extra: Partial<ClaudeManagedAccount> = {}) {
   const account: ClaudeManagedAccount = {
@@ -58,11 +58,11 @@ const localHost: ClaudeRateLimitAccountsState = {
   systemDefaultOrganizationUuid: 'org-1',
   systemDefaultHome: '/Users/j/.claude'
 }
-// A fake remote owner: kif keeps its own accounts, which this desktop never saved.
-const kifHost: ClaudeRateLimitAccountsState = {
-  accounts: [summary('acct-a', 'bea@kif.example', '/home/j/.orca/claude/acct-a')],
+// A fake remote owner: alpha keeps its own accounts, which this desktop never saved.
+const alphaHost: ClaudeRateLimitAccountsState = {
+  accounts: [summary('acct-a', 'bea@alpha.example', '/home/j/.orca/claude/acct-a')],
   activeAccountId: null,
-  systemDefaultEmail: 'carl@kif.example',
+  systemDefaultEmail: 'carl@alpha.example',
   systemDefaultOrganizationUuid: 'org-2',
   systemDefaultHome: '/home/j/.claude'
 }
@@ -71,7 +71,7 @@ function lookups(chatHomes: Record<string, ChatHomeEntry> = {}, hosts = true) {
   return {
     host: (target: RuntimeClientTarget): ClaudeHostSnapshot | undefined =>
       hosts
-        ? { claude: target.kind === 'local' ? localHost : kifHost, rateLimits: null }
+        ? { claude: target.kind === 'local' ? localHost : alphaHost, rateLimits: null }
         : undefined,
     chatHome: (_target: RuntimeClientTarget, sessionId: string): ChatHomeEntry =>
       chatHomes[sessionId] ?? 'loading'
@@ -85,18 +85,18 @@ const localPane = (transcriptPath: string): ClaudeChipEvidence => ({
   hostLabel: null,
   transcriptPath
 })
-const kifPane = (transcriptPath: string): ClaudeChipEvidence => ({
-  transport: KIF,
-  ownerTarget: KIF,
+const alphaPane = (transcriptPath: string): ClaudeChipEvidence => ({
+  transport: ALPHA,
+  ownerTarget: ALPHA,
   wslHostDistro: null,
-  hostLabel: 'kif',
+  hostLabel: 'alpha',
   transcriptPath
 })
-const kifChat = (chatSessionId: string): ClaudeChipEvidence => ({
-  transport: KIF,
-  ownerTarget: KIF,
+const alphaChat = (chatSessionId: string): ClaudeChipEvidence => ({
+  transport: ALPHA,
+  ownerTarget: ALPHA,
   wslHostDistro: null,
-  hostLabel: 'kif',
+  hostLabel: 'alpha',
   chatSessionId
 })
 
@@ -113,10 +113,10 @@ describe('account chip resolution', () => {
   })
 
   it('resolves a remote pane against the remote host, labelled with the host', () => {
-    expect(label(kifPane('/home/j/.orca/claude/acct-a/projects/w/s.jsonl'))).toBe('B @ kif')
-    expect(label(kifPane('/home/j/.claude/projects/w/s.jsonl'))).toBe('C @ kif')
-    // The desktop's own folder means nothing on kif.
-    expect(label(kifPane('/Users/j/orca/claude-accounts/acct-a/projects/w/s.jsonl'))).toBe(
+    expect(label(alphaPane('/home/j/.orca/claude/acct-a/projects/w/s.jsonl'))).toBe('B @ alpha')
+    expect(label(alphaPane('/home/j/.claude/projects/w/s.jsonl'))).toBe('C @ alpha')
+    // The desktop's own folder means nothing on alpha.
+    expect(label(alphaPane('/Users/j/orca/claude-accounts/acct-a/projects/w/s.jsonl'))).toBe(
       'unknown'
     )
   })
@@ -138,52 +138,60 @@ describe('account chip resolution', () => {
     const lone: ClaudeRateLimitAccountsState = {
       accounts: [],
       activeAccountId: null,
-      systemDefaultEmail: 'carl@kif.example',
+      systemDefaultEmail: 'carl@alpha.example',
       systemDefaultHome: '/home/j/.claude'
     }
-    const resolution = resolveEvidence(kifPane('/home/j/.claude/projects/w/s.jsonl'), localSaved, {
-      ...lookups(),
-      host: () => ({ claude: lone, rateLimits: null })
-    })
+    const resolution = resolveEvidence(
+      alphaPane('/home/j/.claude/projects/w/s.jsonl'),
+      localSaved,
+      {
+        ...lookups(),
+        host: () => ({ claude: lone, rateLimits: null })
+      }
+    )
     expect(resolution.kind).toBe('none')
   })
 
   it('reads a native chat from the home its host reports', () => {
-    expect(label(kifChat('s1'))).toBe('none')
-    expect(label(kifChat('s1'), { s1: { home: null, accountId: null } })).toBe('none')
-    expect(label(kifChat('s1'), { s1: { home: '/home/j/.claude', accountId: null } })).toBe(
-      'C @ kif'
+    expect(label(alphaChat('s1'))).toBe('none')
+    expect(label(alphaChat('s1'), { s1: { home: null, accountId: null } })).toBe('none')
+    expect(label(alphaChat('s1'), { s1: { home: '/home/j/.claude', accountId: null } })).toBe(
+      'C @ alpha'
     )
-    expect(label(kifChat('s1'), { s1: { home: '/x', accountId: 'acct-a' } })).toBe('B @ kif')
-    const failed = resolveEvidence(kifChat('s1'), localSaved, lookups({ s1: 'failed' }))
-    expect(failed).toEqual({ kind: 'unknown', ownerKey: 'environment:env-kif', hostLabel: 'kif' })
+    expect(label(alphaChat('s1'), { s1: { home: '/x', accountId: 'acct-a' } })).toBe('B @ alpha')
+    const failed = resolveEvidence(alphaChat('s1'), localSaved, lookups({ s1: 'failed' }))
+    expect(failed).toEqual({
+      kind: 'unknown',
+      ownerKey: 'environment:env-alpha',
+      hostLabel: 'alpha'
+    })
   })
 
   it('names a moved chat by its pin before it relaunches there', () => {
-    // Launched on kif's System default (C), then moved to acct-a (B).
+    // Launched on alpha's System default (C), then moved to acct-a (B).
     const launched = { home: '/home/j/.claude', accountId: null }
-    expect(label(kifChat('s1'), { s1: { ...launched, pin: 'acct-a' } })).toBe('B @ kif')
+    expect(label(alphaChat('s1'), { s1: { ...launched, pin: 'acct-a' } })).toBe('B @ alpha')
     // Moved back to System default: a null pin.
     const back = { home: '/home/j/.orca/claude/acct-a', accountId: 'acct-a', pin: null }
-    expect(label(kifChat('s1'), { s1: back })).toBe('C @ kif')
+    expect(label(alphaChat('s1'), { s1: back })).toBe('C @ alpha')
     // A chat that never launched still names its pin.
-    expect(label(kifChat('s1'), { s1: { home: null, accountId: null, pin: 'acct-a' } })).toBe(
-      'B @ kif'
+    expect(label(alphaChat('s1'), { s1: { home: null, accountId: null, pin: 'acct-a' } })).toBe(
+      'B @ alpha'
     )
   })
 
   it('shows a move queued behind a turn as the account it runs on, moving to the pin', () => {
     const resolution = resolveEvidence(
-      kifChat('s1'),
+      alphaChat('s1'),
       localSaved,
       lookups({ s1: { home: '/home/j/.claude', accountId: null, pin: 'acct-a', pending: true } })
     )
-    expect(resolution.kind === 'account' && resolution.account.label).toBe('C @ kif')
-    expect(resolution.kind === 'account' && resolution.movingTo?.label).toBe('B @ kif')
+    expect(resolution.kind === 'account' && resolution.account.label).toBe('C @ alpha')
+    expect(resolution.kind === 'account' && resolution.movingTo?.label).toBe('B @ alpha')
     // A worktree whose only Claude session is that chat keeps the queued move.
     expect(
       resolveAllEvidence(
-        [kifChat('s1')],
+        [alphaChat('s1')],
         localSaved,
         lookups({ s1: { home: '/home/j/.claude', accountId: null, pin: 'acct-a', pending: true } })
       )
@@ -227,14 +235,14 @@ describe('account chip resolution', () => {
     const mixed = resolveAllEvidence(
       [
         localPane('/Users/j/orca/claude-accounts/acct-a/projects/w/1.jsonl'),
-        kifPane('/home/j/.orca/claude/acct-a/projects/w/2.jsonl')
+        alphaPane('/home/j/.orca/claude/acct-a/projects/w/2.jsonl')
       ],
       localSaved,
       lookups()
     )
     expect(mixed.kind === 'mixed' && mixed.accounts.map((account) => account.label)).toEqual([
       'A',
-      'B @ kif'
+      'B @ alpha'
     ])
   })
 

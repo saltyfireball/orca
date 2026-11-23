@@ -19,7 +19,7 @@ export const FORK_WORKER_CLEANUP_COMMAND_SPECS: CommandSpec[] = [
     ],
     examples: [
       'orca orchestration worker-cleanup --dry-run',
-      'orca orchestration worker-cleanup --bot cassandra',
+      'orca orchestration worker-cleanup --bot aria',
       'orca orchestration worker-cleanup --include-remote --dry-run --json'
     ]
   },

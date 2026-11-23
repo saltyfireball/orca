@@ -160,7 +160,7 @@ describe('parseForkDigestSince', () => {
 describe('totals, text and payload', () => {
   const hosts: ForkDigestHost[] = [
     { hostKey: 'local', name: 'This machine', status: 'ok', section: SECTION },
-    { hostKey: 'runtime:a', name: 'kif', status: 'ok', section: { ...SECTION, cost: null } },
+    { hostKey: 'runtime:a', name: 'alpha', status: 'ok', section: { ...SECTION, cost: null } },
     { hostKey: 'runtime:b', name: 'old', status: 'no-digest', section: null }
   ]
 
@@ -181,13 +181,13 @@ describe('totals, text and payload', () => {
       since: Date.UTC(2026, 10, 17, 8),
       until: Date.UTC(2026, 10, 18, 8),
       hosts,
-      serversDown: [{ name: 'roberto', downSince: Date.UTC(2026, 10, 18, 2) }],
+      serversDown: [{ name: 'bravo', downSince: Date.UTC(2026, 10, 18, 2) }],
       totals: totalForkDigest(hosts)
     }
     const text = formatForkDigestText(digest)
     expect(text).toContain('Digest 2026-11-17 08:00 to 2026-11-18 08:00 (UTC)')
     expect(text).toContain('2 finished, 2 failed, 1 merged, 1 open, 4 waiting on you, $1.50 est.')
-    expect(text).toContain('Not answering: roberto since 2026-11-18 02:00')
+    expect(text).toContain('Not answering: bravo since 2026-11-18 02:00')
     expect(text).toContain('Waiting on you (2)')
     expect(text).toContain('[guard] Looper: Failure loop')
     expect(text).toContain('== old (no digest here')

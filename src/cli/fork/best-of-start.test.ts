@@ -18,7 +18,7 @@ function deps(over: Partial<ForkBestOfStartDeps> = {}) {
       n += 1
       return { runId: 'run-1', taskId: `t${n}`, dispatchId: `d${n}`, state: 'ready' }
     },
-    placeAuto: async () => 'kif',
+    placeAuto: async () => 'alpha',
     record: async (attempts: ForkBestOfAttempt[]) => ({
       id: 'abcdef123456',
       createdAt: 0,
@@ -38,22 +38,22 @@ describe('startForkBestOf', () => {
       d
     )
     expect(started.map((s) => [s.agent, s.model, s.on, s.run, s.name])).toEqual([
-      ['claude', 'opus', 'kif', undefined, 'best-of-abc123-1'],
+      ['claude', 'opus', 'alpha', undefined, 'best-of-abc123-1'],
       ['codex', undefined, undefined, 'run-1', 'best-of-abc123-2'],
-      ['claude', 'opus', 'kif', 'run-1', 'best-of-abc123-3']
+      ['claude', 'opus', 'alpha', 'run-1', 'best-of-abc123-3']
     ])
     expect(started[1].spec).toBe('Fix it\n\n---\nAttempt 2/3')
     expect(started[0].repo).toBe('app')
     expect(run.attempts.map((a) => [a.index, a.host, a.dispatchId])).toEqual([
-      [1, 'kif', 'd1'],
+      [1, 'alpha', 'd1'],
       [2, 'here', 'd2'],
-      [3, 'kif', 'd3']
+      [3, 'alpha', 'd3']
     ])
   })
 
   it('records failed starts and starts on this machine when auto has no repo', async () => {
     const notes: string[] = []
-    const placeAuto = vi.fn(async () => 'kif')
+    const placeAuto = vi.fn(async () => 'alpha')
     let calls = 0
     const { deps: d } = deps({
       placeAuto,
@@ -96,7 +96,7 @@ describe('best-of format', () => {
       prompt: 'Fix it',
       attempts: [
         { index: 1, agent: 'claude', model: 'opus', host: 'here' },
-        { index: 2, agent: 'codex', host: 'kif', outcome: { kind: 'archived' as const } }
+        { index: 2, agent: 'codex', host: 'alpha', outcome: { kind: 'archived' as const } }
       ],
       winner: 1
     }
@@ -123,6 +123,6 @@ describe('best-of format', () => {
     expect(text).toContain('#1 claude opus on this machine [completed]')
     expect(text).toContain('diff: unavailable (no base)')
     expect(text).toContain('tests pass, checks not reported; cost $1.23 (estimate), 12k tokens')
-    expect(text).toContain('#2 codex on kif [?] -> archived')
+    expect(text).toContain('#2 codex on alpha [?] -> archived')
   })
 })

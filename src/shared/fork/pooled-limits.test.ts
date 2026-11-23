@@ -33,7 +33,7 @@ describe('poolForkLimits', () => {
           ]
         },
         {
-          machineName: 'kif',
+          machineName: 'alpha',
           accounts: [
             account({ session: { usedPercent: 40, resetsAt: NOW + HOUR }, updatedAt: NOW - 100 })
           ]
@@ -43,7 +43,7 @@ describe('poolForkLimits', () => {
     )
     expect(rows).toHaveLength(1)
     expect(rows[0].accounts).toHaveLength(1)
-    expect(rows[0].accounts[0].machines).toEqual(['kif', 'this machine'])
+    expect(rows[0].accounts[0].machines).toEqual(['alpha', 'this machine'])
     expect(rows[0].windows[0]).toMatchObject({ kind: 'session', usedPercent: 40, accounts: 1 })
   })
 

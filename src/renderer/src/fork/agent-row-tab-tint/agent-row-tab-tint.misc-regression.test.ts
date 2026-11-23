@@ -11,7 +11,7 @@ import { structuredAgentSessionPaneKey } from '../../../../shared/agent-session/
 import { buildWorktreeAgentRows } from '@/components/sidebar/workspace-card/activity/worktree-agent-rows'
 import { agentRowTintStyle, resolveAgentRowTabColor } from './agent-row-tab-tint'
 
-const MISC = '99f0ec60-011d-4463-8f37-d61fc1975b4e::/Users/johnny/orca/workspaces/dotfiles/MISC'
+const MISC = '99f0ec60-011d-4463-8f37-d61fc1975b4e::/Users/alex/orca/workspaces/dotfiles/MISC'
 const GROUP = '7a832ade-6d64-4c74-960b-33305d47280b'
 const TEAL = '#14b8a6'
 const RED = '#ef4444'

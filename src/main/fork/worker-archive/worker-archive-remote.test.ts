@@ -17,7 +17,7 @@ const row: ForkWorkerCleanupRow = {
 describe('cleanUpPairedServers', () => {
   it('asks every server for its own pass, without asking it to ask others', async () => {
     const callEnvironment = vi.fn(async (id: string) =>
-      id === 'kif'
+      id === 'alpha'
         ? { dryRun: true, enabled: true, rows: [row] }
         : id === 'old'
           ? Promise.reject(Object.assign(new Error('x'), { code: 'method_not_found' }))
@@ -26,22 +26,22 @@ describe('cleanUpPairedServers', () => {
     const servers = await cleanUpPairedServers(
       {
         listEnvironments: () => [
-          { id: 'kif', name: 'kif' },
+          { id: 'alpha', name: 'alpha' },
           { id: 'old', name: 'old' },
           { id: 'down', name: 'down' }
         ],
         callEnvironment
       },
-      { dryRun: true, bot: 'cassandra', includeRemote: true }
+      { dryRun: true, bot: 'aria', includeRemote: true }
     )
     expect(callEnvironment).toHaveBeenCalledWith(
-      'kif',
+      'alpha',
       'fork.workerCleanup.run',
-      { dryRun: true, bot: 'cassandra', includeRemote: false },
+      { dryRun: true, bot: 'aria', includeRemote: false },
       expect.any(Number)
     )
     expect(servers).toEqual([
-      { name: 'kif', environmentId: 'kif', ok: true, rows: [{ ...row, server: 'kif' }] },
+      { name: 'alpha', environmentId: 'alpha', ok: true, rows: [{ ...row, server: 'alpha' }] },
       {
         name: 'old',
         environmentId: 'old',

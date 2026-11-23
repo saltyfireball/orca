@@ -65,8 +65,8 @@ describe('forkVisualImageDocument', () => {
 
 describe('readNativeChatVisualFile with image files', () => {
   it('answers an image as a page that inlines it', async () => {
-    await writeFile(join(folder, 'cassie-hair-2324.jpg'), JPEG)
-    const result = await readNativeChatVisualFile(folder, 'cassie-hair-2324.jpg')
+    await writeFile(join(folder, 'portrait-hair-2324.jpg'), JPEG)
+    const result = await readNativeChatVisualFile(folder, 'portrait-hair-2324.jpg')
     expect(result.ok).toBe(true)
     expect(result.ok && 'html' in result && result.html).toContain('data:image/jpeg;base64,')
   })

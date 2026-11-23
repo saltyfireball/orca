@@ -30,7 +30,7 @@ describe('formatForkClashes', () => {
             }
           ]
         },
-        { hostId: 'runtime:kif', hostName: 'kif', status: 'unreachable', repos: [] }
+        { hostId: 'runtime:alpha', hostName: 'alpha', status: 'unreachable', repos: [] }
       ],
       20,
       1
@@ -39,7 +39,7 @@ describe('formatForkClashes', () => {
       'orca (github.com/o/orca)',
       '  x.ts  <-  a, b',
       '  behind: b is 25 commit(s) behind  [stale]',
-      'Note: kif: did not answer'
+      'Note: alpha: did not answer'
     ])
   })
 

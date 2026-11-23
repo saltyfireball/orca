@@ -17,7 +17,7 @@ const SERVER_WORKER: DispatchLink = {
   latest: null,
   title: 'Fix holophonor',
   state: 'working',
-  host: 'm2mac-server',
+  host: 'studio-server',
   startedAt: 1,
   settledAt: null,
   report: null,

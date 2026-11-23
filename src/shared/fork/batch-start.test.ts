@@ -42,7 +42,7 @@ describe('batch start result schema', () => {
   it('accepts tasks and rejects unknown shapes', () => {
     const ok = {
       hostKey: 'local',
-      hostLabel: 'm2mac',
+      hostLabel: 'studio',
       tasks: [
         { agent: 'claude', ok: true, worktreeId: 'w1', name: 'n', queuedPosition: 2 },
         { agent: 'codex', ok: false, error: 'boom' }
@@ -124,10 +124,10 @@ describe('outcome', () => {
     expect(
       describeForkBatchTask(
         { agent: 'claude', ok: true, worktreeId: 'w', name: 'fix-claude-1', queuedPosition: 3 },
-        'm2mac',
+        'studio',
         label
       )
-    ).toBe('CLAUDE on m2mac: fix-claude-1, queued #3')
+    ).toBe('CLAUDE on studio: fix-claude-1, queued #3')
   })
 })
 
@@ -158,23 +158,23 @@ describe('setup note (SLRM-2406)', () => {
     const started = foldForkBatchAnswer(
       {
         hostKey: 'runtime:s1',
-        hostLabel: 'kif',
-        setupNote: 'Set up on kif: cloned into /x.',
+        hostLabel: 'alpha',
+        setupNote: 'Set up on alpha: cloned into /x.',
         tasks: [{ agent: 'claude', ok: true, worktreeId: 'w', name: 'n' }]
       },
       label
     )
-    expect(started.lines).toEqual(['Set up on kif: cloned into /x.', 'CLAUDE on kif: n'])
+    expect(started.lines).toEqual(['Set up on alpha: cloned into /x.', 'CLAUDE on alpha: n'])
     const failed = foldForkBatchAnswer(
       {
         hostKey: 'runtime:s1',
-        hostLabel: 'kif',
-        setupNote: 'Set up on kif: cloned into /x.',
+        hostLabel: 'alpha',
+        setupNote: 'Set up on alpha: cloned into /x.',
         tasks: [{ agent: 'claude', ok: false, error: 'no' }]
       },
       label
     )
-    expect(failed.lines).toEqual(['Set up on kif: cloned into /x.'])
+    expect(failed.lines).toEqual(['Set up on alpha: cloned into /x.'])
     expect(failed.error).toBe('CLAUDE: no')
   })
 

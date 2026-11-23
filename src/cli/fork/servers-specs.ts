@@ -33,8 +33,8 @@ export const FORK_SERVERS_COMMAND_SPECS: CommandSpec[] = [
     ],
     examples: [
       'orca servers update --all',
-      'orca servers update m2mac kif',
-      'orca servers update kif --now',
+      'orca servers update studio alpha',
+      'orca servers update alpha --now',
       'orca servers update --all --version 1.4.261002'
     ]
   },
@@ -48,6 +48,6 @@ export const FORK_SERVERS_COMMAND_SPECS: CommandSpec[] = [
       'The server swaps its install with the one it kept, waits for running turns unless --now, and restarts.',
       DESKTOP_NOTE
     ],
-    examples: ['orca servers rollback kif']
+    examples: ['orca servers rollback alpha']
   }
 ]

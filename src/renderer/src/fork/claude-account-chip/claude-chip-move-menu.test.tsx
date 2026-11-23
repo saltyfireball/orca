@@ -6,7 +6,7 @@ import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host
 import type { ForkClaudeAccountResolution } from './claude-account-identity'
 import type { ClaudeChipEvidence } from './claude-chip-evidence'
 
-const KIF: RuntimeClientTarget = { kind: 'environment', environmentId: 'env-kif' }
+const ALPHA: RuntimeClientTarget = { kind: 'environment', environmentId: 'env-alpha' }
 const LOCAL: RuntimeClientTarget = { kind: 'local' }
 
 type Fake = {
@@ -122,11 +122,11 @@ afterEach(cleanup)
 
 describe('account chip move menu', () => {
   it('moves a native chat tab on the host that runs it', () => {
-    fake.chat = chat(KIF)
+    fake.chat = chat(ALPHA)
     const view = render(
       <ForkClaudeAccountTabChip tab={TAB} chat={{ sessionId: 's1', agent: 'claude' }} />
     )
-    expect(menuOf(view)).toEqual({ target: KIF, scope: { sessionId: 's1' } })
+    expect(menuOf(view)).toEqual({ target: ALPHA, scope: { sessionId: 's1' } })
   })
 
   it('still opens on a mixed or unknown chip', () => {
@@ -158,8 +158,8 @@ describe('account chip move menu', () => {
     resetClaudeChipCacheForTests({
       readChatHome: () => Promise.reject(new Error('method not found'))
     })
-    await loadChatHome(KIF, 's1')
-    fake.chat = chat(KIF)
+    await loadChatHome(ALPHA, 's1')
+    fake.chat = chat(ALPHA)
     const older = render(
       <ForkClaudeAccountTabChip tab={TAB} chat={{ sessionId: 's1', agent: 'claude' }} />
     )
@@ -167,10 +167,10 @@ describe('account chip move menu', () => {
   })
 
   it('moves an agent row native chat, but not a terminal pane row', () => {
-    fake.row = chat(KIF)
+    fake.row = chat(ALPHA)
     const agent = { paneKey: 'p1', tab: TAB }
     const native = render(<ForkClaudeAccountAgentRowChip agent={agent} />)
-    expect(menuOf(native)).toEqual({ target: KIF, scope: { sessionId: 's1' } })
+    expect(menuOf(native)).toEqual({ target: ALPHA, scope: { sessionId: 's1' } })
     cleanup()
     fake.row = { ...chat(LOCAL), chatSessionId: undefined, transcriptPath: '/x/projects/s' }
     const pane = render(<ForkClaudeAccountAgentRowChip agent={agent} />)
@@ -178,9 +178,9 @@ describe('account chip move menu', () => {
   })
 
   it('moves a worktree on its chat host, except over direct SSH or in WSL', () => {
-    fake.worktreeTarget = KIF
+    fake.worktreeTarget = ALPHA
     const remote = render(<ForkClaudeAccountWorktreeChip worktreeId="w1" />)
-    expect(menuOf(remote)).toEqual({ target: KIF, scope: { worktreeId: 'w1' } })
+    expect(menuOf(remote)).toEqual({ target: ALPHA, scope: { worktreeId: 'w1' } })
     cleanup()
     fake.worktreeTarget = null
     expect(menuOf(render(<ForkClaudeAccountWorktreeChip worktreeId="w1" />))).toBeNull()

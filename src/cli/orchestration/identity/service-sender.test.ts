@@ -114,7 +114,7 @@ describe('orchestration send --as-service', () => {
   it.each([
     ['a non-bot recipient', { to: 'term_x' }],
     ['--from', { from: 'term_x' }],
-    ['--on', { on: 'kif' }],
+    ['--on', { on: 'alpha' }],
     ['a worker report', { type: 'worker_done' }]
   ])('refuses %s', async (_label, extra) => {
     await expect(send({ 'as-service': true, ...extra })).rejects.toBeInstanceOf(Error)

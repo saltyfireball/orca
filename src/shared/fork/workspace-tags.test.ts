@@ -37,7 +37,7 @@ describe('workspace tags', () => {
   it('keys a remote workspace by its host', () => {
     expect(forkWorkspaceTagKey('repo::/a')).toBe('repo::/a')
     expect(forkWorkspaceTagKey('repo::/a', 'local')).toBe('repo::/a')
-    expect(forkWorkspaceTagKey('repo::/a', 'runtime:kif')).toBe('runtime:kif|repo::/a')
+    expect(forkWorkspaceTagKey('repo::/a', 'runtime:alpha')).toBe('runtime:alpha|repo::/a')
   })
 
   it('sets and clears one workspace', () => {

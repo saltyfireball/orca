@@ -85,7 +85,7 @@ describe('readForkMachineUsage', () => {
 describe('readForkPooledLimits', () => {
   it('asks every paired server and reports each one', async () => {
     const callEnvironment = vi.fn(async (id: string) => {
-      if (id === 'kif') {
+      if (id === 'alpha') {
         return { accounts: [reading()] }
       }
       if (id === 'stock') {
@@ -99,7 +99,7 @@ describe('readForkPooledLimits', () => {
     const result = await readForkPooledLimits(
       deps({
         listEnvironments: () => [
-          { id: 'kif', name: 'kif' },
+          { id: 'alpha', name: 'alpha' },
           { id: 'stock', name: 'stock' },
           { id: 'off', name: 'off' },
           { id: 'gone', name: 'gone' }
@@ -108,20 +108,20 @@ describe('readForkPooledLimits', () => {
       }),
       {}
     )
-    expect(callEnvironment).toHaveBeenCalledWith('kif', 'fork.limits.machineUsage', {}, 4000)
+    expect(callEnvironment).toHaveBeenCalledWith('alpha', 'fork.limits.machineUsage', {}, 4000)
     expect(result.machines.map((m) => [m.name, m.status, m.accounts])).toEqual([
       ['this machine', 'ok', 0],
-      ['kif', 'ok', 1],
+      ['alpha', 'ok', 1],
       ['stock', 'no-probe', 0],
       ['off', 'off', 0],
       ['gone', 'unreachable', 0]
     ])
-    expect(result.providers[0].accounts[0].machines).toEqual(['kif'])
+    expect(result.providers[0].accounts[0].machines).toEqual(['alpha'])
   })
 
   it('stays on this machine with local, or with servers turned off', async () => {
     const callEnvironment = vi.fn(async () => ({ accounts: [] }))
-    const listEnvironments = (): { id: string; name: string }[] => [{ id: 'kif', name: 'kif' }]
+    const listEnvironments = (): { id: string; name: string }[] => [{ id: 'alpha', name: 'alpha' }]
     await readForkPooledLimits(deps({ listEnvironments, callEnvironment }), { local: true })
     await readForkPooledLimits(
       deps({

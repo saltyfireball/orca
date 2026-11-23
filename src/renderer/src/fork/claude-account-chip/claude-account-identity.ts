@@ -32,7 +32,7 @@ export type ForkClaudeAccount = {
   /** Saved account id, or {@link SYSTEM_DEFAULT_ACCOUNT_ID}. */
   id: string
   email: string | null
-  /** Short label such as `B` or `B @ kif`. */
+  /** Short label such as `B` or `B @ alpha`. */
   label: string
   colour: string
   hostLabel: string | null

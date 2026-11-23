@@ -15,7 +15,7 @@ import {
 
 const MINUTE = 60_000
 const KEEP = 15 * MINUTE
-const NAMES = { a: 'Studio', b: 'kif' }
+const NAMES = { a: 'Studio', b: 'alpha' }
 
 function agent(paneKey: string, status: AgentListStatus, sortAt: number): HomeAgentEntry {
   const row = {
@@ -81,7 +81,7 @@ describe('foldLiveAgents', () => {
       KEEP
     )
     expect(memory.rows.map((row) => [row.id, row.state, row.host])).toEqual([
-      ['b:p3', 'needs-you', 'kif'],
+      ['b:p3', 'needs-you', 'alpha'],
       ['a:p1', 'working', 'Studio']
     ])
   })

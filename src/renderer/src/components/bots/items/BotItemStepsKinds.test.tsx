@@ -16,7 +16,7 @@ const view = botItemStepsFromEvents(
     data: {
       steps: [
         { title: 'Run it', command: 'pnpm check', host: 'laptop' },
-        { title: 'Say this in Slack', text: 'whats the status', host: 'laptop' },
+        { title: 'Say this in Slack', text: 'hello test', host: 'laptop' },
         { title: 'Click Approve', host: 'laptop' }
       ]
     }
@@ -39,7 +39,7 @@ function renderSteps(): void {
 it('shows text as a copy block with no terminal button, and the badge only on a command', () => {
   renderSteps()
   // Step 2 is the current one: its text shows.
-  expect(document.querySelector('[data-bot-item-text]')?.textContent).toBe('whats the status')
+  expect(document.querySelector('[data-bot-item-text]')?.textContent).toBe('hello test')
   expect(screen.getByRole('button', { name: 'Copy text' })).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Open in terminal' })).toBeNull()
   // Only the command step carries "on laptop": text and a click are not run on a computer.

@@ -19,9 +19,9 @@ describe('visual fallback grammar (SLRM-2349)', () => {
   it('reads the line from the card: an unquoted image name and a quoted title', () => {
     expect(
       parseNativeChatVisualDirectiveLine(
-        '::orca-visual{file=cassie-hair-2324.jpg title="Hair pass"}'
+        '::orca-visual{file=portrait-hair-2324.jpg title="Hair pass"}'
       )
-    ).toEqual({ file: 'cassie-hair-2324.jpg', title: 'Hair pass' })
+    ).toEqual({ file: 'portrait-hair-2324.jpg', title: 'Hair pass' })
   })
 
   it('takes png, jpg, jpeg, gif and webp in any case, and unquoted .html names', () => {

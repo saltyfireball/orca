@@ -37,14 +37,14 @@ function deps(overrides: Partial<ForkClashFleetDeps> = {}): ForkClashFleetDeps {
     config: () => readForkBranchClashConfig({}),
     localReport: async () => report('local-branch', ['x.ts']),
     listEnvironments: () => [
-      { id: 'kif', name: 'kif' },
+      { id: 'alpha', name: 'alpha' },
       { id: 'old', name: 'old' },
       { id: 'down', name: 'down' },
       { id: 'quiet', name: 'quiet' }
     ],
     callEnvironment: async (id) => {
-      if (id === 'kif') {
-        return report('kif-branch', ['x.ts'])
+      if (id === 'alpha') {
+        return report('alpha-branch', ['x.ts'])
       }
       if (id === 'old') {
         throw Object.assign(new Error('no'), { code: 'method_not_found' })
@@ -64,11 +64,11 @@ describe('gatherForkClashes', () => {
     const result = await gatherForkClashes(deps(), undefined)
     expect(result.projects[0].files[0].participants.map((p) => p.branch)).toEqual([
       'local-branch',
-      'kif-branch'
+      'alpha-branch'
     ])
     expect(result.hosts.map((h) => [h.hostName, h.status])).toEqual([
       ['this machine', 'ok'],
-      ['kif', 'ok'],
+      ['alpha', 'ok'],
       ['old', 'no-clashes'],
       ['down', 'unreachable'],
       ['quiet', 'off']
@@ -87,7 +87,7 @@ describe('gatherForkClashes', () => {
     expect(callEnvironment).not.toHaveBeenCalled()
     const asked = vi.fn(async () => ({ repos: [] }))
     await gatherForkClashes(deps({ callEnvironment: asked }), 'orca')
-    expect(asked).toHaveBeenCalledWith('kif', 'fork.clashes.local', { project: 'orca' }, 60_000)
+    expect(asked).toHaveBeenCalledWith('alpha', 'fork.clashes.local', { project: 'orca' }, 60_000)
   })
 })
 

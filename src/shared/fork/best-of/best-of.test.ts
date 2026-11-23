@@ -65,7 +65,7 @@ describe('best-of parsing', () => {
   })
 
   it('parses hosts and cycles lists', () => {
-    expect(parseForkBestOfHosts('auto, here,kif')).toEqual(['auto', 'here', 'kif'])
+    expect(parseForkBestOfHosts('auto, here,alpha')).toEqual(['auto', 'here', 'alpha'])
     expect(() => parseForkBestOfHosts('a;b')).toThrow()
     expect([0, 1, 2].map((i) => forkBestOfCycle(['a', 'b'], i))).toEqual(['a', 'b', 'a'])
   })

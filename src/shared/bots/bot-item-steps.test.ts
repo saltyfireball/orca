@@ -54,7 +54,7 @@ describe('owner step commands', () => {
   })
 
   it('writes a fallback list with each command fenced', () => {
-    expect(botItemStepsMarkdown([{ title: 'A', command: 'echo ```', host: 'kif' }])).toContain(
+    expect(botItemStepsMarkdown([{ title: 'A', command: 'echo ```', host: 'alpha' }])).toContain(
       '````sh'
     )
   })
@@ -76,7 +76,7 @@ describe('owner step commands', () => {
 
   it('tips when commands sit in prose, not when they are fenced or only prose', () => {
     const prose =
-      "On the laptop: (1) tr -d '\\n' < /a/token | secret set NAME (2) secret-setup grant box laptop"
+      "On the laptop: (1) tr -d '\\n' < /a/token | secret set NAME (2) vault-setup grant box laptop"
     expect(botItemCommentHoldsCommands(prose)).toBe(true)
     expect(botItemCommentHoldsCommands('```sh\n(1) git pull\n(2) git push\n```')).toBe(false)
     expect(botItemCommentHoldsCommands('(1) the plan is fine (2) the schedule is fine')).toBe(false)
@@ -87,11 +87,9 @@ describe('owner step commands', () => {
 
 describe('owner step text', () => {
   it('keeps text exactly, refuses a step with both command and text, and refuses controls', () => {
-    expect(
-      parseBotItemSteps([{ title: 'Tell her', text: 'whats the status \u{1F600}\n' }])
-    ).toEqual({
+    expect(parseBotItemSteps([{ title: 'Tell the bot', text: 'hello test \u{1F600}\n' }])).toEqual({
       ok: true,
-      steps: [{ title: 'Tell her', text: 'whats the status \u{1F600}' }]
+      steps: [{ title: 'Tell the bot', text: 'hello test \u{1F600}' }]
     })
     expect(parseBotItemSteps([{ title: 'x', command: 'ls', text: 'hi' }]).ok).toBe(false)
     expect(parseBotItemSteps([{ title: 'x', text: 'hi\u001b[0m' }]).ok).toBe(false)
@@ -99,19 +97,17 @@ describe('owner step text', () => {
 
   it('reads text: lines, fences text as text in the Markdown fallback', () => {
     const parsed = parseBotItemStepsInput(
-      ['step: Ask in Slack', 'text: whats the status', 'step: Run it', 'command:', '  ls -la'].join(
-        '\n'
-      )
+      ['step: Ask in Slack', 'text: hello test', 'step: Run it', 'command:', '  ls -la'].join('\n')
     )
     expect(parsed).toEqual({
       ok: true,
       steps: [
-        { title: 'Ask in Slack', text: 'whats the status' },
+        { title: 'Ask in Slack', text: 'hello test' },
         { title: 'Run it', command: 'ls -la' }
       ]
     })
     if (parsed.ok) {
-      expect(botItemStepsMarkdown(parsed.steps)).toContain('```text\n   whats the status')
+      expect(botItemStepsMarkdown(parsed.steps)).toContain('```text\n   hello test')
     }
   })
 

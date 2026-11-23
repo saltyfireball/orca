@@ -25,7 +25,7 @@ export type CardRouteStartDeps<B extends Pick<Bot, 'id' | 'name' | 'paused'>> = 
   machine: () => string
 }
 
-/** This computer's short name, as a person calls it (m5mac, not m5mac.local). */
+/** This computer's short name, as a person calls it (laptop, not laptop.local). */
 export function shortHostName(name = hostname()): string {
   return name.replace(/\.(local|lan|home|localdomain)$/i, '') || name
 }

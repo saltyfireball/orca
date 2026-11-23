@@ -27,21 +27,21 @@ describe('orca bot set', () => {
   })
 
   it('picks one bot by name or id, or all of an agent', () => {
-    const bots = [bot('Dispatcher'), bot('Cassie'), bot('Coder', 'codex')]
+    const bots = [bot('Dispatcher'), bot('Ada'), bot('Coder', 'codex')]
     expect(selectBotsToSet(bots, { bot: 'dispatcher', all: false }, {}).map((b) => b.name)).toEqual(
       ['Dispatcher']
     )
-    expect(selectBotsToSet(bots, { bot: 'id-Cassie', all: false }, {})[0]?.name).toBe('Cassie')
+    expect(selectBotsToSet(bots, { bot: 'id-Ada', all: false }, {})[0]?.name).toBe('Ada')
     expect(
       selectBotsToSet(bots, { all: true, agent: 'claude' }, { model: 'opus' }).map((b) => b.name)
-    ).toEqual(['Dispatcher', 'Cassie'])
+    ).toEqual(['Dispatcher', 'Ada'])
     expect(selectBotsToSet(bots, { all: true }, { clear: true })).toHaveLength(3)
   })
 
   it('refuses no selection, both, an unknown bot and a model across agents', () => {
-    const bots = [bot('Cassie'), bot('Coder', 'codex')]
+    const bots = [bot('Ada'), bot('Coder', 'codex')]
     expect(() => selectBotsToSet(bots, { all: false }, {})).toThrow('--bot <name>')
-    expect(() => selectBotsToSet(bots, { bot: 'Cassie', all: true }, {})).toThrow('--bot <name>')
+    expect(() => selectBotsToSet(bots, { bot: 'Ada', all: true }, {})).toThrow('--bot <name>')
     expect(() => selectBotsToSet(bots, { bot: 'Nope', all: false }, {})).toThrow('No bot named')
     expect(() => selectBotsToSet(bots, { all: true }, { model: 'opus' })).toThrow('--agent')
   })
@@ -52,7 +52,7 @@ describe('orca bot set', () => {
         bots: [
           {
             id: '1',
-            name: 'Cassie',
+            name: 'Ada',
             agent: 'claude',
             launch: { model: 'claude-opus-5-5', options: { effort: 'medium' } }
           },
@@ -60,7 +60,7 @@ describe('orca bot set', () => {
         ]
       })
     ).toBe(
-      'Cassie (claude): model claude-opus-5-5, effort medium\nDispatcher (claude): native chat defaults'
+      'Ada (claude): model claude-opus-5-5, effort medium\nDispatcher (claude): native chat defaults'
     )
   })
 })

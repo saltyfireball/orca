@@ -16,7 +16,7 @@ function account(label: string, ownerKey = 'local'): ForkClaudeAccount {
   return { ownerKey, id: label, email: null, label, colour: 'red', hostLabel: null }
 }
 
-const one: ForkClaudeAccountResolution = { kind: 'account', account: account('B @ kif') }
+const one: ForkClaudeAccountResolution = { kind: 'account', account: account('B @ alpha') }
 
 afterEach(cleanup)
 
@@ -33,24 +33,26 @@ describe('ForkClaudeAccountChip', () => {
         <ForkClaudeAccountChip
           resolution={{ kind: 'mixed', accounts: [account('A'), account('B', 'environment:k')] }}
         />
-        <ForkClaudeAccountChip resolution={{ kind: 'unknown', ownerKey: 'k', hostLabel: 'kif' }} />
+        <ForkClaudeAccountChip
+          resolution={{ kind: 'unknown', ownerKey: 'k', hostLabel: 'alpha' }}
+        />
       </>
     )
     const chips = view.getAllByTestId('fork-account-chip')
     expect(chips.map((chip) => [chip.dataset.kind, chip.textContent])).toEqual([
-      ['account', 'B @ kif'],
+      ['account', 'B @ alpha'],
       ['mixed', 'Mixed'],
-      ['unknown', '? @ kif']
+      ['unknown', '? @ alpha']
     ])
   })
 
   it('labels a move queued behind a turn as from -> to', () => {
-    const from = { ...account('C @ kif'), hostLabel: 'kif' }
-    const to = { ...account('B @ kif'), id: 'B', colour: 'blue', hostLabel: 'kif' }
+    const from = { ...account('C @ alpha'), hostLabel: 'alpha' }
+    const to = { ...account('B @ alpha'), id: 'B', colour: 'blue', hostLabel: 'alpha' }
     const view = render(
       <ForkClaudeAccountChip resolution={{ kind: 'account', account: from, movingTo: to }} />
     )
-    expect(view.getByTestId('fork-account-chip').textContent).toBe('C -> B @ kif')
+    expect(view.getByTestId('fork-account-chip').textContent).toBe('C -> B @ alpha')
   })
 
   it('lets clicks through unless a menu is attached', () => {

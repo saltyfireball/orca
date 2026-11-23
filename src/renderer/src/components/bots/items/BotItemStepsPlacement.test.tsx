@@ -55,7 +55,7 @@ const steps = botItemStepsFromEvents(
     data: {
       steps: [
         { title: 'Run the check', command: 'pnpm check' },
-        { title: 'Tell her', text: 'whats the status' },
+        { title: 'Tell the bot', text: 'hello test' },
         { title: 'Log in' }
       ]
     }

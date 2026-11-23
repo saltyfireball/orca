@@ -37,7 +37,7 @@ describe('quickTaskService', () => {
   it('makes the router on first use and starts a new chat on it with the task', async () => {
     const { deps, created, chats } = fakeDeps()
     const result = await quickTaskService(deps).submit({
-      text: ' add Cassie a voice ',
+      text: ' add Ada a voice ',
       source: 'desktop'
     })
     expect(created).toEqual([
@@ -50,7 +50,7 @@ describe('quickTaskService', () => {
     ])
     expect(chats).toHaveLength(1)
     expect(chats[0].bot).toBe('Dispatcher')
-    expect(chats[0].message).toContain('\nadd Cassie a voice\n')
+    expect(chats[0].message).toContain('\nadd Ada a voice\n')
     expect(result).toEqual({
       botName: 'Dispatcher',
       chatId: 'chat-1',

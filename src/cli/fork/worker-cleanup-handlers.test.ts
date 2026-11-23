@@ -12,7 +12,7 @@ function row(over: Partial<ForkWorkerCleanupRow>): ForkWorkerCleanupRow {
     name: 'otter',
     branch: 'BAD-1-otter',
     path: '/w/a',
-    botName: 'Cassandra',
+    botName: 'Aria',
     finishedAtMs: 0,
     outcome: 'remove',
     canForce: false,
@@ -48,16 +48,20 @@ describe('formatWorkerCleanup', () => {
           })
         ],
         servers: [
-          { name: 'kif', ok: true, rows: [row({ name: 'heron', path: '/s/c', server: 'kif' })] },
-          { name: 'roberto', ok: false, error: 'timed out', rows: [] }
+          {
+            name: 'alpha',
+            ok: true,
+            rows: [row({ name: 'heron', path: '/s/c', server: 'alpha' })]
+          },
+          { name: 'bravo', ok: false, error: 'timed out', rows: [] }
         ]
       })
     )
     const lines = text.split('\n')
-    expect(lines[0]).toMatch(/^would remove\s+Cassandra\s+otter\s+BAD-1-otter\s+\/w\/a$/)
+    expect(lines[0]).toMatch(/^would remove\s+Aria\s+otter\s+BAD-1-otter\s+\/w\/a$/)
     expect(lines[1]).toContain('skipped: unmerged commits (2 not on a base branch)')
-    expect(lines[2]).toContain('kif: /s/c')
-    expect(lines[3]).toBe('Note: roberto: not cleaned up: timed out')
+    expect(lines[2]).toContain('alpha: /s/c')
+    expect(lines[3]).toBe('Note: bravo: not cleaned up: timed out')
     expect(lines[4]).toBe('Dry run: 2 would be removed. Nothing was changed.')
   })
 
@@ -77,14 +81,14 @@ describe('worker-cleanup command', () => {
       flags: new Map<string, string | boolean>([
         ['dry-run', true],
         ['include-remote', true],
-        ['bot', 'cassandra']
+        ['bot', 'aria']
       ]),
       json: false,
       client: { call }
       // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the handler reads only these fields.
     } as never)
     expect(call).toHaveBeenCalledWith('fork.workerCleanup.run', {
-      bot: 'cassandra',
+      bot: 'aria',
       dryRun: true,
       includeRemote: true
     })

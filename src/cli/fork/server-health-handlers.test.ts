@@ -11,7 +11,7 @@ describe('formatServerHealth', () => {
         servers: [
           {
             environmentId: 'a',
-            name: 'm2mac',
+            name: 'studio',
             state: 'offline',
             lastSeenAt: now - 4 * 60 * 60_000,
             downSince: now - 4 * 60 * 60_000 + 5_000,
@@ -19,7 +19,7 @@ describe('formatServerHealth', () => {
           },
           {
             environmentId: 'b',
-            name: 'kif',
+            name: 'alpha',
             state: 'up',
             lastSeenAt: now,
             downSince: null,
@@ -31,8 +31,8 @@ describe('formatServerHealth', () => {
       now
     )
     expect(text).toContain('Offline alert after 5 min')
-    expect(text).toMatch(/m2mac\s+offline\s+2026-11-17 10:00\s+for 4 h/)
-    expect(text).toMatch(/kif\s+answering\s+2026-11-17 14:00\s+last outage 12 min/)
+    expect(text).toMatch(/studio\s+offline\s+2026-11-17 10:00\s+for 4 h/)
+    expect(text).toMatch(/alpha\s+answering\s+2026-11-17 14:00\s+last outage 12 min/)
     expect(text).toContain('Heartbeat: failing, last success 2026-11-17 13:59')
   })
 

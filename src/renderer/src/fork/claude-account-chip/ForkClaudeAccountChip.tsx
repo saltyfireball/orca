@@ -31,7 +31,7 @@ export type ForkClaudeAccountChipProps = {
   menu?: (chip: React.ReactElement) => React.ReactNode
 }
 
-/** The label without its ` @ host` suffix, for the left side of `A -> B @ kif`. */
+/** The label without its ` @ host` suffix, for the left side of `A -> B @ alpha`. */
 function bareLabel(account: ForkClaudeAccount): string {
   const suffix = account.hostLabel ? ` @ ${account.hostLabel}` : ''
   return suffix && account.label.endsWith(suffix)

@@ -18,7 +18,7 @@ describe('formatPooledLimits', () => {
               session: { usedPercent: 80, resetsAt: NOW + 3_600_000 },
               weekly: null,
               updatedAt: NOW,
-              machines: ['this machine', 'kif']
+              machines: ['this machine', 'alpha']
             }
           ],
           windows: [
@@ -34,15 +34,15 @@ describe('formatPooledLimits', () => {
       ],
       machines: [
         { key: 'local', name: 'this machine', status: 'ok', accounts: 1 },
-        { key: 'runtime:kif', name: 'kif', status: 'unreachable', accounts: 0 }
+        { key: 'runtime:alpha', name: 'alpha', status: 'unreachable', accounts: 0 }
       ]
     })
     expect(text).toBe(
       [
         'Claude  1 account',
         '  5-hour  80% used   next reset in 1h frees 80%',
-        '    work  5h 80%  wk -  on this machine, kif',
-        'Machines: this machine (1), kif (not answering)'
+        '    work  5h 80%  wk -  on this machine, alpha',
+        'Machines: this machine (1), alpha (not answering)'
       ].join('\n')
     )
   })

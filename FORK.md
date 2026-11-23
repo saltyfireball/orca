@@ -98,6 +98,13 @@ ones `SLRM-123 `).
     `src/renderer/src/components/bots/items/BotItemSteps.tsx` and `BotItemCommandBlock.tsx`,
     `src/renderer/src/fork/bot-owner-steps/` and `mobile/src/bots/items/MobileBotItemSteps.tsx`.
 
+- **Private names stay out of the public repo (BAD-768).** Blackfish is public, so tests, fixtures,
+  help text and docs use made-up names (`alpha`, `studio`, `Aria`), never the owner's bots, hosts or
+  items. `pnpm run check:private-names` scans tracked files for the whole-word terms in a list kept
+  OUTSIDE the repo (`BLACKFISH_PRIVATE_NAMES_FILE`, default `~/.config/blackfish/private-names.txt`;
+  one term per line); without that file it skips and passes. It prints only file:line, never the
+  matched text. Code: `config/scripts/fork/check-private-names.mjs`; `package.json` adds the script.
+
 - **Worktree reclaim: free disk inside idle workspaces without removing them (BAD-691).**
   `orca workspace reclaim [--idle 3d] [--repo R] [--worktree W] [--dry-run]` and a Reclaim
   button on the Space page delete the regenerable, git-ignored paths of idle workspaces
@@ -195,7 +202,7 @@ ones `SLRM-123 `).
   after updating from a release with the earlier single-hash record. The design and the remaining phases (Codex next) are in
   `docs/fork/chat-survive.md`.
 - **Claude account chip (SLRM-1503).** Native chat tabs, terminal tabs running Claude, agent rows
-  and sidebar worktree rows show a small dot and short label (`B`, or `B @ kif` on another host)
+  and sidebar worktree rows show a small dot and short label (`B`, or `B @ alpha` on another host)
   naming the Claude account the session runs on; a worktree whose sessions use several shows
   `Mixed`. Hovering shows the email and 5h and weekly usage. Each session resolves against the
   host that runs it: this desktop, a WSL host's distro (through this desktop's saved accounts) or
@@ -1450,7 +1457,7 @@ ones `SLRM-123 `).
     no card heading to land on).
 - **Image files in chat visuals (SLRM-2349).** `::orca-visual` also shows a PNG, JPEG, GIF or
   WebP file from the chat's scratch folder, and takes unquoted values with no space, quote,
-  brace or backslash, so a line like `::orca-visual{file=cassie-hair-2324.jpg title="Hair"}`
+  brace or backslash, so a line like `::orca-visual{file=portrait-hair-2324.jpg title="Hair"}`
   shows the picture instead of raw text on desktop, web and the phone. The `.html` path is
   unchanged.
   - The host that runs the chat reads the image under every stock rule (a basename only, no
@@ -2454,7 +2461,7 @@ ones `SLRM-123 `).
   - While the item is open, the desktop reads each such worker from its server
     (`orchestration.workerShow`, then `worktree.show`), every 15 s while it may still be working or
     its server did not answer. The chip takes the server's live state and shows the server and its
-    last activity (`m2mac-server · 13 s ago`; its hover card says `Working on m2mac-server · 13 s
+    last activity (`studio-server · 13 s ago`; its hover card says `Working on studio-server · 13 s
     ago`).
   - Its PR replaces upstream's "PR not shown" mark: the PR this window's workspace card shows for
     the server's workspace, with its state, else the workspace's `linkedPR` (its URL from the
@@ -3110,6 +3117,7 @@ Apply these in this order. Each one is a single commit.
 161. `BAD-740 Tests: real-git fixtures use their own global git config, the test setup clears Orca session variables, and the reviewer gate reads defaults when no store is attached`
 162. `BAD-747 Owner steps: orca bot item set/add --steps-file keeps the commands and manual acts an agent needs its owner to do as an ordered checklist (title, command, host, note) with Copy, Done, Did not work and a typed-never-run Open in terminal, on desktop and phone; a new set replaces the open one; the last tick answers the ask as done or mails the chat once; fenced shell blocks get Copy; a Tip names --steps-file when commands sit in prose`
 163. `BAD-762 Owner steps: the checklist sits inside the Needs you card it was set with (comment, steps, question) on desktop and phone, with a slim Steps 1 of 3 line and a scroll to the first step not done; a step title wraps beside its number; a step takes text: (words to copy and paste elsewhere, Copy only) or command: (Open in terminal); a manual step shows no host badge; agents are told not to write below or above about steps`
+164. `BAD-768 Public repo: owner-private bot, host and item names replaced by neutral ones in fork tests, fixtures, help text and FORK.md; check:private-names reads its private list from outside the repo`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

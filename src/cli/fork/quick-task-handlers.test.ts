@@ -3,7 +3,7 @@ import { formatQuickTaskResult, readQuickTaskText } from './quick-task-handlers'
 
 describe('orca quick-task', () => {
   it('joins the words as typed', () => {
-    expect(readQuickTaskText(['add', 'Cassie', 'a', 'voice'])).toBe('add Cassie a voice')
+    expect(readQuickTaskText(['add', 'Ada', 'a', 'voice'])).toBe('add Ada a voice')
   })
 
   it('refuses no text and too much text', () => {

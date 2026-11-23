@@ -30,7 +30,7 @@ describe('collectForkDigest', () => {
       now: () => 100,
       local: async () => EMPTY,
       listEnvironments: () => [
-        { id: 'kif', name: 'kif' },
+        { id: 'alpha', name: 'alpha' },
         { id: 'old', name: 'old' },
         { id: 'down', name: 'down' },
         { id: 'junk', name: 'junk' }
@@ -39,10 +39,10 @@ describe('collectForkDigest', () => {
       serversDown: () => [{ name: 'down', downSince: 1 }]
     }
     const digest = await collectForkDigest(deps, { since: 0 })
-    expect(call).toHaveBeenCalledWith('kif', 'fork.digest.local', { since: 0 }, 45_000)
+    expect(call).toHaveBeenCalledWith('alpha', 'fork.digest.local', { since: 0 }, 45_000)
     expect(digest.hosts.map((host) => [host.name, host.status])).toEqual([
       ['This machine', 'ok'],
-      ['kif', 'ok'],
+      ['alpha', 'ok'],
       ['old', 'no-digest'],
       ['down', 'unreachable'],
       ['junk', 'unreachable']

@@ -18,14 +18,14 @@ describe('formatServersList', () => {
       version: '1.4.262001',
       servers: [
         {
-          id: 'kif',
-          name: 'kif',
+          id: 'alpha',
+          name: 'alpha',
           status: { ...base, buildVersion: '0.1.0+081afb112818' },
           versus: 0
         },
         {
-          id: 'm2mac',
-          name: 'm2mac',
+          id: 'studio',
+          name: 'studio',
           status: {
             ...base,
             buildVersion: '0.1.0+d3d71665fdf0',
@@ -47,7 +47,7 @@ describe('formatServersList', () => {
       'ROLLBACK'
     ])
     expect(lines[2].split(/\s{2,}/)).toEqual([
-      'kif',
+      'alpha',
       '1.4.262001',
       '0.1.0+081afb112818',
       'current',
@@ -55,7 +55,7 @@ describe('formatServersList', () => {
       '-'
     ])
     expect(lines[3].split(/\s{2,}/)).toEqual([
-      'm2mac',
+      'studio',
       '1.4.262001',
       '0.1.0+d3d71665fdf0',
       'ssh-managed (use orca environment update)',

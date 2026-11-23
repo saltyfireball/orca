@@ -40,17 +40,17 @@ describe('phone helpers (SLRM-2406)', () => {
   it('describes a finished run and parses it on the wire', () => {
     const run = {
       hostKey: 'runtime:e',
-      serverName: 'kif',
+      serverName: 'alpha',
       cloned: true,
       clonePath: '/home/k/development/r',
       readiness: { missing: [], notes: [] }
     }
     expect(ForkServerSetupRunResultSchema.parse(run)).toEqual(run)
     expect(describeForkServerSetupRun(run)).toBe(
-      'Set up on kif: cloned into /home/k/development/r. Nothing the project needs is missing.'
+      'Set up on alpha: cloned into /home/k/development/r. Nothing the project needs is missing.'
     )
     expect(describeForkServerSetupRun({ ...run, cloned: false, readiness: null })).toBe(
-      'kif already had the project.'
+      'alpha already had the project.'
     )
   })
 })

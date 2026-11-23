@@ -17,18 +17,18 @@ function parse(argv: string[]) {
 describe('fork value flags (SLRM-2310)', () => {
   it('reads `servers update --wait 5` like `--wait=5`', () => {
     for (const argv of [
-      ['servers', 'update', 'kif', '--wait', '5'],
-      ['servers', 'update', 'kif', '--wait=5']
+      ['servers', 'update', 'alpha', '--wait', '5'],
+      ['servers', 'update', 'alpha', '--wait=5']
     ]) {
       const parsed = parse(argv)
-      expect(parsed.commandPath).toEqual(['servers', 'update', 'kif'])
+      expect(parsed.commandPath).toEqual(['servers', 'update', 'alpha'])
       expect(getOptionalNonNegativeIntegerFlag(parsed.flags, 'wait')).toBe(5)
     }
   })
 
   it('reads `servers rollback --wait 0` before the server name', () => {
-    const parsed = parse(['servers', 'rollback', '--wait', '0', 'kif'])
-    expect(parsed.commandPath).toEqual(['servers', 'rollback', 'kif'])
+    const parsed = parse(['servers', 'rollback', '--wait', '0', 'alpha'])
+    expect(parsed.commandPath).toEqual(['servers', 'rollback', 'alpha'])
     expect(parsed.flags.get('wait')).toBe('0')
   })
 

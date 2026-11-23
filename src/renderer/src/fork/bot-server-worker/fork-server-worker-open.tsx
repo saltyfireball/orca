@@ -42,8 +42,8 @@ const STATE_WORDS: Record<BotChatTreeWorker['state'], [key: string, fallback: st
   failed: ['fork.botServerWorker.failed', 'Failed']
 }
 
-/** "Working on m2mac-server · 13 s ago": a server worker's state, server and last activity; `compact`
- *  leaves the state to the icon beside it ("m2mac-server · 13 s ago"). Null for any other worker. */
+/** "Working on studio-server · 13 s ago": a server worker's state, server and last activity; `compact`
+ *  leaves the state to the icon beside it ("studio-server · 13 s ago"). Null for any other worker. */
 export function ForkServerWorkerNote({
   worker,
   compact = false,
