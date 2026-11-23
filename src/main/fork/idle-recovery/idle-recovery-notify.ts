@@ -5,6 +5,7 @@
 // failing target is logged without its address or output and never stops the others or the
 // sweep. Never throws.
 import { spawn } from 'node:child_process'
+import { killCheckTree } from '../completion-contract/check-runner'
 import type { IdleRecoverySettings } from '../../../shared/fork/idle-recovery-settings'
 import type { ForkIdleRecoveryInboxItem } from '../../../shared/fork/idle-recovery-wire'
 
@@ -121,16 +122,19 @@ function runCommand(command: string, payload: string, timeoutMs: number): Promis
       }
     }
     try {
-      const child = spawn(command, { shell: true, stdio: ['pipe', 'ignore', 'ignore'] })
+      // Its own process group off Windows, so the deadline ends what the shell line started too.
+      const child = spawn(command, {
+        shell: true,
+        detached: process.platform !== 'win32',
+        stdio: ['pipe', 'ignore', 'ignore']
+      })
+      let exited = false
+      child.once('exit', () => {
+        exited = true
+      })
       timer = setTimeout(() => {
-        // Only this child, by its own pid.
-        try {
-          if (child.pid !== undefined) {
-            process.kill(child.pid, 'SIGKILL')
-          }
-        } catch {
-          // already gone
-        }
+        // Only this child and its own group.
+        killCheckTree(child, () => exited)
         finish('timeout')
       }, timeoutMs)
       child.on('error', () => finish('failed'))

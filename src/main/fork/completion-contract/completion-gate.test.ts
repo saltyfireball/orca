@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { readCompletionContractSettings } from '../../../shared/fork/completion-contract'
 import {
   localCheckRunner,
@@ -150,6 +150,59 @@ describe('a worker on a temp repo', () => {
   it('reports a command that is killed at the deadline as failed', async () => {
     const result = await localCheckRunner({ cwd: tmpdir(), connectionId: null }, 'sleep 30', 200)
     expect(result).toMatchObject({ exitCode: null, timedOut: true })
+  })
+
+  describe.skipIf(process.platform === 'win32')('a command whose child outlives the shell', () => {
+    const alive = (pid: number): boolean => {
+      try {
+        process.kill(pid, 0)
+        return true
+      } catch {
+        return false
+      }
+    }
+    const pidsIn = (output: string): number[] =>
+      output
+        .split('\n')
+        .map((line) => Number.parseInt(line, 10))
+        .filter((pid) => Number.isInteger(pid) && pid > 1)
+
+    it('settles at the deadline and leaves no child running', async () => {
+      const started = Date.now()
+      // The shell forks `sleep` (it is not the last command), so killing only the shell leaves it.
+      const result = await localCheckRunner(
+        { cwd: tmpdir(), connectionId: null },
+        'sleep 29 & echo $!; wait',
+        500
+      )
+      expect(Date.now() - started).toBeLessThan(5000)
+      expect(result).toMatchObject({ exitCode: null, timedOut: true })
+      const [child] = pidsIn(result.output)
+      expect(child).toBeDefined()
+      // SIGKILL is delivered at once; give the OS a moment to reap.
+      await vi.waitFor(() => expect(alive(child)).toBe(false), { timeout: 3000 })
+    })
+
+    it('settles even when a stray grandchild in another group holds the pipes', async () => {
+      const spawnStray =
+        "const c=require('child_process').spawn('sleep',['31'],{detached:true,stdio:['ignore','inherit','inherit']});console.log(c.pid);c.unref()"
+      const started = Date.now()
+      const result = await localCheckRunner(
+        { cwd: tmpdir(), connectionId: null },
+        `node -e "${spawnStray}"; sleep 30; true`,
+        1500
+      )
+      const [stray] = pidsIn(result.output)
+      try {
+        expect(Date.now() - started).toBeLessThan(8000)
+        expect(result).toMatchObject({ exitCode: null, timedOut: true })
+      } finally {
+        // The stray is outside the group by design: stop it by its own pid.
+        if (stray && alive(stray)) {
+          process.kill(stray, 'SIGKILL')
+        }
+      }
+    })
   })
 })
 

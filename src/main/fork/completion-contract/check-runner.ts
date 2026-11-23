@@ -1,7 +1,7 @@
 // Completion contract (BAD-676, FORK.md): runs one done check in the worker's workspace, on the
 // host that workspace lives on. The command is only ever text the coordinator put in the Task's
 // spec; nothing a worker wrote reaches a shell. Output is merged, capped and kept as a tail.
-import { spawn } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
 import type { ForkDoneCheckResult } from '../../../shared/fork/completion-contract'
 import { tailLines } from '../../../shared/fork/completion-contract'
 
@@ -51,6 +51,38 @@ export function localShellArgv(
   return { file: '/bin/sh', args: ['-c', command], cwd: target.cwd }
 }
 
+/**
+ * Ends the command this call started, and what it started, now. Off Windows the command leads its
+ * own process group (spawned `detached`), so signalling the group by the child's pid also reaches
+ * what a shell like dash runs as a child instead of replacing itself. The group is the one this
+ * call created: callers only pass a child they spawned detached, and only while it has not exited
+ * (afterwards its pid may belong to another process). On Windows `taskkill /t` does the same.
+ */
+export function killCheckTree(child: ChildProcess, hasExited: () => boolean): void {
+  const pid = child.pid
+  if (!pid || hasExited()) {
+    return
+  }
+  if (process.platform === 'win32') {
+    try {
+      const killer = spawn('taskkill', ['/pid', String(pid), '/t', '/f'], {
+        stdio: 'ignore',
+        windowsHide: true
+      })
+      killer.on('error', () => child.kill('SIGKILL'))
+      killer.unref()
+    } catch {
+      child.kill('SIGKILL')
+    }
+    return
+  }
+  try {
+    process.kill(-pid, 'SIGKILL')
+  } catch {
+    child.kill('SIGKILL')
+  }
+}
+
 /** This computer, and WSL through wsl.exe. */
 export const localCheckRunner: CheckRunner = (target, command, timeoutMs) =>
   new Promise((resolve) => {
@@ -72,6 +104,8 @@ export const localCheckRunner: CheckRunner = (target, command, timeoutMs) =>
         cwd,
         env: { ...process.env, CI: process.env.CI ?? '1' },
         stdio: ['ignore', 'pipe', 'pipe'],
+        // Its own process group off Windows, so the deadline can end the whole command.
+        detached: process.platform !== 'win32',
         windowsHide: true
       })
     } catch (error) {
@@ -79,10 +113,18 @@ export const localCheckRunner: CheckRunner = (target, command, timeoutMs) =>
       resolve({ exitCode: null, output, timedOut: false })
       return
     }
-    // Only the child this call started is ever killed, by its own handle.
+    let exited = false
+    child.once('exit', () => {
+      exited = true
+    })
+    // Only the child this call started, and its own process group, are ever killed.
     const timer = setTimeout(() => {
       timedOut = true
-      child.kill('SIGKILL')
+      killCheckTree(child, () => exited)
+      // A stray grandchild in another group may still hold the pipes: settle without waiting.
+      child.stdout?.destroy()
+      child.stderr?.destroy()
+      finish(null)
     }, timeoutMs)
     child.stdout?.on('data', (chunk: Buffer) => {
       output = appendCapped(output, chunk.toString('utf8'))
