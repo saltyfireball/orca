@@ -46,6 +46,14 @@ const RATCHET_INPUTS = {
   'check-focus-read-ratchet.mjs': ['src/renderer/src/', 'src/shared/'],
   'check-host-list-render-ratchet.mjs': ['src/renderer/src/'],
   'check-id-only-store-write-ratchet.mjs': ['src/main/persistence/'],
+  // BAD-690: the guides and stubs it measures live outside the source roots; skill-stubs/
+  // composes skills/*/SKILL.md.
+  'check-injected-context-ratchet.mjs': [
+    ...SOURCE_ROOTS,
+    'skill-guides/',
+    'skill-stubs/',
+    'skills/'
+  ],
   'check-layout-writer-ratchets.mjs': ['src/main/', 'src/renderer/src/'],
   // Both build the event-loop import graph, so anything that changes graph edges selects them.
   'check-main-blocking-helper-ratchet.mjs': MAIN_BLOCKING_GRAPH_INPUTS,

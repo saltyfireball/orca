@@ -190,7 +190,9 @@ ones `SLRM-123 `).
   every worker pays for each byte on every turn. `pnpm check:injected-context-ratchet` prints the
   bytes of each bundled skill guide (`skill-guides/**/*.md`), each installed skill stub
   (`skills/*/SKILL.md`) and the worker dispatch preamble source, plus the total, and fails when
-  any artifact grows past `config/injected-context-baseline.txt`. To grow one on purpose, run it
+  any artifact grows past `config/injected-context-baseline.txt`. `pnpm check:changed` selects
+  it for a change under `skill-guides/`, `skills/`, `skill-stubs/` (the source of the stubs) or
+  the source roots. To grow one on purpose, run it
   with `--update` and review the baseline diff; `--prune` lowers rows that shrank. MCP profile
   tool lists come from user configuration, so they are not measured. The check is a fork-only
   file under `config/scripts/static-analysis/ratchets/source-budget/`, so `run-ratchets.mjs`
@@ -3281,6 +3283,7 @@ Apply these in this order. Each one is a single commit.
 172. `BAD-767 Snapshots also cover Lost work deletes of untracked worktrees and prune on a timer; SSH removal stays refused by the stock route, pinned by a test`
 173. `BAD-763 A done never settles unchecked in silence: a Task that declared checks or asked for a review gets one plain line on its done, and an attempt in orca contract show, when the setting is off or a folder has no commit to review`
 174. `BAD-678 Turn checkpoints in folder workspaces: a folder:<id> workspace resolves to its folder for capture, restore and the busy check (shared with every workspace on that directory); SSH and WSL folders stay refused`
+175. `BAD-690 pnpm check:changed runs the injected-context ratchet when only skill guides, skills or skill stubs change`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4639,8 +4642,9 @@ Upstream files only get short hooks, which keeps merges small:
   `fork-global-settings.ts`; the settings and RPC params catalogs are regenerated.
 - Injected-context ratchet (BAD-690), small edits in stock files: `package.json` adds the
   `check:injected-context-ratchet` script and `config/scripts/preflight/changed-checks/run-lint.mjs`
-  adds it to `LINT_STEPS`. The check, its test and `config/injected-context-baseline.txt` are new
-  fork files.
+  adds it to `LINT_STEPS`; `check-changed-selection.mjs` adds its `RATCHET_INPUTS` entry, and
+  `check-changed-selection.test.mjs` is new. The check, its test and
+  `config/injected-context-baseline.txt` are new fork files.
 - Test isolation (BAD-740), edits in upstream files: `vitest-git-signing-env.mjs` now always
   returns a global git config of its own (and its test checks that), and
   `vitest-caller-identity-env-setup.ts` lists more session variables to clear. Stock tests edited:
