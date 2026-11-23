@@ -241,11 +241,12 @@ export async function setAgentGuardAutomationCap(
     weekUsd?: number | null
   }
 ): Promise<ForkGuardsAutomationCapResult> {
-  const list = storeOf()?.listAutomations
   if (!overridesPath) {
     throw new Error('Agent guards are not running on this host yet; try again in a moment.')
   }
-  if (list && !list().some((entry) => entry.id === automationId)) {
+  // Called on the store: a class-backed store fails when the method is taken off it.
+  const known = storeOf()?.listAutomations?.()
+  if (known && !known.some((entry) => entry.id === automationId)) {
     throw new Error(
       `No automation "${automationId.slice(0, 80)}" on this host. Run "orca automation list" for ids.`
     )
