@@ -22,6 +22,7 @@ import type { AutomationRun } from '../../../shared/automations/history/automati
 import type { ForkGlobalSettings } from '../../../shared/fork/fork-global-settings'
 import type { IdleRecoverySettingsSource } from '../../../shared/fork/idle-recovery-settings'
 import { sleeperChatSessionId } from '../../../shared/fork/sleepers-ps-sources'
+import type { OrchestrationDb } from '../../runtime/orchestration/db/orchestration-db'
 import type { AgentToolCallOwner } from '../../agent-hooks/tool-events/agent-tool-call-reader'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { startForkBackoffTimer } from '../fork-backoff-timer'
@@ -36,12 +37,12 @@ import {
   agentGuardRunOf,
   agentGuardSpendOf,
   configureAgentGuardScopes,
-  setAgentGuardTerminalLinks,
   loadAgentGuardScopeState,
   noteAgentGuardAutomationLaunch,
   setAgentGuardLiveIds
 } from './agent-guards-scopes'
 import { automationCapsPath } from './automation-caps-state'
+import { installAgentGuardRunLinks } from './agent-guards-run-links'
 import { matchAgentGuardEntry } from './agent-guards-match'
 import { AgentGuardTerminals } from './agent-guards-terminals'
 import { readAgentGuardHookCall } from './agent-guards-hook-call'
@@ -58,6 +59,8 @@ export const FORK_AGENT_GUARDS_SWEEP_MS = 15_000
 export const FORK_AGENT_GUARDS_IDLE_SWEEP_MS = 2 * 60_000
 
 export type AgentGuardsServiceRuntime = LimitResumeRuntime & {
+  /** BAD-766: the orchestration database, for who started a worker. */
+  getExistingOrchestrationDb?: () => OrchestrationDb | null
   requireStore: () => {
     getSettings: () => unknown
     onSettingsChanged?: (listener: (updates: Partial<ForkGlobalSettings>) => void) => unknown
@@ -206,7 +209,7 @@ async function startEngine(): Promise<void> {
     settings: guardSettings,
     store: () => runtime?.requireStore() ?? null
   })
-  setAgentGuardTerminalLinks(terminals)
+  installAgentGuardRunLinks(terminals, () => runtime?.getExistingOrchestrationDb?.() ?? null)
   await loadAgentGuardScopeState(automationCapsPath(getProfileUserDataPath()))
   let saving: Promise<void> = Promise.resolve()
   engine = new AgentGuardEngine({

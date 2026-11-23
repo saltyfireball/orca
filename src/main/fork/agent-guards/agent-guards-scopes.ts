@@ -50,8 +50,6 @@ let overrides: AutomationCapOverrides = new Map()
 let overridesPath: string | null = null
 let liveIds: ReadonlySet<string> = new Set()
 
-export { setAgentGuardTerminalLinks } from './agent-guards-run-index'
-
 export function configureAgentGuardScopes(next: Config): void {
   config = next
 }
