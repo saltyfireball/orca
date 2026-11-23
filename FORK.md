@@ -4634,6 +4634,11 @@ Upstream files only get short hooks, which keeps merges small:
   `FORK_BRANCH_CLASHES_METHODS`, so `rpc-method-registry.ts` is untouched;
   `rpc-params-catalog.generated.ts` is regenerated. The eight settings are intersected in
   `fork-global-settings.ts`; `settings-rows-fork.generated.ts` is regenerated.
+- Mobile page imports of zod (BAD-681): the mobile web bundle fails ("63 zod locale tables reached the
+  page") when a file the page reaches has `import { z } from 'zod'`; fork files it reaches use
+  `import * as z from 'zod'`. `src/shared/fork/zod-page-imports.test.ts` follows the imports from
+  `mobile/src` and fails on a fork file that does not, in the fork test set.
+
 - Worker retry policy (BAD-681), small edits in stock files: `worker-turn-stop-report.ts` calls
   `forkWorkerRetryOnStop` in `mailWorkerReport` and mails a scheduled retry as a notice instead of
   an escalation; `runtime-orchestration-database-access.ts` calls `installForkWorkerRetry` where

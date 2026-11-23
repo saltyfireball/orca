@@ -1,7 +1,7 @@
 // Worker retry policy (BAD-681, FORK.md): what a crew row shows about a worker's automatic retry.
 // The worker that ended says whether Orca waits to restart it, restarted it or gave up; the worker
 // a restart started says which retry it is. Optional on the row, so older hosts and clients skip it.
-import { z } from 'zod'
+import * as z from 'zod'
 
 export const ForkCrewRetry = z.object({
   attempt: z.number(),
