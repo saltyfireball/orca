@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs'
 import { rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
+  COMMAND_GUARD_SURFACES,
   isCommandGuardRule,
   type CommandGuardAuditEntry
 } from '../../../shared/fork/command-guards'
@@ -24,7 +25,8 @@ function readEntry(value: unknown): CommandGuardAuditEntry | null {
     return null
   }
   const raw: Record<string, unknown> = { ...value }
-  const { id, at, agent, workspaceId, rule, reason, command } = raw
+  const { id, at, agent, workspaceId, rule, reason, command, surface } = raw
+  const knownSurface = COMMAND_GUARD_SURFACES.find((known) => known === surface)
   return typeof id === 'string' &&
     typeof at === 'number' &&
     typeof agent === 'string' &&
@@ -36,6 +38,7 @@ function readEntry(value: unknown): CommandGuardAuditEntry | null {
         id: id.slice(0, MAX_FIELD),
         at,
         agent: agent.slice(0, 60),
+        ...(knownSurface ? { surface: knownSurface } : {}),
         workspaceId: workspaceId.slice(0, MAX_FIELD),
         rule,
         reason: reason.slice(0, MAX_FIELD),
