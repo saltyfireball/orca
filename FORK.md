@@ -2933,6 +2933,10 @@ ones `SLRM-123 `).
     rights in the agent's workspace, with a timeout (`forkGoalLoopTimeoutSeconds`).
   - **Hosts.** Each host runs the loop for its own agents; `--environment` sets a goal on an agent of
     a paired server, which must run this fork build. An agent in an SSH workspace is not looked at.
+    `goal-paired-server.test.ts` runs `orca goal set|list|clear --environment` through the CLI
+    client, the paired WebSocket and the server's handlers: the check runs in the server's folder,
+    and the loop there re-prompts a terminal or a chat until it passes, and stops at max rounds
+    and on the budget.
   - **Settings** (Settings > Blackfish, `orca settings`): `forkGoalLoop` (on; off pauses every
     goal), `forkGoalLoopIdleSeconds` (15), `forkGoalLoopMaxRounds` (10), `forkGoalLoopStallLimit`
     (2), `forkGoalLoopTimeoutSeconds` (600), `forkGoalLoopOutputLines` (40),
@@ -3347,6 +3351,7 @@ Apply these in this order. Each one is a single commit.
 179. `BAD-783 PR nudge and babysitter messages end with one sentence that grants no permission to merge and places no hold; the conflict request merges the base in by default, never mentions a force push, and forkPrNudgeConflictUpdate chooses rebase`
 180. `BAD-780 A failed GitHub API call no longer ends a fork release: the run's waits retry a 5xx, 429 or network error until their own deadline (fork-run-gate.mjs, fork-sync.sh released, upstream's lane-wait step with github-script retries), while a real lane failure or an auth or 4xx error still fails at once`
 181. `BAD-686 Command guards in the agent's info: a shield on each agent row and a command guard line in orca agent list|show say guarded or unguarded with the reason, from the host's status; a gap workspace clears once it has no live agent`
+182. `BAD-682 Goal loop on a paired server: a test sets, lists and clears a goal with --environment through the real client and pairing, and the server's loop runs the check there and stops on success, max rounds and the budget`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
