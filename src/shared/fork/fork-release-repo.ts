@@ -4,6 +4,12 @@ export const FORK_RELEASE_OWNER = 'saltyfireball'
 export const FORK_RELEASE_REPO = `${FORK_RELEASE_OWNER}/orca`
 export const FORK_RELEASES_URL = `https://github.com/${FORK_RELEASE_REPO}/releases`
 
+/** The feed the updater reads for a release build: the fork's latest release assets. */
+export const FORK_RELEASE_FEED = {
+  provider: 'generic',
+  url: `${FORK_RELEASES_URL}/latest/download`
+} as const
+
 /** The only repositories a fork build may list builds from or update from. */
 export const FORK_ALLOWED_RELEASE_REPOS: readonly string[] = [FORK_RELEASE_REPO]
 

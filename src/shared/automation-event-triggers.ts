@@ -86,10 +86,7 @@ export function automationEventKind(source: string, event: string): AutomationEv
 }
 
 /** The sources Orca Cloud delivers: a connector app's events. */
-export type ConnectorEventSource = Exclude<
-  AutomationEventSource,
-  'webhook' | 'automation' | GoogleEventSource
->
+export type ConnectorEventSource = Exclude<AutomationEventSource, chain.NoCloud | GoogleEventSource>
 
 /** One rule that starts the automation; the filters narrow where it listens. */
 export type AutomationEventTrigger =
@@ -300,11 +297,7 @@ function assertThreadResults(automation: Automation): void {
   if (triggers.some(isWebhookTrigger)) {
     throw new Error('A webhook call has no thread; send its results somewhere else.')
   }
-  if (triggers.some((trigger) => isGoogleTrigger(trigger) || chain.isChainTrigger(trigger))) {
-    throw new Error(
-      'A Gmail, Calendar or automation event has no thread; send its results somewhere else.'
-    )
-  }
+  chain.assertThreadSources(triggers, isGoogleTrigger)
   if (automation.bot?.runsIn !== 'new') {
     throw new Error(
       "A run that answers in the event's thread needs its own conversation (--runs-in new)."
@@ -349,8 +342,7 @@ export function assertAutomationEventTriggers(automation: Automation): void {
       assertGoogleTrigger(trigger)
       continue
     }
-    if (chain.isChainTrigger(trigger)) {
-      chain.assertChainTrigger(trigger)
+    if (chain.assertedChainTrigger(trigger)) {
       continue
     }
     if (

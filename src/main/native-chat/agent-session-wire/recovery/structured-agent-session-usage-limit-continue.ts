@@ -8,7 +8,7 @@ import {
 } from './structured-agent-session-usage-limit-chain'
 import type { AgentSessionStatusSummary } from '../../../../shared/agent-session/agent-session-wire'
 import { RestartContinuationSupersededError } from './structured-agent-session-restart-continuation'
-import { UsageLimitAccountHolds } from './structured-agent-session-usage-limit-account-hold'
+import { ForkUsageLimitAccountHolds } from '../../../fork/limit-resume/limit-resume-account-holds'
 import { UsageLimitColdCuts } from './structured-agent-session-usage-limit-cold-cuts'
 import { usageLimitContinueMutation } from './structured-agent-session-usage-limit-continue-message'
 import {
@@ -37,7 +37,7 @@ export class StructuredAgentSessionUsageLimitContinue {
   private running = false
   private disposed = false
   private readonly attempts = new Map<string, Attempt>()
-  private readonly holds = new UsageLimitAccountHolds()
+  private readonly holds = new ForkUsageLimitAccountHolds()
   private readonly cold: UsageLimitColdCuts
   private shown = new Set<string>()
   private readonly told = new Set<(sessionId?: string) => void>()
@@ -240,10 +240,6 @@ export class StructuredAgentSessionUsageLimitContinue {
           this.holds.askForRelaunchRoom(id, cut)
           continue
         }
-        // Fork (SLRM-2309): a draft in the message box holds the send only for a while past the reset.
-        if (this.holds.held(id, cut, this.deps.now())) {
-          continue
-        }
         const retryAt = attempt ? attempt.at + 60_000 * 2 ** Math.max(0, attempt.count - 1) : 0
         if (this.holds.ready(id, cut, this.deps.now(), retryAt)) {
           due.push({ id, cut, at: attempt?.at ?? 0 })
@@ -317,7 +313,6 @@ export class StructuredAgentSessionUsageLimitContinue {
             !current ||
             identity(current) !== identity(cut) ||
             !this.eligible(id, current) ||
-            this.holds.held(id, current, this.deps.now()) ||
             !this.holds.bindingHolds(id, this.deps.host, binding) ||
             !this.holds.ready(id, current, this.deps.now())
           ) {

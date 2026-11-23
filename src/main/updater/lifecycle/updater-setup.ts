@@ -30,7 +30,7 @@ import { sameTeamUpdateRestartScope } from './team-update-restart-record'
 import { configureMacShipItScheduling } from '../mac-install/macos-shipit-scheduling'
 import { handleElectronUpdaterProxyLogin } from './electron-updater-proxy-session'
 import { resolveWindowsUpdateInstallDirectory } from './windows-update-install-directory'
-import { FORK_RELEASES_URL } from '../../../shared/fork/fork-release-repo'
+import { FORK_RELEASE_FEED } from '../../../shared/fork/fork-release-repo'
 import type {
   PreQuitCleanupFailureMode,
   UpdateInstallMode,
@@ -203,10 +203,7 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
 
     // Security: never re-add a verifyUpdateCodeSignature override — a no-op disables electron-updater's built-in Authenticode check and accepts any installer.
     if (this.activeUpdateSource === 'release') {
-      autoUpdater.setFeedURL({
-        provider: 'generic',
-        url: `${FORK_RELEASES_URL}/latest/download`
-      })
+      autoUpdater.setFeedURL(FORK_RELEASE_FEED)
     }
     if (this.autoUpdaterInitialized) {
       return

@@ -8,7 +8,6 @@ import {
   agentSessionAccountHomePath,
   type AgentSessionAccountHome
 } from '../../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
-import { forkUsageLimitHeld } from '../../../fork/limit-resume/limit-resume-native'
 import {
   switchFreeIdentity,
   usageLimitContinueIdentity as identity,
@@ -310,11 +309,6 @@ export class UsageLimitAccountHolds {
         now >= waitFrom &&
         now < waitFrom + READING_WAIT_MS
     }
-  }
-
-  /** A draft in the message box holds the send only for a while past the reset it waits for. */
-  held(id: string, cut: { turnItemId: string; resetsAt: number }, now: number): boolean {
-    return forkUsageLimitHeld(id, now - this.verdict(id, cut, now).resetsAt)
   }
 
   /** The day Orca may still continue a cut runs from the reset it actually waits for. */

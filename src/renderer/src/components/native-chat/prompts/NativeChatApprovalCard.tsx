@@ -26,12 +26,7 @@ import { useNativeChatApprovalQuietDetail } from './use-native-chat-approval-qui
 import { approvalCardFrameClasses } from './native-chat-approval-card-frame'
 import { useNativeChatDockRefit } from '../pane/dock/use-native-chat-dock-fit'
 import { NativeChatUrlTarget, openUrlRequestPage } from './NativeChatUrlRequest'
-import { ForkApprovalRiskLine } from '@/fork/approval-triage/ForkApprovalRiskLine'
-import {
-  forkApprovalOptionHeld,
-  useForkApprovalRisk,
-  type ForkApprovalTriage
-} from '@/fork/approval-triage/fork-approval-triage'
+import { useForkApprovalCard, type ForkApprovalTriage } from '@/fork/approval-triage/card'
 
 export type NativeChatApprovalCardProps = {
   approval: ChatApproval
@@ -103,7 +98,7 @@ export function NativeChatApprovalCard({
           : option.label
   const stacked = placement !== 'composer'
   const joined = placement === 'dock'
-  const forkRisk = useForkApprovalRisk(approval, forkTriage)
+  const fork = useForkApprovalCard(approval, forkTriage)
   // A tool call's prompt reads as a quiet transcript row; plan reviews, sign-ins and prompts read
   // off a terminal screen keep the full card.
   const quiet = !parsedFromTerminal && url === null && !isPlanApprovalSubject(approval.subject)
@@ -199,7 +194,7 @@ export function NativeChatApprovalCard({
                   >
                     {titleContent ?? title}
                   </p>
-                  <ForkApprovalRiskLine grade={forkRisk} />
+                  {fork.line}
                   {worker ? (
                     <p
                       className={cn(
@@ -381,12 +376,10 @@ export function NativeChatApprovalCard({
                       describedBy={hasContext ? contentId : undefined}
                       urlRequest={url !== null}
                       quiet={quiet}
-                      disabled={
-                        newerSubject ||
-                        isSubmitting ||
-                        (opensUrl && readApprovalUrl(url) === null) ||
-                        forkApprovalOptionHeld(forkRisk, forkTriage, opt.send)
-                      }
+                      disabled={fork.hold(
+                        opt.send,
+                        newerSubject || isSubmitting || (opensUrl && readApprovalUrl(url) === null)
+                      )}
                       sending={isSubmitting && opt.send === submittingOption}
                       onClick={() => {
                         if (opensUrl) {

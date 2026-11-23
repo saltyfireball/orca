@@ -3499,8 +3499,9 @@ Upstream files only get short hooks, which keeps merges small:
   `structured-claude-thinking-display-refusal.test.ts` failed with `spawn bun ENOENT` when the
   runner ran outside `pnpm run`.
 - Fork settings (SLRM-1503): `global-settings-types.ts` builds `GlobalSettings` on
-  `WithForkSettings<GlobalSettingsBase>` (`src/shared/fork/fork-global-settings.ts`, one import
-  and one changed line), which adds `forkChatSurvive`, `forkShowAccountChip` and the SLRM-2095
+  `WithForkSettings<GlobalSettingsBase>` (`src/shared/fork/fork-global-settings.ts`; the stock file
+  imports its base from `src/shared/fork/fork-global-settings-base.ts`, one changed import path),
+  which adds `forkChatSurvive`, `forkShowAccountChip` and the SLRM-2095
   child count switches (`forkShowChildTally`, `forkChildTallyCountFinished`,
   `forkChildTallyCountTasks`); the file is at max-lines. `AdvancedPane.tsx` renders
   `ForkChildTallySetting` after `ForkAccountChipSetting` (SLRM-2095).
@@ -3740,10 +3741,11 @@ Upstream files only get short hooks, which keeps merges small:
   - `structured-agent-session-usage-limit-continue.ts` and
     `structured-agent-session-usage-limit-disposition.ts` (`usageLimitCutContinuable`,
     `usageLimitCutDisposition`): the chain cap reads `forkUsageLimitChainLimit()` (three places).
-    `structured-agent-session-usage-limit-continue.ts`: the sweep and the send's `beforeRun` also skip
-    a chat while `this.holds.held(...)`, which asks `forkUsageLimitHeld(id, overdueMs)` (BAD-707, in
-    `structured-agent-session-usage-limit-account-hold.ts`: a draft holds only
-    `forkLimitResumeHoldMaxMinutes` past the reset).
+    `structured-agent-session-usage-limit-continue.ts`: it makes `ForkUsageLimitAccountHolds`
+    (`src/main/fork/limit-resume/limit-resume-account-holds.ts`) in place of the stock
+    `UsageLimitAccountHolds`, whose `ready()` also waits while `forkUsageLimitHeld(id, overdueMs)`
+    holds, for the sweep and the send's `beforeRun` alike (BAD-707: a draft holds only
+    `forkLimitResumeHoldMaxMinutes` past the reset). The stock account-hold file has no fork lines.
   - `src/main/index.ts` calls `installForkLimitResumeBridge()` through
     `installForkChatBridges()`, `src/preload/index.ts` adds
     `forkLimitResume` (`src/preload/fork/limit-resume-bridge.ts`) and `api-types.ts` types it.
@@ -4161,8 +4163,9 @@ Upstream files only get short hooks, which keeps merges small:
     and the card is in the fork's Settings pane.
 - Small extras (SLRM-2397), from `src/shared/fork/approval-risk*.ts`, `workspace-tags.ts`,
   `prompt-stash.ts`, `saved-prompts.ts` and `src/renderer/src/fork/{approval-triage,workspace-tags,prompt-stash,saved-prompts}/`:
-  - `NativeChatApprovalCard.tsx` takes `forkTriage`, renders `ForkApprovalRiskLine` under the
-    title and disables an option `forkApprovalOptionHeld` names.
+  - `NativeChatApprovalCard.tsx` takes `forkTriage` and calls `useForkApprovalCard`
+    (`src/renderer/src/fork/approval-triage/card.tsx`): `fork.line` renders `ForkApprovalRiskLine`
+    under the title and `fork.hold` disables an option `forkApprovalOptionHeld` names.
     `NativeChatStructuredPromptCard.tsx` passes the chat's folder and session options;
     `use-structured-prompt-response-hold.ts` carries the folder (`NativeChatStructuredSession.tsx`
     passes `fileLinkContext` on its existing line, the file being at its line budget).
@@ -4538,7 +4541,8 @@ Upstream files only get short hooks, which keeps merges small:
 
 - Automation run triggers (BAD-689), small edits in stock files: `automation-event-triggers.ts`
   adds the `automation` source to `AUTOMATION_EVENT_KINDS`, `AutomationEventTrigger`,
-  `ConnectorEventSource` (excluded), `AutomationRunEvent.chain` and the validation;
+  `ConnectorEventSource` (excluded), `AutomationRunEvent.chain` and the validation, which calls
+  `assertedChainTrigger` and `assertThreadSources` from `automation-chain-triggers.ts`;
   `automation-service.ts` (`markDispatchResult` calls `startChainedRuns` once a run is final);
   `connector-triggers.ts` keeps `automation.*` rules out of the cloud's list;
   `automation-event-trigger-spec.ts` parses, formats and describes them;

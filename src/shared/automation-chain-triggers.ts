@@ -39,6 +39,32 @@ export function isChainTrigger<Rule extends { source: string }>(
   return trigger.source === CHAIN_EVENT_SOURCE
 }
 
+/** A source whose rules Orca Cloud never matches: a webhook call, or another automation's run. */
+export type NoCloud = 'webhook' | typeof CHAIN_EVENT_SOURCE
+
+/** Gmail, Calendar and automation events have no thread to answer in. */
+export function assertThreadSources<Rule extends { source: string }>(
+  triggers: readonly Rule[],
+  isGoogle: (trigger: Rule) => boolean
+): void {
+  if (triggers.some((trigger) => isGoogle(trigger) || isChainTrigger(trigger))) {
+    throw new Error(
+      'A Gmail, Calendar or automation event has no thread; send its results somewhere else.'
+    )
+  }
+}
+
+/** Checks a chain rule and says it was one, so the caller skips the connector checks. */
+export function assertedChainTrigger<Rule extends { source: string }>(
+  trigger: Rule
+): trigger is Extract<Rule, { source: typeof CHAIN_EVENT_SOURCE }> {
+  if (!isChainTrigger(trigger)) {
+    return false
+  }
+  assertChainTrigger(trigger as unknown as AutomationChainTrigger)
+  return true
+}
+
 export function assertChainTrigger(trigger: AutomationChainTrigger): void {
   const texts = [...(trigger.automation ?? []), ...(trigger.bot ?? [])]
   if (
