@@ -143,6 +143,8 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Deny an agent\'s destructive shell commands (a safety net, not a sandbox); unset is on.","o":true}',
   forkCompletionContract:
     '{"t":{"k":"boolean"},"d":"Completion contract (BAD-676): run a Task\'s done checks before its worker\'s done settles it. Off turns every contract into a plain done; unset is on.","o":true}',
+  forkCompletionContractLaterPushHours:
+    '{"t":{"k":"number"},"d":"Completion contract: hours after a Task with --require-pr-checks settles in which a later push to its open pull request is checked again (0 to 168, 0 is off); unset is 24.","o":true}',
   forkCompletionContractMaxRounds:
     '{"t":{"k":"number"},"d":"Completion contract: failed done reports sent back to the worker before the Task escalates (1 to 10); unset is 2.","o":true}',
   forkCompletionContractOutputLines:

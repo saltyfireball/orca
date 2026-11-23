@@ -28,6 +28,13 @@ export type ContractAttempt = {
 
 const ready = new WeakSet<Database.Database>()
 
+/** Told when a contract that asks for pull request checks is saved: the later-push watch looks. */
+let prContractSaved: ((handle: ContractDbHandle) => void) | null = null
+
+export function onPrContractSaved(listener: ((handle: ContractDbHandle) => void) | null): void {
+  prContractSaved = listener
+}
+
 function ensureTables(handle: ContractDbHandle): Database.Database {
   const { db } = handle
   if (!ready.has(db)) {
@@ -76,6 +83,9 @@ export function saveContract(
       contract.requirePrChecks ? 1 : 0,
       contract.maxRounds
     )
+  if (contract.requirePrChecks) {
+    prContractSaved?.(handle)
+  }
 }
 
 type ContractRow = {
@@ -139,6 +149,40 @@ export function recordAttempt(
     db.exec('ROLLBACK')
     throw error
   }
+}
+
+/** An attempt that changes no round or escalation: the later-push watch's reads of a settled Task. */
+export function insertAttempt(
+  handle: ContractDbHandle,
+  input: {
+    taskId: string
+    dispatchId: string | null
+    outcome: 'pass' | 'fail'
+    results: ForkDoneCheckResult[]
+  }
+): void {
+  ensureTables(handle)
+    .prepare(
+      'INSERT INTO fork_done_attempts (task_id, dispatch_id, outcome, results) VALUES (?, ?, ?, ?)'
+    )
+    .run(input.taskId, input.dispatchId, input.outcome, JSON.stringify(input.results))
+}
+
+/** The newest pull request result that named its head: what the Task was last judged on. */
+export function lastPrResult(
+  handle: ContractDbHandle,
+  taskId: string
+): (ForkDoneCheckResult & { headSha: string }) | null {
+  for (const attempt of listAttempts(handle, taskId).toReversed()) {
+    const pr = attempt.results.find(
+      (result): result is ForkDoneCheckResult & { headSha: string } =>
+        typeof result.headSha === 'string' && !result.pending
+    )
+    if (pr) {
+      return pr
+    }
+  }
+  return null
 }
 
 /** A gate the Task asked for did not run: kept as an attempt so `orca contract show` says so. */

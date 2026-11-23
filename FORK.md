@@ -2775,12 +2775,31 @@ ones `SLRM-123 `).
     coordinator as an `escalation` message with the last output, and the Task is listed in
     `orca contract show` as escalated. The coordinator re-dispatches the Task or accepts it with
     `task-update`; a later passing done clears it.
+  - **Later push.** A Task with `--require-pr-checks` is watched after it settles, for
+    `forkCompletionContractLaterPushHours` (24; 0 is off) and only while its pull request is open.
+    A new head whose required checks are green is kept as a `pass` attempt and says nothing. A red
+    one is kept as a `fail` attempt and sends the coordinator one `escalation` per head (the Task,
+    the pull request, the head and the failing checks, whose names are fenced as untrusted data)
+    and a Decision inbox row "Task <id>" until you dismiss it. Checks still running wait. The
+    settled Task is not reopened or changed (Tasks that depend on it may have started), and the
+    message says so. Nothing is sent while a follow-up or retry of that worker, or another open
+    Dispatch in the same workspace, works on it (a newer Task in that workspace takes the watch
+    over). The watch is armed by the orchestration database's own change events once a settle
+    commits, so a Task without the contract is never read; it lives in the fork-owned
+    `fork_done_watches` table, so it survives a restart. Reads come from the pull request read
+    Orca already does for the UI (a new head for that workspace wakes the watch at once) and
+    otherwise from one timer that backs off from a minute to half an hour and stops when no watch
+    is left. A Task whose worker ran on a paired server is read by that server in its workspace
+    (RPC `fork.completionContract.laterPush`; it keeps the attempt) and the message is sent on the
+    Run home. A Task another coordinator works on in a different workspace of the same pull request
+    is not detected.
   - **Evidence.** `orca contract show <task_id>` (RPC `fork.completionContract.show`) prints the
     declared checks and every attempt with its exit code, time and the tail of its output.
   - **Settings** (Settings > Blackfish, `orca settings`): `forkCompletionContract` (on; off makes
     every contract a plain done), `forkCompletionContractMaxRounds` (2),
     `forkCompletionContractTimeoutSeconds` (600 per command; a command past it is killed by its
-    own handle and counts as failed), `forkCompletionContractOutputLines` (40).
+    own handle and counts as failed), `forkCompletionContractOutputLines` (40),
+    `forkCompletionContractLaterPushHours` (24, 0 to 168; 0 turns the later-push watch off).
   - **Decision inbox.** An escalated Task is a row "Task <id>" (`orca inbox list` shows it as
     `done-checks`) until the Task completes or you dismiss it. It has no chat to answer: the
     reason names `orca contract show`. The inbox source is installed where the orchestration
@@ -2796,7 +2815,10 @@ ones `SLRM-123 `).
     over the store, `check-runner.ts`, `pr-checks.ts`, `contract-store.ts`,
     `completion-gate-live.ts` the hooks), `src/shared/fork/completion-contract.ts` (the pure
     state machine, fencing and settings), `src/cli/fork/completion-contract-*.ts` and
-    `src/main/runtime/rpc/methods/fork/fork-completion-contract.ts`.
+    `src/main/runtime/rpc/methods/fork/fork-completion-contract.ts`; the later-push watch is
+    `later-push-watch.ts` (arming, timer, message), `later-push-live.ts` (the hook and the
+    local or paired-server read), `later-push-read.ts` (one read on the host the checks ran on),
+    `later-push-store.ts` and `later-push-graph-reads.ts`.
 
 - **Reviewer gate: a second agent reviews a worker's head before its done settles the Task (BAD-683).**
   Cross-model review was a ritual run by hand. A Task can now ask for it, and Orca runs it when the
@@ -3352,6 +3374,7 @@ Apply these in this order. Each one is a single commit.
 180. `BAD-780 A failed GitHub API call no longer ends a fork release: the run's waits retry a 5xx, 429 or network error until their own deadline (fork-run-gate.mjs, fork-sync.sh released, upstream's lane-wait step with github-script retries), while a real lane failure or an auth or 4xx error still fails at once`
 181. `BAD-686 Command guards in the agent's info: a shield on each agent row and a command guard line in orca agent list|show say guarded or unguarded with the reason, from the host's status; a gap workspace clears once it has no live agent`
 182. `BAD-682 Goal loop on a paired server: a test sets, lists and clears a goal with --environment through the real client and pairing, and the server's loop runs the check there and stops on success, max rounds and the budget`
+183. `BAD-676 A later push re-evaluates: a push to the open pull request of a settled --require-pr-checks Task is read again for forkCompletionContractLaterPushHours (24); green is a pass attempt, red a fail attempt and one escalation per head with a Decision inbox row, read where the checks ran and sent on the Run home`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4539,7 +4562,10 @@ Upstream files only get short hooks, which keeps merges small:
   `readForkDoneContractFlags(flags)`. `fork.completionContract.show` is spread into
   `FORK_BRANCH_CLASHES_METHODS`, so `rpc-method-registry.ts` is untouched;
   `rpc-params-catalog.generated.ts` is regenerated. The four settings are intersected in
-  `fork-global-settings.ts`; `settings-rows-fork.generated.ts` is regenerated.
+  `fork-global-settings.ts`; `settings-rows-fork.generated.ts` is regenerated. The later push
+  adds one line to `runtime-orchestration-database-access.ts`, `installForkLaterPushWatch` where
+  the database opens; `fork.completionContract.laterPush` rides the same method list and its
+  setting the same settings type, and both generated catalogs are regenerated.
 
 - Spend caps for every agent (BAD-679), small edits in stock files:
   `codex-structured-journal-translation.ts` calls `forkUsageLedgerObserveCodexChatUsage` after

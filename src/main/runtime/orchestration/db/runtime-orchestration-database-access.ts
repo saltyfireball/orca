@@ -8,6 +8,7 @@ import { isStructuredWorkerHandle } from '../../../../shared/orchestration/worke
 import { committedHandBackTypes, type MailHandBack } from './messages/helper-mailbox-hand-back'
 import { existsSync } from 'node:fs'
 import { installForkContractInboxSource } from '../../../fork/completion-contract/contract-inbox'
+import { installForkLaterPushWatch } from '../../../fork/completion-contract/later-push-live'
 import { installForkWorkerRetry } from '../../../fork/worker-retry/worker-retry-live'
 import type { OrcaRuntimeService } from '../../orca-runtime'
 import { structuredMailboxCustody } from '../mailbox/routing/structured-session-mail-target'
@@ -39,6 +40,8 @@ export abstract class RuntimeOrchestrationDatabaseAccess extends OrcaRuntimeWith
       this._orchestrationDb = db
       // Fork (BAD-676): done-check escalations list in the Decision inbox.
       installForkContractInboxSource(db)
+      // Fork (BAD-676): a push after a --require-pr-checks Task settled is checked again.
+      installForkLaterPushWatch(this as unknown as OrcaRuntimeService, db)
       // Fork (BAD-681): restarts a worker that exited, was lost or hit a provider error.
       installForkWorkerRetry(this as unknown as OrcaRuntimeService, db)
       this.orchestrationDbMaintenance = new OrchestrationDbMaintenance(
