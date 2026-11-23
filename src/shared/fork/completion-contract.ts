@@ -100,6 +100,11 @@ export function forkDoneContractOf(raw: unknown): ForkDoneContract | null {
   return { checks, requirePrChecks, maxRounds: parsed.data.forkDoneMaxRounds ?? null }
 }
 
+/** The one plain line a done carries when a gate the Task asked for did not run (BAD-763). */
+export function skippedLine(what: string, why: string, host: string): string {
+  return `Orca did not run ${what}: ${why} (on ${host}).`
+}
+
 export type ContractOutcome = 'pass' | 'fail' | 'pending'
 
 export type ContractDecision =

@@ -249,6 +249,8 @@ export type ReviewGateState = {
   /** Reports of a head that already has findings, since its findings were last told. */
   repeatReports: number
   escalated: boolean
+  /** True when the all-Tasks setting made the row; the Task did not ask for the review itself. */
+  implicit: boolean
 }
 
 export type ReviewDecision =

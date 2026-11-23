@@ -22,7 +22,7 @@ export type ContractAttempt = {
   taskId: string
   dispatchId: string | null
   at: string
-  outcome: 'pass' | 'fail' | 'pending'
+  outcome: 'pass' | 'fail' | 'pending' | 'skipped'
   results: ForkDoneCheckResult[]
 }
 
@@ -139,6 +139,23 @@ export function recordAttempt(
     db.exec('ROLLBACK')
     throw error
   }
+}
+
+/** A gate the Task asked for did not run: kept as an attempt so `orca contract show` says so. */
+export function recordSkip(
+  handle: ContractDbHandle,
+  taskId: string,
+  dispatchId: string | null,
+  note: string
+): void {
+  const results: ForkDoneCheckResult[] = [
+    { check: 'not run', ok: true, exitCode: null, output: note, durationMs: 0 }
+  ]
+  ensureTables(handle)
+    .prepare(
+      "INSERT INTO fork_done_attempts (task_id, dispatch_id, outcome, results) VALUES (?, ?, 'skipped', ?)"
+    )
+    .run(taskId, dispatchId, JSON.stringify(results))
 }
 
 export function listAttempts(handle: ContractDbHandle, taskId: string): ContractAttempt[] {

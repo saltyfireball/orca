@@ -28,7 +28,9 @@ export function forkTaskContractWire(
   taskId: string
 ): ForkContractWire | null {
   const state = readContract(db, taskId)
-  const review = readReviewGate(db, taskId)
+  // A row the all-Tasks setting made is that setting's, not a request to carry.
+  const found = readReviewGate(db, taskId)
+  const review = found && !found.implicit ? found : null
   if (!state && !review) {
     return null
   }
@@ -84,7 +86,7 @@ export function forkCarryContract(
   }
   if (!readReviewGate(db, toTaskId)) {
     const review = readReviewGate(db, fromTaskId)
-    if (review) {
+    if (review && !review.implicit) {
       saveReviewGate(db, toTaskId, review.gate)
     }
   }

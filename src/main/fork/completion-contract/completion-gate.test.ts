@@ -108,14 +108,14 @@ describe('runCompletionGate', () => {
     expect((await runCompletionGate(deps, request)).kind).toBe('escalate')
   })
 
-  it('is off with the setting off', async () => {
+  it('does not run or block with the setting off, and says so (BAD-763)', async () => {
     const { deps, request, handle } = fixture(exits([1]))
     saveContract(handle, 'task_1', { checks: ['false'], requirePrChecks: false, maxRounds: null })
     const off = {
       ...deps,
       settings: () => readCompletionContractSettings({ forkCompletionContract: false })
     }
-    expect(await runCompletionGate(off, request)).toEqual({ kind: 'none' })
+    expect((await runCompletionGate(off, request)).kind).toBe('skipped')
   })
 
   it('fails a contract with no workspace to run in', async () => {

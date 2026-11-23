@@ -8,12 +8,14 @@ import {
   evidenceText,
   fenceUntrusted,
   outcomeOfResults,
+  skippedLine,
   type CompletionContractSettings,
   type ForkDoneCheckResult
 } from '../../../shared/fork/completion-contract'
 import { runDoneCheck, type CheckRunner, type CheckTarget } from './check-runner'
 import { evaluatePrChecks, type PrChecksPort } from './pr-checks'
-import { readContract, recordAttempt, type ContractDbHandle } from './contract-store'
+import { hostname } from 'node:os'
+import { readContract, recordAttempt, recordSkip, type ContractDbHandle } from './contract-store'
 
 /** Where the worker's workspace is, and what ports reach it. Tests pass fakes. */
 export type GateWorkspace = {
@@ -29,6 +31,8 @@ export type GateDeps = {
   db: ContractDbHandle
   settings: () => CompletionContractSettings
   workspace: (worktreeId: string | null) => Promise<GateWorkspace | null>
+  /** The name of this host, for the line a skipped gate leaves. */
+  host?: () => string
 }
 
 export type GateRequest = {
@@ -42,6 +46,8 @@ export type GateRequest = {
 export type GateOutcome =
   | { kind: 'none' }
   | { kind: 'pass'; evidence: string }
+  /** Off by setting: the checks did not run, the done is not blocked, and the done says so. */
+  | { kind: 'skipped'; note: string }
   | { kind: 'bounce'; text: string }
   | { kind: 'escalate'; text: string; failedRounds: number }
 
@@ -101,9 +107,19 @@ async function runChecks(
 export function runCompletionGate(deps: GateDeps, request: GateRequest): Promise<GateOutcome> {
   return serial(request.taskId, async () => {
     const settings = deps.settings()
-    const state = settings.enabled ? readContract(deps.db, request.taskId) : null
+    const state = readContract(deps.db, request.taskId)
     if (!state || request.outcome !== 'succeeded') {
       return { kind: 'none' }
+    }
+    if (!settings.enabled) {
+      const count = state.contract.checks.length + (state.contract.requirePrChecks ? 1 : 0)
+      const note = skippedLine(
+        `this Task's ${count} declared done check(s)`,
+        'the completion contract setting (forkCompletionContract) is off',
+        (deps.host ?? hostname)()
+      )
+      recordSkip(deps.db, request.taskId, request.dispatchId, note)
+      return { kind: 'skipped', note }
     }
     const results = await runChecks(
       deps,

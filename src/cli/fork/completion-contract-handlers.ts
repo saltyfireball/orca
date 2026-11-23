@@ -8,8 +8,9 @@ import type { ForkCompletionContractShowResult } from '../../shared/fork/complet
 export function formatForkContract(result: ForkCompletionContractShowResult): string {
   const review = formatForkReview(result)
   if (!result.declared) {
-    return result.review
-      ? review.join('\n')
+    const skipped = result.attempts.flatMap(formatForkAttempt)
+    return result.review || skipped.length > 0
+      ? [...skipped, ...formatForkServers(result), ...review].join('\n')
       : `Task ${result.taskId} declares no done checks and asks for no review.`
   }
   const lines = [
@@ -18,19 +19,28 @@ export function formatForkContract(result: ForkCompletionContractShowResult): st
   for (const check of result.checks) {
     lines.push(`  check: ${check}`)
   }
-  for (const attempt of result.attempts) {
-    lines.push(
-      `${attempt.at} ${attempt.outcome}${attempt.dispatchId ? ` (${attempt.dispatchId})` : ''}`
-    )
-    for (const entry of attempt.results) {
-      const how = entry.ok ? 'ok' : entry.pending ? 'running' : `exit ${entry.exitCode ?? 'none'}`
-      lines.push(`  ${entry.check}: ${how}`)
-      if (entry.output) {
-        lines.push(...entry.output.split('\n').map((line) => `    ${line}`))
-      }
+  lines.push(...result.attempts.flatMap(formatForkAttempt))
+  return [...lines, ...formatForkServers(result), ...review].join('\n')
+}
+
+function formatForkAttempt(
+  attempt: ForkCompletionContractShowResult['attempts'][number]
+): string[] {
+  const lines = [
+    `${attempt.at} ${attempt.outcome}${attempt.dispatchId ? ` (${attempt.dispatchId})` : ''}`
+  ]
+  for (const entry of attempt.results) {
+    if (attempt.outcome === 'skipped') {
+      lines.push(`  ${entry.output}`)
+      continue
+    }
+    const how = entry.ok ? 'ok' : entry.pending ? 'running' : `exit ${entry.exitCode ?? 'none'}`
+    lines.push(`  ${entry.check}: ${how}`)
+    if (entry.output) {
+      lines.push(...entry.output.split('\n').map((line) => `    ${line}`))
     }
   }
-  return [...lines, ...formatForkServers(result), ...review].join('\n')
+  return lines
 }
 
 function formatForkServers(result: ForkCompletionContractShowResult): string[] {

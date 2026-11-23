@@ -1,6 +1,6 @@
 // BAD-763: the contract and review request travel with the work. Two orchestration databases stand
 // for the Run home and a paired server; the server's gate runs real commands in a real folder.
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -98,7 +98,7 @@ describe('forkStartCarriesContract', () => {
 })
 
 describe('a Task started on a paired server is checked there', () => {
-  function rig(check: string) {
+  function rig(check: string, settings: object = {}) {
     const folder = mkdtempSync(join(tmpdir(), 'carry-folder-'))
     dirs.push(folder)
     const homeRig = home()
@@ -143,7 +143,7 @@ describe('a Task started on a paired server is checked there', () => {
     // The server's project is a plain folder: the checks must still run, in that folder.
     const runtime = {
       requireStore: () => ({
-        getSettings: () => ({}),
+        getSettings: () => settings,
         getRepo: () => ({ id: 'repo_1', kind: 'folder', path: folder }),
         getRepos: () => [],
         getProjectGroups: () => []
@@ -171,7 +171,7 @@ describe('a Task started on a paired server is checked there', () => {
       })
     const relayed = () =>
       server.db.prepare('SELECT payload FROM federation_relay_items').all() as { payload: string }[]
-    return { homeRig, server, task, dispatch, report, relayed }
+    return { homeRig, server, task, dispatch, report, relayed, folder }
   }
 
   const callServer =
@@ -209,6 +209,32 @@ describe('a Task started on a paired server is checked there', () => {
     expect(JSON.parse(items[0]!.payload).body).toMatch(/test|check/i)
     const shown = await showWithServerEvidence(homeRig.db, task.id, callServer(server))
     expect(shown.attempts.map((a) => a.outcome)).toEqual(['pass'])
+  })
+
+  it('runs a folder project check in that folder: a marker file there is found, a missing one is not', async () => {
+    const found = rig('test -f folder-marker.txt')
+    writeFileSync(join(found.folder, 'folder-marker.txt'), 'here')
+    await found.report()
+    expect(found.relayed()).toHaveLength(1)
+
+    const missing = rig('test -f folder-marker.txt')
+    const answer = (await missing.report()) as { lifecycle: { code: string } }
+    expect(answer.lifecycle.code).toBe('done_checks_failed')
+    expect(missing.relayed()).toHaveLength(0)
+  })
+
+  it('sends the done home with a line saying the checks did not run when the server has them off', async () => {
+    const { server, homeRig, task, report, relayed } = rig('exit 1', {
+      forkCompletionContract: false
+    })
+    await report()
+    const body = JSON.parse(relayed()[0]!.payload).body as string
+    expect(body).toContain('all finished')
+    expect(body).toMatch(
+      /Orca did not run this Task's 1 declared done check\(s\).*forkCompletionContract.*\(on .+\)\./
+    )
+    const shown = await showWithServerEvidence(homeRig.db, task.id, callServer(server))
+    expect(shown.attempts.map((a) => a.outcome)).toEqual(['skipped'])
   })
 
   it('escalates to the Run home when the checks keep failing', async () => {

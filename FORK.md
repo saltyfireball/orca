@@ -2817,9 +2817,16 @@ ones `SLRM-123 `).
   - **A server that cannot take them.** A server that does not advertise
     `orchestration.fork-contract-carry.v1` (an older build) would settle the done unchecked, so a
     start that has a contract or review to carry is refused before anything is created, with
-    "No effects were applied". A start with neither starts as before. A server whose own
-    `forkCompletionContract` setting is off treats the contract as a plain done, as it does for its
-    own Tasks.
+    "No effects were applied". A start with neither starts as before.
+  - **A gate that is off or cannot run says so.** Off stays off: nothing is run and the done is not
+    blocked. But for a Task that declared the contract or asked for the review itself, the done the
+    coordinator reads carries one plain line, "Orca did not run X: <why> (on <host>).", and
+    `orca contract show` lists an attempt with outcome `skipped` holding that line. This covers
+    `forkCompletionContract` off (here or on the server), `forkReviewerGate` off with a review
+    requested, and a requested review in a folder workspace (a folder has no commit). A Task with
+    no contract, a review made only by `forkReviewerGateAllTasks`, and a worker that reported
+    failed gain no text. The all-Tasks rows are marked `implicit` in `fork_review_gates` (a column
+    added on first use) and are never carried to a server or a retry.
   - **Retries and follow-ups.** A retry (BAD-681/BAD-765), a follow-up sent to a finished worker and
     `worker-start --retry-of` create a new Task. It takes the contract and the review request of the
     Task it continues, with the rounds at zero, unless its own request declares a contract or review
@@ -2831,9 +2838,6 @@ ones `SLRM-123 `).
     Task's workers ran on for its check attempts and review runs (RPC `fork.completionContract.show`
     on the server, 15 s limit) and prints them with the home's own, with one line per server; a
     server that does not answer is named with the reason instead of being left out.
-  - **Not covered.** A server that runs this build but has `forkCompletionContract` off, and
-    workers on servers older than this change, which the refusal above keeps from starting with a
-    contract.
   - Code: `src/main/fork/completion-contract/contract-carry.ts` (what travels and the retry copy),
     `gate-subject.ts` (a local Dispatch or a remote attachment as one shape for both gates),
     `gate-workspace.ts` (folder workspaces) and `contract-show.ts` (the home's read-through).
@@ -3265,6 +3269,7 @@ Apply these in this order. Each one is a single commit.
 170. `BAD-766 Spend caps reach every agent: orca guards automation-cap is routed, terminal and paired-server workers join their Run, a goal budget reads terminal spend with no cap set, and the cap view says which agents are not counted`
 171. `BAD-763 The completion contract and reviewer gate follow the work: a start on a paired server carries them and that server gates the done, retries and follow-ups inherit them, folder workspaces run command checks, and orca contract show reads the server's evidence`
 172. `BAD-767 Snapshots also cover Lost work deletes of untracked worktrees and prune on a timer; SSH removal stays refused by the stock route, pinned by a test`
+173. `BAD-763 A done never settles unchecked in silence: a Task that declared checks or asked for a review gets one plain line on its done, and an attempt in orca contract show, when the setting is off or a folder has no commit to review`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

@@ -176,6 +176,11 @@ async function gateByContract<P extends SendShape>(
         kind: 'carry-on',
         params: { ...params, body: [params.body, outcome.evidence].filter(Boolean).join('\n\n') }
       }
+    case 'skipped':
+      return {
+        kind: 'carry-on',
+        params: { ...params, body: [params.body, outcome.note].filter(Boolean).join('\n\n') }
+      }
     case 'bounce':
       return {
         kind: 'answer',

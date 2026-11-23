@@ -40,7 +40,7 @@ export type ForkCompletionContractShowResult = {
   attempts: {
     at: string
     dispatchId: string | null
-    outcome: 'pass' | 'fail' | 'pending'
+    outcome: 'pass' | 'fail' | 'pending' | 'skipped'
     results: ForkDoneCheckResult[]
   }[]
 }

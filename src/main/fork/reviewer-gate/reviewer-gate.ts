@@ -25,6 +25,7 @@ import {
   type ReviewRunRecord
 } from '../../../shared/fork/reviewer-gate'
 import { tailLines } from '../../../shared/fork/completion-contract'
+import { reviewSkipped } from './reviewer-skip'
 import type { CheckRunner, CheckTarget } from '../completion-contract/check-runner'
 import {
   countErrorRunsOfHead,
@@ -55,6 +56,8 @@ export type ReviewGateDeps = {
   /** Tells the worker a result; false when it could not be delivered. */
   deliver: (dispatchId: string, text: string) => Promise<boolean>
   platform?: NodeJS.Platform
+  /** The name of this host, for the line a skipped review leaves. */
+  host?: () => string
   /** Waits between delivery attempts. */
   sleep?: (ms: number) => Promise<void>
 }
@@ -70,6 +73,8 @@ export type ReviewGateRequest = {
 export type ReviewGateOutcome =
   | { kind: 'none' }
   | { kind: 'pass'; evidence: string }
+  /** A review the Task asked for did not run; the done says so. */
+  | { kind: 'skipped'; note: string }
   /** The report is turned back; the Task stays open. */
   | { kind: 'hold'; text: string }
   | { kind: 'escalate'; text: string }
@@ -228,16 +233,21 @@ export function runReviewGate(
 ): Promise<ReviewGateOutcome> {
   return serial(request.taskId, async () => {
     const settings = deps.settings()
-    if (!settings.enabled || request.outcome !== 'succeeded') {
+    if (request.outcome !== 'succeeded') {
       return { kind: 'none' }
     }
     let state = readReviewGate(deps.db, request.taskId)
+    const skip = (why: string): ReviewGateOutcome =>
+      reviewSkipped(deps.db, request, state, why, deps.host)
+    if (!settings.enabled) {
+      return skip('the reviewer gate setting (forkReviewerGate) is off')
+    }
     const gate = effectiveReviewGate(state?.gate ?? null, settings)
     if (!gate) {
       return { kind: 'none' }
     }
     if (!state) {
-      saveReviewGate(deps.db, request.taskId, gate)
+      saveReviewGate(deps.db, request.taskId, gate, true)
       state = readReviewGate(deps.db, request.taskId)
     }
     if (!state) {
@@ -246,7 +256,7 @@ export function runReviewGate(
     const maxRounds = gate.maxRounds ?? settings.maxRounds
     const workspace = await deps.workspace(request.worktreeId)
     if (workspace && !workspace.git) {
-      return { kind: 'none' }
+      return skip('the workspace is a folder, which has no commit to review')
     }
     const head = workspace ? await readHead(workspace) : null
     if (!workspace || !head) {

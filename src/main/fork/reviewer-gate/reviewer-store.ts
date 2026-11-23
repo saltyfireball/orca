@@ -48,6 +48,11 @@ function ensureTables(handle: ReviewDbHandle): Database.Database {
     db.exec(
       "UPDATE fork_review_runs SET status = 'error', finished_at = datetime('now'), output = 'Orca closed before the review finished.' WHERE status = 'running'"
     )
+    // BAD-763: a row the all-Tasks setting made, as opposed to a review the Task asked for.
+    const columns = db.prepare('PRAGMA table_info(fork_review_gates)').all() as { name: string }[]
+    if (!columns.some((column) => column.name === 'implicit')) {
+      db.exec('ALTER TABLE fork_review_gates ADD COLUMN implicit INTEGER NOT NULL DEFAULT 0')
+    }
     ready.add(db)
   }
   return db
@@ -59,6 +64,7 @@ type GateRow = {
   max_rounds: number | null
   repeat_reports: number
   escalated: number
+  implicit: number
 }
 
 type RunRow = {
@@ -93,28 +99,34 @@ function runOf(row: RunRow): ReviewRunRecord {
   }
 }
 
-export function saveReviewGate(handle: ReviewDbHandle, taskId: string, gate: ForkReviewGate): void {
+export function saveReviewGate(
+  handle: ReviewDbHandle,
+  taskId: string,
+  gate: ForkReviewGate,
+  implicit = false
+): void {
   ensureTables(handle)
     .prepare(
-      `INSERT INTO fork_review_gates (task_id, focus, agent, max_rounds) VALUES (?, ?, ?, ?)
+      `INSERT INTO fork_review_gates (task_id, focus, agent, max_rounds, implicit) VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(task_id) DO UPDATE SET focus = excluded.focus, agent = excluded.agent,
-         max_rounds = excluded.max_rounds, repeat_reports = 0, escalated = 0`
+         max_rounds = excluded.max_rounds, implicit = excluded.implicit, repeat_reports = 0, escalated = 0`
     )
-    .run(taskId, gate.focus, gate.agent, gate.maxRounds)
+    .run(taskId, gate.focus, gate.agent, gate.maxRounds, implicit ? 1 : 0)
 }
 
 /** The Task's stored review request, or null when it has none. */
 export function readReviewGate(handle: ReviewDbHandle, taskId: string): ReviewGateState | null {
   const row = ensureTables(handle)
     .prepare(
-      'SELECT focus, agent, max_rounds, repeat_reports, escalated FROM fork_review_gates WHERE task_id = ?'
+      'SELECT focus, agent, max_rounds, repeat_reports, escalated, implicit FROM fork_review_gates WHERE task_id = ?'
     )
     .get(taskId) as GateRow | undefined
   return row
     ? {
         gate: { focus: row.focus, agent: row.agent, maxRounds: row.max_rounds },
         repeatReports: row.repeat_reports,
-        escalated: row.escalated === 1
+        escalated: row.escalated === 1,
+        implicit: row.implicit === 1
       }
     : null
 }
