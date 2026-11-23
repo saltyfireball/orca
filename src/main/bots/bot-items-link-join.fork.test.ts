@@ -23,6 +23,9 @@ const worker: BotWorkWorker = {
 }
 // The same Task's earlier attempt on a paired server; a local retry (ctx_1) finished it.
 const serverAttempt: BotWorkWorker = { ...worker, dispatchId: 'ctx_srv', host: 'env-1' }
+vi.mock('../runtime/orchestration/dock/worker-dock-read', () => ({
+  readWorkerDockReasons: () => new Map()
+}))
 vi.mock('./bot-work-runtime', () => ({
   readWorkers: async (_runtime: unknown, ids: readonly string[]) =>
     new Map(ids.map((id) => [id, id === 'ctx_srv' ? serverAttempt : worker])),
