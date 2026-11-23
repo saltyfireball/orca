@@ -729,7 +729,7 @@ ones `SLRM-123 `).
   - **Skipped with a reason** (the chat runs with every server and says why): the chat runs inside
     WSL, the Claude launch arguments in Settings already set `mcp-config` or
     `strict-mcp-config`, or an enterprise `managed-mcp.json` is installed.
-  - **On the chat.** `NativeChatStructuredSessionStatus` shows "MCP profile: X" with a picker and
+  - **On the chat.** The chat's status area (`forkBanners`, above the worker dock) shows "MCP profile: X" with a picker and
     the servers the last start got (tooltip). A change to a live chat applies at its next start
     (sleep, restart or resume) and the strip says so. Per-chat state is
     `<userData>/fork-mcp-profiles/chats.json`.
@@ -3563,8 +3563,10 @@ Upstream files only get short hooks, which keeps merges small:
     exit code (a queued worker exits 0) and prints `printForkQueuedLaunch` after the result.
   - `src/preload/index.ts` adds `forkAgentQueue` (`src/preload/fork/agent-queue-bridge.ts`) and
     `api-types.ts` types it as optional.
-  - `NativeChatStructuredSessionStatus.tsx` renders `ForkAgentQueueBanner` first (it sits right
-    under the queued-message list; `NativeChatStructuredSession.tsx` is at max-lines);
+  - `use-structured-native-chat-subagents.tsx` returns `forkBanners` (`ForkAgentQueueBanner`, then
+    `ForkMcpProfileStrip`) and `NativeChatStructuredSession.tsx` renders it right before the dock,
+    under the queued-message list. They sit outside the dock's strip because upstream's dock shows
+    that strip only while the chat has work or a crew, and a queued chat has neither;
     `ForkTabTitle` renders `ForkAgentQueueTabBadge`; `AdvancedPane.tsx` renders
     `ForkAgentQueueSetting` after `ForkChildTallySetting`; the five settings are in
     `fork-global-settings.ts`.
@@ -3637,13 +3639,16 @@ Upstream files only get short hooks, which keeps merges small:
 
 - Limit resume (SLRM-2309), from `src/shared/fork/limit-resume*.ts`, `src/main/fork/limit-resume/`
   and `src/renderer/src/fork/limit-resume/`. On unless `forkLimitResume` is false:
-  - `orca-runtime.ts` and orcad's `core-runtime-activation.ts` now call
+  - `agent-launch-record-warmup.ts` (`markStartupSettled`, desktop and `orca serve`; upstream's
+    `orca-runtime.ts` is at its line limit) and orcad's `core-runtime-activation.ts` now call
     `startForkRuntimeSettleServices(...)` (`src/main/fork/runtime-settle-hooks.ts`) in place of
     `startForkUnattendedResume(...)`; it starts limit resume and the other settle services.
   - `runtime-structured-agent-host.ts`: the stock usage-limit continue's `isEnabled` reads
     `forkUsageLimitAutoContinueOn(settings)`.
-  - `structured-agent-session-usage-limit-continue.ts`: the chain cap reads
-    `forkUsageLimitChainLimit()` (two places), and the sweep and the send's `beforeRun` also skip
+  - `structured-agent-session-usage-limit-continue.ts` and
+    `structured-agent-session-usage-limit-disposition.ts` (`usageLimitCutContinuable`,
+    `usageLimitCutDisposition`): the chain cap reads `forkUsageLimitChainLimit()` (three places).
+    `structured-agent-session-usage-limit-continue.ts`: the sweep and the send's `beforeRun` also skip
     a chat while `this.holds.held(...)`, which asks `forkUsageLimitHeld(id, overdueMs)` (BAD-707, in
     `structured-agent-session-usage-limit-account-hold.ts`: a draft holds only
     `forkLimitResumeHoldMaxMinutes` past the reset).
@@ -3823,8 +3828,9 @@ Upstream files only get short hooks, which keeps merges small:
   - `src/main/index.ts` calls `installForkMcpProfilesApp(...)` after the agent queue install.
   - `src/preload/index.ts` adds `forkMcpProfiles` (`src/preload/fork/mcp-profiles-bridge.ts`) and
     `api-types.ts` types it as optional.
-  - `NativeChatStructuredSessionStatus.tsx` renders `ForkMcpProfileStrip` after
-    `ForkAgentQueueBanner`; `AdvancedPane.tsx` renders `ForkMcpProfileSetting` after
+  - `forkBanners` (see Agent launch queue) renders `ForkMcpProfileStrip` after
+    `ForkAgentQueueBanner`; `use-structured-native-chat-subagents.tsx` takes the pane's `agent` for
+    it; `AdvancedPane.tsx` renders `ForkMcpProfileSetting` after
     `ForkAgentQueueSetting`; the five settings are in `fork-global-settings.ts`.
 
 - Usage ledger and cache-cold cue (SLRM-2103), from `src/main/fork/usage-ledger/`,
@@ -4264,8 +4270,8 @@ Upstream files only get short hooks, which keeps merges small:
     `card`. `worker-launch-handler.ts` spreads `readForkCardFlag(flags)` into its params.
   - `orchestration-worker-start-params.ts` gains `forkCard`, and `worker-worktree-creation.ts`
     passes it to `createManagedWorktree` as `linkedLinearIssue`.
-  - `bot-request-conversation.ts` titles a request whose subject `isCardChatSubject` with the
-    subject alone.
+  - `botRequestChatTitle` (`bot-request-view.ts`, which `bot-request-conversation.ts` calls) titles
+    a request whose subject `isCardChatSubject` with the subject alone.
   - `bot-preamble.ts` adds `forkCardToolLine(BOT_ORCA_CLI)` after the Linear tools line.
   - `FORK_QUICK_TASK_METHODS` (`fork-quick-task.ts`) also defines `fork.cardRoute.start`, so
     `rpc-method-registry.ts` is untouched; `rpc-params-catalog.generated.ts` is regenerated.

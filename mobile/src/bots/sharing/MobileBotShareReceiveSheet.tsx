@@ -199,7 +199,7 @@ export function MobileBotShareReceiveSheet(props: {
             }}
           />
           <View style={styles.hero}>
-            <MobileBotAvatar avatar={mobileBotAvatarSource(step.bot, undefined)} size={56} />
+            <MobileBotAvatar avatar={mobileBotAvatarSource(step.bot)} size={56} />
             <Text style={styles.detail}>
               {t('bots.share.receive.haveDetail', '{{name}} · made {{date}}', {
                 name: step.bot.name,
@@ -302,8 +302,7 @@ function ReviewSteps(props: {
     review,
     spots,
     open: (page: ReviewPage) => props.setNav((current) => [...current, page]),
-    toolIds: props.toolIds,
-    setToolIds: props.setToolIds
+    consent: { toolIds: props.toolIds, setToolIds: props.setToolIds }
   }
   if (step.kind === 'create') {
     return (
@@ -363,9 +362,11 @@ function ReviewSteps(props: {
       />
       <MobileBotShareReviewOverview
         ctx={ctx}
-        updated={step.updated}
-        onCreate={() => props.onStep({ kind: 'create', review })}
-        onReviewAgain={() => props.onReviewAgain(review.shareId)}
+        choosing={{
+          updated: step.updated,
+          onCreate: () => props.onStep({ kind: 'create', review }),
+          onReviewAgain: () => props.onReviewAgain(review.shareId)
+        }}
       />
     </>
   )

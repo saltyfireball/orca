@@ -44,10 +44,7 @@ import {
   getWorkspaceModeFlag
 } from './automation-handler-flags'
 import { getExtraAgentArgsFlag } from './automation-extra-agent-args-flag'
-import {
-  assertLaunchChoicesSupported,
-  getProjectLaunchChoicesPatch
-} from './automation-project-launch-flags'
+import { forkProjectLaunch } from './automation-project-launch-flags'
 import { assertAutomationFieldsSupported } from './automation-host-support'
 import { assertAutomationSetupMode, getAutomationSetupFlag } from './automation-setup-flag'
 import { getTimezoneFlags } from './automation-timezone-flag'
@@ -71,6 +68,7 @@ import {
 } from './automation-event-triggers-cli'
 import { callerChat } from './automation-caller-chat'
 import { getOnceFlags } from './automation-once-flag'
+import { watchPrCreateFlags } from './automation-watch-pr'
 
 type AutomationCreateParams = Omit<AutomationCreateInput, 'projectId' | 'timezone'> & {
   destination?: AutomationDestination
@@ -130,12 +128,15 @@ export const AUTOMATION_HANDLERS: Record<string, CommandHandler> = {
     const once = getOnceFlags(flags)
     const schedule = getCreateScheduleFlag(flags, on, once)
     const bot = await getBotTargetFlags(flags, client, on, schedule, once)
+    if (!bot && flags.has('item')) {
+      throw new RuntimeClientError('invalid_argument', "--item goes with --bot: a bot's own item")
+    }
     if (bot) {
       const saved = await createBotAutomation(client, flags, bot, schedule, on, once)
       printSavedAutomation(saved, json, on)
       return
     }
-    const launchChoices = getProjectLaunchChoicesPatch(flags)
+    const launch = forkProjectLaunch(flags)
     const target = await resolveDefaultTarget(flags, cwd, client)
     const sourceContext = getSourceContextFlag(flags)
     const workspaceMode =
@@ -148,7 +149,7 @@ export const AUTOMATION_HANDLERS: Record<string, CommandHandler> = {
       precheck: getPrecheckFlag(flags),
       agentId: getProviderFlag(flags),
       extraAgentArgs: getExtraAgentArgsFlag(flags),
-      ...(launchChoices ? { launchSetupPatch: launchChoices } : {}),
+      ...launch.params,
       ...(setupDecision !== undefined ? { setupDecision } : {}),
       ...(target.runContext ? { runContext: target.runContext } : {}),
       ...(sourceContext !== undefined ? { sourceContext } : {}),
@@ -163,11 +164,11 @@ export const AUTOMATION_HANDLERS: Record<string, CommandHandler> = {
       ...schedule
     } satisfies AutomationCreateParams
     await assertAutomationFieldsSupported(client, create)
-    await assertLaunchChoicesSupported(client, launchChoices)
+    await launch.assertSupported(client)
     const { writer, params } = await routeAutomationCreate(client, target, create)
     if (writer !== client) {
       await assertAutomationFieldsSupported(writer, create)
-      await assertLaunchChoicesSupported(writer, launchChoices)
+      await launch.assertSupported(writer)
     }
     // The caller's chat lives on this client's host, so only a local write names it.
     const result = await writer.call<{ automation: Automation }>('automation.create', {
@@ -175,6 +176,16 @@ export const AUTOMATION_HANDLERS: Record<string, CommandHandler> = {
       ...(writer === client ? callerChat() : {})
     })
     printAutomationResult(result, json, formatAutomationShow)
+  },
+  // The same create, with the rules and deadline a pull request watch stands for.
+  'automations watch-pr': async (context) => {
+    const selector = getOptionalStringFlag(context.flags, 'bot')
+    if (!selector) {
+      throw new RuntimeClientError('invalid_argument', 'watch-pr needs --bot <name>')
+    }
+    const { githubCiFinished } = await findBot(context.client, selector)
+    const flags = watchPrCreateFlags(context.flags, Date.now(), githubCiFinished === true)
+    await AUTOMATION_HANDLERS['automations create']({ ...context, flags })
   },
   'automations edit': async ({ flags, client, cwd, json }) => {
     const setupDecision = getAutomationSetupFlag(flags)
@@ -186,7 +197,7 @@ export const AUTOMATION_HANDLERS: Record<string, CommandHandler> = {
     const agentEdit = getBotAgentSetupEdit(flags)
     const sourceContext = getSourceContextFlag(flags)
     const id = getRequiredStringFlag(flags, 'id')
-    const projectChoices = getProjectLaunchChoicesPatch(flags)
+    const launch = forkProjectLaunch(flags)
     // Built before the owner read so a contradictory flag still fails without a runtime call.
     const updates = {
       name: getOptionalStringFlag(flags, 'name'),
@@ -214,15 +225,7 @@ export const AUTOMATION_HANDLERS: Record<string, CommandHandler> = {
       client,
       id
     )
-    // A bot's automation keeps its own agent setup; a project's takes the launch choices.
-    const launchChoices = current.bot ? undefined : projectChoices
-    if (!current.bot && flags.has('agent')) {
-      throw new RuntimeClientError(
-        'invalid_argument',
-        '--agent needs a bot automation; a project automation takes --provider, with --model and --effort.'
-      )
-    }
-    await assertLaunchChoicesSupported(client, launchChoices)
+    const launchParams = await launch.forEdit(client, flags, Boolean(current.bot))
     assertAutomationSetupMode(
       setupDecision,
       updates.workspaceMode ?? (target.workspace ? 'existing' : current.workspaceMode)
@@ -241,11 +244,7 @@ export const AUTOMATION_HANDLERS: Record<string, CommandHandler> = {
       ...(destination ? { destination } : {}),
       // A setup choice that relies on the current mode must not land after a switch to existing.
       ...(setupDecision && !updates.workspaceMode ? { expectedWorkspaceMode: 'new_per_run' } : {}),
-      updates: {
-        ...updates,
-        ...(bot ? { bot } : {}),
-        ...(launchChoices ? { launchSetupPatch: launchChoices } : {})
-      },
+      updates: { ...updates, ...(bot ? { bot } : {}), ...launchParams },
       ...callerChat()
     })
     printSavedAutomation(result, json, on, current)

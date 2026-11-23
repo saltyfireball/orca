@@ -31,6 +31,11 @@ import { defineMethod, type RpcContext } from '../core'
 import { ownerActor } from './bots-items-owner-actor'
 import { STEP } from './bots-items-owner-step-method'
 import { parseCursor, resolveItem } from './bots-items-write-support'
+import {
+  botItemCountsForClient,
+  botItemEventsForClient,
+  botItemsForClient
+} from './bots-items-waiting-compat'
 
 /** Every open item of the bot (or its chats), however many, read a page at a time. */
 async function allOpenItems(
@@ -83,8 +88,8 @@ const LIST = defineMethod({
         limit: params.uids.length
       })
       return {
-        items: await botItems.views(named.items, params.summary),
-        counts: named.counts,
+        items: botItemsForClient(await botItems.views(named.items, params.summary), context),
+        counts: botItemCountsForClient(named.counts, context),
         seenEventId: seenEventId()
       }
     }
@@ -106,8 +111,11 @@ const LIST = defineMethod({
     const closedUids = new Set(closedRows.map((item) => item.uid))
     const stillOpen = open.filter((item) => !closedUids.has(item.uid))
     return {
-      items: await botItems.views([...stillOpen, ...closedRows], params.summary),
-      counts: closed.counts,
+      items: botItemsForClient(
+        await botItems.views([...stillOpen, ...closedRows], params.summary),
+        context
+      ),
+      counts: botItemCountsForClient(closed.counts, context),
       seenEventId: seenEventId(),
       ...(closed.items.length > pageSize && lastClosed
         ? { nextClosedCursor: `${lastClosed.lastActivityAt}:${lastClosed.number}` }
@@ -130,7 +138,7 @@ const SHOW = defineMethod({
       throw new BotItemError('invalid_argument', 'after and before take an event id such as e41.')
     }
     const limit = BOT_ITEM_LIMITS.eventsPage
-    const [item] = await botItems.views([record])
+    const [item] = botItemsForClient(await botItems.views([record], false, true), context)
     if (params.newest) {
       // The newest page; `earlierCursor` pages back from its oldest event.
       const events = await botItems.eventsBefore(record.uid, before, limit + 1)
@@ -138,7 +146,7 @@ const SHOW = defineMethod({
       const first = page[0]
       return {
         item: item!,
-        events: page,
+        events: botItemEventsForClient(page, context),
         ...(events.length > limit && first ? { earlierCursor: first.id } : {})
       }
     }
@@ -147,7 +155,7 @@ const SHOW = defineMethod({
     const last = page.at(-1)
     return {
       item: item!,
-      events: page,
+      events: botItemEventsForClient(page, context),
       ...(events.length > limit && last ? { nextCursor: last.id } : {})
     }
   }
@@ -221,6 +229,7 @@ const STATUS = defineMethod({
         uids,
         to: params.status,
         ...(params.reason !== undefined ? { reason: params.reason } : {}),
+        ...(params.note !== undefined ? { note: params.note } : {}),
         ...(params.comment !== undefined ? { comment: params.comment } : {})
       },
       actor

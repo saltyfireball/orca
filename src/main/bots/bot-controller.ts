@@ -10,7 +10,7 @@ import {
 } from '../../shared/bot-avatar'
 import { type Bot, botFolderName } from '../../shared/bot-types'
 import { assertBotNameFree, freeBotName } from './bot-free-name'
-import { BotsDisabledError, isBotsEnabled } from '../../shared/bots-switch'
+import { areHostBotsEnabled, assertHostBotsEnabled } from './bot-team-policy'
 import { type BotRosterEntry, botRosterFields, soulSpecialty } from '../../shared/bot-roster'
 import {
   applyBotUpdates,
@@ -22,6 +22,8 @@ import type { RuntimeStore } from '../runtime/construction/runtime-store-contrac
 import { proposalSoul } from '../../shared/bots/bot-proposal'
 import { forkBotStartingSoul } from '../../shared/fork/bot-starting-rules'
 import { withForkBotDefaultLaunch } from '../../shared/fork/launch-defaults/launch-defaults-bot'
+import { botTemplate } from '../../shared/bots/bot-templates'
+import { templateBotFolderName } from '../../shared/bots/bot-template-view'
 import { botOfferCreation } from './bot-offer-creation'
 import { assertBotOwnsHome, type BotHomeFilesystem, botHomeFolder, writeBotHome } from './bot-home'
 import { type BotMemoryRecord, hostBotMemoryRecord } from './bot-memory-record'
@@ -106,13 +108,11 @@ export class BotController {
 
   /** Off, bots take no conversations or runs, and nothing creates or opens one; their homes stay. */
   enabled(): boolean {
-    return isBotsEnabled(this.deps.getStore()?.getSettings())
+    return areHostBotsEnabled(this.deps.getStore()?.getSettings())
   }
 
   assertEnabled(): void {
-    if (!this.enabled()) {
-      throw new BotsDisabledError()
-    }
+    assertHostBotsEnabled(this.deps.getStore()?.getSettings())
   }
 
   list(): Bot[] {
@@ -182,7 +182,7 @@ export class BotController {
       ...(await makeBotsHome(
         this.deps,
         store,
-        botFolderName(name),
+        templateBotFolderName(name, botTemplate(origin.templateId), input.templateNameShown),
         name,
         draft.agent,
         (path, folder) =>

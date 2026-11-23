@@ -14,6 +14,8 @@ import { useNativeChatSideChatCommand } from './use-native-chat-side-chat-comman
 import { useNativeChatMentionNameMatches } from '../../native-chat-composer-room'
 import type { NativeChatComposerRoom } from '../native-chat-composer-types'
 import { useForkUsageLimitsCommand } from '@/fork/pooled-limits/use-fork-usage-limits-command'
+import type { NativeChatPickerItem } from '../../../../../../shared/native-chat/input/composer/native-chat-picker-items'
+import { isNativeChatSideChatCommand } from '../../../../../../shared/native-chat/input/commands/native-chat-side-chat-command'
 
 type PickerArgs = Parameters<typeof useNativeChatPickerState>[0]
 type ResumeArgs = Parameters<typeof useNativeChatResumeCommand>[0]
@@ -37,7 +39,12 @@ export function useNativeChatComposerCommandPicker(
       mode?: 'edit' | 'launch'
       room: NativeChatComposerRoom | undefined
     }
-): { picker: NativeChatPickerState; orcaCommands: NativeChatResumeCommand } {
+): {
+  picker: NativeChatPickerState
+  orcaCommands: NativeChatResumeCommand
+  /** Send opens a `/btw` or `/side` draft as a side chat, so the editor shows it as one. */
+  sideChat: boolean
+} {
   const { structuredTransport, editor, setNotice, mode, room, ...pickerArgs } = args
   const { agent, terminalTabId } = pickerArgs
   const { agentCommands, sessionSkills } = useNativeChatComposerCatalog(agent, structuredTransport)
@@ -61,7 +68,7 @@ export function useNativeChatComposerCommandPicker(
     (name: string) => mode === undefined || acceptsText(`/${name}`),
     [mode, acceptsText]
   )
-  const picker = useNativeChatPickerState({
+  const listed = useNativeChatPickerState({
     ...pickerArgs,
     ...(mode === 'launch' ? { launchWorktreeId: structuredTransport?.worktreeId } : {}),
     ...editor,
@@ -75,6 +82,19 @@ export function useNativeChatComposerCommandPicker(
       ? { onPickerOpened: structuredTransport.refreshCommands }
       : {})
   })
+  const { completeItem: complete } = listed
+  const { textareaRef } = editor
+  // Tab, Enter or a click: a picked `/btw` reads as the pill, as a typed `/btw ` does.
+  const completeItem = useCallback(
+    (item: NativeChatPickerItem) => {
+      complete(item)
+      if (item.kind === 'command' && item.orcaOwned && isNativeChatSideChatCommand(item.name)) {
+        textareaRef.current?.pillSideChatCommand?.()
+      }
+    },
+    [complete, textareaRef]
+  )
+  const picker = { ...listed, completeItem }
   const resume = useNativeChatResumeCommand({
     structuredTransport,
     agent,
@@ -103,6 +123,7 @@ export function useNativeChatComposerCommandPicker(
   const active = structuredTransport !== undefined && mode === undefined
   return {
     picker,
-    orcaCommands: useForkUsageLimitsCommand(orcaCommands, { active, picker, editor })
+    orcaCommands: useForkUsageLimitsCommand(orcaCommands, { active, picker, editor }),
+    sideChat: mode === undefined && structuredTransport?.sideChat !== undefined
   }
 }

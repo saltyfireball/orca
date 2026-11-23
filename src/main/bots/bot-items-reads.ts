@@ -2,6 +2,7 @@
 // item views need in one round trip.
 import {
   botItemEventId,
+  isOpenBotItemStatus,
   type BotItemLinkKind,
   type BotItemStatus
 } from '../../shared/bots/bot-items'
@@ -113,15 +114,22 @@ export class BotItemsReads extends BotItemsTables {
       }))
   }
 
-  /** What item views need, for many items in one round trip: rows, links, Needs you questions and
-   *  the newest event anyone but the owner made. */
-  viewRows(uids: readonly string[]): {
+  /** What item views need, for many items in one round trip: rows, links, Needs you questions, waits
+   *  and the newest event anyone but the owner made. */
+  viewRows(
+    uids: readonly string[],
+    /** Also each open item's waiting ask, which reads its events: for its own view only. */
+    withWaitingAsks = false
+  ): {
     items: BotItemRecord[]
     links: Record<string, BotItemLinkRecord[]>
     questions: Record<string, BotItemEventRecord>
+    /** Waiting items' status events, whose note says what each waits on. */
+    waits: Record<string, BotItemEventRecord>
     othersLast: Record<string, number>
     /** Fork BAD-747: each open item's steps, folded from its newest `steps` event and the marks after it. */
     steps: Record<string, BotItemStepsView>
+    waitingAsks: Record<string, string>
   } {
     const ids = JSON.stringify(uids)
     const rows = this.db
@@ -148,12 +156,16 @@ export class BotItemsReads extends BotItemsTables {
       }
     }
     const questions: Record<string, BotItemEventRecord> = {}
-    const questionIds = items.flatMap((item) => (item.questionEvent ? [item.questionEvent] : []))
+    const waits: Record<string, BotItemEventRecord> = {}
+    const questionIds = new Set(items.flatMap((item) => item.questionEvent ?? []))
+    const waitIds = items.flatMap((item) =>
+      item.status === 'waiting' ? (item.waitEvent ?? []) : []
+    )
     for (const row of this.db
       .prepare('SELECT * FROM item_events WHERE id IN (SELECT value FROM json_each(?))')
-      .all(JSON.stringify(questionIds))) {
+      .all(JSON.stringify([...questionIds, ...waitIds]))) {
       const event = eventRecordOf(row)
-      questions[event.itemUid] = event
+      ;(questionIds.has(event.id) ? questions : waits)[event.itemUid] = event
     }
     const steps: Record<string, BotItemStepsView> = {}
     for (const [uid, found] of Object.entries(this.openSteps(items))) {
@@ -162,7 +174,14 @@ export class BotItemsReads extends BotItemsTables {
         steps[uid] = view
       }
     }
-    return { items, links, questions, othersLast, steps }
+    const waitingAsks: Record<string, string> = {}
+    for (const item of withWaitingAsks ? items : []) {
+      const ask = isOpenBotItemStatus(item.status) ? this.waitingAsk(item) : null
+      if (ask !== null) {
+        waitingAsks[item.uid] = botItemEventId(ask)
+      }
+    }
+    return { items, links, questions, waits, othersLast, steps, waitingAsks }
   }
 
   /** The newest steps event of each open item, with the marks written since: only open items show steps. */

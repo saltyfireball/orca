@@ -47,3 +47,40 @@ export async function assertLaunchChoicesSupported(
     )
   }
 }
+
+/**
+ * What the create and edit handlers take from --model and --effort, behind one import so the upstream
+ * automations.ts stays inside its line limit.
+ */
+export function forkProjectLaunch(flags: Map<string, string | boolean>): {
+  /** Spread into the create params, or the update's, when a launch setup change was asked for. */
+  params: { launchSetupPatch?: Pick<AutomationLaunchSetupPatch, 'choices'> }
+  assertSupported: (client: RuntimeClient) => Promise<void>
+  /** For an edit, once the automation is read: a bot's automation keeps its own agent setup, so it
+   *  takes no launch choices; a project's takes them and no --agent. */
+  forEdit: (
+    client: RuntimeClient,
+    flags: Map<string, string | boolean>,
+    isBotAutomation: boolean
+  ) => Promise<{ launchSetupPatch?: Pick<AutomationLaunchSetupPatch, 'choices'> }>
+} {
+  const patch = getProjectLaunchChoicesPatch(flags)
+  const params = patch ? { launchSetupPatch: patch } : {}
+  return {
+    params,
+    assertSupported: (client) => assertLaunchChoicesSupported(client, patch),
+    forEdit: async (client, editFlags, isBotAutomation) => {
+      if (isBotAutomation) {
+        return {}
+      }
+      if (editFlags.has('agent')) {
+        throw new RuntimeClientError(
+          'invalid_argument',
+          '--agent needs a bot automation; a project automation takes --provider, with --model and --effort.'
+        )
+      }
+      await assertLaunchChoicesSupported(client, patch)
+      return params
+    }
+  }
+}
