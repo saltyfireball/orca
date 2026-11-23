@@ -66,7 +66,8 @@ export const VARIABLE_SETTERS = new Set([
   'for',
   'select'
 ])
-export const SUBSTITUTION = /\$\(([^()]*)\)|`([^`]*)`/g
+// An opener after an odd run of backslashes is escaped: the shell prints it, it runs nothing.
+export const SUBSTITUTION = /(?<!(?:^|[^\\])(?:\\\\)*\\)(?:\$\(([^()]*)\)|`([^`]*)`)/g
 export const VARIABLE = /\$(?:([A-Za-z_][A-Za-z0-9_]*)|\{([A-Za-z_][A-Za-z0-9_]*)\})/g
 
 export function baseName(word: string): string {

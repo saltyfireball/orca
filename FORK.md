@@ -2042,24 +2042,27 @@ ones `SLRM-123 `).
     **Help is not removal (BAD-764).** `orca worktree rm --help` and `git worktree remove -h`
     (a help flag as the only other argument) print usage and change nothing, so `remove-worktree`
     allows them; any other argument next to the help flag keeps the refusal.
+    **Escaped substitutions are text (BAD-785).** A backtick or `$(` after an odd run of
+    backslashes (`"the guard also refuses \`orca worktree rm --help\`."`) is printed by the
+    shell, not run, so it is not read as a command. A real one, and one a later `eval`or`bash -c` would run (the quotes of the outer command remove the backslash), are read and denied
+    as before.
     **Heredocs and variables (BAD-785).** A heredoc body is data (never tokenized, however many
     quotes or backticks it holds) unless its reader may run it: a shell (`sh`, `bash`, `zsh`,
     `dash`, `ksh`, `fish`, also through `sudo`/`env`/`nohup`/`timeout`/`xargs`), `ssh`, `su`,
     `eval`, `source`, a runner naming a shell (`docker exec ... bash`), a pipe into any of those
     or into a loop, a process substitution, a function defined in the same command, or the end of
     a loop (`done <<EOF`). Then the body is read as commands and the rules apply. An unquoted
-    delimiter's body is also read for `$( )` and backticks, a heredoc with no closing line is
-    read as commands, `$((1<<2))` and `${x:-<<EOF}` are not heredocs, and a literal assigned
+    delimiter's body is also read for `$( )`and backticks, a heredoc with no closing line is
+    read as commands,`$((1<<2))`and`${x:-<<EOF}` are not heredocs, and a literal assigned
     earlier in the same command (`S=/tmp/x; rm -rf $S/sub`) is followed for paths, the last
     assignment winning; one that is conditional, in a subshell or compound, appended, computed,
-    spaced, or reset by `eval`/`read`/`for` is not. `unreadable-command` now names the part and
+    spaced, or reset by `eval`/`read`/`for`is not.`unreadable-command` now names the part and
     why. Still open (not a sandbox): a script written by one command and run by another
     (`tee run.sh <<EOF && bash run.sh`), a data command that prints shell text into a pipe (a
-    `python3` heredoc piped to `bash` is read as shell text, so it only catches what is plain),
-    `echo`/`printf` text fed to `bash -c "$(...)"`, an interpreter running its own heredoc
-    (`python3 -` calling `os.system`), pipes into a shell that follow a subshell or `&&`, and a
-    command named by a variable that is not a shell name (`$O <<EOF` is data, since `$O` is as
-    often a CLI as a shell; `$SHELL`, `${SHELL:-sh}`, `$BASH`, `$0` and a variable set to a literal
+    `python3`heredoc piped to`bash`is read as shell text, so it only catches what is plain),`echo`/`printf`text fed to`bash -c "$(...)"`, an interpreter running its own heredoc
+    (`python3 -`calling`os.system`), pipes into a shell that follow a subshell or `&&`, and a
+    command named by a variable that is not a shell name (`$O <<EOF`is data, since`$O`is as
+    often a CLI as a shell;`$SHELL`, `${SHELL:-sh}`, `$BASH`, `$0` and a variable set to a literal
     shell name earlier in the command do count as shells).
   - **Overrides.** `forkCommandGuardDisabledRules` (comma list, every project) and
     `orca command-guards allow|disallow <rule> [--project NAME|PATH|ID]` (per project, kept in
@@ -3473,6 +3476,7 @@ Apply these in this order. Each one is a single commit.
 188. `BAD-741 MCP profiles on Claude terminals and paired servers: a named profile narrows a Claude terminal through a private per-profile config file, and worker-start --on sends only the name to a server that checks it before anything is created; where it cannot apply it is refused with the reason`
 189. `BAD-763 orca contract show at home shows the done checks, each attempt and its output tail of a worker started on a server that owns its workers, live and after it settles; a server too old to answer is named as one whose evidence cannot be seen`
 190. `BAD-764 Command guards allow a worktree removal command whose only other argument is --help or -h, which prints usage and removes nothing`
+191. `BAD-785 Command guards no longer read an escaped backtick or escaped $( inside double quotes as a command substitution; a real one, and one a later eval or bash -c would run, is still denied`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

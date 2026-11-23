@@ -235,3 +235,77 @@ describe('heredoc bodies and literal variables (BAD-785)', () => {
     expect(JSON.stringify(result)).toContain('(rm)')
   })
 })
+
+describe('escaped substitutions are text (BAD-785)', () => {
+  const ESCAPED_ALLOWED: Record<string, string> = {
+    'escaped backticks in a comment text':
+      'orca worktree comment --text "the guard also refuses \\`orca worktree rm --help\\`."',
+    'escaped backticks around a deleter': 'echo "run \\`rm -rf /work/repo-b\\` by hand"',
+    'escaped dollar paren': 'echo "the form is \\$(rm -rf /work/repo-b)"',
+    'escaped backticks unquoted': 'echo \\`rm -rf /work/repo-b\\`',
+    'escaped backticks in an unquoted heredoc': doc(
+      'cat <<EOF',
+      'text \\`rm -rf /work/repo-b\\` and \\$(rm -rf /work/repo-b)',
+      'EOF'
+    ),
+    'escaped backslash then escaped backtick': 'echo "a\\\\\\`rm -rf /work/repo-b\\`"'
+  }
+  const ESCAPED_DENIED: Record<string, [string, string]> = {
+    'a real backtick in double quotes': [
+      'echo "now `rm -rf /work/repo-b` here"',
+      'delete-outside-workspace'
+    ],
+    'a real dollar paren in double quotes': [
+      'echo "now $(rm -rf /work/repo-b) here"',
+      'delete-outside-workspace'
+    ],
+    'a real substitution between escaped backticks': [
+      'echo "\\`text $(rm -rf /work/repo-b) text\\`"',
+      'delete-outside-workspace'
+    ],
+    'an escaped backslash leaves the backtick live': [
+      'echo "a\\\\`rm -rf /work/repo-b`"',
+      'delete-outside-workspace'
+    ],
+    'an escaped backtick that bash -c would run': [
+      'bash -c "\\`rm -rf /work/repo-b\\`"',
+      'delete-outside-workspace'
+    ],
+    'an escaped dollar paren that bash -c would run': [
+      'bash -c "\\$(rm -rf /work/repo-b)"',
+      'delete-outside-workspace'
+    ],
+    'an escaped backtick that eval would run': [
+      'eval "\\`rm -rf /work/repo-b\\`"',
+      'delete-outside-workspace'
+    ],
+    'an escaped dollar paren that eval would run': [
+      'eval "\\$(rm -rf /work/repo-b)"',
+      'delete-outside-workspace'
+    ],
+    'a real substitution in an unquoted heredoc': [
+      doc('cat <<EOF', 'text $(rm -rf /work/repo-b)', 'EOF'),
+      'delete-outside-workspace'
+    ],
+    'the escaped worktree text, then a real removal': [
+      'orca worktree comment --text "\\`orca worktree rm --help\\`" && orca worktree rm --worktree id:abc',
+      'remove-worktree'
+    ],
+    'a real removal in backticks in the text': [
+      'orca worktree comment --text "run `orca worktree rm --worktree id:abc`"',
+      'remove-worktree'
+    ]
+  }
+
+  for (const [name, command] of Object.entries(ESCAPED_ALLOWED)) {
+    it(`allows: ${name}`, () => {
+      expect(verdict(command)).toBe('allow')
+    })
+  }
+
+  for (const [name, [command, rule]] of Object.entries(ESCAPED_DENIED)) {
+    it(`denies: ${name}`, () => {
+      expect(verdict(command)).toBe(rule)
+    })
+  }
+})
