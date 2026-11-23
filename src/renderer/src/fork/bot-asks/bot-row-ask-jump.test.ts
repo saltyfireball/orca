@@ -20,6 +20,8 @@ const NOW = 1_000_000_000
 const counts = new Map<string, number | null>()
 const callBotRpc = vi.fn()
 const openBotItem = vi.fn()
+const closeBotItem = vi.fn()
+const forgetBotItemWalk = vi.fn()
 
 vi.mock('@/store', () => ({ useAppStore: { getState: () => state } }))
 vi.mock('@/lib/bot-hosts', () => ({
@@ -35,7 +37,11 @@ vi.mock('@/components/bots/bot-workspace', () => ({
     id === 'home-a' ? (bots.find((bot) => bot.id === 'a') ?? null) : null
 }))
 vi.mock('@/components/bots/items/bot-item-open', () => ({
-  openBotItem: (...args: unknown[]) => openBotItem(...args)
+  openBotItem: (...args: unknown[]) => openBotItem(...args),
+  closeBotItem: (...args: unknown[]) => closeBotItem(...args)
+}))
+vi.mock('@/components/bots/items/use-bot-item-walk', () => ({
+  forgetBotItemWalk: (...args: unknown[]) => forgetBotItemWalk(...args)
 }))
 vi.mock('./bot-asks-store', () => ({ readForkBotAsks: () => [] }))
 
@@ -82,6 +88,8 @@ beforeEach(() => {
   counts.clear()
   callBotRpc.mockReset()
   openBotItem.mockReset()
+  closeBotItem.mockReset()
+  forgetBotItemWalk.mockReset()
   openBotItem.mockImplementation(showCard)
   document.body.innerHTML = ''
 })
@@ -102,7 +110,44 @@ describe('forkOpenBotRow', () => {
     expect(openBotItem).not.toHaveBeenCalled()
   })
 
+  it('shows the Home list by default, leaving an open item, and reads nothing', async () => {
+    counts.set('a', 2)
+    expect(forkOpenBotRow(BOT, upstreamOpen)).toBe(true)
+    await settle()
+    expect(forgetBotItemWalk).toHaveBeenCalledWith('local:a')
+    expect(closeBotItem).toHaveBeenCalledWith(BOT)
+    expect(callBotRpc).not.toHaveBeenCalled()
+    expect(openBotItem).not.toHaveBeenCalled()
+  })
+
+  it('leaves the list alone while the bot has nothing waiting or did not open', async () => {
+    counts.set('a', 0)
+    forkOpenBotRow(BOT, upstreamOpen)
+    counts.set('a', 1)
+    expect(forkOpenBotRow(BOT, () => false)).toBe(false)
+    await settle()
+    expect(closeBotItem).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [true, 'item'],
+    ['item', 'item'],
+    [false, 'off'],
+    ['off', 'off'],
+    [undefined, 'list'],
+    ['list', 'list']
+  ])('a saved %s means %s', async (saved, meaning) => {
+    counts.set('a', 1)
+    waiting(1)
+    state.settings = { forkBotRowAskJump: saved }
+    forkOpenBotRow(BOT, upstreamOpen)
+    await settle()
+    expect(openBotItem).toHaveBeenCalledTimes(meaning === 'item' ? 1 : 0)
+    expect(closeBotItem).toHaveBeenCalledTimes(meaning === 'list' ? 1 : 0)
+  })
+
   it('opens the first waiting ask, then the next on a click while it shows', async () => {
+    state.settings = { forkBotRowAskJump: 'item' }
     counts.set('a', 2)
     waiting(4, 5)
     forkOpenBotRow(BOT, upstreamOpen)
@@ -124,12 +169,12 @@ describe('forkOpenBotRow', () => {
   it('keeps upstream alone with the setting off, or when the bot did not open', async () => {
     counts.set('a', 1)
     waiting(1)
-    state.settings = { forkBotRowAskJump: false }
+    state.settings = { forkBotRowAskJump: 'off' }
     forkOpenBotRow(BOT, upstreamOpen)
     await settle()
     expect(callBotRpc).not.toHaveBeenCalled()
 
-    state.settings = {}
+    state.settings = { forkBotRowAskJump: 'item' }
     expect(forkOpenBotRow(BOT, () => false)).toBe(false)
     await settle()
     expect(openBotItem).not.toHaveBeenCalled()

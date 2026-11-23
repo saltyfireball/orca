@@ -58,7 +58,8 @@ async function openDialog(): Promise<HTMLElement> {
 
 beforeEach(() => {
   state.current = {
-    settings: { forkIdleSweepMode: 'inbox' },
+    // The sidebar button folds into Needs you (BAD-759) while that is on; these test the button.
+    settings: { forkIdleSweepMode: 'inbox', forkNeedsYou: false },
     unifiedTabsByWorktree: { wt1: [CHAT_TAB] },
     agentStatusByPaneKey: new Map()
   }
@@ -70,9 +71,19 @@ afterEach(() => {
   cleanup()
 })
 
+describe('with the Needs you list on (BAD-759)', () => {
+  it('folds the sidebar button away, so the status bar control holds the only count', () => {
+    state.current.settings = { forkIdleSweepMode: 'inbox' }
+    installFakeBridge([inboxItem({})])
+    const view = render(<App />)
+    expect(view.container.querySelector('[data-decision-inbox-count]')).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Decision inbox/ })).toBeNull()
+  })
+})
+
 describe('with idle recovery off', () => {
   it('shows no button and no dialog, and never touches the bridge', () => {
-    state.current.settings = {}
+    state.current.settings = { forkNeedsYou: false }
     const bridge = installFakeBridge([inboxItem({})])
     const view = render(<App />)
     act(() => openForkDecisionInbox())
@@ -83,7 +94,7 @@ describe('with idle recovery off', () => {
   })
 
   it('offers no palette entry', () => {
-    state.current.settings = {}
+    state.current.settings = { forkNeedsYou: false }
     installFakeBridge()
     const actions = getForkDecisionInboxQuickActions()
     // The third is the letters history (SLRM-2389): this fake window has no letters bridge.

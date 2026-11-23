@@ -38,6 +38,7 @@ export type WindowShortcutAction =
   | { type: 'openWorkspaceBoard' }
   | { type: 'openTasks' }
   | { type: 'toggleAgentDashboard' }
+  | { type: 'openNeedsYou' }
   | { type: 'switchRecentTab' }
   | { type: 'jumpToWorktreeIndex'; index: number }
   | { type: 'jumpToTabIndex'; index: number }
@@ -229,6 +230,10 @@ export function resolveWindowShortcutAction(
     return { type: 'toggleAgentDashboard' }
   }
 
+  if (keybindingMatchesAction('needsYou.open', input, platform, keybindings, options)) {
+    return { type: 'openNeedsYou' }
+  }
+
   if (keybindingMatchesAction('tab.previousRecent', input, platform, keybindings, options)) {
     return { type: 'switchRecentTab' }
   }
@@ -296,6 +301,8 @@ export function getWindowShortcutActionId(action: WindowShortcutAction): Keybind
       return 'view.tasks'
     case 'toggleAgentDashboard':
       return 'dashboard.toggle'
+    case 'openNeedsYou':
+      return 'needsYou.open'
     case 'switchRecentTab':
       return 'tab.previousRecent'
     case 'worktreeHistoryNavigate':

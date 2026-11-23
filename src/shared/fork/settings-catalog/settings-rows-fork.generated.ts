@@ -88,7 +88,7 @@ export const FORK_SETTINGS_ROWS_FORK = {
   forkBotOwnerStepsOpenInTerminal:
     '{"t":{"k":"boolean"},"d":"A step with a command can open a terminal on its computer with the command typed in, never run; unset is on.","o":true}',
   forkBotRowAskJump:
-    '{"t":{"k":"boolean"},"d":"Clicking a bot row that has items waiting on you also opens the first on its Home tab, and a second click the next; unset is on.","o":true}',
+    '{"t":{"k":"union","of":[{"k":"boolean"},{"k":"enum","values":["item","list","off"]}]},"d":"(SLRM-2472, BAD-759): what clicking a bot row that has items waiting on you does: \'list\' shows its Home list with Needs you at the top (a panel left inside an item goes back to the list), \'item\' opens the oldest waiting item on its Home tab (a second click the next), \'off\' only opens the bot; unset is \'list\'. A saved true means \'item\' and false \'off\'.","o":true}',
   forkBotRowBadges:
     '{"t":{"k":"boolean"},"d":"Count badges for what needs you and what is working on a bot\'s sidebar row, an idle look, and the folded header\'s total; unset is on.","o":true}',
   forkBotRowColors:

@@ -38,6 +38,49 @@ ones `SLRM-123 `).
 
 ## What the fork changes
 
+- **Needs you list: one list of who needs the owner, from anywhere (BAD-759).** The owner could
+  reach the bots' Needs you items only through a bot's Home tab, and the Decision inbox was an
+  unlabelled sidebar icon. `forkNeedsYou` (on; Settings > Blackfish, Idle recovery) adds one list
+  over the Decision inbox's own data, no second store:
+  - **What it lists.** Every bot's Needs you items (this computer and paired servers, as bot asks),
+    chats waiting on the owner or paused by a guard, the board's open asks, and the agents the
+    dashboard counts under Needs you (a tool approval or a question, any workspace). Each row
+    shows the bot or agent picture and name, the item number and title, the question in one line,
+    its age, and the paired server when it is not this computer. Groups are per bot or agent, the
+    group with the newest ask first. A filter box narrows by name, number, title, question or
+    host. Stalled and paused chats stay in the Decision inbox, linked from the footer with their
+    count. Chats come from this computer's Decision inbox (idle recovery on); paired servers' bots
+    and board asks are listed through the bot and board stores.
+  - **Open.** `Mod+Shift+L` (action `needsYou.open`, "Needs you", editable in Settings >
+    Shortcuts; unused on macOS, Windows and Linux) toggles the list. It is a main-process window
+    shortcut like the workspace board's, so it works with a terminal, a chat composer or a browser
+    page focused. A "Needs you N" control sits first in the status bar (always on screen, with the
+    left sidebar collapsed or not) and floats at the window's corner while the status bar is
+    hidden. It is hidden at zero; the shortcut still opens the list with its empty state. The
+    Decision inbox's sidebar icon is folded into this control (one count) and returns with
+    `forkNeedsYou` off; the palette entries stay, and "Needs you...", "Needs you: go to the next one"
+    and "Needs you: back to where I was" join them.
+  - **Jump.** Up and Down choose, Enter or a click goes there, Esc closes. A bot's ask opens on its
+    bot's Home tab (a paired server's bot too) with the item and its ask card in view; a chat or
+    agent opens its tab or pane with the question in view. After a jump a small bar (Back, "N
+    waiting", Next) stays: Next goes to the following one without the list (after an answer, to the
+    one that took its place), Back restores the workspace, tab and right sidebar the owner was on
+    before the trail's first jump.
+  - **Quick answers.** `forkNeedsYouQuickAnswers` (on). The selected row opens to buttons for the
+    ask's options and a text box, sent through the item panel's own owner path
+    (`bots.items.owner.comment`, which the item's host checks against the owner, naming the
+    question it answers so a stale answer is refused), or through the Decision inbox's answer for a
+    chat. Nothing is sent on a key: only a press on an option or on Send answers; Enter in the box
+    adds a line. An ask with several questions, a pick-several question or owner steps (BAD-747)
+    opens the item instead, and a tool approval or board ask is never answered here: it jumps to
+    its own prompt.
+  - **Bot row click.** `forkBotRowAskJump` (SLRM-2472) is now `'list'` (default: the bot's Home
+    list, Needs you at the top; a panel left inside an item goes back to the list), `'item'`
+    (the earlier jump to the oldest waiting item) or `'off'`. A saved `true` reads as `'item'` and
+    `false` as `'off'`.
+  - Code is in `src/shared/fork/needs-you.ts`, `src/shared/fork/bot-row-ask-jump.ts` and
+    `src/renderer/src/fork/needs-you/`.
+
 - **Owner steps: commands for the owner are data, not prose (BAD-747).** An agent that needs
   its owner to run commands or do something by hand puts them on the item as an ordered list:
   `orca bot item set <n> --status needs-you --steps-file <file>` (also on `bot item add`).
@@ -846,6 +889,7 @@ ones `SLRM-123 `).
       which drew upstream's question card in the row; upstream removed that card in 1.4.268.)
     - **Counted.** The inbox button's waiting count includes them, and the button and dialog show
       while one waits even when idle recovery and the board are off.
+      With the Needs you list on (BAD-759) the sidebar button gives way to its status bar control.
     - **Told once.** Each window reports the asks it reads to the main process, which tells the
       notify targets above of each new one once: the same desktop, webhook and command targets
       and payload shape (`count`, `items` with `id`, `title`, `kind` `bot-ask`, `question`). An
@@ -863,13 +907,16 @@ ones `SLRM-123 `).
       `agentNeedsInput` and bot notices cover the bot's chats and runs, not items.
     - Code is in `src/shared/fork/inbox-bot-asks.ts`, `src/main/fork/bot-asks/` and
       `src/renderer/src/fork/bot-asks/`.
-  - **Bot row jumps to its ask (SLRM-2472).** Clicking a bot's sidebar row while its host counts
+  - **Bot row jumps to its ask (SLRM-2472, BAD-759).** `forkBotRowAskJump` is `'list'` (default),
+    `'item'` or `'off'`; a saved `true` means `'item'`, `false` means `'off'`. With `'list'` the
+    click opens the bot and shows its Home list, Needs you on top, leaving an item the panel had
+    open. With `'item'`: clicking a bot's sidebar row while its host counts
     items waiting on you (the row's "N needs you") opens the bot as upstream does and also shows
     the oldest waiting item on its Home tab, the way the inbox's Open does: the right panel
     switches to Home with the item open (its 1/N pager on it) and its WAITING ON YOU card
     scrolled into view. A click while that ask still shows moves to the next, wrapping. With
-    nothing waiting the click is upstream's alone. `forkBotRowAskJump` (on; Settings >
-    Blackfish, Idle recovery) turns it off. The asks come from the inbox's live copy when it
+    nothing waiting the click is upstream's alone. `forkBotRowAskJump` (Settings >
+    Blackfish, Idle recovery) chooses between them. The asks come from the inbox's live copy when it
     holds them, else one `bots.items.owner.list` read of that bot, so it works with bot asks
     off. Code is in `src/renderer/src/fork/bot-asks/bot-row-ask-jump.ts`.
   - **CLI.** `orca inbox list [--json]`, `orca inbox answer <id> <text>`,
@@ -3101,6 +3148,7 @@ Apply these in this order. Each one is a single commit.
 160. `BAD-691 Worktree reclaim: orca workspace reclaim and a Space page button remove regenerable git-ignored paths (node_modules, build output, caches; orca.yaml worktree.reclaim overrides the list) from idle workspaces, skipping ones in use, never touching env files, tracked or non-ignored files; off by default (forkWorktreeReclaim), dry run always available`
 161. `BAD-740 Tests: real-git fixtures use their own global git config, the test setup clears Orca session variables, and the reviewer gate reads defaults when no store is attached`
 162. `BAD-747 Owner steps: orca bot item set/add --steps-file keeps the commands and manual acts an agent needs its owner to do as an ordered checklist (title, command, host, note) with Copy, Done, Did not work and a typed-never-run Open in terminal, on desktop and phone; a new set replaces the open one; the last tick answers the ask as done or mails the chat once; fenced shell blocks get Copy; a Tip names --steps-file when commands sit in prose`
+163. `BAD-759 Needs you list: one list of everything waiting on the owner (bots on this computer and paired servers, chats, agents on an approval or a question, board asks), opened from anywhere by Mod+Shift+L or a status bar control, with a jump to each, Next and Back, quick answers through the owner path, and the bot row click chooses list, item or off`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4386,6 +4434,19 @@ Upstream files only get short hooks, which keeps merges small:
   is spread into `FORK_LOST_WORK_METHODS`, so `rpc-method-registry.ts` is untouched;
   `rpc-params-catalog.generated.ts` is regenerated. The three settings are intersected in
   `fork-global-settings.ts`; the settings catalog is regenerated.
+- Needs you list (BAD-759), small edits in stock files: `types.ts`, `definitions-core-4.ts`,
+  `window-shortcut-policy.ts` and `effective.ts` (keybindings) add the `needsYou.open` action and
+  its `openNeedsYou` window shortcut; `main-window-shortcut-actions.ts` and
+  `browser-guest-shortcut-dispatch.ts` send `ui:openNeedsYou`; `ui-bridge-state-and-menu-commands.ts`,
+  `ui-command-event-api.ts` and `web-ui-api.ts` carry `onOpenNeedsYou`;
+  `workspace-shortcut-ipc-bridge.ts` toggles the list; `keybinding-title-copy.ts` names the action;
+  `StatusBarSurface.tsx` renders `ForkNeedsYouStatusSegment` first in its segment row;
+  `quick-actions.ts` spreads `getForkNeedsYouQuickActions()`; `ForkRootHosts` mounts
+  `ForkNeedsYouHost`; `ForkDecisionInboxButton` renders nothing while the list is on;
+  `bot-item-open.ts` gains `closeBotItem` and a close callback on `useBotItemOpenRequest`,
+  `BotActivityPanel.tsx` passes its `back`, and `use-bot-item-walk.ts` exports `forgetBotItemWalk`
+  (the bot row's list click). `forkBotRowAskJump` becomes `boolean | 'list' | 'item' | 'off'`; the
+  settings catalog is regenerated.
 - Owner steps (BAD-747), small edits in stock files: `NativeChatCodeBlock.tsx` keeps Copy visible
   on an untagged block that looks like a command; `native-chat-file-link-tree.ts` skips linking a
   command in inline code; `pty-pane-startup.ts`, `terminal-state.ts`, `startup-draft-paste.ts` and

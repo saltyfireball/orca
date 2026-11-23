@@ -8,6 +8,7 @@ import { isGitRepoKind } from '../../../../shared/repository/repo-kind'
 import { runBuiltInOrReplacement } from '@/lib/plugins/commands/plugin-command-replacements'
 import { useAppStore } from '../../store/index'
 import { toggleAgentDashboardFromShortcut } from './agent-dashboard-command'
+import { toggleNeedsYou } from '@/fork/needs-you/needs-you-store'
 import { openNewWorkspaceFromShortcut } from './new-workspace-command'
 import { canNavigateWorktreeHistory } from '../../app-shell/chrome/titlebar-worktree-history-controls'
 
@@ -57,6 +58,11 @@ export function registerWorkspaceShortcutIpcBridge(unsubs: (() => void)[]): void
         })
       })
     )
+  }
+
+  // Fork (BAD-759): Needs you.
+  if (window.api.ui.onOpenNeedsYou) {
+    unsubs.push(window.api.ui.onOpenNeedsYou(() => toggleNeedsYou()))
   }
 
   unsubs.push(
