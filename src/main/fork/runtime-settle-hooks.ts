@@ -11,6 +11,10 @@ import {
   type ForkWorktreePortsRuntime
 } from './worktree-ports/worktree-ports-service'
 import { startForkTurnCheckpoints } from './turn-checkpoints/turn-checkpoint-live'
+import {
+  installForkWorkspaceFolders,
+  type ForkWorkspaceFolderRuntime
+} from './workspace-folder/workspace-folder-path'
 import { startForkAgentGuards } from './agent-guards/agent-guards-service'
 import {
   startForkCommandGuards,
@@ -35,6 +39,7 @@ export function startForkRuntimeSettleServices(
     ForkWorktreePortsRuntime &
     ForkMainSyncRuntime &
     ForkCommandGuardsRuntime &
+    ForkWorkspaceFolderRuntime &
     ChatHandoffRuntime &
     ForkDigestRuntime &
     ForkLettersRuntime &
@@ -47,6 +52,8 @@ export function startForkRuntimeSettleServices(
   startForkServerUpdate(runtime)
   // SLRM-2383: release port blocks of workspaces gone while closed, then follow removals.
   void startForkWorktreePorts(runtime)
+  // BAD-678: folder workspaces resolve to their folder for checkpoints and command guards.
+  installForkWorkspaceFolders(runtime)
   // BAD-678: checkpoint workspace files at the end of each agent turn.
   startForkTurnCheckpoints()
   // SLRM-2385: warn and pause agents stuck in a failure loop or past their spend cap.

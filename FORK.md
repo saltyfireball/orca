@@ -1871,6 +1871,16 @@ ones `SLRM-123 `).
     host that runs the workspace, so a paired server keeps and restores its own; a workspace on an
     SSH host or in a WSL distro is not checkpointed. Not built yet: a Checkpoints list in the chat
     or workspace UI.
+  - Folder workspaces (`folder:<id>`): the status row's and the RPC selector's id resolve to the
+    folder through `forkLocalWorkspaceFolder` (`src/main/fork/workspace-folder/`), which reuses
+    the lookup a terminal's start folder uses; one on an SSH host or a WSL path resolves to
+    nothing, so it is not checkpointed and the RPC refuses it. The store and the busy check are
+    keyed by the folder, so two folder workspaces, or a folder workspace and a project, on one
+    directory share checkpoints, and restore is refused while an agent of any of them is busy.
+  - Multi-repo folders: the folder's own files are captured. A git repository inside it is
+    recorded as a pointer to its HEAD commit: its files, uncommitted edits, history and `.git` are
+    neither captured nor touched, and restore never deletes or rewrites it. To checkpoint a
+    nested repository's work, open it as its own workspace.
   - Measured (2026-11-22, a Mac laptop SSD, 1000 random 1 MB files = 1 GB): the first snapshot
     took 16.9 s, a turn with no change 60 ms, and a turn that rewrote 3 files and added one 177 ms.
     The perf contract test asserts an incremental snapshot of 4000 files stays under 2 s.
@@ -3270,6 +3280,7 @@ Apply these in this order. Each one is a single commit.
 171. `BAD-763 The completion contract and reviewer gate follow the work: a start on a paired server carries them and that server gates the done, retries and follow-ups inherit them, folder workspaces run command checks, and orca contract show reads the server's evidence`
 172. `BAD-767 Snapshots also cover Lost work deletes of untracked worktrees and prune on a timer; SSH removal stays refused by the stock route, pinned by a test`
 173. `BAD-763 A done never settles unchecked in silence: a Task that declared checks or asked for a review gets one plain line on its done, and an attempt in orca contract show, when the setting is off or a folder has no commit to review`
+174. `BAD-678 Turn checkpoints in folder workspaces: a folder:<id> workspace resolves to its folder for capture, restore and the busy check (shared with every workspace on that directory); SSH and WSL folders stay refused`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

@@ -10,7 +10,6 @@ import {
   readForkTurnCheckpointSettings,
   type ForkTurnCheckpointConfig
 } from '../../../shared/fork/turn-checkpoints'
-import { splitWorktreeIdForFilesystem } from '../../../shared/worktree/id'
 import { normalizeRuntimePathForComparison } from '../../../shared/file-access/cross-platform-path'
 import { agentHookServer } from '../../agent-hooks/server/agent-hook-server'
 import type { EnrichedAgentHookEventPayload } from '../../agent-hooks/server/server-types'
@@ -18,6 +17,7 @@ import { gitExecFileAsync } from '../../git/command-runner/git-exec-file'
 import { getCanonicalUserDataPath } from '../../persistence/loading-store/user-data-path'
 import type { CheckpointGit } from './turn-checkpoint-shadow'
 import { createTurnCheckpointService, type TurnCheckpointService } from './turn-checkpoint-service'
+import { forkLocalWorkspaceFolder } from '../workspace-folder/workspace-folder-path'
 
 const GIT_TIMEOUT_MS = 5 * 60_000
 const FOLDER = 'fork-turn-checkpoints'
@@ -47,12 +47,12 @@ const appGit: CheckpointGit = async (args, options) =>
     })
   ).stdout
 
-/** Agents of this host that are busy in the workspace's folder right now. */
+/** Agents of this host busy in the workspace's folder right now, whichever workspace holds them. */
 function busyAgentsIn(workspacePath: string): string[] {
   const wanted = normalizeRuntimePathForComparison(workspacePath)
   const busy: string[] = []
   for (const row of agentHookServer.getStatusSnapshot()) {
-    const path = splitWorktreeIdForFilesystem(row.worktreeId ?? '')?.worktreePath
+    const path = forkLocalWorkspaceFolder(row.worktreeId)
     if (
       path &&
       normalizeRuntimePathForComparison(path) === wanted &&
@@ -84,11 +84,6 @@ export function forkTurnCheckpointConfig(): ForkTurnCheckpointConfig {
   return config()
 }
 
-function workspacePathOf(worktreeId: string | undefined): string | null {
-  const path = worktreeId ? splitWorktreeIdForFilesystem(worktreeId)?.worktreePath : undefined
-  return path && path.length > 0 ? path : null
-}
-
 async function exists(path: string): Promise<boolean> {
   try {
     await access(path)
@@ -117,7 +112,7 @@ function onStatus(event: EnrichedAgentHookEventPayload): void {
     lastState.delete(oldest)
   }
   const current = service
-  const path = workspacePathOf(event.worktreeId)
+  const path = forkLocalWorkspaceFolder(event.worktreeId)
   if (!current || !path || previous === state || !config().enabled) {
     return
   }

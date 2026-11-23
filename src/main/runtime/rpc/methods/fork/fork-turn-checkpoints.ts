@@ -8,20 +8,37 @@ import {
   ForkTurnCheckpointsUndoParams
 } from '../../../../../shared/fork/turn-checkpoints'
 import { LOCAL_EXECUTION_HOST_ID } from '../../../../../shared/execution-host/execution-host'
+import {
+  folderIdOfSelector,
+  folderWorkspaceKey
+} from '../../../../../shared/workspace/identity/workspace-scope'
 import { forkTurnCheckpointService } from '../../../../fork/turn-checkpoints/turn-checkpoint-live'
+import { forkLocalWorkspaceFolder } from '../../../../fork/workspace-folder/workspace-folder-path'
+
+const ON_ANOTHER_HOST =
+  'Checkpoints are kept on the machine that holds the files; this workspace is on another host.'
 
 async function localWorkspacePath(ctx: RpcContext, selector: string) {
-  const worktree = await ctx.runtime.showManagedWorktree(selector)
-  if ((worktree.hostId ?? LOCAL_EXECUTION_HOST_ID) !== LOCAL_EXECUTION_HOST_ID) {
-    throw new Error(
-      'Checkpoints are kept on the machine that holds the files; this workspace is on another host.'
-    )
+  const folderId = folderIdOfSelector(selector)
+  const path = folderId
+    ? forkLocalWorkspaceFolder(folderWorkspaceKey(folderId))
+    : await localWorktreePath(ctx, selector)
+  if (!path) {
+    throw new Error(`${ON_ANOTHER_HOST} (Or this host does not know the folder workspace.)`)
   }
   const service = forkTurnCheckpointService()
   if (!service) {
     throw new Error('This Orca host has checkpoints switched off.')
   }
-  return { path: worktree.path, service }
+  return { path, service }
+}
+
+async function localWorktreePath(ctx: RpcContext, selector: string): Promise<string> {
+  const worktree = await ctx.runtime.showManagedWorktree(selector)
+  if ((worktree.hostId ?? LOCAL_EXECUTION_HOST_ID) !== LOCAL_EXECUTION_HOST_ID) {
+    throw new Error(ON_ANOTHER_HOST)
+  }
+  return worktree.path
 }
 
 export const FORK_TURN_CHECKPOINT_METHODS = [
