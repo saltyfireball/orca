@@ -2114,6 +2114,13 @@ ones `SLRM-123 `).
     `--environment`). A goal `--budget` turns the terminal transcript reading on while an active
     goal has one, even with no cap set (`goal-budget-watch.ts`), so it stops a Claude or Codex
     terminal; `orca goal set` and `orca goal list` say when the budget cannot see the agent.
+    The worker links survive an app restart (BAD-766 follow-up): the worker start's in-memory
+    notes are the fast path, and `agent-guards-durable-links.ts` reads the same facts from the
+    orchestration database (a Dispatch row names the worker's pane or chat session and its
+    creator's session, pane or handle; the service gets it through the runtime's
+    `getExistingOrchestrationDb`), so a live worker stays in its Run's total and is listed as not
+    counted when it has no usage record. A worker with no Dispatch row at all (started by hand)
+    belongs to no Run, and the list says so under the caps.
   - **Caps by scope.** An agent can be covered by several caps at once, each counting its own
     spend from its last resume: its own (`forkAgentGuardSpendCapUsd` or `orca guards cap`), its
     Run's and its automation's. The first one reached pauses it; the pause says which.

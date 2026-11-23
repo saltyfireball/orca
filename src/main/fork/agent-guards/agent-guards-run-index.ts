@@ -4,6 +4,8 @@ import type { UsageLedgerData } from '../usage-ledger/usage-ledger-model'
 import { cleanUsagePrices, estimateChatCostUsd, usagePricer } from '../usage-ledger/usage-report'
 import { forkUsageLedgerSettings } from '../usage-ledger/usage-ledger-service'
 import { forkAgentQueueRunParent } from '../agent-queue/agent-queue-service'
+import { isEquivalentPaneKey } from '../../runtime/orchestration/db/pane-key-match'
+import type { DurableRunParent } from './agent-guards-durable-links'
 import type { AgentGuardRun } from './agent-guards-types'
 
 export type RunIndex = Map<string, AgentGuardRun & { title: string }>
@@ -27,6 +29,20 @@ export function setAgentGuardTerminalLinks(next: AgentGuardTerminalLinks): void 
   terminalLinks = next
 }
 
+let durableLinks: (id: string) => DurableRunParent | undefined = () => undefined
+
+/** The orchestration database's record of who started an agent; it survives a restart. */
+export function setAgentGuardDurableLinks(
+  read: (id: string) => DurableRunParent | undefined
+): void {
+  durableLinks = read
+}
+
+/** A creator's pane key as the ledger knows that pane, when the two spell it differently. */
+function knownPane(data: UsageLedgerData, pane: string): string {
+  return Object.keys(data.chats).find((key) => isEquivalentPaneKey(key, pane)) ?? pane
+}
+
 /**
  * Who started this agent, as the id of another agent in the ledger's terms: a chat session id or a
  * terminal pane key; `handle:<h>` names a coordinating terminal whose own pane is not known.
@@ -41,10 +57,20 @@ function runParentOf(data: UsageLedgerData, id: string): string | undefined {
   const ref = handle
     ? forkAgentQueueRunParent({ terminalHandle: handle })
     : forkAgentQueueRunParent({ sessionId: id })
-  if (!ref) {
+  if (ref) {
+    return 'chat' in ref ? ref.chat : (terminalLinks.paneOf(ref.handle) ?? `handle:${ref.handle}`)
+  }
+  // Not in memory (an app restart forgets it): the orchestration database remembers.
+  const durable = durableLinks(id)
+  if (!durable) {
     return undefined
   }
-  return 'chat' in ref ? ref.chat : (terminalLinks.paneOf(ref.handle) ?? `handle:${ref.handle}`)
+  if ('chat' in durable) {
+    return durable.chat
+  }
+  return 'pane' in durable
+    ? knownPane(data, durable.pane)
+    : (terminalLinks.paneOf(durable.handle) ?? `handle:${durable.handle}`)
 }
 
 /**

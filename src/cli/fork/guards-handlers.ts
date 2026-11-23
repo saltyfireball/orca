@@ -104,7 +104,7 @@ function formatCapSections(result: ForkGuardsListResult): string[] {
 
 /** BAD-766: what no cap can see, said under every list that shows a cap. */
 export const NOT_COUNTED_NOTE =
-  'Not counted: agents with no usage record (OpenCode, ACP, Pi and other agents), terminals on SSH or WSL hosts, and agents on paired servers (ask a server with --environment). A Run lists how many of its agents are not counted.'
+  'Not counted: agents with no usage record (OpenCode, ACP, Pi and other agents), terminals on SSH or WSL hosts, workers whose start Orca has no record of (they belong to no Run), and agents on paired servers (ask a server with --environment). A Run lists how many of its agents are not counted.'
 
 function hasSpendCap(result: ForkGuardsListResult): boolean {
   return result.entries.some((entry) => entry.state === 'capped')
