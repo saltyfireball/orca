@@ -2,6 +2,7 @@ import * as z from 'zod'
 import { isPublicOrchestrationAddress } from './mailbox/orchestration-agent-reference'
 import { WorkerApprovalPayloadSchema } from './approvals/worker-approval-payload'
 import { parseOrcaSessionAddress } from '../agent-session/identity/orca-session-address'
+import { ForkCrewRetry } from '../fork/worker-retry-crew'
 
 export const CrewParty = z.string().refine(isPublicOrchestrationAddress)
 export const CrewSubscribeParams = z.object({
@@ -40,6 +41,8 @@ export const CrewRow = z.object({
   /** This worker's permission prompts addressed to the viewing party, each as its newest message: open ones, and recent receipts. */
   approvals: z.array(CrewRowApproval).optional(),
   sendAddress: CrewParty.optional(),
+  /** Fork (BAD-681): this worker's automatic retry, when it has one. */
+  forkRetry: ForkCrewRetry.optional(),
   openTarget: z
     .discriminatedUnion('kind', [
       z.object({ kind: z.literal('chat'), sessionId: z.string(), worktreeId: z.string() }),

@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import type { ForkDoneCheckResult } from './completion-contract'
 import type { ReviewRunStatus } from './reviewer-gate'
+import type { ForkWorkerRetryEntry } from './worker-retry'
 
 export const ForkCompletionContractShowParams = z.object({
   task: z.string().trim().min(1).max(256)
@@ -35,6 +36,10 @@ export type ForkCompletionContractShowResult = {
       finishedAt: string | null
     }[]
   } | null
+  /** BAD-681: each automatic retry of this Task's workers, with its reason and state. */
+  retries?: ForkWorkerRetryEntry[]
+  /** BAD-681: the retry that started this Task, when a retry did. */
+  retryOf?: ForkWorkerRetryEntry | null
   /** BAD-763: the paired servers the Task's workers ran on and what each said about the checks. */
   servers?: { name: string; attempts: number; error?: string }[]
   attempts: {
