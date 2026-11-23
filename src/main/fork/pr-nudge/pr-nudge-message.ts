@@ -3,7 +3,11 @@
 // and invisible characters and of anything that reads as a tag, kept short, sits only inside the
 // JSON of a block marked data-trust="untrusted", and the trusted lines around it say it is data.
 import type { PrBabysitPr } from '../../../shared/fork/pr-babysit'
-import type { PrNudgeComment } from '../../../shared/fork/pr-nudge'
+import {
+  PR_MESSAGE_MERGE_LINE,
+  type ForkPrNudgeConflictUpdate,
+  type PrNudgeComment
+} from '../../../shared/fork/pr-nudge'
 import { cleanOutsideText } from '../pr-babysit/pr-babysit-message'
 
 export const PR_NUDGE_REVIEW_MARKER = '[pr-nudge: new review comments]'
@@ -50,7 +54,8 @@ export function buildPrNudgeReviewMessage(input: {
   ].join('\n')
   const tail = [
     '',
-    'Go through each comment: where it is right, change the code, commit and push to this pull request branch; where it is wrong or unclear, say why in a reply on that thread rather than changing code. Do not merge the pull request, do not use admin or bypass options, and do not dismiss reviews.'
+    'Go through each comment: where it is right, change the code, commit and push to this pull request branch; where it is wrong or unclear, say why in a reply on that thread rather than changing code. Do not use admin or bypass options, and do not dismiss reviews.',
+    PR_MESSAGE_MERGE_LINE
   ].join('\n')
   const more =
     input.comments.length > shown.length
@@ -78,14 +83,21 @@ export function buildPrNudgeConflictMessage(input: {
   baseRef: string | null
   round: number
   maxRounds: number
+  /** Merge the base in (the default) or rebase; unset is merge. */
+  update?: ForkPrNudgeConflictUpdate
 }): string {
   const { pr } = input
   const base = input.baseRef ? cleanOutsideText(input.baseRef, MAX_FIELD_CHARS) : null
+  const rebase = input.update === 'rebase'
+  const how = rebase
+    ? 'Rebase this branch onto the base branch, resolve the conflicts keeping the intent of both sides, run the checks that cover the files you touched, then push to this pull request branch. If you rebased your own branch, push with --force-with-lease; never a plain --force.'
+    : 'Merge the base branch into this branch, resolve the conflicts keeping the intent of both sides, run the checks that cover the files you touched, then push to this pull request branch with a normal push.'
   return [
     PR_NUDGE_CONFLICT_MARKER,
-    `${label(pr)} now conflicts with ${base ? `its base branch "${base}"` : 'its base branch'} at ${input.headSha.slice(0, 7)}. Rebase request ${input.round} of ${input.maxRounds}.`,
+    `${label(pr)} now conflicts with ${base ? `its base branch "${base}"` : 'its base branch'} at ${input.headSha.slice(0, 7)}. Update request ${input.round} of ${input.maxRounds}.`,
     'This message comes from the PR watcher, which the user turned on for conflict nudges.',
     '',
-    'Bring this branch up to date with the base branch (a rebase, or merging the base in), resolve the conflicts keeping the intent of both sides, run the checks that cover the files you touched, then push to this pull request branch. If you rebased your own branch, push with --force-with-lease; never a plain --force. Do not merge the pull request and do not use admin or bypass options.'
+    `${how} Do not use admin or bypass options.`,
+    PR_MESSAGE_MERGE_LINE
   ].join('\n')
 }

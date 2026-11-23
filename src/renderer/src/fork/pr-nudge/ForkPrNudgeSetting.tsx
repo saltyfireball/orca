@@ -1,7 +1,11 @@
 // PR nudges (FORK.md, BAD-680) settings: off by default.
 import React, { useId } from 'react'
 import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
-import { readPrNudgeSettings, type ForkPrNudgeCommenters } from '../../../../shared/fork/pr-nudge'
+import {
+  readPrNudgeSettings,
+  type ForkPrNudgeCommenters,
+  type ForkPrNudgeConflictUpdate
+} from '../../../../shared/fork/pr-nudge'
 import {
   SettingsRow,
   SettingsSubsectionHeader,
@@ -25,6 +29,7 @@ type Props = {
 export function ForkPrNudgeSetting({ settings, updateSettings }: Props): React.JSX.Element {
   const t = useTranslate()
   const commentersId = useId()
+  const updateId = useId()
   const current = readPrNudgeSettings(settings)
   const attemptsLabel = t('fork.prNudge.settings.attemptsLabel', 'Attempts before it asks you')
   return (
@@ -89,6 +94,38 @@ export function ForkPrNudgeSetting({ settings, updateSettings }: Props): React.J
                 {t('fork.prNudge.settings.collaborators', 'Collaborators only')}
               </SelectItem>
               <SelectItem value="anyone">{t('fork.prNudge.settings.anyone', 'Anyone')}</SelectItem>
+            </SelectContent>
+          </Select>
+        }
+      />
+      <SettingsRow
+        label={t('fork.prNudge.settings.updateLabel', 'Conflict fix')}
+        labelId={updateId}
+        description={t(
+          'fork.prNudge.settings.updateHelp',
+          'How the chat is asked to bring a conflicting branch up to date. Merging the base branch in never needs a force push; rebasing does.'
+        )}
+        control={
+          <Select
+            value={current.conflictUpdate}
+            onValueChange={(value) =>
+              updateSettings({
+                forkPrNudgeConflictUpdate: (value === 'rebase'
+                  ? 'rebase'
+                  : 'merge') as ForkPrNudgeConflictUpdate
+              })
+            }
+          >
+            <SelectTrigger size="sm" className="min-w-40" aria-labelledby={updateId}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="merge">
+                {t('fork.prNudge.settings.updateMerge', 'Merge the base in')}
+              </SelectItem>
+              <SelectItem value="rebase">
+                {t('fork.prNudge.settings.updateRebase', 'Rebase')}
+              </SelectItem>
             </SelectContent>
           </Select>
         }

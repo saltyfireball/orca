@@ -205,18 +205,30 @@ describe('review comments', () => {
 })
 
 describe('merge conflicts', () => {
-  it('sends one rebase request per head and starts over once mergeable', async () => {
+  it('sends one update request per head and starts over once mergeable', async () => {
     const h = harness({ forkPrNudgeEnabled: true, forkPrNudgeReviews: false })
     await h.service.observed(h.seen({ mergeable: 'CONFLICTING' }))
     await h.service.observed(h.seen({ mergeable: 'CONFLICTING' }))
     await h.service.observed(h.seen({ mergeable: 'UNKNOWN' }))
     expect(h.sent).toHaveLength(1)
     expect(h.sent[0]!.text).toContain(PR_NUDGE_CONFLICT_MARKER)
-    expect(h.sent[0]!.text).toContain('Rebase request 1 of 3')
+    expect(h.sent[0]!.text).toContain('Update request 1 of 3')
+    expect(h.sent[0]!.text).toContain('Merge the base branch into this branch')
+    expect(h.sent[0]!.text).not.toMatch(/force|rebase/iu)
     await h.service.observed(h.seen({ mergeable: 'CONFLICTING', headSha: 'bbbbbbb1111' }))
     expect(h.sent).toHaveLength(2)
     await h.service.observed(h.seen({ mergeable: 'MERGEABLE', headSha: 'bbbbbbb1111' }))
     expect(h.state().entries[PR]!.conflictRounds).toBe(0)
+  })
+
+  it('asks for a rebase when the setting says rebase (BAD-783)', async () => {
+    const h = harness({
+      forkPrNudgeEnabled: true,
+      forkPrNudgeReviews: false,
+      forkPrNudgeConflictUpdate: 'rebase'
+    })
+    await h.service.observed(h.seen({ mergeable: 'CONFLICTING' }))
+    expect(h.sent[0]!.text).toContain('Rebase this branch onto the base branch')
   })
 
   it('stops into the Decision inbox when the conflict outlives the requests', async () => {

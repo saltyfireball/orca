@@ -182,7 +182,8 @@ export function createPrNudgeService(deps: PrNudgeServiceDeps) {
       headSha: seen.headSha,
       baseRef: seen.baseRef,
       round: entry.conflictRounds + 1,
-      maxRounds: settings.maxAttempts
+      maxRounds: settings.maxAttempts,
+      update: settings.conflictUpdate
     })
     if (await send(entry, [key], message, 'conflict-unsent')) {
       entry.conflictHeads = [...entry.conflictHeads, key].slice(-50)

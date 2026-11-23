@@ -10,6 +10,7 @@ import {
   getCheckDetailsPromptKey
 } from '../../../shared/source-control/checks/pr-checks-fix-prompt'
 import type { PRCheckDetail, PRCheckRunDetails } from '../../../shared/github/checks/check-types'
+import { PR_MESSAGE_MERGE_LINE } from '../../../shared/fork/pr-nudge'
 import type { PrBabysitPr } from '../../../shared/fork/pr-babysit'
 import type { PrBabysitChecks } from './pr-babysit-github'
 
@@ -88,7 +89,8 @@ export function buildPrBabysitFixMessage(input: {
   const tail = [
     '',
     'Fix what this branch broke, run the checks that failed where you can, then commit and push to this pull request branch. The babysitter reads CI again after your push.',
-    'If a failure is not caused by this branch (flaky, infrastructure, base branch), say so and push nothing for it. Do not merge the pull request yourself, do not use admin or bypass options, and do not change CI settings to make a check pass.'
+    'If a failure is not caused by this branch (flaky, infrastructure, base branch), say so and push nothing for it. Do not use admin or bypass options, and do not change CI settings to make a check pass.',
+    PR_MESSAGE_MERGE_LINE
   ].join('\n')
   const room = PR_BABYSIT_MAX_MESSAGE_CHARS - head.length - tail.length - 200
   const report = body.length > room ? `${body.slice(0, room)}\n[report cut]` : body

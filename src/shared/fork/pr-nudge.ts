@@ -6,6 +6,8 @@
 import { parsePrBabysitKey } from './pr-babysit'
 
 export type ForkPrNudgeCommenters = 'collaborators' | 'anyone'
+/** How a conflicting branch is brought up to date: merge the base in (no force push) or rebase it. */
+export type ForkPrNudgeConflictUpdate = 'merge' | 'rebase'
 
 export type ForkPrNudgeSettings = {
   /** Fork PR nudges (BAD-680): tell the owning chat about new review comments and merge conflicts on its pull request. Off unless true. */
@@ -16,17 +18,24 @@ export type ForkPrNudgeSettings = {
   forkPrNudgeConflicts?: boolean
   /** Fork PR nudges: whose comments count: 'collaborators' (owner, member, collaborator; the default) or 'anyone'. */
   forkPrNudgeCommenters?: ForkPrNudgeCommenters
+  /** Fork PR nudges (BAD-783): how the conflict request asks the chat to update its branch: 'merge' (merge the base branch in; never a force push; the default) or 'rebase'. */
+  forkPrNudgeConflictUpdate?: ForkPrNudgeConflictUpdate
   /** Fork PR nudges: failed sends (and conflict requests in a row) before it stops and asks you (1 to 10); unset is 3. */
   forkPrNudgeMaxAttempts?: number
 }
 
 export const PR_NUDGE_DEFAULT_MAX_ATTEMPTS = 3
 
+/** The one sentence every PR message carries about merging (BAD-783): it grants and holds nothing. */
+export const PR_MESSAGE_MERGE_LINE =
+  'This message gives you no permission to merge the pull request and places no hold on merging it: your own task decides whether you merge.'
+
 export type PrNudgeSettings = {
   enabled: boolean
   reviews: boolean
   conflicts: boolean
   commenters: ForkPrNudgeCommenters
+  conflictUpdate: ForkPrNudgeConflictUpdate
   maxAttempts: number
 }
 
@@ -44,6 +53,7 @@ export function readPrNudgeSettings(source: PrNudgeSettingsSource): PrNudgeSetti
     reviews: s.forkPrNudgeReviews !== false,
     conflicts: s.forkPrNudgeConflicts !== false,
     commenters: s.forkPrNudgeCommenters === 'anyone' ? 'anyone' : 'collaborators',
+    conflictUpdate: s.forkPrNudgeConflictUpdate === 'rebase' ? 'rebase' : 'merge',
     maxAttempts:
       typeof attempts === 'number' && Number.isInteger(attempts) && attempts >= 1 && attempts <= 10
         ? attempts

@@ -31,6 +31,7 @@ describe('readPrNudgeSettings', () => {
       reviews: true,
       conflicts: true,
       commenters: 'collaborators',
+      conflictUpdate: 'merge',
       maxAttempts: 3
     })
   })
@@ -48,6 +49,7 @@ describe('readPrNudgeSettings', () => {
       reviews: false,
       conflicts: true,
       commenters: 'anyone',
+      conflictUpdate: 'merge',
       maxAttempts: 3
     })
     expect(readPrNudgeSettings({ forkPrNudgeEnabled: 'yes' }).enabled).toBe(false)
