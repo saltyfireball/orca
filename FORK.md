@@ -2024,14 +2024,20 @@ ones `SLRM-123 `).
     test proves a deny there (`COMMAND_GUARD_SURFACE_PROOFS`, one test file per surface; a unit
     test checks the named file holds the proof). No proof, no `guarded`.
     - **terminal**: the PreToolUse hook script Orca installs, macOS and Linux (Claude's Windows
-      script, SSH and WSL hosts post to a relay that cannot answer).
+      script, SSH and WSL hosts post to a relay that cannot answer). The workspace root comes
+      from `forkLocalWorkspaceFolder`, so a folder workspace (`folder:<id>`) is guarded at its
+      folder (BAD-678). A shell call whose workspace has no folder on this host (a folder
+      workspace on an SSH host or a WSL path, or one the host does not know) goes through, and
+      the terminal row then shows as unguarded and says how many workspaces.
     - **native chat** and **chat worker** (BAD-764): their child has no pane identity or hook
       endpoint (the seal drops them so one chat cannot pose as another, and nothing of the sort
       is added back), so the script never reaches Orca. Orca instead answers PreToolUse itself,
       as an in-process hook callback of the Claude Agent SDK passed in the chat's own query
       (`command-guards-native-chat.ts`). It runs in Full access too and needs no variable in the
       child. A chat started while the guards are not running on its host shows as unguarded (the
-      surface row names how many), and a failing callback lets the call through.
+      surface row names how many), and a failing callback lets the call through. The root is the
+      chat's launch folder, which the runtime resolves for folder workspaces too, so chats and
+      chat workers in a folder workspace are guarded.
     - Every other hook agent is unguarded (their scripts discard the reply). Adding an agent means
       its hook contract allows a deny, a path that prints it, a proving test and a row in
       `commandGuardCoverage`.
@@ -3284,6 +3290,7 @@ Apply these in this order. Each one is a single commit.
 173. `BAD-763 A done never settles unchecked in silence: a Task that declared checks or asked for a review gets one plain line on its done, and an attempt in orca contract show, when the setting is off or a folder has no commit to review`
 174. `BAD-678 Turn checkpoints in folder workspaces: a folder:<id> workspace resolves to its folder for capture, restore and the busy check (shared with every workspace on that directory); SSH and WSL folders stay refused`
 175. `BAD-690 pnpm check:changed runs the injected-context ratchet when only skill guides, skills or skill stubs change`
+176. `BAD-686 Command guards in folder workspaces: terminal agents there are guarded at the folder, a workspace with no folder on the host shows the terminal as unguarded, and chats and chat workers there are proven guarded`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

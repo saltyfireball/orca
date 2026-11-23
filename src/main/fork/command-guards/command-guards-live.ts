@@ -17,6 +17,7 @@ import {
   type CommandGuardConfig,
   type CommandGuardRuleId,
   type CommandGuardSurface,
+  type CommandGuardSurfaceCoverage,
   type ForkCommandGuardSettings
 } from '../../../shared/fork/command-guards'
 import { evaluateCommandGuard } from '../../../shared/fork/command-guards-rules'
@@ -27,7 +28,7 @@ import type {
 } from '../../../shared/fork/command-guards-wire'
 import type { AgentHookSource } from '../../../shared/agent-hook-listener/transport/agent-hook-relay'
 import type { Repo } from '../../../shared/repository/repo-types'
-import { getRepoIdFromWorktreeId, splitWorktreeIdForFilesystem } from '../../../shared/worktree/id'
+import { getRepoIdFromWorktreeId } from '../../../shared/worktree/id'
 import {
   readAgentToolCall,
   type AgentToolCallOwner
@@ -40,6 +41,7 @@ import {
 } from './command-guards-audit'
 import { readCommandGuardGit } from './command-guards-git-state'
 import { forkCommandGuardChatSurfaces } from './command-guards-chat-registry'
+import { forkLocalWorkspaceFolder } from '../workspace-folder/workspace-folder-path'
 
 export type ForkCommandGuardsRuntime = {
   requireStore: () => {
@@ -152,6 +154,35 @@ export function guardShellCommand(call: GuardedShellCall): string | null {
   }
 }
 
+const MAX_UNGUARDED_WORKSPACES = 200
+const unguardedTerminalWorkspaces = new Set<string>()
+
+/** A terminal shell call whose workspace has no folder on this host went through unchecked. */
+function noteUnguardedTerminalWorkspace(workspaceId: string): void {
+  unguardedTerminalWorkspaces.delete(workspaceId)
+  unguardedTerminalWorkspaces.add(workspaceId)
+  if (unguardedTerminalWorkspaces.size > MAX_UNGUARDED_WORKSPACES) {
+    const oldest = unguardedTerminalWorkspaces.values().next().value
+    if (oldest !== undefined) {
+      unguardedTerminalWorkspaces.delete(oldest)
+    }
+  }
+}
+
+/** The terminal row marked unguarded while any workspace's shell calls went through unchecked. */
+function withTerminalGaps(rows: CommandGuardSurfaceCoverage[]): CommandGuardSurfaceCoverage[] {
+  const gaps = unguardedTerminalWorkspaces.size
+  return rows.map((row) =>
+    row.surface === 'terminal' && gaps > 0
+      ? {
+          ...row,
+          guarded: false,
+          note: `unguarded: ${gaps} workspace${gaps === 1 ? '' : 's'} with no folder on this host (a folder workspace on an SSH host or in WSL, or one this host does not know) ran shell commands unchecked; ${row.note}`
+        }
+      : row
+  )
+}
+
 /**
  * Hook (the hook server, before plugins): Claude Code's PreToolUse answer when the call breaks a
  * command guard, else null. `decides` is true when the hook script reads Orca's answer, so only
@@ -171,13 +202,16 @@ export function forkCommandGuardAnswer(
     const input = call?.payload.input
     const command =
       typeof input === 'object' && input !== null && 'command' in input ? input.command : null
-    const root = splitWorktreeIdForFilesystem(owner.worktreeId)?.worktreePath
     if (
       call?.phase !== 'before' ||
       !SHELL_TOOLS.test(call.payload.tool) ||
-      typeof command !== 'string' ||
-      !root
+      typeof command !== 'string'
     ) {
+      return null
+    }
+    const root = forkLocalWorkspaceFolder(owner.worktreeId)
+    if (!root) {
+      noteUnguardedTerminalWorkspace(owner.worktreeId)
       return null
     }
     const reason = guardShellCommand({
@@ -233,7 +267,7 @@ export function forkCommandGuardStatus(): ForkCommandGuardsStatusResult {
         .map(([id]) => names.get(id) ?? id)
     })),
     agents: commandGuardCoverage(),
-    surfaces: forkCommandGuardChatSurfaces()
+    surfaces: withTerminalGaps(forkCommandGuardChatSurfaces())
   }
 }
 

@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session/lifecycle/operations/agent-session-mutation-envelope'
 import {
+  HOST_TEST_LOCATION,
   hostTestAttachParams,
   hostTestMessage
 } from '../../native-chat/agent-session-wire/host/testing/structured-agent-session-host-test-data.test-fixture'
@@ -59,7 +60,7 @@ afterEach(async () => {
 })
 
 /** Runs one chat on a stand-in CLI that asks the PreToolUse hook about a force push; returns the answer. */
-async function forceTheHook(session: string): Promise<unknown> {
+async function forceTheHook(session: string, workspaceId?: string): Promise<unknown> {
   const host = await ensureStructuredAgentSessionHost({
     stateDirectory: state,
     hostId: 'local',
@@ -81,7 +82,10 @@ async function forceTheHook(session: string): Promise<unknown> {
     provider: 'claude',
     agent: 'claude',
     providerHandle: { kind: 'claude', sessionId: randomUUID(), leafUuid: null },
-    accountHome: { variable: 'CLAUDE_CONFIG_DIR', path: join(state, 'claude-home') }
+    accountHome: { variable: 'CLAUDE_CONFIG_DIR', path: join(state, 'claude-home') },
+    ...(workspaceId
+      ? { location: { ...HOST_TEST_LOCATION, workspaceId, workspaceKind: 'folder' as const } }
+      : {})
   })
   expect(await host.attach(caller, params)).toMatchObject({ ok: true })
   await vi.waitFor(
@@ -129,6 +133,16 @@ describe('command guard proof: native chat', () => {
     })
   })
 
+  it('denies and audits a force push from a chat in a folder workspace', async () => {
+    const reply = await forceTheHook(`chat-${randomUUID()}`, 'folder:notes')
+    expect(child(reply, 'hookSpecificOutput').permissionDecision).toBe('deny')
+    expect(listCommandGuardAudit(1)[0]).toMatchObject({
+      surface: 'native-chat',
+      rule: 'force-push',
+      workspaceId: 'folder:notes'
+    })
+  })
+
   it('shows a chat started with no guard endpoint as unguarded', async () => {
     stopForkCommandGuards()
     const before = listCommandGuardAudit(500).length
@@ -141,7 +155,7 @@ describe('command guard proof: native chat', () => {
 })
 
 describe('command guard proof: chat worker', () => {
-  it('denies and audits a force push from a worker chat', async () => {
+  it('denies and audits a force push from a worker chat in a folder workspace', async () => {
     const session = `worker-${randomUUID()}`
     structuredWorkerIdentities.register({
       handle: mintStructuredWorkerHandle(),
@@ -149,14 +163,15 @@ describe('command guard proof: chat worker', () => {
       agent: 'claude',
       paneKey: 'tab-1:leaf-1',
       processIncarnation: 'test',
-      worktreeId: 'workspace-1',
+      worktreeId: 'folder:notes',
       hostScope: { kind: 'local', hostId: 'local' }
     })
-    const reply = await forceTheHook(session)
+    const reply = await forceTheHook(session, 'folder:notes')
     expect(child(reply, 'hookSpecificOutput').permissionDecision).toBe('deny')
     expect(listCommandGuardAudit(1)[0]).toMatchObject({
       surface: 'chat-worker',
-      rule: 'force-push'
+      rule: 'force-push',
+      workspaceId: 'folder:notes'
     })
     expect(
       forkCommandGuardStatus().surfaces?.find((row) => row.surface === 'chat-worker')
