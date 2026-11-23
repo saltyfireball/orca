@@ -3463,6 +3463,12 @@ Upstream files only get short hooks, which keeps merges small:
   `macos-daemon-launchd.ts`. Left shared on purpose: the `orca://` scheme (macOS picks one
   app), the serve launchd label prefix and the daemon job label (keyed by data folder, so
   shared mode shares the daemon).
+- Install lock fds on macOS (BAD-781). `remote-install-lock-holder-commands.ts` opens its five lock
+  fds (fence, release gate, holder, unmark, steal claim) through `openFd`: a subshell probes the
+  open and a plain `exec` keeps it. The stock `{ command exec N<file; } 2>/dev/null` makes macOS's
+  /bin/sh (bash 3.2) spin at 100% CPU forever at the next `exit`, and that shell outlives its parent.
+  Keep `openFd` when a merge brings the stock lines back; the test file checks that no command
+  contains `command exec`, and its flock timeout tests clean up with `onTestFinished`.
 - Phone page size fence (BAD-770). `verify-mobile-web-app-bundle.mjs` holds
   `MOBILE_WEB_APP_BUNDLE_MAX_EAGER_BYTES` at 11 MiB where upstream has 10.90625 MiB: the fork's phone
   screens add about 53 KB over the tag, and every code chunk counts as eager. Take the larger number

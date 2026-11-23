@@ -21,6 +21,7 @@ import {
   installLockHolderExitedProbeCommand,
   installLockHolderUnmarkCommand,
   installLockReleaseGate,
+  posixHolderStealParts,
   parseInstallLockHolderExit
 } from './remote-install-lock-holder-commands'
 import { getRemoteHostPlatform } from '../../ssh/remote-host/ssh-remote-platform'
@@ -218,7 +219,9 @@ describe.skipIf(!hasFlock)('flock-backed install lock, run for real', () => {
 
   // These three tests each wait 10-15s on real flock timeouts; run them concurrently with isolated cleanup.
   describe.concurrent('real flock timeout boundaries', () => {
-    function createIsolatedScope() {
+    // A test that times out never reaches its own `finally`, so each scope also cleans up when the test ends,
+    // however it ends: a hung shell must not outlive the run.
+    function createIsolatedScope(onTestFinished: (cleanup: () => void) => void) {
       const localRoots: string[] = []
       const localChildren: ChildProcessWithoutNullStreams[] = []
       const localLockOwnedBy = (token: string): string => {
@@ -252,12 +255,16 @@ describe.skipIf(!hasFlock)('flock-backed install lock, run for real', () => {
           rmSync(root, { recursive: true, force: true })
         }
       }
+      onTestFinished(cleanup)
       return { localLockOwnedBy, localStart, localHoldLock, cleanup }
     }
 
     // The gate's real flock wait gives up only after about 10 seconds of wall-clock time.
-    it('fails the gated removal and keeps the lock while a fenced command outlives the wait', async () => {
-      const { localLockOwnedBy, localStart, localHoldLock, cleanup } = createIsolatedScope()
+    it('fails the gated removal and keeps the lock while a fenced command outlives the wait', async ({
+      onTestFinished
+    }) => {
+      const { localLockOwnedBy, localStart, localHoldLock, cleanup } =
+        createIsolatedScope(onTestFinished)
       try {
         const lock = localLockOwnedBy('t-first')
         const holder = await localHoldLock(lock)
@@ -277,8 +284,10 @@ describe.skipIf(!hasFlock)('flock-backed install lock, run for real', () => {
     }, 30_000)
 
     // The unmark kills only after its real flock wait of about 10 seconds.
-    it('kills a holder that outlives the unmark wait, so it can never mark the lock late', async () => {
-      const { localLockOwnedBy, localStart, cleanup } = createIsolatedScope()
+    it('kills a holder that outlives the unmark wait, so it can never mark the lock late', async ({
+      onTestFinished
+    }) => {
+      const { localLockOwnedBy, localStart, cleanup } = createIsolatedScope(onTestFinished)
       try {
         const lock = localLockOwnedBy('t-first')
         const holder = localStart(installLockHolderCommand(lock, first))
@@ -297,8 +306,9 @@ describe.skipIf(!hasFlock)('flock-backed install lock, run for real', () => {
     }, 30_000)
 
     // The unmark checks the pid only after its real flock wait of about 15 seconds.
-    it('never kills a process that reused the holder pid', async () => {
-      const { localLockOwnedBy, localStart, localHoldLock, cleanup } = createIsolatedScope()
+    it('never kills a process that reused the holder pid', async ({ onTestFinished }) => {
+      const { localLockOwnedBy, localStart, localHoldLock, cleanup } =
+        createIsolatedScope(onTestFinished)
       try {
         const lock = localLockOwnedBy('t-first')
         const holder = await localHoldLock(lock)
@@ -331,5 +341,24 @@ describe.skipIf(!hasFlock)('flock-backed install lock, run for real', () => {
     const holder = start(installLockHolderCommand(lock, first), { PATH: bin })
     expect(await line(holder, 'HOLDER_READY')).toBe(false)
     expect(await exited(holder)).toBe(0)
+  })
+})
+
+describe('lock fd opens', () => {
+  // macOS's /bin/sh (bash 3.2) spins at 100% CPU forever at the next `exit` after `command exec N<file`,
+  // and the spinning shell outlives its parent. The fds are opened by a subshell probe and a plain exec.
+  it('never opens a lock fd with `command exec`', () => {
+    const lock = '/tmp/orca-lock-holder-x/.install-lock'
+    const steal = posixHolderStealParts(lock, first, { dirKey: '1:2', token: 't-first' })
+    for (const command of [
+      installLockFenceStatement(lock, first),
+      installLockReleaseGate(lock, first),
+      installLockHolderCommand(lock, first),
+      installLockHolderUnmarkCommand(lock, first),
+      steal.claimCheck
+    ]) {
+      expect(command).not.toContain('command exec')
+      expect(command).toMatch(/\( exec \d[<>]+[^)]* \) 2>\/dev\/null && exec \d/u)
+    }
   })
 })
