@@ -7,7 +7,7 @@ import {
 } from '../arguments/flags'
 import { printResult } from '../output/command-result-output'
 import { RuntimeClientError } from '../runtime/connection/types'
-import { describeGoalUntil, goalStopTitle } from '../../shared/fork/goal-loop'
+import { describeGoalUntil, goalBudgetCounted, goalStopTitle } from '../../shared/fork/goal-loop'
 import type {
   ForkGoalClearResult,
   ForkGoalListResult,
@@ -45,7 +45,9 @@ export function parseGoalBudget(raw: string | undefined): number | undefined {
 function rowLine(goal: ForkGoalRow): string {
   const state = goal.stop ? goalStopTitle(goal.stop.reason) : 'running'
   const budget =
-    goal.budgetUsd > 0 ? `${money(goal.spentUsd)}/${money(goal.budgetUsd)}` : 'no budget'
+    goal.budgetUsd > 0
+      ? `${money(goal.spentUsd)}/${money(goal.budgetUsd)}${goalBudgetCounted(goal.agent) ? '' : ' (spend of this agent is not counted: the budget never stops it)'}`
+      : 'no budget'
   const lines = [
     `${goal.id.slice(0, 8)}  ${state}  round ${goal.rounds}/${goal.roundLimit}  ${budget}  ${goal.title}`.trimEnd(),
     `  ${describeGoalUntil(goal.until)}`

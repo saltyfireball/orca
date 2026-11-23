@@ -18,7 +18,7 @@ export const FORK_GOAL_LOOP_COMMAND_SPECS: CommandSpec[] = [
     positionalArgs: ['id'],
     notes: [
       "Works for any agent: a native chat of any provider or a terminal agent. When the agent's turn ends and it has rested a few seconds, Orca runs the --until-cmd command in the agent's workspace (exit 0 means met), or asks the judge command from Settings > Blackfish (forkGoalJudgeCommand) whether the agent's last message meets the criteria. If not met it sends the agent a continue message with the failure as untrusted data.",
-      'The loop stops when the goal is met, after --max-rounds continue messages (default: Settings, 10), when the spend since the goal was set reaches --budget (USD, 0 or none is no limit; counted from the usage ledger), or when the same failure comes back twice in a row. A stop that is not a success is told to the agent in its chat and listed in the Decision inbox.',
+      'The loop stops when the goal is met, after --max-rounds continue messages (default: Settings, 10), when the spend since the goal was set reaches --budget (USD, 0 or none is no limit; counted from the usage ledger: Claude and Codex chats and terminals, with or without a spend cap set; other agents read $0 and the budget never stops them, which `orca goal list` says), or when the same failure comes back twice in a row. A stop that is not a success is told to the agent in its chat and listed in the Decision inbox.',
       'The command and the criteria come only from this request, never from what an agent wrote. With no goal set nothing changes.',
       ID_NOTE,
       HOST_NOTE

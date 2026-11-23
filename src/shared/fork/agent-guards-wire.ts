@@ -37,6 +37,8 @@ export type ForkGuardsRunRow = {
   rootId: string
   title: string
   agents: number
+  /** BAD-766: agents of the Run with no usage record, so their spend is not in `spentUsd`. */
+  uncounted?: number
   spentUsd: number
   capUsd: number
 }

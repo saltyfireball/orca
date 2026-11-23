@@ -297,3 +297,13 @@ export function parseJudgeVerdict(stdout: string): GoalJudgeVerdict {
     reason: text ? text.slice(0, 2000) : 'The judge gave no verdict.'
   }
 }
+
+/**
+ * BAD-766: whether a goal's --budget can see this agent's spend. Claude and Codex are in the usage
+ * ledger; OpenCode, ACP, Pi and other agents read $0, so their budget never stops the loop. A
+ * terminal agent whose kind is not known yet counts as seen.
+ */
+export function goalBudgetCounted(agent: string): boolean {
+  const kind = agent.trim().toLowerCase()
+  return kind === '' || kind.includes('claude') || kind.includes('codex')
+}

@@ -21,6 +21,9 @@ import { readLiveAgents, type LiveAgentSources, type PtyLike } from './live-agen
 
 type WorkerNote = { dispatchId: string; parentKey?: string }
 
+/** BAD-766: what a Run's spend index needs of a worker: who started it, chat or terminal. */
+export type ForkAgentQueueRunParent = { chat: string } | { handle: string }
+
 /**
  * The terminal side of the runtime, given at install so this module (which runtime and chat code
  * import) never reaches Electron.
@@ -41,6 +44,11 @@ const changeListeners = new Set<() => void>()
 const workers = new Map<string, WorkerNote>()
 /** Worker handles, so a worker that coordinates workers of its own is found as a parent. */
 const workerHandles = new Map<string, string>()
+/** BAD-766: a terminal worker's handle to whoever started it (a chat session or a terminal handle). */
+const terminalWorkerParents = new Map<string, ForkAgentQueueRunParent>()
+/** BAD-766: a chat worker's starter when that is a terminal (its handle), for the Run index. */
+const chatWorkerTerminalParents = new Map<string, string>()
+const MAX_TERMINAL_WORKERS = 2000
 /** Chats whose start went through the gate lately, so a status question about them ends at once. */
 const passed = new Map<string, number>()
 const PASSED_TTL_MS = 60_000
@@ -136,9 +144,23 @@ export function forkAgentQueueNoteWorker(worker: {
   session: { sessionId: string; handle: string } | null
   from: string | undefined
   dispatchId: string
+  /** BAD-766: the terminal the worker runs in; a terminal worker has no chat session. */
+  terminalHandle?: string
 }): void {
   if (!worker.session) {
+    // BAD-766: a terminal worker joins its coordinator's Run, so its spend is in the Run's sum.
+    const parent = runParentOfFrom(worker.from)
+    if (worker.terminalHandle && parent) {
+      if (terminalWorkerParents.size >= MAX_TERMINAL_WORKERS) {
+        terminalWorkerParents.delete(terminalWorkerParents.keys().next().value as string)
+      }
+      terminalWorkerParents.set(worker.terminalHandle, parent)
+    }
     return
+  }
+  const parent = runParentOfFrom(worker.from)
+  if (parent && 'handle' in parent) {
+    chatWorkerTerminalParents.set(worker.session.sessionId, parent.handle)
   }
   const parentKey = parentKeyOf(worker.from)
   workers.set(worker.session.sessionId, {
@@ -146,6 +168,35 @@ export function forkAgentQueueNoteWorker(worker: {
     ...(parentKey ? { parentKey } : {})
   })
   workerHandles.set(worker.session.handle, worker.session.sessionId)
+}
+
+function runParentOfFrom(from: string | undefined): ForkAgentQueueRunParent | undefined {
+  if (!from) {
+    return undefined
+  }
+  const chat =
+    structuredAgentSessionIdFromTabId(from) ??
+    parseOrcaSessionAddress(from) ??
+    workerHandles.get(from)
+  return chat ? { chat } : { handle: from }
+}
+
+/**
+ * BAD-766: who started a worker for the Run index: a chat worker by its session id, a terminal
+ * worker by the handle of its terminal. A chat parent is a session id; a terminal parent a handle.
+ */
+export function forkAgentQueueRunParent(
+  worker: { sessionId: string } | { terminalHandle: string }
+): ForkAgentQueueRunParent | undefined {
+  if ('terminalHandle' in worker) {
+    return terminalWorkerParents.get(worker.terminalHandle)
+  }
+  const chat = forkAgentQueueWorkerParent(worker.sessionId)
+  if (chat) {
+    return { chat }
+  }
+  const handle = chatWorkerTerminalParents.get(worker.sessionId)
+  return handle ? { handle } : undefined
 }
 
 /** The chat that dispatched this worker, when a chat (not a terminal) did; for the usage rollup. */

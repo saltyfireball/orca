@@ -12,7 +12,7 @@ import type {
   ForkGuardsRunRow
 } from '../../../shared/fork/agent-guards-wire'
 import { forkAgentQueueWorkerParent } from '../agent-queue/agent-queue-service'
-import type { UsageLedgerData } from '../usage-ledger/usage-ledger-model'
+import { buildRunIndex, type RunIndex } from './agent-guards-run-index'
 import { forkUsageLedgerData, forkUsageLedgerSettings } from '../usage-ledger/usage-ledger-service'
 import { cleanUsagePrices, estimateChatCostUsd, usagePricer } from '../usage-ledger/usage-report'
 import {
@@ -50,6 +50,8 @@ let overrides: AutomationCapOverrides = new Map()
 let overridesPath: string | null = null
 let liveIds: ReadonlySet<string> = new Set()
 
+export { setAgentGuardTerminalLinks } from './agent-guards-run-index'
+
 export function configureAgentGuardScopes(next: Config): void {
   config = next
 }
@@ -79,50 +81,8 @@ export function agentGuardSpendOf(sessionId: string): AgentGuardSpend {
   }
 }
 
-type RunIndex = Map<string, AgentGuardRun & { title: string }>
 let runIndexCache: { at: number; index: RunIndex } | null = null
 const RUN_INDEX_TTL_MS = 2000
-
-/** The coordinator at the top of each chat's dispatch chain, and the chats under each. */
-function buildRunIndex(data: UsageLedgerData, live: ReadonlySet<string>): RunIndex {
-  const price = pricer()
-  const parentOf = (id: string): string | undefined =>
-    data.chats[id]?.parentSessionId ?? forkAgentQueueWorkerParent(id)
-  const rootOf = (id: string): string => {
-    let root = id
-    const seen = new Set([id])
-    for (let parent = parentOf(root); parent && !seen.has(parent); parent = parentOf(root)) {
-      seen.add(parent)
-      root = parent
-    }
-    return root
-  }
-  const groups = new Map<string, { total: number; members: Set<string> }>()
-  for (const chat of Object.values(data.chats)) {
-    const root = rootOf(chat.sessionId)
-    const group = groups.get(root) ?? { total: 0, members: new Set<string>() }
-    group.total += estimateChatCostUsd(chat, price)
-    group.members.add(chat.sessionId)
-    groups.set(root, group)
-  }
-  const index: RunIndex = new Map()
-  for (const [rootId, group] of groups) {
-    if (group.members.size < 2) {
-      continue
-    }
-    const run = {
-      rootId,
-      // Only agents still running can be paused; finished ones count toward the total only.
-      memberIds: [...group.members].filter((id) => live.has(id)),
-      totalUsd: group.total,
-      title: data.chats[rootId]?.title ?? `Chat ${rootId.slice(0, 8)}`
-    }
-    for (const id of group.members) {
-      index.set(id, run)
-    }
-  }
-  return index
-}
 
 function runIndex(): RunIndex {
   const data = forkUsageLedgerData()
@@ -154,6 +114,7 @@ export function agentGuardRunRows(
         rootId: run.rootId,
         title: agentGuardLabel(run.title, 60),
         agents: run.memberIds.length,
+        ...((run.uncounted ?? 0) > 0 ? { uncounted: run.uncounted } : {}),
         spentUsd: spentOf(run.rootId, run.totalUsd),
         capUsd: cap
       })
@@ -203,15 +164,27 @@ export function agentGuardAutomationLimits(
   const limits: AgentGuardAutomationSpend[] = []
   const own = agentGuardSpendOf(id).totalUsd
   if (caps.runUsd > 0 && own !== null) {
-    limits.push({ scope: 'automation-run', capUsd: caps.runUsd, spentUsd: own })
+    limits.push({
+      scope: 'automation-run',
+      capUsd: caps.runUsd,
+      spentUsd: own
+    })
   }
   if (caps.dayUsd > 0 || caps.weekUsd > 0) {
     const windows = windowsOf(automationId, Date.now())
     if (caps.dayUsd > 0) {
-      limits.push({ scope: 'automation-day', capUsd: caps.dayUsd, spentUsd: windows.dayUsd })
+      limits.push({
+        scope: 'automation-day',
+        capUsd: caps.dayUsd,
+        spentUsd: windows.dayUsd
+      })
     }
     if (caps.weekUsd > 0) {
-      limits.push({ scope: 'automation-week', capUsd: caps.weekUsd, spentUsd: windows.weekUsd })
+      limits.push({
+        scope: 'automation-week',
+        capUsd: caps.weekUsd,
+        spentUsd: windows.weekUsd
+      })
     }
   }
   return limits
@@ -264,7 +237,11 @@ export function agentGuardAutomationRows(now: number): ForkGuardsAutomationRow[]
 /** `orca guards automation-cap`: one automation's own caps; throws for an unknown automation. */
 export async function setAgentGuardAutomationCap(
   automationId: string,
-  change: { runUsd?: number | null; dayUsd?: number | null; weekUsd?: number | null }
+  change: {
+    runUsd?: number | null
+    dayUsd?: number | null
+    weekUsd?: number | null
+  }
 ): Promise<ForkGuardsAutomationCapResult> {
   const list = storeOf()?.listAutomations
   if (!overridesPath) {

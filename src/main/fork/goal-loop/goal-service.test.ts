@@ -201,6 +201,18 @@ describe('goal loop with a fake terminal agent', () => {
     expect(goal.rounds).toBe(2)
   })
 
+  it('says a budget is watched only while an active goal has one (BAD-766)', async () => {
+    const agent = fakeAgent({ work: () => undefined })
+    expect(agent.service.watchesSpend()).toBe(false)
+    await agent.service.warm()
+    await agent.service.set({ id: 'agent-1', untilCmd: 'false' })
+    expect(agent.service.watchesSpend()).toBe(false)
+    await agent.service.set({ id: 'agent-1', untilCmd: 'false', budgetUsd: 5 })
+    expect(agent.service.watchesSpend()).toBe(true)
+    await agent.service.clear('agent-1234')
+    expect(agent.service.watchesSpend()).toBe(false)
+  })
+
   it('stops on the budget before asking the judge', async () => {
     const judge = vi.fn(async () => ({ met: false, reason: 'x' }))
     const agent = fakeAgent({

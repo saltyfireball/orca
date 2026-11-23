@@ -208,7 +208,7 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
   // SLRM-2385: failure-loop and spend guards (FORK.md "Agent guards").
   {
     name: 'fork-guards',
-    keys: ['guards list', 'guards resume', 'guards cap'],
+    keys: ['guards list', 'guards resume', 'guards cap', 'guards automation-cap'],
     load: async () => (await import('./guards-handlers.js')).FORK_GUARDS_HANDLERS
   },
   // BAD-686: deny destructive agent shell commands (FORK.md "Command guards").

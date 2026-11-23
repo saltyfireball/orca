@@ -25,6 +25,7 @@ import { sleeperChatSessionId } from '../../../shared/fork/sleepers-ps-sources'
 import type { AgentToolCallOwner } from '../../agent-hooks/tool-events/agent-tool-call-reader'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { startForkBackoffTimer } from '../fork-backoff-timer'
+import { forkGoalBudgetWatched } from '../goal-loop/goal-budget-watch'
 import type { LimitResumeRuntime } from '../limit-resume/limit-resume-host'
 import { onForkUsageLedgerTurn } from '../usage-ledger/usage-ledger-service'
 import { liveAgentGuardActPorts } from './agent-guards-act'
@@ -35,11 +36,13 @@ import {
   agentGuardRunOf,
   agentGuardSpendOf,
   configureAgentGuardScopes,
+  setAgentGuardTerminalLinks,
   loadAgentGuardScopeState,
   noteAgentGuardAutomationLaunch,
   setAgentGuardLiveIds
 } from './agent-guards-scopes'
 import { automationCapsPath } from './automation-caps-state'
+import { matchAgentGuardEntry } from './agent-guards-match'
 import { AgentGuardTerminals } from './agent-guards-terminals'
 import { readAgentGuardHookCall } from './agent-guards-hook-call'
 import { setForkAgentGuardHeld } from './agent-guards-holds'
@@ -86,9 +89,16 @@ function guardSettings() {
   return readAgentGuardSettings(settingsObject() as AgentGuardSettingsSource)
 }
 
-/** True when some spend cap may cover an agent, so a terminal agent's transcript is worth reading. */
+/**
+ * True when some spend cap may cover an agent, or a goal has a budget (BAD-766), so a terminal
+ * agent's transcript is worth reading.
+ */
 function anySpendCapOn(): boolean {
-  return agentGuardAnyCapSet(guardSettings()) || (engine?.hasOwnCaps() ?? false)
+  return (
+    agentGuardAnyCapSet(guardSettings()) ||
+    (engine?.hasOwnCaps() ?? false) ||
+    forkGoalBudgetWatched()
+  )
 }
 
 function anyGuardOn(): boolean {
@@ -196,6 +206,7 @@ async function startEngine(): Promise<void> {
     settings: guardSettings,
     store: () => runtime?.requireStore() ?? null
   })
+  setAgentGuardTerminalLinks(terminals)
   await loadAgentGuardScopeState(automationCapsPath(getProfileUserDataPath()))
   let saving: Promise<void> = Promise.resolve()
   engine = new AgentGuardEngine({
@@ -262,6 +273,7 @@ export function forkAgentGuardsObserveHook(
       return
     }
     terminals.note(read)
+    terminals.noteHandle(read.paneKey, runtime?.getTerminalHandleForPaneKey(read.paneKey))
     if (anySpendCapOn()) {
       // BAD-679: the agent's transcript is where its spend is; read it and stop it past a cap.
       void engine.observeTerminalSpend(read.paneKey, terminals.meta(read.paneKey)).then(publish)
@@ -272,25 +284,6 @@ export function forkAgentGuardsObserveHook(
   } catch (error) {
     console.warn('[fork-agent-guards] could not read a hook post', error)
   }
-}
-
-function match(query: string): AgentGuardEntry {
-  const entries = forkAgentGuardEntries()
-  const exact = entries.filter((entry) => entry.id === query)
-  const matches =
-    exact.length > 0
-      ? exact
-      : query.length >= 4
-        ? entries.filter((entry) => entry.id.startsWith(query))
-        : []
-  if (matches.length !== 1) {
-    throw new Error(
-      matches.length === 0
-        ? `No guarded agent matches "${query}". Run "orca guards list" for ids.`
-        : `"${query}" matches more than one; use more of its id.`
-    )
-  }
-  return matches[0]
 }
 
 export function forkAgentGuardIsPaused(id: string): boolean {
@@ -312,7 +305,9 @@ export async function forkAgentGuardResume(query: string): Promise<ForkGuardsRes
   if (!engine) {
     throw new Error('Agent guards are not running on this host yet; try again in a moment.')
   }
-  const id = engine.isPaused(query) ? query : match(query).id
+  const id = engine.isPaused(query)
+    ? query
+    : matchAgentGuardEntry(forkAgentGuardEntries(), query).id
   const outcome = await engine.resume(id)
   publish()
   return { id, outcome }
@@ -342,7 +337,12 @@ export async function forkAgentGuardSetCap(
   if (run) {
     const result = await engine.caps.setRunCap(sessionId, usd)
     publish()
-    return { id: result.rootId, scope: 'run', capUsd: result.capUsd, spentUsd: result.spentUsd }
+    return {
+      id: result.rootId,
+      scope: 'run',
+      capUsd: result.capUsd,
+      spentUsd: result.spentUsd
+    }
   }
   const result = await engine.setCap(sessionId, usd)
   publish()

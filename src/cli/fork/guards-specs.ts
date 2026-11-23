@@ -45,7 +45,7 @@ export const FORK_GUARDS_COMMAND_SPECS: CommandSpec[] = [
     notes: [
       'Per dispatch: a coordinator caps a worker with the session id worker-start printed.',
       "With --run the cap covers the chat's Run: its coordinator and every worker it dispatched, added together. At the cap every agent in the Run is paused (one in a turn at the end of it).",
-      'Spend is estimated from the usage ledger at per-token prices (Settings > Blackfish > Usage report), counted from when the cap is set. Native Claude and Codex chats are counted.',
+      'Spend is estimated from the usage ledger at per-token prices (Settings > Blackfish > Usage report), counted from when the cap is set. Claude and Codex chats and terminals (including terminal workers of a Run) are counted. Not counted: OpenCode, ACP, Pi and other agents with no usage record, terminals on SSH or WSL hosts, and agents on paired servers; a Run lists how many of its agents are not counted.',
       HOST_NOTE
     ],
     examples: [

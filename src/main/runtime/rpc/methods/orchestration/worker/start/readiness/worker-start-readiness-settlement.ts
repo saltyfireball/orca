@@ -57,7 +57,8 @@ export async function deliverAndSettleWorkerStartReadiness(args: {
   forkAgentQueueNoteWorker({
     session: structuredSession?.identity ?? null,
     from: args.coordinatorHandle,
-    dispatchId: args.dispatchId
+    dispatchId: args.dispatchId,
+    terminalHandle
   })
 
   args.onStage('dispatch_input')

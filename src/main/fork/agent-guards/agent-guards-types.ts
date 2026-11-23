@@ -24,7 +24,13 @@ export type AgentGuardSpend = {
 }
 
 /** A Run (BAD-679): a coordinator and the workers it dispatched, with what they spent together. */
-export type AgentGuardRun = { rootId: string; memberIds: string[]; totalUsd: number }
+export type AgentGuardRun = {
+  rootId: string
+  memberIds: string[]
+  totalUsd: number
+  /** Members with no usage record (BAD-766): they run in the Run but their spend is not in the total. */
+  uncounted?: number
+}
 
 /** What an automation's runs spent in the window of one cap, before any resume baseline. */
 export type AgentGuardAutomationSpend = {

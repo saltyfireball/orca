@@ -2,6 +2,18 @@ import { describe, expect, it } from 'vitest'
 import { formatGuardsList, parseAutomationCapFlag, parseGuardsUsd } from './guards-handlers'
 
 describe('orca guards', () => {
+  it('says which agents a cap does not count, and how many of a Run (BAD-766)', () => {
+    const text = formatGuardsList({
+      now: 0,
+      entries: [],
+      runs: [{ rootId: 'lead', title: 'Plan', agents: 3, uncounted: 1, spentUsd: 1, capUsd: 5 }]
+    })
+    expect(text).toContain('3 (1 not counted)')
+    expect(text).toContain('Not counted: agents with no usage record')
+    expect(text).toContain('paired servers')
+    expect(formatGuardsList({ now: 0, entries: [] })).not.toContain('Not counted')
+  })
+
   it('lists paused, warned and capped agents with why', () => {
     const text = formatGuardsList({
       now: 10 * 60_000,

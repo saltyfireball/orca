@@ -33,6 +33,7 @@ import {
 } from './goal-service'
 import { runGoalJudge } from './goal-judge'
 import { sendGoalText } from './goal-send'
+import { setForkGoalBudgetWatch } from './goal-budget-watch'
 import { goalLoopPath, readGoals, writeGoals } from './goal-store'
 
 const FINGERPRINT_COMMAND =
@@ -176,6 +177,8 @@ function arm(): void {
 /** Starts the loop's timer once the runtime settles. With no goal set it reads nothing. */
 export function startForkGoalLoop(runtime: GoalLoopRuntime): void {
   const live = goalLoopService(runtime)
+  setForkGoalBudgetWatch(() => live.watchesSpend())
+  void live.warm().catch((error: unknown) => console.warn('[fork goal loop] could not load', error))
   setIdleRecoveryTerminalRuntime(() => liveRuntime)
   registerForkInboxSource({
     id: 'goal',

@@ -204,6 +204,15 @@ export function createGoalService(deps: GoalServiceDeps) {
   return {
     sweep,
 
+    /** BAD-766: true while an active goal has a budget, so spend is read for it; no I/O. */
+    watchesSpend: (): boolean =>
+      [...(goals?.values() ?? [])].some((goal) => goal.status === 'active' && goal.budgetUsd > 0),
+
+    /** Loads the saved goals, so `watchesSpend` knows them from start-up. */
+    async warm(): Promise<void> {
+      await loaded()
+    },
+
     async set(request: ForkGoalSetRequest): Promise<ForkGoalSetResult> {
       const settings = deps.settings()
       if (Boolean(request.untilCmd) === Boolean(request.untilJudge)) {

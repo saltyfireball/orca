@@ -74,7 +74,7 @@ function formatCapSections(result: ForkGuardsListResult): string[] {
         ...(result.runs ?? []).map((run) => [
           run.rootId,
           run.title.slice(0, 40),
-          String(run.agents),
+          run.uncounted ? `${run.agents} (${run.uncounted} not counted)` : String(run.agents),
           `${money(run.spentUsd)}/${money(run.capUsd)}`
         ])
       ])
@@ -96,7 +96,18 @@ function formatCapSections(result: ForkGuardsListResult): string[] {
       ])
     )
   }
+  if (sections.length > 0 || hasSpendCap(result)) {
+    sections.push('', NOT_COUNTED_NOTE)
+  }
   return sections
+}
+
+/** BAD-766: what no cap can see, said under every list that shows a cap. */
+export const NOT_COUNTED_NOTE =
+  'Not counted: agents with no usage record (OpenCode, ACP, Pi and other agents), terminals on SSH or WSL hosts, and agents on paired servers (ask a server with --environment). A Run lists how many of its agents are not counted.'
+
+function hasSpendCap(result: ForkGuardsListResult): boolean {
+  return result.entries.some((entry) => entry.state === 'capped')
 }
 
 export function formatGuardsList(result: ForkGuardsListResult): string {
@@ -168,7 +179,9 @@ export const FORK_GUARDS_HANDLERS: Record<string, CommandHandler> = {
   },
   'guards resume': async (ctx) => {
     const reply = await ctx.client
-      .call<ForkGuardsResumeResult>('fork.guards.resume', { id: requireId(ctx) })
+      .call<ForkGuardsResumeResult>('fork.guards.resume', {
+        id: requireId(ctx)
+      })
       .catch(incompatible)
     printResult(reply, ctx.json, (r) =>
       r.outcome === 'resumed' ? `${r.id}: resumed` : `${r.id}: was not paused`

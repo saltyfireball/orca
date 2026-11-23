@@ -2072,6 +2072,21 @@ ones `SLRM-123 `).
     interrupt (Esc, never on a dialog) and is paused like a looping terminal. Other terminal
     agents (OpenCode and the rest) are not counted yet: their hook posts name no transcript.
     Terminal rows are hidden from the cache-cold cue.
+  - **Coverage (BAD-766).** `orca guards automation-cap` is routed (it was missing from
+    `FORK_HANDLER_GROUPS`, so the CLI said "Unknown command"); a test loads every fork handler
+    group and fails when a handler has no route or a route no handler, and when a documented
+    guards command is not routed. A terminal worker (a worker start with no chat session) and a
+    chat worker a terminal coordinator started now join their coordinator's Run: the worker start
+    notes who started it, the guards service learns a terminal's orchestration handle from its
+    hook posts, and the Run index links them, so their ledger spend is in the Run's total and
+    the Run cap pauses them with the rest. Agents in a Run that have no usage record (OpenCode,
+    ACP, Pi, and Claude or Codex before their first counted call) are members that count $0:
+    `orca guards list` shows `3 (1 not counted)` in the Run's AGENTS column and, under any cap,
+    a line naming what no cap counts: agents with no usage record, terminals on SSH or WSL
+    hosts and agents on paired servers (each server counts its own agents; ask it with
+    `--environment`). A goal `--budget` turns the terminal transcript reading on while an active
+    goal has one, even with no cap set (`goal-budget-watch.ts`), so it stops a Claude or Codex
+    terminal; `orca goal set` and `orca goal list` say when the budget cannot see the agent.
   - **Caps by scope.** An agent can be covered by several caps at once, each counting its own
     spend from its last resume: its own (`forkAgentGuardSpendCapUsd` or `orca guards cap`), its
     Run's and its automation's. The first one reached pauses it; the pause says which.
@@ -3205,6 +3220,7 @@ Apply these in this order. Each one is a single commit.
 167. `BAD-771 A done check or notify command past its time limit is ended with everything it started (own process group, taskkill /t on Windows) and the run settles at the deadline, also where sh is dash`
 168. `BAD-765 Worker retry covers chat workers, provider errors, Runs a chat coordinates and workers an app update cut off; it reads the structured exit instead of free text, so a worker the user closed is never restarted; the coordinator is told Orca is retrying only when the restart can start; orca retry show lists why a retry was not started`
 169. `BAD-764 Command guards cover native Claude chats and chat workers through an in-process PreToolUse hook of the Agent SDK, and orca command-guards status lists each surface (terminal, native chat, chat worker) as guarded only with a test that proves a deny`
+170. `BAD-766 Spend caps reach every agent: orca guards automation-cap is routed, terminal and paired-server workers join their Run, a goal budget reads terminal spend with no cap set, and the cap view says which agents are not counted`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -3588,6 +3604,8 @@ Upstream files only get short hooks, which keeps merges small:
     it calls the stock start directly.
   - `deliverAndSettleWorkerStartReadiness` (`worker-start-readiness-settlement.ts`) calls
     `forkAgentQueueNoteWorker` once, so the gate ranks the chat as a worker of its coordinator.
+    BAD-766: the call also passes the worker's terminal handle, so a terminal worker (no chat) is
+    noted for the Run index.
   - `sendStructuredSessionTurn` (`send-agent-turn.ts`) wraps its settlement wait in
     `forkAgentQueueRaceSettlement`, which ends the wait at once for a queued chat so a worker
     start reports instead of blocking until a slot frees.
