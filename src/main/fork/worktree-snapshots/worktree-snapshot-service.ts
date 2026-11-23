@@ -70,7 +70,7 @@ export async function forkSnapshotBeforeWorktreeRemoval(
   repoPath: string,
   worktreePath: string,
   force: boolean,
-  options: { wslDistro?: string; forceBranchDelete?: boolean } = {}
+  options: { wslDistro?: string; forceBranchDelete?: boolean; noForceHint?: boolean } = {}
 ): Promise<void> {
   const current = config()
   // A failed-creation rollback removes a worktree nobody has worked in.
@@ -88,9 +88,12 @@ export async function forkSnapshotBeforeWorktreeRemoval(
       )
       return
     }
+    // BAD-767: Lost work cannot force a delete, so its message names what the person can do.
+    const advice = options.noForceHint
+      ? 'Free some disk space and try again, or remove the worktree with git by hand (git worktree remove --force).'
+      : 'Force the delete to remove it without a snapshot.'
     throw new Error(
-      `Could not snapshot ${worktreePath} before removing it, so nothing was removed: ${reason}. ` +
-        'Force the delete to remove it without a snapshot.'
+      `Could not snapshot ${worktreePath} before removing it, so nothing was removed: ${reason}. ${advice}`
     )
   }
   await pruneWorktreeSnapshots(

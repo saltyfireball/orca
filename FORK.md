@@ -1833,6 +1833,10 @@ ones `SLRM-123 `).
     snapshots are pruned by a timer (`worktree-snapshot-prune.ts`, started with the runtime: first
     pass 10 minutes after start, then every 10 minutes while it finds something, doubling to 6
     hours when idle), on this host's local projects, in the desktop app and `orca serve`.
+    A snapshot that cannot be written during a Lost work delete stops it with a message that
+    says to free disk space or remove the worktree with git by hand (Lost work cannot force a
+    delete); the normal removal path keeps "Force the delete". A clean detached worktree whose
+    commits are on no branch is snapshotted too. Tests run the service over real git.
   - Code: `src/shared/fork/worktree-snapshots.ts`, `src/main/fork/worktree-snapshots/`,
     `src/cli/fork/worktree-snapshots-*.ts`. The tests run real git in a temp repo.
 
@@ -3298,6 +3302,7 @@ Apply these in this order. Each one is a single commit.
 174. `BAD-678 Turn checkpoints in folder workspaces: a folder:<id> workspace resolves to its folder for capture, restore and the busy check (shared with every workspace on that directory); SSH and WSL folders stay refused`
 175. `BAD-690 pnpm check:changed runs the injected-context ratchet when only skill guides, skills or skill stubs change`
 176. `BAD-686 Command guards in folder workspaces: terminal agents there are guarded at the folder, a workspace with no folder on the host shows the terminal as unguarded, and chats and chat workers there are proven guarded`
+177. `BAD-766 BAD-767 Follow-up: worker links survive a restart (read from the orchestration database), Lost work snapshot failures say what to do instead of forcing, and the hooks of both are covered by tests`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

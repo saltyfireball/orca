@@ -95,7 +95,7 @@ function deps(store: Store): LostWorkScanDeps & LostWorkActionDeps {
     },
     // BAD-767: a delete of a worktree Orca does not track leaves a snapshot like any other.
     snapshotBeforeRemoval: (repoPath, worktreePath) =>
-      forkSnapshotBeforeWorktreeRemoval(repoPath, worktreePath, false)
+      forkSnapshotBeforeWorktreeRemoval(repoPath, worktreePath, false, { noForceHint: true })
   }
 }
 
