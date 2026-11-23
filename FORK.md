@@ -3015,12 +3015,22 @@ ones `SLRM-123 `).
     running, limit reached, no coordinator, cannot be resumed, the worker reported); the digest
     has a "Worker retries" block per host. Retries waiting for their time
     arm again after an app restart.
+  - **Crew view and Task history.** A worker's row in its coordinator's crew view has a "Retry"
+    line in its details: the worker that ended says "Retry N waits until <time>", "Restarted as
+    retry N" or "Gave up at retry N (<why>)", each with the reason it ended; the worker a restart
+    started says "Retry N, started after: <reason>". Gave up covers a restart that failed and a
+    retry the policy wanted but could not make (limit reached, no coordinator, cannot be resumed);
+    the other skips were never retries and add no line. A change to a retry rebuilds the rows
+    that show it. The Task's history is `orca contract show <task_id>`, the place that lists a
+    Task's attempts: it also lists the Task's retries with their time, try, state, why and the
+    Dispatch a restart started, and on a restarted Task the retry and Task that started it.
   - **Not done.** Moving the retry to another host (placement) or to the other provider (chat
     handoff) is not part of this change: a retry stays in its own workspace.
   - Code is in `src/main/fork/worker-retry/` (`worker-retry-live.ts` the hooks and the timers,
     `retry-store.ts`, `retry-digest.ts`), `src/shared/fork/worker-retry.ts`,
-    `src/cli/fork/worker-retry-*.ts` and
-    `src/main/runtime/rpc/methods/fork/fork-worker-retry.ts`.
+    `src/cli/fork/worker-retry-*.ts`,
+    `src/main/runtime/rpc/methods/fork/fork-worker-retry.ts`, `retry-crew.ts` (the retry of a
+    crew row), `src/shared/fork/worker-retry-crew.ts` and `src/renderer/src/fork/worker-retry/`.
 
 - **Agent profiles: named launch bundles that coordinators and the UI pick from (BAD-687).** A
   profile is an agent, an optional model, effort, permission mode, MCP profile and account, an
@@ -3394,6 +3404,7 @@ Apply these in this order. Each one is a single commit.
 182. `BAD-682 Goal loop on a paired server: a test sets, lists and clears a goal with --environment through the real client and pairing, and the server's loop runs the check there and stops on success, max rounds and the budget`
 183. `BAD-741 Agent profiles apply at launch: the capped permission mode through each agent's own mode (terminal flags or chat option, or a note where it has none), the account through the Claude account pins (refused when missing or signed out), the preamble once for --task, spec file, retries and follow-ups, carried to a paired server that checks or refuses it, and pickers in the + menu and the automation dialog`
 184. `BAD-676 A later push re-evaluates: a push to the open pull request of a settled --require-pr-checks Task is read again for forkCompletionContractLaterPushHours (24); green is a pass attempt, red a fail attempt and one escalation per head with a Decision inbox row, read where the checks ran and sent on the Run home`
+185. `BAD-681 Retries in the crew view and the Task history: a worker's crew row says which try, why it ended and whether Orca waits (and until when), restarted it or gave up; orca contract show lists the Task's retries and the retry that started it`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4619,6 +4630,10 @@ Upstream files only get short hooks, which keeps merges small:
   `pty-exit-worker-observation.ts`, `chat-worker-provider-death.ts`, `restart-worker-stop-report.ts`,
   `failed-worker-start-report.ts` and `runtime-legacy-worker-terminal-recovery-persistence.ts`.
   The digest schema accepts the `skipped` retry status (`digest-schema.ts`).
+  The crew view: `orchestration-crew.ts` adds the optional `forkRetry` field to `CrewRow`;
+  `crew-party-snapshot.ts` wraps the managing row it pushes in `forkDecorateCrewRetry`, which
+  `crew-rules.ts` re-exports (the snapshot file is at its line limit); `CrewRowDetails.tsx`
+  renders `ForkCrewRetryDetail`. The retries in `orca contract show` change fork files only.
 
 - Agent slice limits (BAD-684), one small edit in a stock file: `terminal-scopes-runtime.ts` calls
   `forkApplyAgentSlice(resolved, log)` right after the terminal scopes resolve. The limits are

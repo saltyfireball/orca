@@ -6,6 +6,7 @@ import { cn } from '@/lib/class-names'
 import { useNow } from '@/lib/window-activity/use-now'
 import { useTranslate } from '@/i18n/use-translate'
 import type { OrchestrationCrewRow } from '../../../../shared/orchestration/orchestration-crew'
+import { ForkCrewRetryDetail } from '@/fork/worker-retry/ForkCrewRetryDetail'
 
 /** A compact age ("3m", "2h", "4d"), as the strip's other rows show elapsed time. */
 function crewAge(at: number, now: number): string {
@@ -55,6 +56,8 @@ export function CrewRowDetails({ row }: { row: OrchestrationCrewRow }) {
         ) : null}
         {row.task?.title ?? t('components.orchestrationCrew.noTask', 'No shared task')}
       </dd>
+      {/* Fork (BAD-681): the worker's automatic retry. */}
+      <ForkCrewRetryDetail retry={row.forkRetry} />
       <dt className="text-2xs text-muted-foreground">
         {t('components.orchestrationCrew.reply', 'Reply')}
       </dt>

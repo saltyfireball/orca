@@ -1,5 +1,7 @@
 import { buildOrchestrationTaskDisplayMetadata } from '../../../../shared/orchestration/orchestration-task-display'
 import type { TaskRow } from '../db/orchestration-records'
+// Fork (BAD-681): crew-party-snapshot.ts is at its line limit, so its retry hook comes through here.
+export { forkDecorateCrewRetry } from '../../../fork/worker-retry/retry-crew'
 
 export function crewTaskDisplay(
   task: Pick<TaskRow, 'spec' | 'task_title' | 'display_name'> | undefined

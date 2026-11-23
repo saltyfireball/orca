@@ -3,8 +3,19 @@
 // its version stay untouched. Rows are keyed by Run and Task id and never read by upstream.
 import type Database from '../../sqlite/sync-database'
 import type { ForkWorkerRetryEntry, WorkerRetryRunPolicy } from '../../../shared/fork/worker-retry'
+import type { OrchestrationDb } from '../../runtime/orchestration/db/orchestration-db'
+import { scopedCrewChange } from '../../runtime/orchestration/crew/crew-changes'
 
 export type RetryDbHandle = { db: Database.Database }
+
+/** The crew view shows each retry on its worker's row: a changed retry rebuilds those rows. */
+function crewChanged(handle: RetryDbHandle, dispatchIds: (string | null | undefined)[]): void {
+  const changes = (handle as Partial<Pick<OrchestrationDb, 'crewChanges'>>).crewChanges
+  const ids = dispatchIds.filter((id): id is string => typeof id === 'string')
+  if (changes && ids.length > 0) {
+    changes.notify(scopedCrewChange(['assignments'], { dispatchIds: new Set(ids) }))
+  }
+}
 
 const ready = new WeakSet<Database.Database>()
 
@@ -34,6 +45,8 @@ function ensureTables(handle: RetryDbHandle): Database.Database {
       CREATE UNIQUE INDEX IF NOT EXISTS fork_worker_retries_dispatch
         ON fork_worker_retries (dispatch_id);
       CREATE INDEX IF NOT EXISTS fork_worker_retries_task ON fork_worker_retries (task_id, id);
+      CREATE INDEX IF NOT EXISTS fork_worker_retries_restart
+        ON fork_worker_retries (retry_dispatch_id);
     `)
     ready.add(db)
   }
@@ -148,6 +161,7 @@ export function recordRetry(
       entry.reason,
       new Date(entry.dueAtMs).toISOString()
     )
+  crewChanged(handle, [entry.dispatchId])
   return result.changes > 0
 }
 
@@ -178,6 +192,7 @@ export function recordSkippedRetry(
       new Date().toISOString(),
       entry.detail.slice(0, 500)
     )
+  crewChanged(handle, [entry.dispatchId])
 }
 
 export function settleRetry(
@@ -192,6 +207,7 @@ export function settleRetry(
          detail = ? WHERE dispatch_id = ?`
     )
     .run(status, patch.retryDispatchId ?? null, patch.detail?.slice(0, 500) ?? null, dispatchId)
+  crewChanged(handle, [dispatchId, patch.retryDispatchId])
 }
 
 type EntryRow = {
@@ -272,4 +288,21 @@ export function listRetriesSince(handle: RetryDbHandle, sinceIso: string, limit:
     )
     .all(sinceIso, limit) as EntryRow[]
   return rows.map(entryOf)
+}
+
+/** The retry that started a Task: a restart's Dispatch belongs to the new Task it created. */
+export function retryThatStartedTask(
+  handle: RetryDbHandle,
+  taskId: string
+): ForkWorkerRetryEntry | null {
+  const row = ensureTables(handle)
+    .prepare(
+      `SELECT r.task_id, r.run_id, r.dispatch_id, r.retry_dispatch_id, r.attempt, r.reason, r.at,
+              r.due_at, r.status, r.detail
+         FROM fork_worker_retries r JOIN dispatch_contexts d ON d.id = r.retry_dispatch_id
+        WHERE d.task_id = ? AND r.status = 'started'
+        ORDER BY r.id DESC LIMIT 1`
+    )
+    .get(taskId) as EntryRow | undefined
+  return row ? entryOf(row) : null
 }

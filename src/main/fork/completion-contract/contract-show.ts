@@ -1,10 +1,12 @@
 // Completion contract (BAD-676, BAD-763): what `orca contract show` answers. The contract is kept on
 // the Run home. When the worker ran on a paired server, that server ran the checks and holds the
-// attempts, so the home reads them from there and shows them with its own.
+// attempts, so the home reads them from there and shows them with its own. It is also the Task's
+// history of automatic worker retries (BAD-681).
 import type { OrchestrationDb } from '../../runtime/orchestration/db/orchestration-db'
 import type { ForkCompletionContractShowResult } from '../../../shared/fork/completion-contract-wire'
 import { listAttempts, readContract } from './contract-store'
 import { listReviewRuns, readReviewGate } from '../reviewer-gate/reviewer-store'
+import { listRetries, retryThatStartedTask } from '../worker-retry/retry-store'
 
 /** The Task's contract, review and attempts as this host's database holds them. */
 export function showContractOf(
@@ -45,7 +47,10 @@ export function showContractOf(
       dispatchId,
       outcome,
       results
-    }))
+    })),
+    // BAD-681: the Task's history also holds its workers' automatic retries.
+    retries: listRetries(db, { taskId: task }),
+    retryOf: retryThatStartedTask(db, task)
   }
 }
 

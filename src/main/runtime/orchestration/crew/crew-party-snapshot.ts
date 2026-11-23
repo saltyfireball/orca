@@ -7,7 +7,7 @@ import {
 import { parseOrcaSessionAddress } from '../../../../shared/agent-session/identity/orca-session-address'
 import { isPublicOrchestrationAddress } from '../../../../shared/orchestration/mailbox/orchestration-agent-reference'
 import { createLineageRunningSessionResolver } from '../addressing/session-lineage/structured-session-lineage'
-import { crewDisplayName, crewTaskDisplay } from './crew-rules'
+import { crewDisplayName, crewTaskDisplay, forkDecorateCrewRetry } from './crew-rules'
 import type { CrewAssignmentRow } from './crew-query'
 
 import type { Party } from './crew-parties'
@@ -235,7 +235,7 @@ export function buildCrewSnapshot(
       if (own) {
         row.approvals = own
       }
-      snapshot.sections.managing.push(row)
+      snapshot.sections.managing.push(forkDecorateCrewRetry(row, db, assignment.id))
     }
   }
   const parents = host.sourceInputs.parentInputs(selfAliases(), self.paneKey ? [self.paneKey] : [])
