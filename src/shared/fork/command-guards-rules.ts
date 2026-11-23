@@ -165,6 +165,10 @@ function protectedOn(git: GitCall, ctx: CommandGuardContext): { names: string[];
   return { names, onIt: state.current !== null && names.includes(state.current) }
 }
 
+/** Only a help flag: the command prints usage and changes nothing. */
+const asksOnlyForHelp = (args: readonly string[]): boolean =>
+  args.length > 0 && args.every((arg) => arg === '--help' || arg === '-h')
+
 const firstName = (rest: readonly string[]): string | undefined =>
   rest.find((arg) => !arg.startsWith('-'))
 
@@ -192,7 +196,7 @@ function checkGit(git: GitCall, ctx: CommandGuardContext): CommandGuardVerdict |
         )
       : null
   }
-  if (sub === 'worktree' && rest[0] === 'remove') {
+  if (sub === 'worktree' && rest[0] === 'remove' && !asksOnlyForHelp(rest.slice(1))) {
     return deny(
       'remove-worktree',
       "git worktree remove deletes a worktree, which may be another agent's workspace."
@@ -229,7 +233,11 @@ function checkGit(git: GitCall, ctx: CommandGuardContext): CommandGuardVerdict |
 
 function checkOrca(call: SimpleCommand): CommandGuardVerdict | null {
   const words = call.args.filter((arg) => !arg.startsWith('-'))
-  if (words[0] === 'worktree' && ['rm', 'remove', 'delete'].includes(words[1])) {
+  if (
+    words[0] === 'worktree' &&
+    ['rm', 'remove', 'delete'].includes(words[1]) &&
+    !asksOnlyForHelp(call.args.slice(call.args.indexOf(words[1]) + 1))
+  ) {
     return deny(
       'remove-worktree',
       "orca worktree rm deletes a workspace, which may be another agent's."

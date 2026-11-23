@@ -2039,6 +2039,9 @@ ones `SLRM-123 `).
     `unreadable-command` (unbalanced quotes or nesting too deep, with a verb the guard watches).
     Wrappers are looked through: `sudo`, `env`, `command`, `nohup`, `xargs`, `bash -c`, `eval`,
     `$(...)`, backticks, and `cd` before the call.
+    **Help is not removal (BAD-764).** `orca worktree rm --help` and `git worktree remove -h`
+    (a help flag as the only other argument) print usage and change nothing, so `remove-worktree`
+    allows them; any other argument next to the help flag keeps the refusal.
     **Heredocs and variables (BAD-785).** A heredoc body is data (never tokenized, however many
     quotes or backticks it holds) unless its reader may run it: a shell (`sh`, `bash`, `zsh`,
     `dash`, `ksh`, `fish`, also through `sudo`/`env`/`nohup`/`timeout`/`xargs`), `ssh`, `su`,
@@ -3469,6 +3472,7 @@ Apply these in this order. Each one is a single commit.
 187. `BAD-741 Agent profiles hold on a retry and a follow-up: the Task keeps the mode, account and MCP profile its worker first started with, capped and checked again on each restart, which refuses with the reason when the account is signed out or missing; an MCP profile that cannot apply is refused, never dropped`
 188. `BAD-741 MCP profiles on Claude terminals and paired servers: a named profile narrows a Claude terminal through a private per-profile config file, and worker-start --on sends only the name to a server that checks it before anything is created; where it cannot apply it is refused with the reason`
 189. `BAD-763 orca contract show at home shows the done checks, each attempt and its output tail of a worker started on a server that owns its workers, live and after it settles; a server too old to answer is named as one whose evidence cannot be seen`
+190. `BAD-764 Command guards allow a worktree removal command whose only other argument is --help or -h, which prints usage and removes nothing`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
