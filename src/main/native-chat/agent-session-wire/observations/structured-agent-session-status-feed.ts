@@ -1,4 +1,5 @@
 import type { AgentSessionStatusSummary } from '../../../../shared/agent-session/agent-session-wire'
+import { forkPublishedStatusSummary } from '../../../fork/background-runs/background-run-status'
 import { createSavedStructuredStatusGroup } from './structured-agent-session-saved-status'
 import type { AgentChildWorkEvidence } from '../../../../shared/agent-status/child-work/agent-status-child-work-evidence'
 import type { AgentChildWorkRecord } from '../../../../shared/agent-status/child-work/agent-status-child-work'
@@ -200,20 +201,22 @@ export class StructuredAgentSessionStatusFeed {
   ): void {
     const record = this.deps.getConversation(sessionId)
     this.retireSettledChildrenOnNewTurn(sessionId, session, projection.acceptedSendKey)
-    const summary = structuredAgentSessionStatusSummary({
-      sessionId,
-      session,
-      starting: this.deps.starting?.(sessionId),
-      lastActivityAt: projection.lastActivityAt,
-      record,
-      state: projection.state,
-      stopping: projection.stopping,
-      usageLimitContinue: this.deps.readUsageLimitContinue?.(sessionId, projection.usageLimitCut),
-      runningPermissionMode: this.deps.runningPermissionMode?.(sessionId),
-      childWork: this.childWorkFields(sessionId, session.params.provider),
-      namingFailure: this.deps.namingFailure?.(sessionId),
-      now: this.deps.now
-    })
+    const summary = forkPublishedStatusSummary(
+      structuredAgentSessionStatusSummary({
+        sessionId,
+        session,
+        starting: this.deps.starting?.(sessionId),
+        lastActivityAt: projection.lastActivityAt,
+        record,
+        state: projection.state,
+        stopping: projection.stopping,
+        usageLimitContinue: this.deps.readUsageLimitContinue?.(sessionId, projection.usageLimitCut),
+        runningPermissionMode: this.deps.runningPermissionMode?.(sessionId),
+        childWork: this.childWorkFields(sessionId, session.params.provider),
+        namingFailure: this.deps.namingFailure?.(sessionId),
+        now: this.deps.now
+      })
+    )
     notifyStructuredStatusPublication(this.deps, summary)
     const publication = this.published.get(sessionId)
     const previous = publication?.summary

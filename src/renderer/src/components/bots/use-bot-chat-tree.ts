@@ -141,3 +141,8 @@ export function useBotOwnChatTree(bot: Bot | null): BotChatTree {
   )
   return own.chats === tree.chats ? tree : { ...tree, ...own }
 }
+
+/** Whether the bot's chats have been read; reads only while `useBotChatTree` keeps them open. */
+export function useBotChatTreeState(bot: Bot | null): BotHostReadState {
+  return useBotHostReadState(chatTreeRead, bot).state
+}

@@ -5,6 +5,7 @@ import {
   ORCA_DISPATCH_PROMPT_LEAD_LINE,
   ORCA_DISPATCH_STATUS_PREAMBLE_PREFIX
 } from '../../../shared/orchestration/workers/orca-dispatch-status-prompt'
+import { forkNoteBackgroundRuns } from '../background-runs/background-run-status'
 import {
   isOrchestrationPrompt,
   listIdleRecoveryCandidates,
@@ -70,6 +71,15 @@ describe('listIdleRecoveryCandidates', () => {
   it('lists a native chat by its session id, with its launch folder', async () => {
     const [candidate] = await listIdleRecoveryCandidatesWith(chatHost(), settingsFor(), NOW)
     expect(candidate).toMatchObject({ chatId: 'chat-1', kind: 'chat', cwd: '/invented/launch' })
+  })
+
+  it('leaves out a bot look-around or tidy-up, which no owner can open (BAD-795)', async () => {
+    forkNoteBackgroundRuns((id) => id === 'chat-1')
+    try {
+      expect(await listIdleRecoveryCandidatesWith(chatHost(), settingsFor(), NOW)).toEqual([])
+    } finally {
+      forkNoteBackgroundRuns(() => false)
+    }
   })
 
   it('leaves out chats that are not idle long enough, mid-turn, asking, asleep or remote', async () => {

@@ -6,6 +6,7 @@ import { botHomeFolder, localBotHomeFilesystem } from './bot-home'
 import type { BotChatRow } from '../../shared/bots/bot-chat-row'
 import { createBotLookupIndex } from '../../shared/bots/bot-lookup-index'
 import type { BotLookAroundStore } from './bot-look-around-store'
+import { forkNoteBackgroundRuns } from '../fork/background-runs/background-run-status'
 import type { BotTurnNoteRead } from './bot-active-work'
 import { botSessionToolServers, currentBotToolsRevision } from './bot-tools-file'
 import { botToolsEpoch, type BotLaunchedTools } from './bot-tools-revision'
@@ -249,12 +250,13 @@ export function botStructuredSessionWiring(deps: {
       }
     },
     // A look reads through its allow-list; a tidy-up only replies, its new memory in its reply.
-    readOnlySession: (sessionId) =>
+    readOnlySession: forkNoteBackgroundRuns((sessionId: string) =>
       deps.lookAround.botOfLook(sessionId) !== null
         ? 'look-around'
         : deps.lookAround.botOfTidyUp(sessionId) !== null
           ? 'reply-only'
-          : null,
+          : null
+    ),
     quietTurnEnd: (sessionId, outcome, usageLimited) =>
       deps.lookAround.lookTurnIsQuiet(sessionId, outcome, usageLimited === true),
     isBotHome: (workspaceId) => lookup.byHome(workspaceId) !== null

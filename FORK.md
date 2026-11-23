@@ -305,6 +305,24 @@ ones `SLRM-123 `).
   plus a 14% wash). A manual tab color always wins: that tab and its row show only the manual
   color (SLRM-1966's tint). Sub-agent rows stay plain. Code is in
   `src/shared/fork/agent-state-color.ts` and `src/renderer/src/fork/agent-state-color/`.
+- **One Needs you count per bot (BAD-795).** A bot's row said "1 needs you" while its panel said
+  "Nothing needs you", and the number left the row as the bot was opened. The row, its picture's
+  badge, the panel, the status bar, the list and the dashboard now agree:
+  - **A background run never needs the owner.** A look-around or a tidy-up is a hidden chat, so its
+    host publishes it without anything that asks (`forkPublishedStatusSummary`): stopped on a prompt
+    it reads as at work, and with no process as over. Every list, the phone included, reads that
+    status. The Decision inbox skips such a run too. A run that fails or stops in time shows on the
+    bot's Look around row under Automations, as before. A paired server too old to publish this
+    still shows its run as waiting; the panel then lists it as well.
+  - **What the row counts, the panel lists.** Any chat of the bot's home that asks, and that none
+    of the bot's own needs (Home chat, side chats, threads, runs, workers) speaks for, is a Needs
+    you line that opens it (`forkBotWaitingChats`, inside `useBotNow`).
+  - **Selecting a bot changes nothing.** `ForkBotNeedsYouHost` keeps every unpaused bot's count
+    published, through the panel's own hooks and shared reads, so the row says the panel's number
+    whether the bot is on screen or not. Nothing is published until the reads behind the number
+    landed or failed. An offline server's bots are not read; their rows count what they hold.
+  - A connector sign-in, an access request and a paired server's ask count on the row and in the
+    panel; the status bar's list still holds items, chats, board asks and agents only.
 - **Bot row badges and colors (BAD-658).** A bot's sidebar row says its state at a glance.
   - A Needs you pill (the attention color, with the count) and a Working pill (the working
     spinner, with the count) sit beside the bot's name, so a bot that waits on you shows it
@@ -3493,6 +3511,7 @@ Apply these in this order. Each one is a single commit.
 191. `BAD-785 Command guards no longer read an escaped backtick or escaped $( inside double quotes as a command substitution; a real one, and one a later eval or bash -c would run, is still denied`
 192. `BAD-682 The goal loop sends to a terminal agent of a headless server whose status it never saw change live, which the mail gate refused as unverified so the text was never typed; tested with a real headless runtime and PTY`
 193. `BAD-795 Command guards keep the hooks a chat already has, so a bot's look-around and tidy-up stay read-only with the guards on; a permission prompt in a read-only run is refused at once, and a tidy-up takes no MCP profile`
+194. `BAD-795 One Needs you count per bot: a look-around or tidy-up never counts as needing the owner, a waiting chat is a line in the bot's panel, and the row's number is the panel's whether the bot is selected or not`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4885,6 +4904,15 @@ Upstream files only get short hooks, which keeps merges small:
   `BotActivityPanel.tsx` passes its `back`, and `use-bot-item-walk.ts` exports `forgetBotItemWalk`
   (the bot row's list click). `forkBotRowAskJump` becomes `boolean | 'list' | 'item' | 'off'`; the
   settings catalog is regenerated.
+- One Needs you count per bot (BAD-795), small edits in stock files:
+  `structured-agent-session-status-feed.ts` passes its summary through `forkPublishedStatusSummary`
+  (one import, one wrapper); `bot-structured-session-wiring.ts` wraps `readOnlySession` in
+  `forkNoteBackgroundRuns`, which hands it back unchanged; `use-bot-now.ts` adds
+  `useForkBotWaitingChats` to what `botNow` reads and publishes null while its reads are under way;
+  `bot-needs-you-published.ts` takes that null; `use-bot-activity.ts` and `use-bot-chat-tree.ts`
+  each export their read's state. `ForkRootHosts` mounts `ForkBotNeedsYouHost`. Proof tests:
+  `background-run-status.test.ts` (the real wiring and status feed), `bot-waiting-chats.test.ts`
+  and `ForkBotNeedsYou.test.tsx` (the rendered row beside the panel).
 - Owner steps (BAD-747), small edits in stock files: `NativeChatCodeBlock.tsx` keeps Copy visible
   on an untagged block that looks like a command; `native-chat-file-link-tree.ts` skips linking a
   command in inline code; `pty-pane-startup.ts`, `terminal-state.ts`, `startup-draft-paste.ts` and

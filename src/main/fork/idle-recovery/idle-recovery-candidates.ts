@@ -7,6 +7,7 @@
 // `buildSleeperRows`), so "idle" means here what it means there. One listing is one read of
 // the runtime's agent rows and, only when some chat is idle, one read of the dispatch table.
 import { isForkAgentGuardHeld } from '../agent-guards/agent-guards-holds'
+import { isForkBackgroundRun } from '../background-runs/background-run-status'
 import { mainAgentState } from '../../../shared/agent-status/lifecycle/main-agent-status'
 import { isOrcaDispatchPrompt } from '../../../shared/agent-status/presentation/agent-row-primary-text'
 import { isWakePrompt, type IdleRecoveryRequestSource } from '../../../shared/fork/idle-recovery'
@@ -131,6 +132,10 @@ export async function listIdleRecoveryCandidatesWith(
       continue
     }
     const sessionId = row.kind === 'chat' ? sleeperChatSessionId(row.paneKey) : null
+    // A hidden look-around or tidy-up has no owner to wait on, whatever its last words read like.
+    if (sessionId && isForkBackgroundRun(sessionId)) {
+      continue
+    }
     const orchestration = roleOf({ paneKey: row.paneKey, sessionId })
     const role = fact.parented ? 'worker' : orchestration.role
     if (role === 'worker' && !includeWorkers) {

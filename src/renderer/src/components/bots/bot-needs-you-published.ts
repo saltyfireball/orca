@@ -27,11 +27,11 @@ export function readPublishedBotNeedsYou(key: string): number | null {
   return count ?? null
 }
 
-/** Publishes `count` for the bot while mounted; null (no bot) publishes nothing. */
-export function usePublishBotNeedsYou(bot: BotRef | null, count: number): void {
+/** Publishes `count` for the bot while mounted; null (no bot, or no count yet) publishes nothing. */
+export function usePublishBotNeedsYou(bot: BotRef | null, count: number | null): void {
   const key = bot ? botRefKey(bot) : null
   useEffect(() => {
-    if (!key) {
+    if (!key || count === null) {
       return undefined
     }
     const token = Symbol(key)

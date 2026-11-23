@@ -2,7 +2,8 @@ import type { Bot } from '../../../../shared/bot-types'
 import { BOT_WORK_KINDS } from '../../../../shared/bots/bot-change-scope'
 import type { BotActivity } from '../../../../shared/bots/bot-activity-model'
 import type { BotActivityRead } from '../../../../shared/bots/bot-activity-schema'
-import { createBotHostRead, useBotHostRead } from './use-bot-host-read'
+import { createBotHostRead, useBotHostRead, type BotHostReadState } from './use-bot-host-read'
+import { useBotHostReadState } from './use-bot-host-read-state'
 
 const NO_ACTIVITY: BotActivity = {
   workers: [],
@@ -28,4 +29,9 @@ export function useBotActivity(bot: Bot | null): BotActivity {
 /** The same read, null until it lands. */
 export function useBotActivityRead(bot: Bot | null): BotActivityRead | null {
   return useBotHostRead(activityRead, bot)
+}
+
+/** Whether the read landed or failed; reads only while one of the hooks above keeps it open. */
+export function useBotActivityState(bot: Bot | null): BotHostReadState {
+  return useBotHostReadState(activityRead, bot).state
 }

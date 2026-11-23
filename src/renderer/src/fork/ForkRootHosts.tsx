@@ -20,6 +20,7 @@ import { ForkArchiveOnMergeWatcher } from './workspace-tags/ForkArchiveOnMergeWa
 import { ForkLettersDialogHost } from './letters/ForkLettersDialog'
 import { ForkBotAsksWatcher } from './bot-asks/ForkDecisionInboxBotAsks'
 import { ForkNeedsYouHost } from './needs-you/ForkNeedsYouHost'
+import { ForkBotNeedsYouHost } from './bot-needs-you/ForkBotNeedsYouHost'
 
 /**
  * The fork's always-mounted hosts, behind one hook in `AppRootSurfaces.tsx` so that upstream
@@ -50,6 +51,7 @@ export function ForkRootHosts(): React.JSX.Element {
       <ForkLettersDialogHost />
       <ForkBotAsksWatcher />
       <ForkNeedsYouHost />
+      <ForkBotNeedsYouHost />
     </>
   )
 }

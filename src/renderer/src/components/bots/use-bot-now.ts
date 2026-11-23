@@ -12,8 +12,9 @@ import {
 import { useListedBotItemsNeedingOwner } from '@/lib/bot-catalog'
 import { usePublishBotNeedsYou } from './bot-needs-you-published'
 import { structuredAgentSessionStatusPaneKey } from '../../../../shared/agent-session/view/structured-agent-session-tab'
-import { useBotActivity } from './use-bot-activity'
-import { useBotChatTree } from './use-bot-chat-tree'
+import { useBotActivity, useBotActivityState } from './use-bot-activity'
+import { useBotChatTree, useBotChatTreeState } from './use-bot-chat-tree'
+import { useForkBotWaitingChats } from '@/fork/bot-needs-you/use-fork-bot-waiting-chats'
 import { useBotConnectorEntries, type BotConnectorEntry } from './bot-connector-entries'
 import { usePairedServerAsks } from './use-paired-server-asks'
 
@@ -49,9 +50,23 @@ export function useBotNow(bot: Bot | null): BotNowView {
     [requests, botId, hostId]
   )
   const pairedAsks = usePairedServerAsks(bot)
+  // Fork (BAD-795): any other chat of the bot that asks, so the panel lists what the row counts.
+  const { sideChats, panes } = useForkBotWaitingChats(bot, { activity, chats, waitingSideChats })
+  const listed = useMemo(
+    () => (panes.length > 0 ? { ...activity, workers: [...activity.workers, ...panes] } : activity),
+    [activity, panes]
+  )
   return useMemo(
-    () => botNow({ activity, chatState, connectors, accessRequests, waitingSideChats, pairedAsks }),
-    [activity, chatState, connectors, accessRequests, waitingSideChats, pairedAsks]
+    () =>
+      botNow({
+        activity: listed,
+        chatState,
+        connectors,
+        accessRequests,
+        waitingSideChats: sideChats,
+        pairedAsks
+      }),
+    [listed, chatState, connectors, accessRequests, sideChats, pairedAsks]
   )
 }
 
@@ -60,7 +75,9 @@ export function useBotNow(bot: Bot | null): BotNowView {
 export function useBotNeedsYouCount(bot: Bot | null, now: Pick<BotNowView, 'needsYou'>): number {
   // The host's own count, sent with each items change: no surface reads the item list for it.
   const count = botNeedsYouCount(now.needsYou, useListedBotItemsNeedingOwner(bot) ?? 0)
-  // The sidebar row and Cmd+J say this number too, without reads of their own.
-  usePublishBotNeedsYou(bot, count)
+  // The sidebar row and Cmd+J say this number too, without reads of their own. Fork (BAD-795): only
+  // once the reads behind it landed or failed, or a panel just opened would publish 0 first.
+  const reading = [useBotActivityState(bot), useBotChatTreeState(bot)].includes('loading')
+  usePublishBotNeedsYou(bot, reading ? null : count)
   return count
 }
