@@ -34,11 +34,14 @@ export type ForkCompletionContractSettings = {
   forkCompletionContractTimeoutSeconds?: number
   /** Fork completion contract: lines of a failing check's output sent back to the worker and kept as evidence (5 to 200); unset is 40. */
   forkCompletionContractOutputLines?: number
+  /** Fork completion contract: hours after a Task with --require-pr-checks settles in which a later push to its open pull request is checked again (0 to 168, 0 is off); unset is 24. */
+  forkCompletionContractLaterPushHours?: number
 }
 
 export const COMPLETION_CONTRACT_DEFAULT_MAX_ROUNDS = 2
 export const COMPLETION_CONTRACT_DEFAULT_TIMEOUT_SECONDS = 600
 export const COMPLETION_CONTRACT_DEFAULT_OUTPUT_LINES = 40
+export const COMPLETION_CONTRACT_DEFAULT_LATER_PUSH_HOURS = 24
 /** Reports that only found CI still running do not use a round, but they are not endless. */
 export const COMPLETION_CONTRACT_MAX_PENDING_REPORTS = 10
 
@@ -47,6 +50,8 @@ export type CompletionContractSettings = {
   maxRounds: number
   timeoutMs: number
   outputLines: number
+  /** How long after the settle a later push is checked; 0 is off. */
+  laterPushMs: number
 }
 
 function whole(value: unknown, min: number, max: number, fallback: number): number {
@@ -79,7 +84,14 @@ export function readCompletionContractSettings(
       5,
       200,
       COMPLETION_CONTRACT_DEFAULT_OUTPUT_LINES
-    )
+    ),
+    laterPushMs:
+      whole(
+        s.forkCompletionContractLaterPushHours,
+        0,
+        168,
+        COMPLETION_CONTRACT_DEFAULT_LATER_PUSH_HOURS
+      ) * 3_600_000
   }
 }
 
@@ -174,6 +186,9 @@ export type ForkDoneCheckResult = {
   durationMs: number
   /** `require-pr-checks` only: CI is still running, which is no failure yet. */
   pending?: boolean
+  /** `require-pr-checks` only: the pull request and the head commit this result judged. */
+  headSha?: string
+  prNumber?: number
 }
 
 export function outcomeOfResults(results: ForkDoneCheckResult[]): ContractOutcome {

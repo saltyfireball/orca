@@ -134,6 +134,14 @@ function liveGateDeps(runtime: OrcaRuntimeService, db: OrchestrationDb): GateDep
   }
 }
 
+/** The worker workspace a check or a later-push read runs in, on the host it lives on. */
+export function liveGateWorkspace(
+  runtime: OrcaRuntimeService,
+  db: OrchestrationDb
+): GateDeps['workspace'] {
+  return liveGateDeps(runtime, db).workspace
+}
+
 type SendShape = {
   type?: string
   subject: string

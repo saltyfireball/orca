@@ -100,15 +100,17 @@ describe('settings and params', () => {
       enabled: true,
       maxRounds: 2,
       timeoutMs: 600_000,
-      outputLines: 40
+      outputLines: 40,
+      laterPushMs: 24 * 3_600_000
     })
     expect(
       readCompletionContractSettings({
         forkCompletionContract: false,
         forkCompletionContractMaxRounds: 99,
-        forkCompletionContractTimeoutSeconds: 1
+        forkCompletionContractTimeoutSeconds: 1,
+        forkCompletionContractLaterPushHours: 0
       })
-    ).toMatchObject({ enabled: false, maxRounds: 10, timeoutMs: 10_000 })
+    ).toMatchObject({ enabled: false, maxRounds: 10, timeoutMs: 10_000, laterPushMs: 0 })
   })
 
   it('declares a contract only when a check or the PR requirement is present', () => {

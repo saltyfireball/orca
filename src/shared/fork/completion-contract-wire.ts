@@ -44,3 +44,24 @@ export type ForkCompletionContractShowResult = {
     results: ForkDoneCheckResult[]
   }[]
 }
+
+/** BAD-676 later push: the Run home asks the paired server a settled Task ran on to read its PR. */
+export const ForkCompletionContractLaterPushParams = z.object({
+  task: z.string().trim().min(1).max(256)
+})
+
+/** What one read of a settled Task's pull request found, on the host its checks ran on. */
+export type ForkLaterPushRead =
+  | {
+      kind: 'pass' | 'fail' | 'pending'
+      head: string
+      prNumber: number
+      failed: string[]
+      pending: string[]
+    }
+  /** The pull request is merged or closed: nothing more to watch. */
+  | { kind: 'closed'; prNumber: number; state: string }
+  /** gh could not answer now; read again later. */
+  | { kind: 'unreadable'; reason: string }
+  /** The workspace or the contract is gone: nothing more to watch. */
+  | { kind: 'gone'; reason: string }

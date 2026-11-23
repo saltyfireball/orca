@@ -1,8 +1,8 @@
 // Completion contract (BAD-676, FORK.md): `--require-pr-checks`. At the moment the worker reports
 // done, the pull request of the workspace's branch must be open, at the commit the workspace has
 // checked out (pushed, not just committed), and every required check on that commit green. A check
-// still running is "pending", not a failure. Reads go through gh in the workspace, so a push after
-// this read is judged by the next report.
+// still running is "pending", not a failure. Reads go through gh in the workspace; a push after the
+// Task settled is judged by the later-push watch (later-push-watch.ts).
 import type { ForkDoneCheckResult } from '../../../shared/fork/completion-contract'
 import { tailLines } from '../../../shared/fork/completion-contract'
 
@@ -89,15 +89,115 @@ function stdoutOfFailure(error: unknown): string {
   return typeof out === 'string' ? out : ''
 }
 
-function result(ok: boolean, output: string, pending = false): ForkDoneCheckResult {
+function result(
+  ok: boolean,
+  output: string,
+  pending = false,
+  pr?: { headSha: string; prNumber: number }
+): ForkDoneCheckResult {
   return {
     check: PR_CHECKS_LABEL,
     ok,
     exitCode: ok ? 0 : 1,
     output,
     durationMs: 0,
-    ...(pending ? { pending: true } : {})
+    ...(pending ? { pending: true } : {}),
+    ...pr
   }
+}
+
+/** A pull request's head and the checks that judge it, as gh reports them now. */
+export type PrHeadRead =
+  | {
+      kind: 'read'
+      number: number
+      /** OPEN, CLOSED or MERGED. */
+      state: string
+      head: string
+      scope: 'required' | 'all'
+      failed: string[]
+      pending: string[]
+      green: number
+    }
+  | { kind: 'unreadable'; reason: string }
+
+/** `selector` is the branch name, or the pull request's number once it is known. */
+export async function readPrHeadChecks(port: PrChecksPort, selector: string): Promise<PrHeadRead> {
+  let view: Record<string, unknown> | null
+  try {
+    view = asRecord(
+      JSON.parse(
+        await port.gh([
+          'pr',
+          'view',
+          selector,
+          '--json',
+          'number,state,isDraft,headRefOid,statusCheckRollup'
+        ])
+      )
+    )
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    return { kind: 'unreadable', reason: `: ${tailLines(reason, 5)}` }
+  }
+  const head = typeof view?.headRefOid === 'string' ? view.headRefOid : ''
+  if (!view || !head) {
+    return { kind: 'unreadable', reason: '' }
+  }
+  const number = Number(view.number)
+  const state = String(view.state).toUpperCase()
+  if (state !== 'OPEN') {
+    return { kind: 'read', number, state, head, scope: 'all', failed: [], pending: [], green: 0 }
+  }
+  let lines: CheckLine[] | null = null
+  try {
+    lines = requiredChecks(
+      await port.gh(['pr', 'checks', selector, '--required', '--json', 'name,bucket'])
+    )
+  } catch (error) {
+    lines = requiredChecks(stdoutOfFailure(error))
+  }
+  // A repository with no required checks (or an older gh) falls back to every check on the commit.
+  const scope = lines && lines.length > 0 ? 'required' : 'all'
+  const checks = lines && lines.length > 0 ? lines : rollupChecks(view.statusCheckRollup)
+  const failed = checks.filter((check) => check.state === 'fail').map((check) => check.name)
+  const pending = checks.filter((check) => check.state === 'pending').map((check) => check.name)
+  return {
+    kind: 'read',
+    number,
+    state,
+    head,
+    scope,
+    failed,
+    pending,
+    green: checks.length - failed.length - pending.length
+  }
+}
+
+/** The pull request check of one read, as a done-check result that names the head it judged. */
+export function prReadResult(
+  read: Extract<PrHeadRead, { kind: 'read' }>,
+  outputLines: number
+): ForkDoneCheckResult {
+  const pr = { headSha: read.head, prNumber: read.number }
+  const summary = `Pull request #${read.number} at ${read.head.slice(0, 10)}, ${read.scope} checks: ${read.green} green, ${read.failed.length} failed, ${read.pending.length} running.`
+  if (read.failed.length > 0) {
+    return result(
+      false,
+      tailLines(`${summary}\nFailed: ${read.failed.join(', ')}`, outputLines),
+      false,
+      pr
+    )
+  }
+  if (read.pending.length > 0) {
+    return result(
+      false,
+      tailLines(`${summary}\nRunning: ${read.pending.join(', ')}`, outputLines),
+      true,
+      pr
+    )
+  }
+  return result(true, summary, false, pr)
 }
 
 export async function evaluatePrChecks(
@@ -115,33 +215,12 @@ export async function evaluatePrChecks(
       result(false, 'This workspace has no named branch, so there is no pull request to check.')
     )
   }
-  let view: Record<string, unknown> | null
-  try {
-    view = asRecord(
-      JSON.parse(
-        await port.gh([
-          'pr',
-          'view',
-          branch,
-          '--json',
-          'number,state,isDraft,headRefOid,statusCheckRollup'
-        ])
-      )
-    )
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error)
-    return done(
-      result(false, `No pull request could be read for branch ${branch}: ${tailLines(reason, 5)}`)
-    )
+  const read = await readPrHeadChecks(port, branch)
+  if (read.kind === 'unreadable') {
+    return done(result(false, `No pull request could be read for branch ${branch}${read.reason}.`))
   }
-  const head = typeof view?.headRefOid === 'string' ? view.headRefOid : ''
-  if (!view || !head) {
-    return done(result(false, `No pull request could be read for branch ${branch}.`))
-  }
-  if (String(view.state).toUpperCase() !== 'OPEN') {
-    return done(
-      result(false, `Pull request #${String(view.number)} is ${String(view.state)}, not open.`)
-    )
+  if (read.state !== 'OPEN') {
+    return done(result(false, `Pull request #${read.number} is ${read.state}, not open.`))
   }
   let local = ''
   try {
@@ -149,44 +228,13 @@ export async function evaluatePrChecks(
   } catch {
     local = ''
   }
-  if (local && local !== head) {
+  if (local && local !== read.head) {
     return done(
       result(
         false,
-        `The workspace is at ${local.slice(0, 10)} but pull request #${String(view.number)} is at ${head.slice(0, 10)}. Push your latest commit, then report done again.`
+        `The workspace is at ${local.slice(0, 10)} but pull request #${read.number} is at ${read.head.slice(0, 10)}. Push your latest commit, then report done again.`
       )
     )
   }
-  let lines: CheckLine[] | null = null
-  try {
-    lines = requiredChecks(
-      await port.gh(['pr', 'checks', branch, '--required', '--json', 'name,bucket'])
-    )
-  } catch (error) {
-    lines = requiredChecks(stdoutOfFailure(error))
-  }
-  // A repository with no required checks (or an older gh) falls back to every check on the commit.
-  const scope = lines && lines.length > 0 ? 'required' : 'all'
-  const checks = lines && lines.length > 0 ? lines : rollupChecks(view.statusCheckRollup)
-  const failed = checks.filter((check) => check.state === 'fail')
-  const pending = checks.filter((check) => check.state === 'pending')
-  const summary = `Pull request #${String(view.number)} at ${head.slice(0, 10)}, ${scope} checks: ${checks.length - failed.length - pending.length} green, ${failed.length} failed, ${pending.length} running.`
-  if (failed.length > 0) {
-    return done(
-      result(
-        false,
-        tailLines(`${summary}\nFailed: ${failed.map((c) => c.name).join(', ')}`, outputLines)
-      )
-    )
-  }
-  if (pending.length > 0) {
-    return done(
-      result(
-        false,
-        tailLines(`${summary}\nRunning: ${pending.map((c) => c.name).join(', ')}`, outputLines),
-        true
-      )
-    )
-  }
-  return done(result(true, summary))
+  return done(prReadResult(read, outputLines))
 }

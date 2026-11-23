@@ -84,7 +84,10 @@ import {
   ForkCommandGuardsListParams,
   ForkCommandGuardsStatusParams
 } from '../fork/command-guards-wire'
-import { ForkCompletionContractShowParams } from '../fork/completion-contract-wire'
+import {
+  ForkCompletionContractLaterPushParams,
+  ForkCompletionContractShowParams
+} from '../fork/completion-contract-wire'
 import { ForkDeviceListParams, ForkDeviceTargetParams } from '../fork/device-approval'
 import { ForkDigestCollectParams, ForkDigestLocalParams } from '../fork/digest'
 import { ForkEndpointAddressesParams } from '../fork/endpoint-failover'
@@ -1763,6 +1766,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.commandGuards.allow': ForkCommandGuardsAllowParams,
   'fork.commandGuards.list': ForkCommandGuardsListParams,
   'fork.commandGuards.status': ForkCommandGuardsStatusParams,
+  'fork.completionContract.laterPush': ForkCompletionContractLaterPushParams,
   'fork.completionContract.show': ForkCompletionContractShowParams,
   'fork.devices.approve': ForkDeviceTargetParams,
   'fork.devices.deny': ForkDeviceTargetParams,
