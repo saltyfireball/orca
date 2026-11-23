@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { commandGuardCoverage, readCommandGuardConfig } from './command-guards'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import {
+  COMMAND_GUARD_SURFACES,
+  COMMAND_GUARD_SURFACE_PROOFS,
+  commandGuardCoverage,
+  commandGuardSurfaceCoverage,
+  readCommandGuardConfig
+} from './command-guards'
 import {
   evaluateCommandGuard,
   type CommandGuardContext,
@@ -183,9 +191,22 @@ describe('settings and coverage', () => {
     expect(readCommandGuardConfig(null).auditLimit).toBe(200)
   })
 
-  it('lists Claude Code as guarded and the other agents as unguarded', () => {
+  it('lists the other agents as unguarded and Claude as guarded only where proven', () => {
+    const none = { terminal: null, 'native-chat': null, 'chat-worker': null }
+    expect(commandGuardCoverage(none).some((row) => row.guarded)).toBe(false)
+    expect(commandGuardSurfaceCoverage(none).some((row) => row.guarded)).toBe(false)
     const coverage = commandGuardCoverage()
-    expect(coverage.filter((row) => row.guarded).map((row) => row.agent)).toEqual(['claude'])
     expect(coverage.find((row) => row.agent === 'codex')?.guarded).toBe(false)
+    expect(coverage.find((row) => row.agent === 'claude')?.guarded).toBe(
+      COMMAND_GUARD_SURFACES.every((surface) => COMMAND_GUARD_SURFACE_PROOFS[surface] !== null)
+    )
+  })
+
+  it('names, for every guarded surface, a test file that proves a deny', () => {
+    for (const row of commandGuardSurfaceCoverage().filter((surface) => surface.guarded)) {
+      const text = readFileSync(join(__dirname, '../../..', row.proof ?? 'missing'), 'utf8')
+      expect(text).toContain(`command guard proof: ${row.surface.replace('-', ' ')}`)
+      expect(text).toContain("permissionDecision).toBe('deny')")
+    }
   })
 })
