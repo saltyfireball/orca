@@ -27,6 +27,7 @@ import { resolveDispatchCreator } from '../runs/dispatch-creator'
 import { checkedWorkerOrigin } from '../../bots-items-worker-origin'
 import { decideStartMode, noteTerminalFallbackOnItem } from './start/worker-chat-lineage'
 import { withKeepOpenDefault } from './start/worker-keep-open-default'
+import { forkTaskProfileStart } from '../../../../../fork/agent-profiles/agent-profile-task-launch'
 import {
   linkWorkerToQuestion,
   openQuestionReminder,
@@ -59,7 +60,7 @@ export const ORCHESTRATION_WORKER_START_METHODS = [
     requires: ['accounts'],
     permission: 'workspace',
     params: WorkerStartParams,
-    handler: async (params, ctx) => startWorker(params, ctx)
+    handler: async (params, ctx) => forkTaskProfileStart(startWorker)(params, ctx) // Fork (BAD-741)
   })
 ]
 

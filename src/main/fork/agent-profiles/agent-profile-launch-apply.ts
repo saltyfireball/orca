@@ -15,6 +15,10 @@ import {
 } from '../../../shared/fork/claude-account-move'
 import { claudeSessionAccountPins } from '../claude-account-move/claude-session-account-pins'
 import { currentForkAgentProfileLaunch } from './agent-profile-launch-scope'
+import {
+  assertForkMcpProfileApplies,
+  currentForkMcpLaunchScope
+} from '../mcp-profiles/mcp-launch-scope'
 import { forkTaskProfilePreamble } from './agent-profile-task-store'
 
 type TerminalLaunch = {
@@ -29,6 +33,13 @@ export function forkAgentProfileTerminalLaunch<O extends TerminalLaunch, S>(
   opts: O,
   sessionOptions: Readonly<Record<string, S | string>> | undefined
 ): { opts: O; sessionOptions: Readonly<Record<string, S | string>> | undefined } {
+  if (opts.startupAgent) {
+    // An MCP profile narrows only a Claude chat; a terminal start of any agent refuses it.
+    assertForkMcpProfileApplies(currentForkMcpLaunchScope()?.profile, {
+      agent: opts.startupAgent,
+      terminal: true
+    })
+  }
   const launch = currentForkAgentProfileLaunch()
   if (!launch || !opts.startupAgent || opts.startupAgent !== launch.agent) {
     return { opts, sessionOptions }
@@ -64,6 +75,7 @@ type ChatCreate = {
 /** The chat creation hook: the profile's mode seeds the chat's permission, and a Claude chat is
  *  pinned to the profile's account before its first start. */
 export function forkAgentProfileChatCreate<P extends ChatCreate>(params: P): P {
+  assertForkMcpProfileApplies(currentForkMcpLaunchScope()?.profile, { agent: params.provider })
   const launch = currentForkAgentProfileLaunch()
   if (!launch || params.agent !== launch.agent) {
     return params

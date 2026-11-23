@@ -31,11 +31,12 @@ export type ForkProfileAccountRouter = Pick<PinnedClaudeRouter, 'coveredBySystem
   accountLogin(accountId: string): unknown
 }
 
+/** `ref` names the account again on a later start (its id, or System default); no credential. */
 export type ForkProfileAccountPlan =
   /** `pin` is the account id, or null for System default. */
-  | { kind: 'claude'; pin: string | null; label: string }
-  | { kind: 'codex-selected'; label: string }
-  | { kind: 'not-applied'; label: string; note: string }
+  | { kind: 'claude'; pin: string | null; label: string; ref: string }
+  | { kind: 'codex-selected'; label: string; ref: string }
+  | { kind: 'not-applied'; label: string; note: string; ref: string }
 
 export type ForkProfileAccountResult =
   | { ok: true; plan: ForkProfileAccountPlan }
@@ -87,7 +88,15 @@ export function resolveForkProfileAccount(
 ): ForkProfileAccountResult {
   if (CLAUDE_AGENTS.has(agent)) {
     if (query.toLowerCase() === FORK_CLAUDE_SYSTEM_DEFAULT) {
-      return { ok: true, plan: { kind: 'claude', pin: null, label: 'System default' } }
+      return {
+        ok: true,
+        plan: {
+          kind: 'claude',
+          pin: null,
+          label: 'System default',
+          ref: FORK_CLAUDE_SYSTEM_DEFAULT
+        }
+      }
     }
     const found = router
       ? find(
@@ -110,7 +119,7 @@ export function resolveForkProfileAccount(
         message: `The profile's Claude account "${label}" is signed out on this computer. Sign in to it again (Settings > Accounts, or \`orca account add --agent claude\`), or change the profile's account. Nothing was started.`
       }
     }
-    return { ok: true, plan: { kind: 'claude', pin: account.id, label } }
+    return { ok: true, plan: { kind: 'claude', pin: account.id, label, ref: account.id } }
   }
   if (agent === 'codex') {
     const selected = normalizeCodexRuntimeSelection(settings).host
@@ -131,14 +140,16 @@ export function resolveForkProfileAccount(
     }
     const id = found ? found.account.id : null
     const label = found ? found.label : 'System default'
+    const ref = id ?? FORK_CLAUDE_SYSTEM_DEFAULT
     if (id === selected) {
-      return { ok: true, plan: { kind: 'codex-selected', label } }
+      return { ok: true, plan: { kind: 'codex-selected', label, ref } }
     }
     return {
       ok: true,
       plan: {
         kind: 'not-applied',
         label,
+        ref,
         note: `Codex runs on the account selected on this computer, and a launch cannot choose its own, so the profile's account ${label} is not used. Select it with \`orca account select --agent codex --account ${id ?? FORK_CLAUDE_SYSTEM_DEFAULT}\` to run on it.`
       }
     }
@@ -148,6 +159,7 @@ export function resolveForkProfileAccount(
     plan: {
       kind: 'not-applied',
       label: query,
+      ref: query,
       note: `${agent} has no account Orca can choose, so the profile's account ${query} is not used.`
     }
   }

@@ -4,7 +4,11 @@
 // hook). The chat is created inside the method's awaited chain, so the scope is still current.
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { InvalidArgumentError } from '../../runtime/rpc/core'
-import { FORK_MCP_PROFILE_PARAM, type ForkMcpLaunchKind } from '../../../shared/fork/mcp-profiles'
+import {
+  FORK_MCP_PROFILE_ALL,
+  FORK_MCP_PROFILE_PARAM,
+  type ForkMcpLaunchKind
+} from '../../../shared/fork/mcp-profiles'
 import { withForkAgentProfileLaunchScope } from '../agent-profiles/agent-profile-launch-scope'
 
 export type ForkMcpLaunchScope = { kind: ForkMcpLaunchKind; profile?: string }
@@ -59,6 +63,57 @@ export function setForkMcpProfileCheck(check: ((name: string) => boolean) | null
   profileCheck = check
 }
 
+/** The request field naming the agent each launch method starts. */
+const AGENT_FIELDS: Readonly<Record<string, string>> = {
+  'agent.launch': 'agent',
+  'agent.launchReplay': 'agent',
+  'worktree.create': 'startupAgent',
+  'orchestration.workerStart': 'agent'
+}
+
+/**
+ * BAD-741: an MCP profile narrows only a Claude chat started on this host. Where a launch could
+ * not apply it, it is refused with the reason instead of running with every server.
+ */
+export function assertForkMcpProfileApplies(
+  profile: string | undefined,
+  where: { agent?: string; on?: string; terminal?: boolean }
+): void {
+  if (!profile || profile === FORK_MCP_PROFILE_ALL) {
+    return
+  }
+  const refuse = (why: string, after: string): never => {
+    throw new InvalidArgumentError(`MCP profile "${profile}" ${why}. ${after}`)
+  }
+  if (where.on) {
+    refuse(
+      `cannot be applied on paired server ${where.on} yet, so the worker would load every MCP server there`,
+      'Start the worker here, or without the MCP profile. Nothing was started.'
+    )
+  }
+  if (where.agent && where.agent !== 'claude') {
+    refuse(
+      `applies only to Claude chats, and ${where.agent} takes none`,
+      'Start it without the MCP profile. Nothing was started.'
+    )
+  }
+  if (where.terminal) {
+    refuse(
+      'applies only to Claude chats, and this start runs Claude in a terminal',
+      'Start it as a chat, or without the MCP profile. Nothing was launched.'
+    )
+  }
+}
+
+/** Refuses an MCP profile this host does not have, before anything starts. */
+export function assertForkMcpProfileKnown(profile: string, refusedBecause = ''): void {
+  if (profileCheck && !profileCheck(profile)) {
+    throw new InvalidArgumentError(
+      `${refusedBecause}Unknown MCP profile "${profile}". See \`orca mcp-profile list\` for this host's profiles.`
+    )
+  }
+}
+
 /**
  * Dispatcher hook: runs a launch method inside its launch scope. An unknown profile name
  * refuses the launch before anything starts. Other methods run untouched.
@@ -80,10 +135,17 @@ function mcpLaunchScope<T>(
     return run()
   }
   const profile = forkMcpProfileParamOf(call.request.params)
-  if (profile && profileCheck && !profileCheck(profile)) {
-    throw new InvalidArgumentError(
-      `Unknown MCP profile "${profile}". See \`orca mcp-profile list\` for this host's profiles.`
-    )
+  if (profile) {
+    assertForkMcpProfileKnown(profile)
+    const params = call.request.params as Record<string, unknown>
+    const text = (name: string | undefined): string | undefined => {
+      const value = name ? params[name] : undefined
+      return typeof value === 'string' && value.trim() ? value.trim() : undefined
+    }
+    assertForkMcpProfileApplies(profile, {
+      agent: text(AGENT_FIELDS[call.request.method]),
+      on: call.request.method === 'orchestration.workerStart' ? text('on') : undefined
+    })
   }
   return runInForkMcpLaunchScope({ kind, ...(profile ? { profile } : {}) }, run)
 }

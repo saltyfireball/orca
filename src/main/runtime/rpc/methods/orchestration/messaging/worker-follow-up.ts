@@ -18,6 +18,7 @@ import type {
 import type { WorkerTerminalResourceRow } from '../../../../orchestration/terminal-authority/release/worker-terminal-ownership'
 import type { RpcContext } from '../../../core'
 import { startWorker } from '../worker/worker-start-method'
+import { forkTaskProfileStart } from '../../../../../fork/agent-profiles/agent-profile-task-launch'
 import {
   chooseWorkerFollowUpPlacement,
   type WorkerFollowUpDelivery
@@ -76,7 +77,8 @@ export async function startWorkerFollowUp(args: {
   let releasedShellOf: string | undefined
   let receipt: unknown
   try {
-    receipt = await startWorker(
+    // Fork (BAD-741): the follow-up starts under the profile its Task first started with.
+    receipt = await forkTaskProfileStart(startWorker)(
       {
         from: args.from,
         run: latest.run_id,

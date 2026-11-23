@@ -3101,8 +3101,23 @@ ones `SLRM-123 `).
   - **Pickers.** A Profiles section in the + menu (after the agents) and a Profile field under
     the automation dialog's agent; both show only when a profile exists, apply the cap and hold
     back an unconfirmed import. The orchestration guide and bot preamble name `profiles list`.
-  - **Not covered yet.** Automatic retries and follow-ups keep the preamble, not the mode or
-    account. A UI start does not switch accounts. The MCP profile does not travel with `--on`.
+  - **Retries and follow-ups (BAD-741).** A worker-start stores what it applied with its Task
+    (`fork_task_agent_profiles`: profile name, preamble, agent, the capped mode, the account's id
+    or the profile's own name for it, never a credential, and the MCP profile name, also for a
+    plain `--mcp-profile` start). An automatic retry, a follow-up, `--retry-of` and `--task`
+    without `--profile` start under it again (`forkWithTaskProfileLaunch`, hooked at both
+    `startWorker` calls): the stored mode capped by this host's policy as it is then, never wider; the
+    same account checked again, and a missing or signed-out one refuses the start (an automatic
+    retry is marked failed with the reason in `orca retry show` and the coordinator gets it as an
+    escalation); the MCP profile checked again. Their own `--profile`, `--mcp-profile` or another
+    `--agent` wins. The row a retry copies is the first one, so a narrower policy never sticks.
+    A chat worker reopened in its own session keeps its mode: the session record holds the mode
+    it was created with and every start of it launches on that.
+  - **MCP profile where it cannot apply.** An MCP profile narrows only a Claude chat, so a start
+    that names one (`--mcp-profile`, or a profile's) is refused with the reason, never run with
+    every server: another agent (at the call, and again at its chat or terminal), a Claude
+    terminal, and `worker-start --on`. The built-in `all` is never refused.
+  - **Not covered yet.** A UI start does not switch accounts.
   - Code is in `src/shared/fork/agent-profiles/`, `src/main/fork/agent-profiles/` and
     `src/cli/fork/agent-profile-*`.
 
@@ -3425,6 +3440,7 @@ Apply these in this order. Each one is a single commit.
 184. `BAD-676 A later push re-evaluates: a push to the open pull request of a settled --require-pr-checks Task is read again for forkCompletionContractLaterPushHours (24); green is a pass attempt, red a fail attempt and one escalation per head with a Decision inbox row, read where the checks ran and sent on the Run home`
 185. `BAD-681 Retries in the crew view and the Task history: a worker's crew row says which try, why it ended and whether Orca waits (and until when), restarted it or gave up; orca contract show lists the Task's retries and the retry that started it`
 186. `BAD-785 Command guards read heredoc bodies as data unless a shell may run them, follow a literal variable set earlier in the command, and say what part of an unreadable command could not be read`
+187. `BAD-741 Agent profiles hold on a retry and a follow-up: the Task keeps the mode, account and MCP profile its worker first started with, capped and checked again on each restart, which refuses with the reason when the account is signed out or missing; an MCP profile that cannot apply is refused, never dropped`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4715,6 +4731,10 @@ Upstream files only get short hooks, which keeps merges small:
   `bot-preamble.ts` adds `forkAgentProfileToolLine`; `AutomationAgentLaunchPicker.tsx` renders
   `ForkAgentProfileAutomationField` and `tab-bar-surface.tsx` renders `ForkAgentProfileMenuItems`.
   The orchestration guide has one line; the injected-context baseline is raised for it.
+  A retry or follow-up starts under the Task's stored profile through two call sites of
+  `startWorker` wrapped in `forkTaskProfileStart`: the `orchestration.workerStart` handler in
+  `worker-start-method.ts` (`--retry-of`, `--task`) and `startWorkerFollowUp` in
+  `worker-follow-up.ts` (follow-ups and automatic retries).
 
 - Services mail a bot (BAD-742), two small edits in stock files, `message-send-handler.ts`
   calls `assertServiceSend` when `--as-service` is given and then sends with no `from`, and

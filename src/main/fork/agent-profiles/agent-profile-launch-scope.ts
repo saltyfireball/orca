@@ -36,6 +36,8 @@ export type ForkAgentProfileLaunch = {
   preamble?: string
   /** What a start placed on a paired server sends it; set only for such a start. */
   carry?: ForkAgentProfileLaunchWire
+  /** Taken up from the Task a retry or follow-up continues, not named by this start. */
+  fromTask?: true
 }
 
 type Deps = {
@@ -79,16 +81,71 @@ function isParams(value: unknown): value is Record<string, unknown> {
 function checkAccount(
   agent: string,
   account: string | undefined,
-  settings: ForkAgentProfileHostSettings
+  settings: ForkAgentProfileHostSettings,
+  refusedBecause = ''
 ): ForkProfileAccountPlan | undefined {
   if (!account) {
     return undefined
   }
   const checked = resolveForkProfileAccount(agent, account, settings, deps.claudeRouter())
   if (!checked.ok) {
-    throw new InvalidArgumentError(checked.message)
+    throw new InvalidArgumentError(`${refusedBecause}${checked.message}`)
   }
   return checked.plan
+}
+
+/** The widest of `mode` this host's policy allows for `agent` now. */
+function capped(
+  mode: ForkAgentProfilePermissionMode,
+  agent: string,
+  settings: ForkAgentProfileHostSettings
+): ForkAgentProfilePermissionMode {
+  const max = forkAgentProfileMaxPermission(settings, agent)
+  return rank(mode) > rank(max) ? max : mode
+}
+
+/**
+ * A retry or follow-up of a Task first started under a profile: the same agent, the stored mode
+ * capped again by this host's policy as it is now, and the same account checked again here (a
+ * missing or signed-out one refuses; another is never used). An explicit other `--agent` wins.
+ */
+export function forkAgentProfileLaunchOfTask(
+  stored: {
+    profile: string
+    preamble: string
+    agent?: string
+    permissionMode?: ForkAgentProfilePermissionMode
+    account?: string
+  },
+  explicitAgent: string | undefined,
+  remote: boolean
+): ForkAgentProfileLaunch | undefined {
+  const agent = stored.agent
+  if (!agent || (explicitAgent && explicitAgent !== agent)) {
+    return undefined
+  }
+  const settings = deps.readSettings() ?? {}
+  const name = stored.profile || 'none'
+  const base = {
+    name,
+    agent,
+    ...(stored.permissionMode
+      ? { permissionMode: capped(stored.permissionMode, agent, settings) }
+      : {}),
+    ...(stored.preamble ? { preamble: stored.preamble } : {}),
+    fromTask: true as const
+  }
+  if (remote) {
+    const { fromTask: _fromTask, ...wire } = base
+    return { ...base, carry: { ...wire, ...(stored.account ? { account: stored.account } : {}) } }
+  }
+  const account = checkAccount(
+    agent,
+    stored.account,
+    settings,
+    `This Task's worker was first started with profile "${name}", whose account is checked again for every restart: `
+  )
+  return { ...base, ...(account ? { account } : {}) }
 }
 
 /** A profile named by the CLI, resolved from this host's settings. */
