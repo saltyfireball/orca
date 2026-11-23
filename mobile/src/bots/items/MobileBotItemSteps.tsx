@@ -2,11 +2,12 @@
 // step's title, host, command (wrapped, selectable, with Copy) and a Done check, and "Did not work" with
 // the pasted error. No Open in terminal: a phone has none. The current step is open; others open on tap.
 import { useState } from 'react'
-import { Pressable, Text, TextInput, View } from 'react-native'
+import { Pressable, Text, TextInput, View, type HostInstance } from 'react-native'
 import { Check, ChevronRight } from 'lucide-react-native'
 import {
   botItemCurrentStepIndex,
   botItemStepsDoneCount,
+  isBotItemManualStep,
   type BotItemStep,
   type BotItemStepState,
   type BotItemStepsView
@@ -30,12 +31,15 @@ function Step({
   step,
   current,
   online,
-  onMark
+  onMark,
+  currentRef
 }: {
   step: BotItemStep
   current: boolean
   online: boolean
   onMark: MobileBotItemStepMark
+  /** The page finds the current step through this, to scroll it into view. */
+  currentRef?: React.Ref<HostInstance>
 }): React.JSX.Element {
   const t = useMobileTranslation()
   const [opened, setOpened] = useState(false)
@@ -54,7 +58,11 @@ function Step({
   }
   const number = step.index + 1
   return (
-    <View style={[styles.step, current && styles.stepCurrent, !current && !done && styles.dim]}>
+    <View
+      ref={current ? currentRef : undefined}
+      collapsable={false}
+      style={[styles.step, current && styles.stepCurrent, !current && !done && styles.dim]}
+    >
       <View style={styles.head}>
         <Pressable
           accessibilityRole="checkbox"
@@ -74,17 +82,19 @@ function Step({
           accessibilityState={{ expanded }}
           onPress={() => setOpened(!opened)}
         >
-          <Text style={[styles.title, done && styles.titleDone]}>
-            <Text style={styles.number}>{number}. </Text>
-            {step.title}
-          </Text>
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, styles.number]}>{number}.</Text>
+            <Text style={[styles.title, styles.titleText, done && styles.titleDone]}>
+              {step.title}
+            </Text>
+          </View>
           <View style={styles.badges}>
-            {step.host ? (
+            {step.host && step.command ? (
               <Text style={styles.badge}>
                 {t('bots.items.steps.host', 'on {{host}}', { host: step.host })}
               </Text>
             ) : null}
-            {!step.command ? (
+            {isBotItemManualStep(step) ? (
               <Text style={styles.badgeMuted}>
                 {t('bots.items.steps.manual', 'do this yourself')}
               </Text>
@@ -108,6 +118,19 @@ function Step({
                 <MobileSourceCopyButton
                   text={step.command}
                   accessibilityLabel={t('bots.items.steps.copy', 'Copy command')}
+                />
+              </View>
+            </View>
+          ) : null}
+          {step.text ? (
+            <View style={styles.command}>
+              <Text selectable style={styles.commandText}>
+                {step.text}
+              </Text>
+              <View style={styles.copy}>
+                <MobileSourceCopyButton
+                  text={step.text}
+                  accessibilityLabel={t('bots.items.steps.copyText', 'Copy text')}
                 />
               </View>
             </View>
@@ -163,11 +186,13 @@ function Step({
 export function MobileBotItemSteps({
   view,
   online,
-  onMark
+  onMark,
+  currentRef
 }: {
   view: BotItemStepsView
   online: boolean
   onMark: MobileBotItemStepMark
+  currentRef?: React.Ref<HostInstance>
 }): React.JSX.Element {
   useMobileColorScheme()
   const t = useMobileTranslation()
@@ -190,6 +215,7 @@ export function MobileBotItemSteps({
           current={step.index === current}
           online={online}
           onMark={onMark}
+          currentRef={currentRef}
         />
       ))}
     </View>
@@ -222,6 +248,8 @@ const styles = themedStyleSheet(() => ({
   },
   checkOn: { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary },
   titleBox: { flex: 1, gap: 4 },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4 },
+  titleText: { flex: 1, minWidth: 0 },
   title: { fontSize: 15, lineHeight: 20, color: colors.textPrimary },
   titleDone: { color: colors.textMuted, textDecorationLine: 'line-through' },
   number: { color: colors.textMuted },
@@ -269,8 +297,10 @@ export function MobileBotItemStepsPanel({
   item,
   online,
   hostName,
-  showToast
+  showToast,
+  currentRef
 }: {
+  currentRef?: React.Ref<HostInstance>
   client: RpcClient | null
   item: BotItem
   online: boolean
@@ -285,6 +315,7 @@ export function MobileBotItemStepsPanel({
     <MobileBotItemSteps
       view={item.steps}
       online={online}
+      currentRef={currentRef}
       onMark={async (step, state, error) => {
         const outcome = client
           ? await markBotItemStep(client, item, step.index, state, error)

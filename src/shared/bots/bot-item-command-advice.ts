@@ -47,4 +47,4 @@ export function looksLikeShellCommand(text: string): boolean {
 }
 
 export const BOT_ITEM_COMMAND_TIP =
-  'Posted. Tip: Commands for your owner go in steps, one command per step with its computer named: write them to a file and set Needs you again with --steps-file <file> (or put each in its own fenced sh block).'
+  'Posted. Tip: Commands for your owner go in steps, one command per step with its computer named: write them to a file and set Needs you again with --steps-file <file> (or put each in its own fenced sh block). Do not say below or above about them.'

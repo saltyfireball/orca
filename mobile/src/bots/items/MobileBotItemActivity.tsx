@@ -244,8 +244,11 @@ export function MobileBotItemActivity({
   item,
   events,
   attachments,
-  pending
+  pending,
+  steps
 }: {
+  /** The open owner steps, drawn inside the ask's card (the comment the item waits on). */
+  steps?: React.ReactNode
   item: BotItem
   events: readonly BotItemEvent[]
   /** Comments sent from the box that the item's read doesn't show yet: last, as sent. */
@@ -267,6 +270,7 @@ export function MobileBotItemActivity({
             item={item}
             entry={answered ? { ...entry, waiting: false } : entry}
             attachments={attachments}
+            steps={entry.event.id === item.question?.eventId ? steps : undefined}
           />
         ) : (
           <View key={entry.key} style={styles.event}>

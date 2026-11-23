@@ -12,6 +12,7 @@ import { cn } from '@/lib/class-names'
 import {
   botItemCurrentStepIndex,
   botItemStepsDoneCount,
+  isBotItemManualStep,
   type BotItemStep,
   type BotItemStepState,
   type BotItemStepsView
@@ -135,34 +136,30 @@ function StepRow({
           type="button"
           aria-expanded={expanded}
           disabled={current || done}
-          className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5 text-left text-[13px] leading-[18px] disabled:cursor-default"
+          className="flex min-w-0 flex-1 items-baseline gap-1.5 text-left text-[13px] leading-[18px] disabled:cursor-default"
           onClick={() => setOpened(!opened)}
         >
-          <span className="text-muted-foreground">{number}.</span>
-          <span
-            className={cn(
-              'min-w-0 [overflow-wrap:anywhere]',
-              done && 'text-muted-foreground line-through'
-            )}
-          >
-            {step.title}
+          {/* The number never leaves its title: the title and badges wrap together in the box beside it. */}
+          <span className="shrink-0 text-muted-foreground">{number}.</span>
+          <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+            <span className={cn(done && 'text-muted-foreground line-through')}>{step.title}</span>
+            {step.host && step.command ? (
+              <span className="ml-1.5 inline-block rounded bg-muted px-1.5 align-baseline text-2xs leading-4 text-muted-foreground">
+                {t('bots.items.steps.host', 'on {{host}}', { host: step.host })}
+              </span>
+            ) : null}
+            {isBotItemManualStep(step) ? (
+              <span className="ml-1.5 text-2xs text-muted-foreground">
+                {t('bots.items.steps.manual', 'do this yourself')}
+              </span>
+            ) : null}
+            {step.state === 'failed' ? (
+              <span className="ml-1.5 inline-flex items-center gap-0.5 text-2xs text-destructive">
+                <TriangleAlert className="size-3" />
+                {t('bots.items.steps.failed', 'Did not work')}
+              </span>
+            ) : null}
           </span>
-          {step.host ? (
-            <span className="rounded bg-muted px-1.5 text-2xs leading-4 text-muted-foreground">
-              {t('bots.items.steps.host', 'on {{host}}', { host: step.host })}
-            </span>
-          ) : null}
-          {!step.command ? (
-            <span className="text-2xs text-muted-foreground">
-              {t('bots.items.steps.manual', 'do this yourself')}
-            </span>
-          ) : null}
-          {step.state === 'failed' ? (
-            <span className="inline-flex items-center gap-0.5 text-2xs text-destructive">
-              <TriangleAlert className="size-3" />
-              {t('bots.items.steps.failed', 'Did not work')}
-            </span>
-          ) : null}
         </button>
         {!current && !done ? (
           <ChevronRight
@@ -177,6 +174,7 @@ function StepRow({
             <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{step.note}</p>
           ) : null}
           {step.command ? <BotItemCommandBlock command={step.command} /> : null}
+          {step.text ? <BotItemCommandBlock command={step.text} kind="text" /> : null}
           {step.state === 'failed' && step.error ? (
             <pre className="m-0 max-h-24 overflow-auto scrollbar-sleek whitespace-pre-wrap rounded bg-destructive/10 px-2 py-1 font-mono text-[11px] text-destructive [overflow-wrap:anywhere]">
               {step.error}
@@ -256,7 +254,7 @@ export function BotItemSteps({
             key={`${view.eventId}:${step.index}`}
             step={step}
             current={step.index === current}
-            terminal={terminalFor ? terminalFor(step) : null}
+            terminal={terminalFor && step.command ? terminalFor(step) : null}
             onMark={onMark}
           />
         ))}

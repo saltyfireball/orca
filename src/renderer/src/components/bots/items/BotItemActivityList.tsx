@@ -288,7 +288,8 @@ export function BotItemActivityList({
   item,
   events,
   pending,
-  quickReplies
+  quickReplies,
+  steps
 }: {
   bot: Bot
   item: BotItem
@@ -297,6 +298,8 @@ export function BotItemActivityList({
   pending?: BotItemPendingComments
   /** What the waiting question's quick replies do; absent where the item takes no comment (deleted). */
   quickReplies?: BotItemQuickReplyActions
+  /** The open owner steps, drawn inside the ask's card (the comment the item waits on). */
+  steps?: React.ReactNode
 }): React.JSX.Element {
   const t = useTranslate()
   const entries = botItemActivity(item, events)
@@ -332,6 +335,7 @@ export function BotItemActivityList({
                 }
                 onJump={jump}
                 quickReplies={quickReplies}
+                steps={entry.event.id === item.question?.eventId ? steps : undefined}
               />
             )
           }

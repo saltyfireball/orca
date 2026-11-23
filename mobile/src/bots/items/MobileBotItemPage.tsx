@@ -35,6 +35,9 @@ import { MobileBotItemCommentBox, type BotItemCommentBoxHandle } from './MobileB
 import { ClampedDescription } from './MobileBotItemDescription'
 import { MobileBotItemLinks } from './MobileBotItemLinks'
 import { MobileBotItemStepsPanel } from './MobileBotItemSteps'
+import { MobileBotItemStepsLine } from './MobileBotItemStepsLine'
+import { useMobileBotItemStepsScroll } from './use-mobile-bot-item-steps-scroll'
+import { botItemStepsPlace } from '../../../../src/shared/bots/bot-item-steps'
 import { botItemChatName, type BotItemSheet } from './MobileBotItemSheets'
 import { MobileBotItemStatusIcon } from './MobileBotItemStatusIcon'
 import { formatPhoneSnoozeTime } from './bot-item-snooze-time'
@@ -120,6 +123,16 @@ export function MobileBotItemPage({
     }
   }, [askShown])
   const jump = useJumpToEnd()
+  // The open steps sit in the ask's card; with no loaded ask they stay above the Activity.
+  const stepsPlace =
+    view.item && view.item.status !== 'done' && view.item.status !== 'canceled'
+      ? botItemStepsPlace(view.item, view.events)
+      : 'none'
+  const stepsScroll = useMobileBotItemStepsScroll({
+    scroll: jump.ref,
+    inAskSet: stepsPlace === 'ask' ? (view.item?.steps?.eventId ?? null) : null,
+    ready: view.events.length > 0
+  })
   const takesImages = useRouteCapability(BOTS_ITEM_COMMENT_ATTACHMENTS_RUNTIME_CAPABILITY)
   const pending = usePhoneBotItemPendingComments({
     client,
@@ -159,10 +172,23 @@ export function MobileBotItemPage({
   }
   const chatTitle = botItemChatName(item, t)
   const ChatIcon = item.chat.kind === 'home' ? House : MessageSquare
+  const stepsPanel = (
+    <MobileBotItemStepsPanel
+      client={client}
+      item={item}
+      online={online && !view.failed}
+      hostName={hostName}
+      showToast={showToast}
+      currentRef={stepsScroll.currentStep}
+    />
+  )
   const closed = item.status === 'done' || item.status === 'canceled'
   return (
     <View style={styles.page}>
       {back}
+      {stepsPlace === 'ask' && item.steps ? (
+        <MobileBotItemStepsLine view={item.steps} onPress={() => stepsScroll.reveal(true)} />
+      ) : null}
       <View style={styles.scroll}>
         <ScrollView
           ref={jump.ref}
@@ -259,15 +285,7 @@ export function MobileBotItemPage({
               <Text style={styles.doneMeansText}>{item.doneMeans}</Text>
             </View>
           ) : null}
-          {closed ? null : (
-            <MobileBotItemStepsPanel
-              client={client}
-              item={item}
-              online={online && !view.failed}
-              hostName={hostName}
-              showToast={showToast}
-            />
-          )}
+          {stepsPlace === 'above' ? stepsPanel : null}
           {item.links.length > 0 ? (
             <>
               <SectionHeader
@@ -293,6 +311,7 @@ export function MobileBotItemPage({
             events={view.events}
             attachments={{ client, onOpenFile }}
             pending={pending}
+            steps={stepsPlace === 'ask' ? stepsPanel : null}
           />
         </ScrollView>
         {/* A soft edge over the comment box: activity scrolling under it reads as more below. */}

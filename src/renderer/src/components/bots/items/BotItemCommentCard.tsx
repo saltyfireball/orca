@@ -87,7 +87,8 @@ export function BotItemCommentCard({
   entry,
   onJump,
   failed,
-  quickReplies
+  quickReplies,
+  steps
 }: {
   bot: Bot
   item: BotItem
@@ -98,6 +99,8 @@ export function BotItemCommentCard({
   failed?: { retry: () => void; discard: () => void }
   /** On the question the item waits on, until the owner replies. */
   quickReplies?: BotItemQuickReplyActions
+  /** The owner steps set with this ask: after its words and before its question, so reading down is doing. */
+  steps?: React.ReactNode
 }): React.JSX.Element {
   const t = useTranslate()
   const { event, replyTo } = entry
@@ -178,6 +181,7 @@ export function BotItemCommentCard({
           ) : null}
           <BotItemCommentImages images={images} />
           <BotItemCommentFiles paths={files} />
+          {steps ? <div className="mt-2">{steps}</div> : null}
           {shape.decisions.length > 0 ? (
             <BotItemQuestionLines
               shape={shape}
@@ -192,7 +196,7 @@ export function BotItemCommentCard({
               byOrder={entry.byOrder}
               actions={quickReplies}
               // Ruled off only below something: a question with no body stays under the name.
-              className={waiting && shape.body.trim() ? QUESTION_RULE : undefined}
+              className={waiting && (shape.body.trim() || steps) ? QUESTION_RULE : undefined}
             />
           ) : null}
           {failed ? (

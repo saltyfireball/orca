@@ -138,9 +138,12 @@ function stepLines(item: BotItem): string[] {
   return [
     `Steps for your owner (${botItemStepsDoneCount(view)} of ${view.steps.length} done, set ${view.eventId}):`,
     ...view.steps.flatMap((step) => [
-      `  ${step.index + 1}. ${step.title}${step.host ? ` [on ${step.host}]` : ''} - ${step.command ? marks[step.state] : `${marks[step.state]}, manual`}`,
+      `  ${step.index + 1}. ${step.title}${step.host ? ` [on ${step.host}]` : ''} - ${step.command || step.text ? marks[step.state] : `${marks[step.state]}, manual`}`,
       ...(step.note ? [`     ${step.note}`] : []),
       ...(step.command ? step.command.split('\n').map((line) => `     $ ${line}`) : []),
+      ...(step.text
+        ? ['     text to copy:', ...step.text.split('\n').map((line) => `     | ${line}`)]
+        : []),
       ...(step.error ? [`     error they pasted: ${step.error.split('\n')[0]}`] : [])
     ])
   ]

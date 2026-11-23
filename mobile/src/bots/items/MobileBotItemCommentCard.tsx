@@ -26,7 +26,8 @@ export function MobileBotItemCommentCard({
   item,
   entry,
   attachments,
-  failed
+  failed,
+  steps
 }: {
   item: BotItem
   entry: Pick<
@@ -36,6 +37,8 @@ export function MobileBotItemCommentCard({
   attachments: MobileBotItemAttachmentSource
   /** A comment sent from the box that didn't reach the host; no Retry when it may have. */
   failed?: { retry: (() => void) | null; discard: () => void }
+  /** The owner steps set with this ask: after its words, before its question. */
+  steps?: React.ReactNode
 }) {
   const t = useMobileTranslation()
   const { event, replyTo, waiting } = entry
@@ -58,6 +61,7 @@ export function MobileBotItemCommentCard({
       <MobileBotItemCommentAttachments data={event.data} {...attachments}>
         {text.trim() ? <MobileMarkdown content={text} /> : null}
       </MobileBotItemCommentAttachments>
+      {steps ? <View style={styles.steps}>{steps}</View> : null}
       {shape.decisions.length > 0 ? (
         <MobileBotItemQuestionLines shape={shape} waiting={waiting} answers={entry.answers} />
       ) : null}
@@ -96,6 +100,7 @@ const styles = themedStyleSheet(() => ({
     borderColor: colors.borderSubtle,
     backgroundColor: colors.sheetGroup
   },
+  steps: { marginTop: spacing.sm },
   cardMine: { backgroundColor: colors.bgRaised },
   cardFailed: { borderColor: colors.statusRed },
   failed: {

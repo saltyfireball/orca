@@ -3,7 +3,7 @@
 // escaping. Pure.
 import { parseBotItemSteps, type BotItemStepInput } from './bot-item-steps'
 
-const KEY = /^(step|host|note|command):[ \t]*(.*)$/
+const KEY = /^(step|host|note|command|text):[ \t]*(.*)$/
 
 /** The text form:
  *
@@ -15,15 +15,24 @@ const KEY = /^(step|host|note|command):[ \t]*(.*)$/
  *
  *  A `step:` line starts a step. Lines under `command:` belong to the command until the next key
  *  line; they are dedented by their shared indent, and trailing blank lines drop. A step with no
- *  `command:` is manual. Lines before the first `step:` are ignored. */
+ *  `command:` or `text:` is manual; `text:` (exact words to copy and paste elsewhere, such as a chat
+ *  message) is read like `command:` but is never offered for a terminal. Lines before the first `step:` are ignored. */
 export function parseBotItemStepsText(text: string): BotItemStepInput[] {
-  const steps: { title?: string; host?: string; note?: string; command?: string[] }[] = []
+  const steps: {
+    title?: string
+    host?: string
+    note?: string
+    command?: string[]
+    text?: string[]
+  }[] = []
   let inCommand = false
+  let inText = false
   for (const line of text.replace(/\r\n/g, '\n').split('\n')) {
     const key = KEY.exec(line)
     if (key && !(inCommand && /^\s/.test(line))) {
       const [, name, value] = key as unknown as [string, string, string]
       inCommand = false
+      inText = false
       if (name === 'step') {
         steps.push({ title: value })
         continue
@@ -35,19 +44,24 @@ export function parseBotItemStepsText(text: string): BotItemStepInput[] {
       if (name === 'command') {
         step.command = value ? [value] : []
         inCommand = true
+      } else if (name === 'text') {
+        step.text = value ? [value] : []
+        inCommand = true
+        inText = true
       } else {
         step[name as 'host' | 'note'] = value
       }
       continue
     }
     const step = steps.at(-1)
-    if (inCommand && step?.command) {
-      step.command.push(line)
+    if (inCommand && step) {
+      ;(inText ? step.text : step.command)?.push(line)
     }
   }
   return steps.map((step) => ({
     title: step.title ?? '',
     ...(step.command ? { command: dedent(step.command) } : {}),
+    ...(step.text ? { text: dedent(step.text) } : {}),
     ...(step.host ? { host: step.host } : {}),
     ...(step.note ? { note: step.note } : {})
   }))
@@ -89,11 +103,14 @@ export function botItemStepsMarkdown(steps: readonly BotItemStepInput[]): string
     .map((step, index) => {
       const host = step.host ? ` (on ${step.host})` : ''
       const head = `${index + 1}. **${step.title}**${host}${step.note ? ` - ${step.note}` : ''}`
-      if (!step.command) {
+      const copy = step.command ?? step.text
+      if (!copy) {
         return head
       }
-      const fence = '`'.repeat(Math.max(3, longestTickRun(step.command) + 1))
-      const body = [`${fence}sh`, ...step.command.split('\n'), fence].map((line) => `   ${line}`)
+      const fence = '`'.repeat(Math.max(3, longestTickRun(copy) + 1))
+      const body = [`${fence}${step.command ? 'sh' : 'text'}`, ...copy.split('\n'), fence].map(
+        (line) => `   ${line}`
+      )
       return [head, ...body].join('\n')
     })
     .join('\n')

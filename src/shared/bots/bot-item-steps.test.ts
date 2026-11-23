@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseBotItemSteps, botItemDoneReplyLabel } from './bot-item-steps'
+import { parseBotItemSteps, botItemDoneReplyLabel, botItemStepsPlace } from './bot-item-steps'
 import { botItemStepTyping, matchBotItemStepHost } from './bot-item-step-terminal'
 import { botItemStepsMarkdown, parseBotItemStepsInput } from './bot-item-steps-text'
 import { botItemCommentHoldsCommands, looksLikeShellCommand } from './bot-item-command-advice'
@@ -82,5 +82,45 @@ describe('owner step commands', () => {
     expect(botItemCommentHoldsCommands('(1) the plan is fine (2) the schedule is fine')).toBe(false)
     expect(looksLikeShellCommand("tr -d '\\n' < /Users/x/token | secret set N")).toBe(true)
     expect(looksLikeShellCommand('/Users/x/notes.md')).toBe(false)
+  })
+})
+
+describe('owner step text', () => {
+  it('keeps text exactly, refuses a step with both command and text, and refuses controls', () => {
+    expect(
+      parseBotItemSteps([{ title: 'Tell her', text: 'whats the status \u{1F600}\n' }])
+    ).toEqual({
+      ok: true,
+      steps: [{ title: 'Tell her', text: 'whats the status \u{1F600}' }]
+    })
+    expect(parseBotItemSteps([{ title: 'x', command: 'ls', text: 'hi' }]).ok).toBe(false)
+    expect(parseBotItemSteps([{ title: 'x', text: 'hi\u001b[0m' }]).ok).toBe(false)
+  })
+
+  it('reads text: lines, fences text as text in the Markdown fallback', () => {
+    const parsed = parseBotItemStepsInput(
+      ['step: Ask in Slack', 'text: whats the status', 'step: Run it', 'command:', '  ls -la'].join(
+        '\n'
+      )
+    )
+    expect(parsed).toEqual({
+      ok: true,
+      steps: [
+        { title: 'Ask in Slack', text: 'whats the status' },
+        { title: 'Run it', command: 'ls -la' }
+      ]
+    })
+    if (parsed.ok) {
+      expect(botItemStepsMarkdown(parsed.steps)).toContain('```text\n   whats the status')
+    }
+  })
+
+  it('places steps in the loaded ask, above the activity otherwise', () => {
+    const steps = { eventId: 'e1', steps: [] }
+    const events = [{ id: 'e2' }]
+    expect(botItemStepsPlace({ steps, question: { eventId: 'e2' } }, events)).toBe('ask')
+    expect(botItemStepsPlace({ steps, question: { eventId: 'e9' } }, events)).toBe('above')
+    expect(botItemStepsPlace({ steps, question: null }, events)).toBe('above')
+    expect(botItemStepsPlace({ question: null }, events)).toBe('none')
   })
 })

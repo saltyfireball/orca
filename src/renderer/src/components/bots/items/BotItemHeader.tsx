@@ -38,7 +38,8 @@ export function BotItemHeader({
   deleted,
   onStatus,
   snoozing,
-  scrollRef
+  scrollRef,
+  stepsLine
 }: {
   bot: Bot
   item: BotItem
@@ -49,6 +50,8 @@ export function BotItemHeader({
   snoozing: BotItemSnoozing
   /** The item's scroller: a control Tab reaches is scrolled clear of this header, not under it. */
   scrollRef: React.RefObject<HTMLDivElement | null>
+  /** The slim "Steps 1 of 3" line, while the steps sit in the ask's card. */
+  stepsLine?: React.ReactNode
 }): React.JSX.Element {
   const t = useTranslate()
   const header = useRef<HTMLDivElement | null>(null)
@@ -110,6 +113,7 @@ export function BotItemHeader({
         ) : null}
       </div>
       <BotItemLinkChips bot={bot} links={links} chat={chatTitle} />
+      {stepsLine}
     </div>
   )
 }

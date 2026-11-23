@@ -7,15 +7,19 @@ import { cn } from '@/lib/class-names'
 
 export function BotItemCommandBlock({
   command,
+  kind = 'command',
   className
 }: {
   command: string
+  /** `text` is words to copy and paste elsewhere (a chat message): the same block, labelled for text. */
+  kind?: 'command' | 'text'
   className?: string
 }): React.JSX.Element {
   const t = useTranslate()
   return (
     <div
-      data-bot-item-command
+      data-bot-item-command={kind === 'command' ? '' : undefined}
+      data-bot-item-text={kind === 'text' ? '' : undefined}
       className={cn(
         'relative min-w-0 max-w-full rounded-md border border-border bg-accent/50',
         className
@@ -26,7 +30,11 @@ export function BotItemCommandBlock({
       </pre>
       <NativeChatCopyButton
         text={command}
-        label={t('bots.items.steps.copy', 'Copy command')}
+        label={
+          kind === 'text'
+            ? t('bots.items.steps.copyText', 'Copy text')
+            : t('bots.items.steps.copy', 'Copy command')
+        }
         className="absolute right-1 top-1"
       />
     </div>

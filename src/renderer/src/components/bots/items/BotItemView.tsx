@@ -44,7 +44,7 @@ import { useBotItemPendingComments } from './use-bot-item-pending-comments'
 import { BotItemsReadFailed } from './BotItemsReadFailed'
 import { BotItemNavRow } from './BotItemStepper'
 import { BotItemLoading } from './BotItemLoading'
-import { BotItemStepsPanel } from './BotItemStepsPanel'
+import { useBotItemStepsPlace } from './use-bot-item-steps-place'
 import { CloseNote } from './BotItemCloseNote'
 
 const NO_FOLDERS: never[] = []
@@ -208,6 +208,7 @@ export function BotItemBody({
     isWorking: false,
     isVisible: true
   })
+  const ownerSteps = useBotItemStepsPlace(bot, item, view, deleted, activityMounted, scrollRef)
   // From the comment box or a quick reply: shown at once, then sent to the host.
   const sendComment: Parameters<typeof useBotItemQuestionSteps>[3] = (
     text,
@@ -318,6 +319,7 @@ export function BotItemBody({
                       onStatus={(to) => (to === 'canceled' ? setCanceling(true) : setStatus(to))}
                       snoozing={snoozing}
                       scrollRef={scrollRef}
+                      stepsLine={ownerSteps.line}
                     />
                     <div ref={contentRef} className="flex flex-col gap-4 px-3.5 pt-2">
                       {item.description ? (
@@ -350,7 +352,7 @@ export function BotItemBody({
                           </>
                         ) : null}
                       </dl>
-                      {deleted ? null : <BotItemStepsPanel bot={bot} item={item} />}
+                      {ownerSteps.above}
                       <section className="pb-2">
                         <h3 className="mb-1.5 text-xs text-muted-foreground">
                           {t('bots.items.view.activity', 'Activity')}
@@ -368,6 +370,7 @@ export function BotItemBody({
                             events={view.events}
                             pending={pending}
                             quickReplies={quickReplies}
+                            steps={ownerSteps.inAsk}
                           />
                         ) : null}
                       </section>

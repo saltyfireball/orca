@@ -9,6 +9,7 @@ export const BOT_ITEM_STEP_LIMITS = {
   steps: 20,
   title: 200,
   command: 4_000,
+  text: 4_000,
   host: 100,
   note: 1_000,
   error: 4_000
@@ -24,6 +25,20 @@ export function normalizeBotItemStepCommand(command: string): string {
 
 /** Whether a command is safe to type into a terminal: no control, escape (so no bracketed-paste end
  *  marker), bidi or invisible characters. Tab and line feed are the only controls allowed. */
+/** Text to copy elsewhere (a chat message, a form field): LF line endings, trailing blank space dropped. */
+export function normalizeBotItemStepText(text: string): string {
+  return text.replace(/\r\n/g, '\n').replace(/\s+$/, '')
+}
+
+// Only controls and escapes are refused in text: it is never typed into a terminal, so emoji and
+// accented letters stay. Tab and line feed are allowed.
+// eslint-disable-next-line no-control-regex
+const UNSAFE_TEXT_RE = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/
+
+export function isBotItemStepTextSafe(text: string): boolean {
+  return !UNSAFE_TEXT_RE.test(text)
+}
+
 export function isBotItemStepCommandSafe(command: string): boolean {
   return !hasUnsafeShellCharacters(command)
 }
@@ -34,6 +49,7 @@ const StepSchema = z.object({
     .string()
     .max(L.command, `A step's command takes up to ${L.command} characters.`)
     .optional(),
+  text: z.string().max(L.text, `A step's text takes up to ${L.text} characters.`).optional(),
   host: z.string().trim().max(L.host).optional(),
   note: z.string().trim().max(L.note).optional()
 })
@@ -60,9 +76,23 @@ export function parseBotItemSteps(
         error: `Step ${index + 1}: the command has a control, escape or hidden character. Send the plain text of the command.`
       }
     }
+    const text = raw.text === undefined ? '' : normalizeBotItemStepText(raw.text)
+    if (command && text) {
+      return {
+        ok: false,
+        error: `Step ${index + 1}: use command (to run) or text (to copy and paste elsewhere), not both.`
+      }
+    }
+    if (text && !isBotItemStepTextSafe(text)) {
+      return {
+        ok: false,
+        error: `Step ${index + 1}: the text has a control or escape character. Send the plain text.`
+      }
+    }
     steps.push({
       title: raw.title,
       ...(command ? { command } : {}),
+      ...(text ? { text } : {}),
       ...(raw.host ? { host: raw.host } : {}),
       ...(raw.note ? { note: raw.note } : {})
     })
@@ -124,9 +154,22 @@ export function botItemStepsFromEvents(
   }
 }
 
-/** Steps with a command to copy; the rest are manual (a login, a click). */
-export function isBotItemManualStep(step: Pick<BotItemStepInput, 'command'>): boolean {
-  return !step.command
+/** Steps with a command to run or text to copy; the rest are manual (a login, a click). */
+export function isBotItemManualStep(step: Pick<BotItemStepInput, 'command' | 'text'>): boolean {
+  return !step.command && !step.text
+}
+
+/** Where the open steps show: inside the Needs you card they were set with (so reading down is doing:
+ *  the words, the steps, then the question), or above the Activity when no loaded ask holds them. */
+export function botItemStepsPlace(
+  item: { steps?: BotItemStepsView | null; question: { eventId: string } | null },
+  events: readonly { id: string }[]
+): 'ask' | 'above' | 'none' {
+  if (!item.steps) {
+    return 'none'
+  }
+  const askId = item.question?.eventId
+  return askId !== undefined && events.some((event) => event.id === askId) ? 'ask' : 'above'
 }
 
 export function botItemStepsDoneCount(view: BotItemStepsView): number {

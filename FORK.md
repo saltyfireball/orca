@@ -42,9 +42,11 @@ ones `SLRM-123 `).
   its owner to run commands or do something by hand puts them on the item as an ordered list:
   `orca bot item set <n> --status needs-you --steps-file <file>` (also on `bot item add`).
   - **Steps as data.** A step has a title, an optional command (exact text, may be several lines),
-    an optional host (which computer) and an optional note; no command means a manual step (a login,
-    a click). `--steps-file` takes JSON (`[{title, command, host, note}]`) or a text form of
-    `step:`, `host:`, `note:` and `command:` lines with the command indented under it, so quotes,
+    an optional host (which computer) and an optional note; no command and no text means a manual
+    step (a login, a click) with no host badge. A step has `command` (run in a shell: Open in
+    terminal, `$`) or `text` (exact words to copy and paste elsewhere, such as a chat message: a
+    block with Copy, no Open in terminal; BAD-762), never both. `--steps-file` takes JSON (`[{title, command, host, note}]`) or a text form of
+    `step:`, `host:`, `note:`, `command:` and `text:` lines with the command indented under it, so quotes,
     pipes and backslashes need no escaping; `-` reads stdin, `[]` clears. A new set replaces the
     item's open one: the older sets stay in the activity as "replaced" with no command shown, so
     nothing stale looks live. `list` adds `steps 2/5 done`, `show` prints the open steps and the
@@ -52,10 +54,15 @@ ones `SLRM-123 `).
   - **Stored as events.** No migration: a `steps` event holds a set, the owner's `step` events mark
     it (done, open, failed with the pasted error), and `steps_done` records the last tick. Only an
     open item shows steps; the mark names the set it saw and a newer set refuses it (`item_changed`).
-  - **Item panel.** One numbered checklist above the activity (and so the ask): the first step not
-    done is open and prominent, later ones are dimmed and open on a click. Each step has its title,
+  - **Item panel.** One numbered checklist, drawn once. With an open ask it is inside the Needs you
+    card it was set with: the comment, then the steps, then the question and its options, so reading
+    down is doing (BAD-762). A slim "Steps 1 of 3" line pinned at the top of the item scrolls to the
+    first step not done; opening an item at an ask taller than the pane scrolls there too, not to the
+    bottom. With no open ask (or its comment not loaded) the checklist stays above the Activity.
+    The first step not done is open and prominent, later ones are dimmed and open on a click. Each step has its title,
     a host badge, its command in a wrapping monospace block that is one text node (never linked)
-    with Copy, a Done check, and "Did not work", which takes a pasted error. "Done" shows `2 of 5
+    with Copy, a Done check, and "Did not work", which takes a pasted error. A step's title wraps
+    beside its number, with its badges, at any width. "Done" shows `2 of 5
     done`.
   - **Open in terminal (desktop).** Opens a terminal on the step's computer and pastes the command
     without Enter and without a trailing newline: the owner presses Enter, Orca never runs it. The
@@ -82,7 +89,8 @@ ones `SLRM-123 `).
     writes them into the comment as a numbered list with each command fenced),
     `forkBotOwnerStepsOpenInTerminal` (on) and `forkBotOwnerStepsAutoAnswer` (on).
   - **Agent text.** The bot Rules say commands for the owner go in steps, one complete command per
-    step with its computer named, only the current version. The orchestration guides and the worker
+    step with its computer named, `command:` for a shell and `text:` for words to paste elsewhere, never
+    the words below or above about steps, only the current version. The orchestration guides and the worker
     preamble do not cover asking the owner, so they are unchanged.
   - Code is in `src/shared/bots/bot-item-steps*.ts`, `bot-item-step-terminal.ts` and
     `bot-item-command-advice.ts`, `src/shared/fork/bot-owner-steps.ts`,
@@ -3101,6 +3109,7 @@ Apply these in this order. Each one is a single commit.
 160. `BAD-691 Worktree reclaim: orca workspace reclaim and a Space page button remove regenerable git-ignored paths (node_modules, build output, caches; orca.yaml worktree.reclaim overrides the list) from idle workspaces, skipping ones in use, never touching env files, tracked or non-ignored files; off by default (forkWorktreeReclaim), dry run always available`
 161. `BAD-740 Tests: real-git fixtures use their own global git config, the test setup clears Orca session variables, and the reviewer gate reads defaults when no store is attached`
 162. `BAD-747 Owner steps: orca bot item set/add --steps-file keeps the commands and manual acts an agent needs its owner to do as an ordered checklist (title, command, host, note) with Copy, Done, Did not work and a typed-never-run Open in terminal, on desktop and phone; a new set replaces the open one; the last tick answers the ask as done or mails the chat once; fenced shell blocks get Copy; a Tip names --steps-file when commands sit in prose`
+163. `BAD-762 Owner steps: the checklist sits inside the Needs you card it was set with (comment, steps, question) on desktop and phone, with a slim Steps 1 of 3 line and a scroll to the first step not done; a step title wraps beside its number; a step takes text: (words to copy and paste elsewhere, Copy only) or command: (Open in terminal); a manual step shows no host badge; agents are told not to write below or above about steps`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4398,7 +4407,11 @@ Upstream files only get short hooks, which keeps merges small:
   `BotItemActivityList.tsx` and `BotItemMarkdown.tsx` render them; `bot-items.ts` and
   `specs/bot-items.ts` in the CLI add `--steps-file`; `MobileBotItemPage.tsx` and
   `bot-item-operations.ts` show and mark them on the phone; `bot-preamble.ts` adds the rule;
-  `ForkIdleRecoverySetting.tsx` has the three switches. The settings are intersected in
+  `ForkIdleRecoverySetting.tsx` has the three switches. BAD-762 moves the checklist into the ask's
+  card: `BotItemView.tsx` (via `use-bot-item-steps-place.tsx`), `BotItemActivityList.tsx`, `BotItemCommentCard.tsx` and `BotItemHeader.tsx`
+  take a `steps` / `stepsLine` slot, `MobileBotItemPage.tsx`, `MobileBotItemActivity.tsx` and
+  `MobileBotItemCommentCard.tsx` the same, and `bot-items-format.ts`, `specs/bot-items.ts`,
+  `bot-item-command-advice.ts` and `bot-preamble.ts` carry `text:` and the below/above rule. The settings are intersected in
   `fork-global-settings.ts`; the settings and RPC params catalogs are regenerated.
 - Injected-context ratchet (BAD-690), small edits in stock files: `package.json` adds the
   `check:injected-context-ratchet` script and `config/scripts/preflight/changed-checks/run-lint.mjs`
