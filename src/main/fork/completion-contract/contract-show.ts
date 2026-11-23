@@ -60,19 +60,45 @@ export type CallPairedServer = (
   params: unknown
 ) => Promise<unknown>
 
-/** The paired servers a Task's workers were started on, from the home's own records. */
+/**
+ * The paired servers a Task's workers were started on, from the home's own records: a server that
+ * attaches workers (federated_dispatches) and one that owns them (remote_dispatches, and a
+ * placement whose start has not been answered yet).
+ */
 export function serversOfTask(
   db: OrchestrationDb,
   task: string
 ): { environmentId: string; name: string }[] {
-  const rows = db.db
+  const attached = db.db
     .prepare(
       `SELECT DISTINCT f.environment_id AS environmentId, f.environment_name AS name
          FROM federated_dispatches f JOIN dispatch_contexts d ON d.id = f.dispatch_id
         WHERE d.task_id = ?`
     )
     .all(task) as { environmentId: string; name: string }[]
-  return rows
+  const owned = db.db
+    .prepare(
+      `SELECT DISTINCT p.environment_id AS environmentId,
+                       COALESCE(l.server_name, p.environment_id) AS name
+         FROM (SELECT environment_id, conversation_id FROM remote_dispatches WHERE task_id = ?1
+               UNION
+               SELECT environment_id, conversation_id FROM remote_placements WHERE task_id = ?1) p
+         LEFT JOIN remote_run_links l ON l.conversation_id = p.conversation_id`
+    )
+    .all(task) as { environmentId: string; name: string }[]
+  const seen = new Set<string>()
+  return [...attached, ...owned].filter(
+    (server) => !seen.has(server.environmentId) && seen.add(server.environmentId)
+  )
+}
+
+/** An older server has no `fork.completionContract.show`: its evidence cannot be read from here. */
+function whyUnseen(error: unknown): string {
+  const code = (error as { code?: unknown } | null)?.code
+  if (code === 'method_not_found') {
+    return 'it is too old to report them; update it'
+  }
+  return error instanceof Error ? error.message : String(error)
 }
 
 function isShowResult(value: unknown): value is ForkCompletionContractShowResult {
@@ -107,11 +133,7 @@ export async function showWithServerEvidence(
       merged.review = remote.review ?? merged.review
       seen.push({ name: server.name, attempts: remote.attempts.length })
     } catch (error) {
-      seen.push({
-        name: server.name,
-        attempts: 0,
-        error: error instanceof Error ? error.message : String(error)
-      })
+      seen.push({ name: server.name, attempts: 0, error: whyUnseen(error) })
     }
   }
   merged.attempts.sort((a, b) => a.at.localeCompare(b.at))

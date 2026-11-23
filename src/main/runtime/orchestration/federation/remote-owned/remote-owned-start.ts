@@ -33,6 +33,7 @@ import { callRemoteOwnedServer } from './remote-owned-calls'
 import { resolveCrossMachineChildParent } from '../cross-machine-child-parent'
 import { remoteForwardKey } from './remote-forward-caller'
 import { forkAgentProfileRemoteOwnedCarry } from '../../../../fork/agent-profiles/agent-profile-remote-carry'
+import { forkStoreDoneContract } from '../../../../fork/completion-contract/completion-gate-live'
 import {
   errorData,
   failedBeforeSending,
@@ -180,6 +181,8 @@ export async function startRemoteOwnedWorker(
           createdByRunGeneration: run.consumer_generation
         }
   })
+  // Fork (BAD-763, FORK.md "Completion contract"): the declared checks are kept here too, so `orca contract show` names them; the server runs them.
+  forkStoreDoneContract(db, task.id, params)
   // Its queue has a reader from the start, so mail sent before the answer still comes home.
   runtime.ensureOrchestrationFederationRelay(run.id)
   const options = serverStartOptions(params)

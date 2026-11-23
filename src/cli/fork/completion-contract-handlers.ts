@@ -10,7 +10,7 @@ export function formatForkContract(result: ForkCompletionContractShowResult): st
   const tail = [...formatForkReview(result), ...formatForkRetries(result)]
   if (!result.declared) {
     const skipped = result.attempts.flatMap(formatForkAttempt)
-    return tail.length > 0 || skipped.length > 0
+    return tail.length > 0 || skipped.length > 0 || (result.servers ?? []).length > 0
       ? [...skipped, ...formatForkServers(result), ...tail].join('\n')
       : `Task ${result.taskId} declares no done checks, asks for no review and has no retries.`
   }
@@ -47,7 +47,7 @@ function formatForkAttempt(
 function formatForkServers(result: ForkCompletionContractShowResult): string[] {
   return (result.servers ?? []).map((server) =>
     server.error
-      ? `server ${server.name}: could not read its check attempts (${server.error})`
+      ? `server ${server.name}: cannot see its check evidence (${server.error})`
       : `server ${server.name}: ${server.attempts} check attempt(s) ran there`
   )
 }

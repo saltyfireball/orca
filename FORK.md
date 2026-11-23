@@ -2944,7 +2944,12 @@ ones `SLRM-123 `).
   - **Evidence at home.** `orca contract show` on the Run home also asks each paired server the
     Task's workers ran on for its check attempts and review runs (RPC `fork.completionContract.show`
     on the server, 15 s limit) and prints them with the home's own, with one line per server; a
-    server that does not answer is named with the reason instead of being left out.
+    server that does not answer is named with the reason instead of being left out. A server that
+    owns its workers (`worker-start --on` with remote-owned workers) is read the same way: the home
+    keeps the declared checks at the start (the server runs them), finds the server from its
+    placement and dispatch records, and shows the checks, each attempt and its output tail, live and
+    after it settles. A server too old to answer is named as one whose check evidence cannot be
+    seen, never as a Task that "declares no done checks".
   - Code: `src/main/fork/completion-contract/contract-carry.ts` (what travels and the retry copy),
     `gate-subject.ts` (a local Dispatch or a remote attachment as one shape for both gates),
     `gate-workspace.ts` (folder workspaces) and `contract-show.ts` (the home's read-through).
@@ -3463,6 +3468,7 @@ Apply these in this order. Each one is a single commit.
 186. `BAD-785 Command guards read heredoc bodies as data unless a shell may run them, follow a literal variable set earlier in the command, and say what part of an unreadable command could not be read`
 187. `BAD-741 Agent profiles hold on a retry and a follow-up: the Task keeps the mode, account and MCP profile its worker first started with, capped and checked again on each restart, which refuses with the reason when the account is signed out or missing; an MCP profile that cannot apply is refused, never dropped`
 188. `BAD-741 MCP profiles on Claude terminals and paired servers: a named profile narrows a Claude terminal through a private per-profile config file, and worker-start --on sends only the name to a server that checks it before anything is created; where it cannot apply it is refused with the reason`
+189. `BAD-763 orca contract show at home shows the done checks, each attempt and its output tail of a worker started on a server that owns its workers, live and after it settles; a server too old to answer is named as one whose evidence cannot be seen`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4713,6 +4719,8 @@ Upstream files only get short hooks, which keeps merges small:
   `orchestration.fork-contract-carry.v1`; `fork-completion-contract.ts` answers through
   `showWithServerEvidence`. `completion-gate-live.ts` and `reviewer-gate-live.ts` read a
   `GateSubject` instead of a Dispatch row.
+  `remote-owned-start.ts` (a start on a server that owns its workers) calls `forkStoreDoneContract`
+  once its placement is reserved, so the home holds the contract `orca contract show` reads.
 - Reviewer gate (BAD-683), small edits in stock files and fork files: `completion-gate-live.ts`
   (`forkGateWorkerDone` runs the review after the contract passed; `forkStoreDoneContract` also
   saves the request); `orchestration-params.ts` (`TaskCreateParams`) and
