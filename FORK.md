@@ -2035,7 +2035,10 @@ ones `SLRM-123 `).
     (`tee run.sh <<EOF && bash run.sh`), a data command that prints shell text into a pipe (a
     `python3` heredoc piped to `bash` is read as shell text, so it only catches what is plain),
     `echo`/`printf` text fed to `bash -c "$(...)"`, an interpreter running its own heredoc
-    (`python3 -` calling `os.system`), and pipes into a shell that follow a subshell or `&&`.
+    (`python3 -` calling `os.system`), pipes into a shell that follow a subshell or `&&`, and a
+    command named by a variable that is not a shell name (`$O <<EOF` is data, since `$O` is as
+    often a CLI as a shell; `$SHELL`, `${SHELL:-sh}`, `$BASH`, `$0` and a variable set to a literal
+    shell name earlier in the command do count as shells).
   - **Overrides.** `forkCommandGuardDisabledRules` (comma list, every project) and
     `orca command-guards allow|disallow <rule> [--project NAME|PATH|ID]` (per project, kept in
     `forkCommandGuardProjectRules` by project id). All are `orca settings` keys too.

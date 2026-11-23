@@ -143,13 +143,13 @@ function fail(state: ReadState, why: string, part: string, scope: string): void 
 }
 
 /** Whether the pipeline this segment feeds ends in something that may run its input as commands. */
-function feedsShell(segments: Segment[], index: number): boolean {
+function feedsShell(segments: Segment[], index: number, vars: Vars): boolean {
   for (let i = index; segments[i]?.end === '|' && i + 1 < segments.length; i += 1) {
     const next = segments[i + 1]
     const unwrapped = unwrap(withoutRedirects(next.words))
     if (
       COMPOUND_WORDS.has(next.words[0] ?? '') ||
-      (unwrapped !== null && isShellReader(unwrapped.words))
+      (unwrapped !== null && isShellReader(unwrapped.words, vars))
     ) {
       return true
     }
@@ -222,8 +222,8 @@ function read(
       seg.proc ||
       COMPOUND_ENDS.has(seg.words[0] ?? '') ||
       (unwrapped !== null &&
-        (isShellReader(unwrapped.words) || functions.has(baseName(unwrapped.words[0])))) ||
-      feedsShell(segments, index)
+        (isShellReader(unwrapped.words, vars) || functions.has(baseName(unwrapped.words[0])))) ||
+      feedsShell(segments, index, vars)
     for (const doc of seg.docs) {
       if (runs || doc.unterminated) {
         read(doc.body, cwd, state, depth + 1, true, new Map())

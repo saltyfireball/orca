@@ -87,9 +87,14 @@ export function expandKnown(word: string, vars: Vars): string {
 
 export const isLiteral = (value: string): boolean => !/[$`*?[\s~\\{]/.test(value)
 
-export function isShellReader(words: string[]): boolean {
-  const name = baseName(words[0])
+// The variables that name a shell: `$SHELL`, `${SHELL:-sh}`, `$BASH`, `$0`.
+const SHELL_VARIABLE = /^\$\{?(SHELL|BASH|0)(?![A-Za-z0-9_])/
+
+export function isShellReader(words: string[], vars: Vars = new Map()): boolean {
+  const first = expandKnown(words[0], vars)
+  const name = baseName(first)
   return (
+    SHELL_VARIABLE.test(first) ||
     SHELL_READERS.has(name) ||
     (COMMAND_RUNNERS.has(name) &&
       words.slice(1).some((arg) => SHELLS.has(baseName(arg.trim().split(/\s+/)[0] ?? ''))))

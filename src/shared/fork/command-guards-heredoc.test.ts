@@ -69,6 +69,23 @@ const ALLOWED: Record<string, string> = {
   'function with heredoc data': doc('f() {', "  cat <<'EOF'", "it's", 'EOF', '}', 'f')
 }
 
+const ALLOWED_VARIABLE_COMMANDS: Record<string, string> = {
+  'variable cli with prose': doc(
+    '"$O" orchestration send --body-file - <<\'EOF\'',
+    "it's done",
+    'EOF'
+  ),
+  'variable cli with default': doc(
+    '"${ORCA_CLI_COMMAND:-orca}" orchestration send --body-file - <<\'EOF\'',
+    "it's `done`",
+    'EOF'
+  ),
+  'variable name that only starts like a shell': doc("$SHELLCHECK_BIN <<'EOF'", "it's", 'EOF'),
+  'unknown variable after a pipe': doc("cat <<'EOF' | $FILTER", "it's", 'EOF')
+}
+
+const SHELL_VARIABLES = ['$SHELL', '"$SHELL"', '${SHELL}', '$BASH', '"${SHELL:-sh}"', '$0']
+
 const DENIED: Record<string, [string, string]> = {
   root: ['rm -rf /', 'delete-outside-workspace'],
   force: ['git push --force origin main', 'force-push'],
@@ -163,6 +180,34 @@ const DENIED: Record<string, [string, string]> = {
   ],
   'nested too deep': ['eval eval eval eval eval eval eval rm -rf x', 'unreadable-command']
 }
+
+describe('shells named by a variable (BAD-785)', () => {
+  for (const [name, command] of Object.entries(ALLOWED_VARIABLE_COMMANDS)) {
+    it(`allows: ${name}`, () => {
+      expect(verdict(command)).toBe('allow')
+    })
+  }
+
+  for (const shell of SHELL_VARIABLES) {
+    it(`denies ${shell} reading a heredoc, alone and after a pipe`, () => {
+      expect(verdict(doc(`${shell} <<'EOF'`, 'rm -rf /work/repo-b', 'EOF'))).toBe(
+        'delete-outside-workspace'
+      )
+      expect(verdict(doc(`cat <<'EOF' | ${shell}`, 'rm -rf /work/repo-b', 'EOF'))).toBe(
+        'delete-outside-workspace'
+      )
+    })
+  }
+
+  it('denies a variable holding a literal shell name', () => {
+    expect(verdict(doc("B=bash; $B <<'EOF'", 'rm -rf /work/repo-b', 'EOF'))).toBe(
+      'delete-outside-workspace'
+    )
+    expect(verdict(doc('B=bash', 'cat <<\'EOF\' | "$B" -s', 'rm -rf /work/repo-b', 'EOF'))).toBe(
+      'delete-outside-workspace'
+    )
+  })
+})
 
 describe('heredoc bodies and literal variables (BAD-785)', () => {
   it('has the required table sizes', () => {
