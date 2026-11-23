@@ -24,6 +24,7 @@ import { scanLostWork, type LostWorkRepo, type LostWorkScanDeps } from './lost-w
 import { runLostWorkAction, type LostWorkActionDeps } from './lost-work-actions'
 import { lostWorkPullRequestArgs, parseLostWorkPullRequests } from './lost-work-pull-requests'
 import type { LostWorkGit } from './lost-work-git'
+import { forkSnapshotBeforeWorktreeRemoval } from '../worktree-snapshots/worktree-snapshot-service'
 
 let installedStore: Store | null = null
 
@@ -91,7 +92,10 @@ function deps(store: Store): LostWorkScanDeps & LostWorkActionDeps {
     findRepo: (repoId) => {
       const repo = findStoreRepo(repoId)
       return repo && isLocalGitRepo(repo) ? toLostWorkRepo(repo) : null
-    }
+    },
+    // BAD-767: a delete of a worktree Orca does not track leaves a snapshot like any other.
+    snapshotBeforeRemoval: (repoPath, worktreePath) =>
+      forkSnapshotBeforeWorktreeRemoval(repoPath, worktreePath, false)
   }
 }
 

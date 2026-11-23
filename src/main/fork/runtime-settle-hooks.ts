@@ -24,6 +24,10 @@ import { startForkLetters } from './letters/letters-runner'
 import type { ForkLettersRuntime } from './letters/letters-deps'
 import { startForkGoalLoop } from './goal-loop/goal-live'
 import type { GoalLoopRuntime } from './goal-loop/goal-service'
+import {
+  startForkWorktreeSnapshotPrune,
+  type ForkSnapshotPruneRuntime
+} from './worktree-snapshots/worktree-snapshot-prune'
 
 export function startForkRuntimeSettleServices(
   runtime: LimitResumeServiceRuntime &
@@ -34,7 +38,8 @@ export function startForkRuntimeSettleServices(
     ChatHandoffRuntime &
     ForkDigestRuntime &
     ForkLettersRuntime &
-    GoalLoopRuntime
+    GoalLoopRuntime &
+    ForkSnapshotPruneRuntime
 ): void {
   // SLRM-2309: park chats and terminal agents stopped on a usage limit, resume at the reset.
   startForkLimitResume(runtime)
@@ -58,4 +63,6 @@ export function startForkRuntimeSettleServices(
   startForkLetters(runtime)
   // BAD-682: keep an agent going until its goal's check or judge passes, when a goal is set.
   startForkGoalLoop(runtime)
+  // BAD-767: prune expired worktree snapshots on a timer, not only when another is taken.
+  startForkWorktreeSnapshotPrune(runtime)
 }

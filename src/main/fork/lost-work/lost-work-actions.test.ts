@@ -1,9 +1,14 @@
 // SLRM-2096: lost work actions over throwaway repos. Each test makes its own repo in a temp folder.
-import { mkdir, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { LostWorkAction, LostWorkItem } from '../../../shared/fork/lost-work'
+import {
+  createWorktreeSnapshot,
+  listWorktreeSnapshots,
+  restoreWorktreeSnapshot
+} from '../worktree-snapshots/worktree-snapshot-git'
 import { runLostWorkAction } from './lost-work-actions'
 import { pullRequestCompareUrl, remoteWebUrl } from './lost-work-links'
 import type { LostWorkRepo } from './lost-work-scan'
@@ -12,6 +17,7 @@ import {
   createLostWorkRepo,
   createLostWorkSandbox,
   lostWorkTestDeps,
+  snapshotGitOf,
   type LostWorkSandbox
 } from './lost-work.test-fixture'
 
@@ -158,6 +164,61 @@ describe('runLostWorkAction', { timeout: 30_000 }, () => {
       ok: true
     })
     expect(existsSync(path)).toBe(false)
+  })
+
+  it('leaves a restorable snapshot before it removes a dirty untracked worktree (BAD-767)', async () => {
+    const path = join(sandbox.root, 'wt-snap')
+    await sandbox.run(repo.path, 'worktree', 'add', '-q', '-b', 'snap', path, 'main')
+    await writeFile(join(path, 'README.md'), 'edited\n')
+    await writeFile(join(path, 'new-file.txt'), 'brand new\n')
+    await writeFile(join(path, '.gitignore'), 'secret.env\n')
+    await writeFile(join(path, 'secret.env'), 'KEY=1\n')
+    const git = snapshotGitOf(sandbox)
+    const target = item({ kind: 'untracked-worktree', path, branch: 'snap' })
+    const result = await runLostWorkAction(
+      {
+        ...deps(),
+        snapshotBeforeRemoval: async (_repoPath, worktreePath) => {
+          await createWorktreeSnapshot(git, worktreePath, Date.now())
+        }
+      },
+      { action: 'remove-untracked-worktree', item: target, confirmedLoss: true }
+    )
+    expect(result).toEqual({ ok: true })
+    expect(existsSync(path)).toBe(false)
+    const snapshots = await listWorktreeSnapshots(
+      git,
+      { id: repo.id, name: repo.name, path: repo.path },
+      14
+    )
+    expect(snapshots).toHaveLength(1)
+    const target2 = join(sandbox.root, 'restored')
+    await restoreWorktreeSnapshot(git, repo.path, snapshots[0], target2)
+    expect(await readFile(join(target2, 'new-file.txt'), 'utf8')).toBe('brand new\n')
+    expect(await readFile(join(target2, 'README.md'), 'utf8')).toBe('edited\n')
+    // Ignored files stay out of a snapshot.
+    expect(existsSync(join(target2, 'secret.env'))).toBe(false)
+  })
+
+  it('removes nothing when its snapshot cannot be written (BAD-767)', async () => {
+    const path = join(sandbox.root, 'wt-nosnap')
+    await sandbox.run(repo.path, 'worktree', 'add', '-q', '-b', 'nosnap', path, 'main')
+    await writeFile(join(path, 'README.md'), 'edited\n')
+    const result = await runLostWorkAction(
+      {
+        ...deps(),
+        snapshotBeforeRemoval: async () => {
+          throw new Error('no space left')
+        }
+      },
+      {
+        action: 'remove-untracked-worktree',
+        item: item({ kind: 'untracked-worktree', path, branch: 'nosnap' }),
+        confirmedLoss: true
+      }
+    )
+    expect(result).toMatchObject({ ok: false })
+    expect(existsSync(path)).toBe(true)
   })
 
   it('refuses projects it does not know', async () => {

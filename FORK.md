@@ -1822,6 +1822,15 @@ ones `SLRM-123 `).
     another commit gets `<branch>-restored-<ms>`, and an existing path is refused. Restore and
     list run on the host that owns the project through `fork.worktreeSnapshots.*`. Local git
     projects only; a paired server answers for its own.
+  - **Gaps closed (BAD-767).** The lost work dialog's delete of a worktree Orca does not track
+    (`removeUntrackedWorktree`, a forced remove after the user confirms the loss) first writes the
+    same snapshot, through `snapshotBeforeRemoval`, and a snapshot that cannot be written stops
+    the removal with its error. Orca removes no worktree on an SSH host (the removal route
+    refuses it: "Orca can't delete this workspace on its SSH host ... files on the host are left
+    untouched"), so there is nothing to snapshot there; a test pins that refusal. Expired
+    snapshots are pruned by a timer (`worktree-snapshot-prune.ts`, started with the runtime: first
+    pass 10 minutes after start, then every 10 minutes while it finds something, doubling to 6
+    hours when idle), on this host's local projects, in the desktop app and `orca serve`.
   - Code: `src/shared/fork/worktree-snapshots.ts`, `src/main/fork/worktree-snapshots/`,
     `src/cli/fork/worktree-snapshots-*.ts`. The tests run real git in a temp repo.
 
@@ -3255,6 +3264,7 @@ Apply these in this order. Each one is a single commit.
 169. `BAD-764 Command guards cover native Claude chats and chat workers through an in-process PreToolUse hook of the Agent SDK, and orca command-guards status lists each surface (terminal, native chat, chat worker) as guarded only with a test that proves a deny`
 170. `BAD-766 Spend caps reach every agent: orca guards automation-cap is routed, terminal and paired-server workers join their Run, a goal budget reads terminal spend with no cap set, and the cap view says which agents are not counted`
 171. `BAD-763 The completion contract and reviewer gate follow the work: a start on a paired server carries them and that server gates the done, retries and follow-ups inherit them, folder workspaces run command checks, and orca contract show reads the server's evidence`
+172. `BAD-767 Snapshots also cover Lost work deletes of untracked worktrees and prune on a timer; SSH removal stays refused by the stock route, pinned by a test`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

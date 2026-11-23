@@ -28,6 +28,8 @@ export type LostWorkActionDeps = Pick<
 > & {
   /** Local git repos only; null for an unknown, remote or folder project. */
   findRepo: (repoId: string) => LostWorkRepo | null
+  /** BAD-767: snapshots a worktree before its forced removal; a throw stops the removal. */
+  snapshotBeforeRemoval?: (repoPath: string, worktreePath: string) => Promise<void>
   now?: () => number
 }
 
@@ -271,6 +273,8 @@ async function removeUntrackedWorktree(
   if (losesWork && args.confirmedLoss !== true) {
     refuse('This worktree has changes or commits that exist nowhere else. Confirm the loss.')
   }
+  // BAD-767: a snapshot (`orca worktree restore`) first; one that fails stops the removal.
+  await (losesWork && deps.snapshotBeforeRemoval?.(repo.path, worktree.path))
   await deps.git(['worktree', 'remove', ...(losesWork ? ['--force'] : []), worktree.path], {
     cwd: repo.path
   })

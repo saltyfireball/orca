@@ -6,6 +6,7 @@ import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseWorktreeList } from '../../../shared/git/worktrees/git-worktree-porcelain-parser'
+import type { SnapshotGit } from '../worktree-snapshots/worktree-snapshot-git'
 import type { LostWorkGit } from './lost-work-git'
 import type { LostWorkRepo, LostWorkScanDeps } from './lost-work-scan'
 
@@ -95,4 +96,34 @@ export function lostWorkTestDeps(
     pathExists: async (path) => existsSync(path),
     now: () => 1_000
   }
+}
+
+/** BAD-767: the snapshot code's git runner over the sandbox (no global config, so no signing). */
+export function snapshotGitOf(sandbox: LostWorkSandbox): SnapshotGit {
+  return (args, options) =>
+    new Promise((resolve, reject) => {
+      const child = spawn('git', args, {
+        cwd: options.cwd,
+        env: {
+          PATH: process.env.PATH ?? '',
+          HOME: sandbox.root,
+          GIT_CONFIG_GLOBAL: sandbox.emptyConfig,
+          GIT_CONFIG_NOSYSTEM: '1',
+          GIT_AUTHOR_NAME: 'Test',
+          GIT_AUTHOR_EMAIL: 'test@example.test',
+          GIT_COMMITTER_NAME: 'Test',
+          GIT_COMMITTER_EMAIL: 'test@example.test',
+          ...options.env
+        }
+      })
+      let stdout = ''
+      let stderr = ''
+      child.stdout.on('data', (chunk) => (stdout += String(chunk)))
+      child.stderr.on('data', (chunk) => (stderr += String(chunk)))
+      child.on('error', reject)
+      child.on('close', (code) =>
+        code === 0 ? resolve(stdout) : reject(new Error(`git ${args[0]}: ${stderr.trim()}`))
+      )
+      child.stdin.end(options.stdin ?? '')
+    })
 }
