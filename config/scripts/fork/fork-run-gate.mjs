@@ -14,7 +14,8 @@ export const UPSTREAM_LANE_GATE_STEP = 'Wait for every template qualification la
 const PASSED = new Set(['success', 'skipped'])
 const POLL_MS = 5_000
 const DEADLINE_MS = 45 * 60_000
-const MAX_FETCH_FAILURES = 12
+// After a failed call, wait longer each time (5s, 10s, 20s, 30s, 30s ...), never past the deadline.
+const MAX_BACKOFF_MS = 30_000
 
 const wait = (reason) => ({ state: 'wait', reason })
 const ready = (reason) => ({ state: 'ready', reason })
@@ -95,7 +96,11 @@ function qualifiedGate(jobs) {
     : failed(describeFailure(assembler))
 }
 
-const GATES = { lanes: lanesGate, 'fork-template': forkTemplateGate, qualified: qualifiedGate }
+const GATES = {
+  lanes: lanesGate,
+  'fork-template': forkTemplateGate,
+  qualified: qualifiedGate
+}
 
 /** Whether `gate` is ready, still waiting or failed, given the run's jobs from the Actions API. */
 export function gateState(gate, jobs) {
@@ -106,21 +111,42 @@ export function gateState(gate, jobs) {
   return decide(jobs)
 }
 
-async function listRunJobs(env) {
+/** A call that may work if made again: a network error, HTTP 429 or any 5xx. */
+export class TransientApiError extends Error {}
+
+/** A call that will not work if made again (auth, not found, bad request): fail at once. */
+export class PermanentApiError extends Error {}
+
+/** True for a status worth another try: rate limited (429) or a GitHub server error (5xx). */
+export function isTransientStatus(status) {
+  return status === 429 || status >= 500
+}
+
+async function listRunJobs(env, fetchImpl) {
   const base = `${env.GITHUB_API_URL}/repos/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}/jobs`
   const jobs = []
   for (let page = 1; ; page += 1) {
-    const response = await fetch(`${base}?filter=latest&per_page=100&page=${page}`, {
-      headers: {
-        accept: 'application/vnd.github+json',
-        authorization: `Bearer ${env.GITHUB_TOKEN}`,
-        'x-github-api-version': '2022-11-28'
+    let response
+    let body
+    try {
+      response = await fetchImpl(`${base}?filter=latest&per_page=100&page=${page}`, {
+        headers: {
+          accept: 'application/vnd.github+json',
+          authorization: `Bearer ${env.GITHUB_TOKEN}`,
+          'x-github-api-version': '2022-11-28'
+        }
+      })
+      if (response.ok) {
+        body = await response.json()
       }
-    })
-    if (!response.ok) {
-      throw new Error(`Listing the run's jobs returned HTTP ${response.status}`)
+    } catch (error) {
+      // fetch rejects on a network error, and json() on a body cut off mid-way.
+      throw new TransientApiError(`Listing the run's jobs failed: ${error.message}`)
     }
-    const body = await response.json()
+    if (!response.ok) {
+      const Kind = isTransientStatus(response.status) ? TransientApiError : PermanentApiError
+      throw new Kind(`Listing the run's jobs returned HTTP ${response.status}`)
+    }
     jobs.push(...body.jobs)
     if (body.jobs.length < 100) {
       return jobs
@@ -128,7 +154,18 @@ async function listRunJobs(env) {
   }
 }
 
-async function waitForGate(gate, env) {
+const realSleep = (ms) => new Promise((done) => setTimeout(done, ms))
+
+/**
+ * Polls until `gate` is ready. A network error, 429 or 5xx is retried, with a growing pause,
+ * until the deadline; a failed lane or any other API error (401, 403, 404, ...) ends it at once.
+ * `deps` lets a test swap the network, the clock and the sleep.
+ */
+export async function waitForGate(gate, env, deps = {}) {
+  const fetchImpl = deps.fetch ?? fetch
+  const now = deps.now ?? Date.now
+  const sleep = deps.sleep ?? realSleep
+  const log = deps.log ?? console.log
   for (const name of ['GITHUB_API_URL', 'GITHUB_REPOSITORY', 'GITHUB_RUN_ID', 'GITHUB_TOKEN']) {
     if (!env[name]) {
       throw new Error(`${name} is not set; this gate runs inside a workflow job`)
@@ -136,38 +173,45 @@ async function waitForGate(gate, env) {
   }
   // Fail on an unknown gate before the first request.
   gateState(gate, [])
-  const deadline = Date.now() + DEADLINE_MS
-  let fetchFailures = 0
+  const deadline = now() + DEADLINE_MS
+  let failuresInARow = 0
   let lastReason = ''
-  while (Date.now() < deadline) {
+  let lastError = ''
+  while (now() < deadline) {
+    let pause = POLL_MS
     let jobs = null
     try {
-      jobs = await listRunJobs(env)
-      fetchFailures = 0
+      jobs = await listRunJobs(env, fetchImpl)
+      failuresInARow = 0
     } catch (error) {
-      fetchFailures += 1
-      console.log(`[fork-run-gate] ${error.message} (${fetchFailures} in a row)`)
-      if (fetchFailures >= MAX_FETCH_FAILURES) {
+      if (!(error instanceof TransientApiError)) {
         throw error
       }
+      failuresInARow += 1
+      lastError = error.message
+      pause = Math.min(POLL_MS * 2 ** (failuresInARow - 1), MAX_BACKOFF_MS)
+      log(
+        `[fork-run-gate] ${error.message} (${failuresInARow} in a row), retrying in ${pause / 1000}s`
+      )
     }
     if (jobs) {
       const { state, reason } = gateState(gate, jobs)
       if (state === 'ready') {
-        console.log(`[fork-run-gate] ${gate}: ${reason}`)
+        log(`[fork-run-gate] ${gate}: ${reason}`)
         return
       }
       if (state === 'failed') {
         throw new Error(`${gate}: ${reason}`)
       }
       if (reason !== lastReason) {
-        console.log(`[fork-run-gate] ${gate}: waiting, ${reason}`)
+        log(`[fork-run-gate] ${gate}: waiting, ${reason}`)
         lastReason = reason
       }
     }
-    await new Promise((done) => setTimeout(done, POLL_MS))
+    await sleep(Math.max(0, Math.min(pause, deadline - now())))
   }
-  throw new Error(`${gate}: timed out after ${DEADLINE_MS / 60_000} minutes (${lastReason})`)
+  const detail = failuresInARow > 0 ? `last error: ${lastError}` : lastReason
+  throw new Error(`${gate}: timed out after ${DEADLINE_MS / 60_000} minutes (${detail})`)
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {

@@ -301,7 +301,11 @@ describe('fork-sync.sh', () => {
     const v2 = commit(up, 'shared.txt', 'upstream\n', 'u3')
     git(up, 'tag', 'v1.1.0')
     expect(sync('detect').status).toBe(0)
-    const merge = sync('merge', { LATEST: 'v1.1.0', LATEST_SHA: v2, CONFLICT_CONTINUES: 'true' })
+    const merge = sync('merge', {
+      LATEST: 'v1.1.0',
+      LATEST_SHA: v2,
+      CONFLICT_CONTINUES: 'true'
+    })
     expect(merge.status).toBe(0)
     expect(merge.log.split('\n')[0]).toBe('FORK-SYNC-CONFLICT v1.1.0')
     expect(merge.out.conflict).toBe('true')
@@ -334,7 +338,10 @@ describe('fork-sync.sh', () => {
         `#!/bin/sh\nprintf '%s\\n' ${tags.map((t) => `'${t}'`).join(' ')}\n`
       )
       chmodSync(join(bin, 'gh'), 0o755)
-      return { PATH: `${bin}:${process.env.PATH}`, GITHUB_REPOSITORY: 'example/fork' }
+      return {
+        PATH: `${bin}:${process.env.PATH}`,
+        GITHUB_REPOSITORY: 'example/fork'
+      }
     }
 
     it('says main has no release when no release tag points at it', () => {
@@ -360,6 +367,76 @@ describe('fork-sync.sh', () => {
       expect(sync('released', withReleases(['v1.0.1009'])).out.released).toBe('false')
     })
 
+    // A fake gh that fails with `stderr` for the first `failures` calls, then lists the tags.
+    function flakyGh(failures, stderr, tags = ['v1.0.1002']) {
+      const bin = join(root, 'bin')
+      mkdirSync(bin, { recursive: true })
+      const counter = join(root, 'gh-calls')
+      writeFileSync(counter, '0')
+      writeFileSync(
+        join(bin, 'gh'),
+        `#!/bin/sh\nn=$(($(cat '${counter}') + 1))\necho $n > '${counter}'\n` +
+          `if [ $n -le ${failures} ]; then echo '${stderr}' >&2; exit 1; fi\n` +
+          `printf '%s\\n' ${tags.map((t) => `'${t}'`).join(' ')}\n`
+      )
+      chmodSync(join(bin, 'gh'), 0o755)
+      return {
+        env: {
+          PATH: `${bin}:${process.env.PATH}`,
+          GITHUB_REPOSITORY: 'example/fork',
+          FORK_SYNC_API_PAUSE: '0',
+          FORK_SYNC_API_DEADLINE: '60'
+        },
+        calls: () => Number(readFileSync(counter, 'utf8'))
+      }
+    }
+
+    function releasedMain() {
+      setUp()
+      const job = join(root, 'job')
+      git(job, 'tag', 'v1.0.1002')
+      git(job, 'push', '-q', 'origin', 'v1.0.1002')
+    }
+
+    it('retries the release list after 502, 429 and network errors', () => {
+      releasedMain()
+      for (const message of [
+        'gh: Bad Gateway (HTTP 502)',
+        'gh: API rate limit exceeded (HTTP 429)',
+        'Get "https://api.example.test": dial tcp: lookup api.example.test: no such host'
+      ]) {
+        const gh = flakyGh(2, message)
+        const result = sync('released', gh.env)
+        expect(result.status).toBe(0)
+        expect(result.out.released).toBe('true')
+        expect(gh.calls()).toBe(3)
+      }
+    })
+
+    it('stops retrying the release list at its deadline', () => {
+      releasedMain()
+      const gh = flakyGh(99, 'gh: Bad Gateway (HTTP 502)')
+      const result = sync('released', {
+        ...gh.env,
+        FORK_SYNC_API_DEADLINE: '0'
+      })
+      expect(result.status).not.toBe(0)
+      expect(gh.calls()).toBe(1)
+    })
+
+    it('fails at once on an auth or not-found error from the release list', () => {
+      releasedMain()
+      for (const message of [
+        'gh: Not Found (HTTP 404)',
+        'gh: Bad credentials (HTTP 401)',
+        'gh: Forbidden (HTTP 403)'
+      ]) {
+        const gh = flakyGh(99, message)
+        expect(sync('released', gh.env).status).not.toBe(0)
+        expect(gh.calls()).toBe(1)
+      }
+    })
+
     it('names the release of main after a conflict, or why none went out', () => {
       setUp()
       const line = (extra) => sync('release-line', extra).log.trim()
@@ -376,9 +453,14 @@ describe('fork-sync.sh', () => {
       expect(line({ ...base, RELEASED: '', BUILD_RESULT: 'skipped' })).toMatch(
         /none, the sync job stopped/
       )
-      expect(line({ ...base, WHY: 'skipped', RELEASED: 'false', BUILD_RESULT: 'success' })).toMatch(
-        /^Release of main with the upstream merge skipped: yes/
-      )
+      expect(
+        line({
+          ...base,
+          WHY: 'skipped',
+          RELEASED: 'false',
+          BUILD_RESULT: 'success'
+        })
+      ).toMatch(/^Release of main with the upstream merge skipped: yes/)
     })
   })
 
@@ -415,7 +497,10 @@ describe('fork-sync.sh', () => {
     const recut = commit(up, 'recut.txt', 'again\n', 'u2 recut')
     git(up, 'tag', '-f', 'v1.0.0', recut)
     const detect = sync('detect')
-    expect(detect.out).toMatchObject({ state: 'behind', base_version: '1.0.0' })
+    expect(detect.out).toMatchObject({
+      state: 'behind',
+      base_version: '1.0.0'
+    })
     expect(detect.out.base_source).toMatch(/was moved upstream/)
     expect(sync('merge', { LATEST: 'v1.0.0', LATEST_SHA: recut }).status).toBe(0)
   })

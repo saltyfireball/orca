@@ -16,6 +16,8 @@
 #   FORK_SYNC_ORIGIN_REMOTE    the fork's own remote (default origin)
 #   FORK_SYNC_STATUS_BRANCH    branch holding status.json (default fork-sync-status)
 #   GITHUB_OUTPUT              key=value outputs are appended here (default /dev/null)
+#   FORK_SYNC_API_DEADLINE     seconds a GitHub API call is retried after a 5xx, 429 or network error (default 300)
+#   FORK_SYNC_API_PAUSE        seconds between those tries (default 10)
 set -euo pipefail
 
 UPSTREAM_REMOTE="${FORK_SYNC_UPSTREAM_REMOTE:-upstream}"
@@ -24,6 +26,35 @@ STATUS_BRANCH="${FORK_SYNC_STATUS_BRANCH:-fork-sync-status}"
 OUT="${GITHUB_OUTPUT:-/dev/null}"
 STATUS_REF='refs/fork-sync/status'
 STABLE_RE='^v[0-9]+\.[0-9]+\.[0-9]+$'
+
+# Runs a gh command, trying again after a 5xx, 429 or network error until FORK_SYNC_API_DEADLINE
+# seconds have passed. Any other failure (401, 403, 404, ...) fails at once, as does a deadline that
+# ends the retries. Prints the command's stdout.
+gh_retry() {
+  local deadline=$((SECONDS + ${FORK_SYNC_API_DEADLINE:-300})) pause="${FORK_SYNC_API_PAUSE:-10}" out errfile err
+  errfile="$(mktemp)"
+  while :; do
+    if out="$("$@" 2>"$errfile")"; then
+      rm -f "$errfile"
+      printf '%s\n' "$out"
+      return 0
+    fi
+    err="$(cat "$errfile")"
+    if ! printf '%s' "$err" | grep -Eiq 'HTTP (429|5[0-9][0-9])|connection (reset|refused)|timed? ?out|no such host|TLS handshake|unexpected EOF|temporary failure'; then
+      rm -f "$errfile"
+      printf '%s\n' "$err" >&2
+      return 1
+    fi
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      rm -f "$errfile"
+      printf '%s\n' "$err" >&2
+      echo "::error::GitHub API still failing after ${FORK_SYNC_API_DEADLINE:-300}s of retries" >&2
+      return 1
+    fi
+    echo "GitHub API call failed ($(printf '%s' "$err" | head -n 1)); retrying in ${pause}s" >&2
+    sleep "$pause"
+  done
+}
 
 output() {
   printf '%s=%s\n' "$1" "$2" >>"$OUT"
@@ -229,7 +260,7 @@ cmd_released() {
   tags_at_sha="$(git ls-remote --tags "$ORIGIN_REMOTE" 'v*' \
     | awk -v sha="$sha" '$1 == sha { sub("refs/tags/", "", $2); sub("\\^\\{\\}$", "", $2); print $2 }' \
     | sort -u)"
-  published="$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" \
+  published="$(gh_retry gh api --paginate "repos/$GITHUB_REPOSITORY/releases" \
     --jq '.[] | select(.draft == false) | .tag_name' | sort -u)"
   if [ -n "$tags_at_sha" ] && [ -n "$(comm -12 <(printf '%s\n' "$tags_at_sha") <(printf '%s\n' "$published"))" ]; then
     output released 'true'
