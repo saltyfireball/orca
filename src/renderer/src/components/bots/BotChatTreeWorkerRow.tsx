@@ -91,6 +91,9 @@ function Meta({
   if (worker.state === 'needs-you') {
     return <span className="text-agent-question-text">{t('bots.chats.needsYou', 'Needs you')}</span>
   }
+  if (worker.waitsOnBackground) {
+    return <>{t('bots.activity.waitsOnBackground', 'Waiting on its background task')}</>
+  }
   if (worker.state === 'asking-bot') {
     return (
       <>
@@ -115,7 +118,8 @@ export function botChatTreeWorkerRunning(worker: BotChatTreeWorker): boolean {
 }
 
 /** What a click on the worker opens: its automation run, its session, or its pane; nothing to open
- *  when it has none of them. */
+ *  when it has none of them. A start that failed before its agent ran has no session, so only a
+ *  workspace it left behind opens. */
 export function botChatTreeWorkerOpen(
   bot: Bot,
   worker: BotChatTreeWorker
@@ -126,9 +130,9 @@ export function botChatTreeWorkerOpen(
   }
   const { run, dispatchId, worktreeId } = worker
   if (run) {
-    return () => openBotAutomation(run.automationId, run.runId)
+    return () => openBotAutomation(bot.hostId, run.automationId, run.runId)
   }
-  if (dispatchId) {
+  if (dispatchId && !worker.neverStarted) {
     return () =>
       openOrchestrationWorker(
         {
@@ -198,7 +202,15 @@ export function BotChatTreeWorkerRow({
       agent={worker.agent}
       summary={worker.summary}
       nested={{ settled: !running }}
-      icon={stop ? <UsageLimitStopMark stop={stop} /> : <WorkerStateIcon state={worker.state} />}
+      icon={
+        stop ? (
+          <UsageLimitStopMark stop={stop} />
+        ) : worker.waitsOnBackground ? (
+          <AgentStateDot state="monitoring" size="md" title={null} />
+        ) : (
+          <WorkerStateIcon state={worker.state} />
+        )
+      }
       meta={stop ? usageLimitStopMeta(t, stop) : <Meta bot={bot} worker={worker} host={host} />}
       detail={
         showChat ? (

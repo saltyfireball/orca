@@ -27,6 +27,8 @@ export const FORK_SETTINGS_ROWS_EXPERIMENTAL = {
     '{"t":{"k":"boolean"},"d":"Opt-in animated pet overlay; off unmounts it and renderer toggles apply immediately."}',
   experimentalPluginIsolatedFrames:
     '{"t":{"k":"boolean"},"d":"Plugin frames as isolated guests (default on); main-only kill switch, see plugin-frame-isolation.ts.","o":true}',
+  experimentalSharedCodexServers:
+    '{"t":{"k":"boolean"},"d":"Experimental: Codex chats share a few capped app-servers instead of one each.","o":true}',
   experimentalSidekick:
     '{"t":{"k":"boolean"},"d":"Legacy persisted key from before the sidekick -> pet rename; read only during migration, new writes use experimentalPet.","o":true}',
   experimentalTerminalAttention:

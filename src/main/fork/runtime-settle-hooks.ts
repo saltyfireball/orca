@@ -1,5 +1,5 @@
 // The fork services that start once the runtime settles, in the desktop app and `orca serve`
-// (`noteAgentLaunchStartupSettled` in `orca-runtime.ts`) and in orcad
+// (`markStartupSettled` in `agent-launch-record-warmup.ts`) and in orcad
 // (`core-runtime-activation.ts`). One call per upstream file keeps each hook one line.
 import {
   startForkLimitResume,

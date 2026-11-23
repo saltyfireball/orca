@@ -17,7 +17,7 @@ import { BotItemError } from './bot-item-error'
 import { BotItemsWrites } from './bot-items-writes'
 import type { BotItemOwnerActor } from './bot-items-input'
 import { eventRecordOf } from './bot-items-rows'
-import type { BotItemRecord } from './bot-items-schema'
+import type { BotItemEventRecord, BotItemRecord } from './bot-items-schema'
 
 /** The owner marks one step of the item's current set: ticks it, unticks it, or says it did not work. */
 export type BotItemOwnerStepInput = {
@@ -152,10 +152,11 @@ export class BotItemsOwnerWrites extends BotItemsWrites {
     return true
   }
 
-  /** The owner's own Needs you note is no question to answer. */
-  protected askedByBot(eventId: number): boolean {
+  /** The bot's question event; the owner's own Needs you note is no question to answer. */
+  protected botQuestion(eventId: number): BotItemEventRecord | null {
     const row = this.db.prepare('SELECT * FROM item_events WHERE id = ?').get(eventId)
-    return row !== undefined && eventRecordOf(row).actor.kind === 'bot'
+    const event = row === undefined ? null : eventRecordOf(row)
+    return event?.actor.kind === 'bot' ? event : null
   }
 
   protected writeOwnerComment(
@@ -167,7 +168,8 @@ export class BotItemsOwnerWrites extends BotItemsWrites {
     requestId?: string,
     answers?: string,
     plain = false,
-    skills: readonly BotItemCommentSkill[] = []
+    skills: readonly BotItemCommentSkill[] = [],
+    askedInConversation?: string
   ): number {
     const data = {
       text: commentText,
@@ -175,7 +177,8 @@ export class BotItemsOwnerWrites extends BotItemsWrites {
       ...(requestId === undefined ? {} : { requestId }),
       ...(answers === undefined ? {} : { answers }),
       ...(plain ? { plain: true } : {}),
-      ...(skills.length > 0 ? { skills } : {})
+      ...(skills.length > 0 ? { skills } : {}),
+      ...(askedInConversation === undefined ? {} : { askedInConversation })
     }
     return this.appendEvent(item.uid, 'commented', actor, data, true, now)
   }

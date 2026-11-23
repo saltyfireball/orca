@@ -31,6 +31,7 @@ export type BotItemShowView = { item: BotItem; events: BotItemEvent[]; nextCurso
 const STATUS_WORDS: Record<BotItemStatus, string> = {
   planned: 'Planned',
   working: 'In progress',
+  waiting: 'Waiting',
   needs_you: 'Needs you',
   done: 'Done',
   canceled: 'Canceled'
@@ -154,7 +155,8 @@ export function formatBotItemRow(item: BotItem, now: number): string {
   const until = snoozedUntil(item, now)
   const snoozed = until ? `\n    snoozed ${snoozedWords(until)}` : ''
   const question = item.question ? `\n    asks: ${item.question.text.split('\n')[0]}` : ''
-  return `${item.number}  ${STATUS_WORDS[item.status]}  ${what}  ${chatWords(item)}  ${age(item.updatedAt, now)}${snoozed}${question}`
+  const wait = item.wait ? `\n    waits on: ${item.wait.text}` : ''
+  return `${item.number}  ${STATUS_WORDS[item.status]}  ${what}  ${chatWords(item)}  ${age(item.updatedAt, now)}${snoozed}${question}${wait}`
 }
 
 export function formatBotItemList(view: BotItemListView, now: number): string {
@@ -183,6 +185,8 @@ function linkLine(link: BotItemLinkView): string {
     case 'url':
     case 'file':
       return `${link.kind}:${link.ref}`
+    case 'automation':
+      return `automation:${link.ref} · ${link.name ?? 'automation'} · ${link.active ? 'on' : 'gone or off'}`
   }
 }
 
@@ -238,6 +242,7 @@ export function formatBotItemShow(view: BotItemShowView, now = Date.now()): stri
     ...(item.doneMeans ? [`Done means: ${item.doneMeans}`] : []),
     ...stepLines(item),
     ...(item.question ? [`Asks your owner: ${item.question.text}`] : []),
+    ...(item.wait ? [`Waits on: ${item.wait.text}`] : []),
     ...(item.closeNote ? [`Closed: ${item.closeNote}`] : []),
     ...item.links.map((link) => `  ${linkLine(link)}`),
     '',

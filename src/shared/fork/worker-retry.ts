@@ -90,7 +90,18 @@ export const WORKER_RETRY_TRANSIENT_FAILURE_KINDS: ReadonlySet<string> = new Set
 const DELIBERATE_CAUSES: ReadonlySet<string> = new Set(['user-close', 'quit', 'evict', 'shutdown'])
 
 export type WorkerRetryStop = {
-  reason: 'finished' | 'errored' | 'needs-input' | 'exited' | 'lost' | 'start-unconfirmed'
+  /** The stop reasons upstream reports; 'start-blocked', 'never-ready' and 'background-wait' (added by
+   *  upstream in 1.4.272) are never a failure to heal, so they hold as `not-a-failure`. */
+  reason:
+    | 'finished'
+    | 'errored'
+    | 'needs-input'
+    | 'exited'
+    | 'lost'
+    | 'start-unconfirmed'
+    | 'start-blocked'
+    | 'never-ready'
+    | 'background-wait'
   /** Why a worker went away, for an exit. */
   cause?: string | undefined
   /** The typed failure kind of a chat request that failed, for an `errored` stop. */

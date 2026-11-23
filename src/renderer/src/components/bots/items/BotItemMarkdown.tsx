@@ -14,7 +14,8 @@ export function BotItemMarkdown({ text }: { text: string }): React.JSX.Element {
       allowFileUriLinks={onLinkClick !== undefined}
       fileLinkExists={fileLinkExists}
       renderCodeBlock={BotItemCodeBlock}
-      className="text-[13px] leading-[19px] text-foreground"
+      // Paragraphs render as spans: blocks with a gap, as in chat, or blank lines run them together.
+      className="text-[13px] leading-[19px] text-foreground [&_.comment-md-p]:block [&_.comment-md-p+.comment-md-p]:mt-2"
     />
   )
 }

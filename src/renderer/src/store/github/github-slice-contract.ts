@@ -83,6 +83,8 @@ export type GitHubSlice = {
       reason?: GitHubPRRefreshReason
       userRefresh?: boolean
       selected?: boolean
+      /** A refresh timer's read or retry: no use of an idle WSL host (#46567). */
+      background?: boolean
       onReadOutcome?: (outcome: PRSnapshotReply) => void
       signal?: AbortSignal
     }
@@ -90,7 +92,8 @@ export type GitHubSlice = {
   fetchIssue: (
     repoPath: string,
     number: number,
-    options?: RepoScopedFetchOptions & { ownerRepo?: GitHubOwnerRepo }
+    /** `background`: a card's poll, which must not hold an idle WSL host up or wake it. */
+    options?: RepoScopedFetchOptions & { ownerRepo?: GitHubOwnerRepo; background?: boolean }
   ) => Promise<IssueInfo | null>
   fetchPRChecks: (
     repoPath: string,

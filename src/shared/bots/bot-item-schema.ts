@@ -103,6 +103,7 @@ const linkSchema: z.ZodType<BotItemLinkView, unknown> = z.discriminatedUnion('ki
     startedAt: z.number().nullable(),
     settledAt: z.number().nullable(),
     report: z.looseObject({ subject: z.string(), body: z.string().nullable() }).nullable(),
+    reason: salvagedOptional('reason', z.string().nullable()),
     pr: prSchema.nullable().catch(null)
   }),
   z.looseObject({ kind: z.literal('pr'), ref: z.string(), pr: prSchema.nullable().catch(null) }),
@@ -114,7 +115,13 @@ const linkSchema: z.ZodType<BotItemLinkView, unknown> = z.discriminatedUnion('ki
       z.looseObject({ title: z.string(), state: z.enum(['open', 'closed']) })
     )
   }),
-  z.looseObject({ kind: z.literal('file'), ref: z.string() })
+  z.looseObject({ kind: z.literal('file'), ref: z.string() }),
+  z.looseObject({
+    kind: z.literal('automation'),
+    ref: z.string(),
+    name: z.string().nullable(),
+    active: z.boolean()
+  })
 ])
 
 const actorSchema: z.ZodType<BotItemActor, unknown> = z.discriminatedUnion('kind', [
@@ -150,6 +157,8 @@ export const BotItemSchema: z.ZodType<BotItem, unknown> = z.looseObject({
   question: z.looseObject({ eventId: z.string(), text: z.string() }).nullable(),
   closeNote: z.string().nullable(),
   steps: salvagedOptional('steps', stepsViewSchema.nullable()),
+  // Hosts before Waiting send none.
+  wait: z.looseObject({ text: z.string(), at: z.number() }).nullable().catch(null),
   links: salvagingArray(linkSchema),
   version: z.number(),
   lastEventId: z.string(),

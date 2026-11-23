@@ -78,8 +78,8 @@ export const PAIRED_DESKTOP_METHODS = [
   'terminal.setAutoRestoreFit',
   // Fork (SLRM-2388): the digest; the Mac reads itself and asks its paired servers.
   ...FORK_DIGEST_RPC_METHODS,
-  // Per-section collapse, sidebar feed and icons exist only with ORCA_SIDEBAR_INPUTS=main.
-  ...(ORCA_SIDEBAR_INPUTS_IS_MAIN
-    ? (['ui.setCollapsed', 'sidebarInputs.read', 'sidebarInputs.repoIcons'] as const)
-    : [])
+  // The desktop's own repo icons, as small data URLs.
+  'sidebarInputs.repoIcons',
+  // Per-section collapse and the sidebar feed exist only with ORCA_SIDEBAR_INPUTS=main.
+  ...(ORCA_SIDEBAR_INPUTS_IS_MAIN ? (['ui.setCollapsed', 'sidebarInputs.read'] as const) : [])
 ] as const
