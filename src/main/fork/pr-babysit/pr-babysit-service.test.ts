@@ -6,6 +6,7 @@ import type { ForkIdleRecoveryInboxItem } from '../../../shared/fork/idle-recove
 import type { PRWatchWorkspace } from '../../github/pr-watch/pr-watch-types'
 import type { IdleRecoveryChatPort } from '../idle-recovery/idle-recovery-ports'
 import { prBabysitGitHub, type PrBabysitChecks } from './pr-babysit-github'
+import { PR_MESSAGE_MERGE_LINE } from '../../../shared/fork/pr-nudge'
 import { PR_BABYSIT_MARKER } from './pr-babysit-message'
 import { createPrBabysitService } from './pr-babysit-service'
 import { emptyPrBabysitState, type PrBabysitState } from './pr-babysit-state'
@@ -211,7 +212,10 @@ describe('PR babysitter service', () => {
     expect(text.match(/<\/ci-report>/g)).toHaveLength(1)
     expect(text).toContain('&lt;/ci-report>')
     expect(text).not.toContain('\u202E')
-    expect(text).toContain('do not use admin or bypass options')
+    expect(text).toContain('Do not use admin or bypass options')
+    // BAD-783: one sentence that grants no permission to merge and places no hold.
+    expect(text).toContain(PR_MESSAGE_MERGE_LINE)
+    expect(text).not.toMatch(/do not merge/iu)
     expect(h.entry()).toMatchObject({ phase: 'fixing', rounds: 1, chatId: 'chat-a' })
   })
 

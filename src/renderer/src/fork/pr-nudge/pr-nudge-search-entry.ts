@@ -18,7 +18,8 @@ export function prNudgeSearchEntry(t: Translate = translate): SettingsSearchEntr
       'rebase',
       'nudge',
       'forkPrNudgeEnabled',
-      'forkPrNudgeCommenters'
+      'forkPrNudgeCommenters',
+      'forkPrNudgeConflictUpdate'
     ]
   }
 }

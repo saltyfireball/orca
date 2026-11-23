@@ -52,6 +52,8 @@ export const FORK_SETTINGS_ROWS_FORK_MORE = {
     '{"t":{"k":"number"},"d":"PR babysitter: minutes to wait for a new CI result after a fix request before it stops and asks you; unset is 120.","o":true}',
   forkPrNudgeCommenters:
     '{"t":{"k":"enum","values":["anyone","collaborators"]},"d":"PR nudges: whose comments count: \'collaborators\' (owner, member, collaborator; the default) or \'anyone\'.","o":true}',
+  forkPrNudgeConflictUpdate:
+    '{"t":{"k":"enum","values":["merge","rebase"]},"d":"PR nudges (BAD-783): how the conflict request asks the chat to update its branch: \'merge\' (merge the base branch in; never a force push; the default) or \'rebase\'.","o":true}',
   forkPrNudgeConflicts:
     '{"t":{"k":"boolean"},"d":"PR nudges: send a rebase request when the pull request conflicts (on by default once nudges are on).","o":true}',
   forkPrNudgeEnabled:

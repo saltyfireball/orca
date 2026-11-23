@@ -1,6 +1,10 @@
 // PR nudges (BAD-680): comment text is outside text, fenced and cleaned.
 import { describe, expect, it } from 'vitest'
-import type { PrNudgeComment } from '../../../shared/fork/pr-nudge'
+import {
+  PR_MESSAGE_MERGE_LINE,
+  readPrNudgeSettings,
+  type PrNudgeComment
+} from '../../../shared/fork/pr-nudge'
 import {
   PR_NUDGE_CONFLICT_MARKER,
   PR_NUDGE_MAX_MESSAGE_CHARS,
@@ -60,18 +64,63 @@ describe('buildPrNudgeReviewMessage', () => {
   })
 })
 
+const conflict = (update?: 'merge' | 'rebase') =>
+  buildPrNudgeConflictMessage({
+    pr: PR,
+    headSha: 'abcdef1234567',
+    baseRef: 'main',
+    round: 1,
+    maxRounds: 3,
+    ...(update ? { update } : {})
+  })
+
+describe('merge line (BAD-783)', () => {
+  it('is one sentence that grants no permission and places no hold, in all three messages', () => {
+    const review = buildPrNudgeReviewMessage({ pr: PR, comments: [comment()] })
+    for (const text of [review, conflict(), conflict('rebase')]) {
+      expect(text).toContain(PR_MESSAGE_MERGE_LINE)
+      expect(text).not.toMatch(/do not merge/iu)
+    }
+    expect(PR_MESSAGE_MERGE_LINE).toBe(
+      'This message gives you no permission to merge the pull request and places no hold on merging it: your own task decides whether you merge.'
+    )
+  })
+
+  it('keeps the rest of the review message: untrusted block, no bypass, no dismissing', () => {
+    const review = buildPrNudgeReviewMessage({ pr: PR, comments: [comment()] })
+    expect(review).toContain('data-trust="untrusted"')
+    expect(review).toContain('Do not use admin or bypass options, and do not dismiss reviews')
+  })
+})
+
 describe('buildPrNudgeConflictMessage', () => {
-  it('names the head, the round and the force-push rule', () => {
-    const text = buildPrNudgeConflictMessage({
-      pr: PR,
-      headSha: 'abcdef1234567',
-      baseRef: 'main',
-      round: 1,
-      maxRounds: 3
-    })
-    expect(text.startsWith(PR_NUDGE_CONFLICT_MARKER)).toBe(true)
-    expect(text).toContain('abcdef1')
-    expect(text).toContain('Rebase request 1 of 3')
-    expect(text).toContain('--force-with-lease')
+  it('names the head and the round, and asks for a merge of the base by default', () => {
+    for (const text of [conflict(), conflict('merge')]) {
+      expect(text.startsWith(PR_NUDGE_CONFLICT_MARKER)).toBe(true)
+      expect(text).toContain('abcdef1')
+      expect(text).toContain('Update request 1 of 3')
+      expect(text).toContain('Merge the base branch into this branch')
+      expect(text).toContain('Do not use admin or bypass options')
+    }
+  })
+
+  it('never mentions a force push or a rebase by default', () => {
+    expect(conflict()).not.toMatch(/force|rebase|lease/iu)
+  })
+
+  it('asks for a rebase when the owner chose it, and then names the safe force push', () => {
+    const text = conflict('rebase')
+    expect(text).toContain('Rebase this branch onto the base branch')
+    expect(text).toContain('--force-with-lease; never a plain --force')
+  })
+})
+
+describe('the conflict update setting (BAD-783)', () => {
+  it('defaults to merge and takes only rebase as the other choice', () => {
+    expect(readPrNudgeSettings({}).conflictUpdate).toBe('merge')
+    expect(readPrNudgeSettings({ forkPrNudgeConflictUpdate: 'rebase' }).conflictUpdate).toBe(
+      'rebase'
+    )
+    expect(readPrNudgeSettings({ forkPrNudgeConflictUpdate: 'force' }).conflictUpdate).toBe('merge')
   })
 })
