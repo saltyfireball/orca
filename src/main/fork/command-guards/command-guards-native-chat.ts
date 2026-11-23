@@ -4,7 +4,7 @@
 // PreToolUse itself, as an in-process hook callback of the Claude Agent SDK: it runs with Orca's
 // own session id, needs no variable in the child, and still runs in Full access. Not a sandbox.
 // Keep electron out of this file.
-import type { HookCallback, HookCallbackMatcher } from '@anthropic-ai/claude-agent-sdk'
+import type { HookCallback, HookCallbackMatcher, Options } from '@anthropic-ai/claude-agent-sdk'
 import { resolveStructuredWorkerIdentityForSession } from '../../runtime/orchestration/terminal-authority/structured-sessions/structured-worker-authority'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { noteCommandGuardChat, type GuardedChatSurface } from './command-guards-chat-registry'
@@ -41,10 +41,14 @@ function denial(reason: string): Awaited<ReturnType<HookCallback>> {
 }
 
 /**
- * The chat's SDK options with `hooks` added (they reach `query` through the launch options): a shell command that breaks a rule is denied and audited. Returns
- * the options as they are, and the chat shows unguarded, when the guards are not running on this host.
+ * The chat's SDK options with the guard added to whatever hooks they carry (they reach `query`
+ * through the launch options): a shell command that breaks a rule is denied and audited. The
+ * options' own hooks stay first and whole: a read-only session's PreToolUse hook is its limit
+ * (BAD-795), and Claude Code takes the strictest of several answers (deny over ask over allow).
+ * Returns the options as they are, and the chat shows unguarded, when the guards are not running
+ * on this host.
  */
-export function forkChatGuardOptions<T extends object>(
+export function forkChatGuardOptions<T extends Pick<Options, 'hooks'>>(
   options: T,
   sessionId: string,
   cwd: string
@@ -78,8 +82,7 @@ export function forkChatGuardOptions<T extends object>(
     return Promise.resolve(reason ? denial(reason) : {})
   }
   // A fault in the callback continues the call, as everywhere else in the guard.
-  const PreToolUse: HookCallbackMatcher[] = [
-    { matcher: 'Bash', hooks: [guard], onFailure: 'continue' }
-  ]
-  return { ...options, hooks: { PreToolUse } }
+  const added: HookCallbackMatcher = { matcher: 'Bash', hooks: [guard], onFailure: 'continue' }
+  const kept = options.hooks ?? {}
+  return { ...options, hooks: { ...kept, PreToolUse: [...(kept.PreToolUse ?? []), added] } }
 }

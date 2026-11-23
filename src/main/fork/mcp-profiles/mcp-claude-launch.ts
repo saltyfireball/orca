@@ -12,6 +12,7 @@ import {
   selectForkMcpServers,
   type ForkMcpLastLaunch
 } from '../../../shared/fork/mcp-profiles'
+import type { ReadOnlySessionMode } from '../../bots/bot-look-around-policy'
 import { discoverClaudeMcpServers, loadableClaudeMcpServers } from './claude-mcp-discovery'
 import {
   claudeConfigPaths,
@@ -55,14 +56,22 @@ async function skipReason(input: ForkMcpClaudeLaunch): Promise<string | null> {
   return null
 }
 
-/** The hook's call: a chat record and what the launch resolved. */
+/** The hook's call: a chat's launch basis and what the launch resolved. A reply-only run has no MCP
+ *  servers from any config (BAD-795), so a profile's `--mcp-config` must not bring some back. */
 export function forkMcpClaudeExtraArgs(
-  record: { sessionId: string; location: { wslDistro?: string | null } },
+  basis: {
+    record: { sessionId: string; location: { wslDistro?: string | null } }
+    readOnly?: ReadOnlySessionMode | null
+  },
   cwd: string,
   configDir: string,
   env: Readonly<Record<string, string | undefined>>,
   userArgs: Readonly<Record<string, string | null>>
 ): Promise<ExtraArgs> {
+  const { record } = basis
+  if (basis.readOnly === 'reply-only') {
+    return Promise.resolve({})
+  }
   const wsl = !!record.location.wslDistro
   return forkMcpClaudeLaunchArgs({
     sessionId: record.sessionId,

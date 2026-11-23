@@ -3,6 +3,8 @@ import type { ClaudePromptRegistry } from './claude-prompt-registry'
 import type { ClaudeStructuredSessionEvent } from '../lifecycle/claude-structured-session-event'
 import type { ClaudeStreamJsonConnectionHandlers } from '../../claude-stream-json-connection'
 import type { ClaudeStructuredLaunch } from '../launch/claude-structured-launch-resolution'
+import type { ReadOnlySessionMode } from '../../../bots/bot-look-around-policy'
+import { forkReadOnlyPromptRefusal } from '../../../fork/read-only-prompts/read-only-prompt-refusal'
 import { claudeLaunchSkipsPermissions } from '../launch/claude-structured-spawn-options'
 import { createClaudeFullAccessPolicy } from './claude-full-access-policy'
 import {
@@ -16,6 +18,8 @@ export type ClaudePermissionCallbackDeps = {
   emit: (event: ClaudeStructuredSessionEvent) => void
   /** Read once per request: whether this process's Full access applied where the request arrived. */
   fullAccessAt: (requestId: string) => boolean
+  /** Fork (BAD-795): set for a read-only session, whose prompts nobody can answer. */
+  readOnly?: ReadOnlySessionMode
 }
 
 /** Questions and plan approval need the user's answer, not a permission; Full access never answers them. */
@@ -43,6 +47,9 @@ export function buildClaudePermissionCallbacks(deps: ClaudePermissionCallbackDep
   onUserDialog: OnUserDialog
 } {
   const canUseTool: CanUseTool = (toolName, input, options) => {
+    if (deps.readOnly) {
+      return Promise.resolve(forkReadOnlyPromptRefusal(deps.readOnly, options.toolUseID))
+    }
     const fullAccess = deps.fullAccessAt(options.requestId)
     // Full access approves Claude's own asks too (ask rules, ask-answering hooks, built-in safety checks).
     if (fullAccess && toolName && !needsUserAnswer(toolName, options)) {
@@ -106,7 +113,7 @@ type ClaudeExitHandler = NonNullable<ClaudeStreamJsonConnectionHandlers['onExit'
  *  never does, whatever Claude reports, and no other process's launch or reports carry over. */
 export function claudeLaunchPermissions(
   deps: Omit<ClaudePermissionCallbackDeps, 'fullAccessAt'>,
-  launch: Pick<ClaudeStructuredLaunch, 'options' | 'providerSessionId'>
+  launch: Pick<ClaudeStructuredLaunch, 'options' | 'providerSessionId' | 'readOnly'>
 ): {
   handlers: Pick<ClaudeStreamJsonConnectionHandlers, 'canUseTool' | 'onUserDialog' | 'onStdout'>
   /** Claude's mode in wire order; null without Full access, whose launches read no stdout. */
@@ -119,6 +126,7 @@ export function claudeLaunchPermissions(
     : null
   const callbacks = buildClaudePermissionCallbacks({
     ...deps,
+    ...(launch.readOnly ? { readOnly: launch.readOnly } : {}),
     fullAccessAt: (requestId) => policy?.allows(requestId) ?? false
   })
   return {

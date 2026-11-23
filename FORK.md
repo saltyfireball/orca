@@ -2094,6 +2094,16 @@ ones `SLRM-123 `).
       surface row names how many), and a failing callback lets the call through. The root is the
       chat's launch folder, which the runtime resolves for folder workspaces too, so chats and
       chat workers in a folder workspace are guarded.
+      The guard is added to whatever hooks the chat's options carry, every event and matcher kept
+      (BAD-795): a bot's look-around or tidy-up is held read-only by its own PreToolUse hook, which
+      the first version replaced. Claude Code takes the strictest of several hooks' answers (deny,
+      then ask, then allow; proved with the real CLI in both orders), so a read-only allow never
+      lifts a guard denial and the guard's silence never lifts a read-only denial.
+    - **Read-only runs never wait on a prompt (BAD-795).** Nobody sees a look-around's or a
+      tidy-up's chat, so a permission prompt there (an ask rule in the owner's Claude settings
+      outranks the hook's allow, say) is refused at once with the run's own refusal text, as
+      upstream already does for Codex, instead of leaving the run blocked. A tidy-up also takes no
+      MCP profile: its `--mcp-config` would bring servers back into a run that has none.
     - Every other hook agent is unguarded (their scripts discard the reply). Adding an agent means
       its hook contract allows a deny, a path that prints it, a proving test and a row in
       `commandGuardCoverage`.
@@ -3482,6 +3492,7 @@ Apply these in this order. Each one is a single commit.
 190. `BAD-764 Command guards allow a worktree removal command whose only other argument is --help or -h, which prints usage and removes nothing`
 191. `BAD-785 Command guards no longer read an escaped backtick or escaped $( inside double quotes as a command substitution; a real one, and one a later eval or bash -c would run, is still denied`
 192. `BAD-682 The goal loop sends to a terminal agent of a headless server whose status it never saw change live, which the mail gate refused as unverified so the text was never typed; tested with a real headless runtime and PTY`
+193. `BAD-795 Command guards keep the hooks a chat already has, so a bot's look-around and tidy-up stay read-only with the guards on; a permission prompt in a read-only run is refused at once, and a tidy-up takes no MCP profile`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4804,6 +4815,13 @@ Upstream files only get short hooks, which keeps merges small:
   `structured-session-child-env.ts` is untouched. Proof tests: `command-guards-native-chat.test.ts`
   (host, SDK and a stand-in CLI, always run) and `command-guards-real-claude.test.ts` (the real CLI,
   `ORCA_COMMAND_GUARDS_E2E=1`).
+- Read-only runs under the command guards (BAD-795), small edits in stock files:
+  `claude-structured-launch-resolution.ts` carries `basis.readOnly` on the launch (one type line, one
+  field, one type import) and hands `basis` instead of its record to `forkMcpClaudeExtraArgs`;
+  `claude-structured-inbound-control.ts` answers `canUseTool` of a read-only session with
+  `forkReadOnlyPromptRefusal` (`src/main/fork/read-only-prompts/`). Proof tests:
+  `command-guards-read-only.test.ts` (the real host, launch, SDK and a stand-in CLI) and
+  `command-guards-real-claude.test.ts`.
 
 - Command guards (BAD-686), one small edit in a stock file: `agent-tool-plugin-hooks.ts`
   (`respondAfterAgentToolPluginHooks`) asks `forkCommandGuardAnswer` before it reads the plugin
