@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import type { TerminalExitCause } from '../terminal/pty/lifecycle/terminal-exit-cause'
 import {
   decideWorkerRetry,
   resolveWorkerRetryPolicy,
+  workerExitKindOfTerminalCause,
   workerRetryDelayMs,
   type WorkerRetryInput
 } from './worker-retry'
@@ -63,13 +65,22 @@ describe('workerRetryDelayMs', () => {
 
 describe('decideWorkerRetry', () => {
   it('retries an exit, a loss and a transient provider error', () => {
-    expect(decideWorkerRetry(input({}))).toMatchObject({ retry: true, attempt: 1, delayMs: 30_000 })
+    expect(decideWorkerRetry(input({}))).toMatchObject({
+      retry: true,
+      attempt: 1,
+      delayMs: 30_000
+    })
     expect(decideWorkerRetry(input({ stop: { reason: 'lost' } }))).toMatchObject({ retry: true })
     expect(
       decideWorkerRetry(
-        input({ stop: { reason: 'errored', requestErrorKind: 'providerUnavailable' } })
+        input({
+          stop: { reason: 'errored', requestErrorKind: 'providerUnavailable' }
+        })
       )
-    ).toMatchObject({ retry: true, reason: 'provider error (providerUnavailable)' })
+    ).toMatchObject({
+      retry: true,
+      reason: 'provider error (providerUnavailable)'
+    })
   })
 
   it('never retries a worker that reported, whatever its status', () => {
@@ -88,12 +99,59 @@ describe('decideWorkerRetry', () => {
     expect(hold({ taskStatus: 'completed' })).toBe('task-settled')
     expect(hold({ stop: { reason: 'finished' } })).toBe('not-a-failure')
     expect(hold({ stop: { reason: 'needs-input' } })).toBe('not-a-failure')
-    expect(hold({ stop: { reason: 'exited', cause: 'user-close' } })).toBe('deliberate')
+    expect(hold({ stop: { reason: 'exited', exitKind: 'operator_close' } })).toBe('deliberate')
+    expect(hold({ blocked: 'no-coordinator' })).toBe('no-coordinator')
+    expect(hold({ blocked: 'cannot-resume' })).toBe('cannot-resume')
     expect(hold({ stop: { reason: 'exited', neverStarted: true } })).toBe('never-started')
     expect(hold({ stop: { reason: 'errored' } })).toBe('not-transient')
-    expect(hold({ stop: { reason: 'errored', requestErrorKind: 'usageLimitReached' } })).toBe(
-      'not-transient'
-    )
+    expect(
+      hold({
+        stop: { reason: 'errored', requestErrorKind: 'usageLimitReached' }
+      })
+    ).toBe('not-transient')
     expect(hold({ attemptsUsed: 2 })).toBe('exhausted')
+  })
+
+  // The decision table over every TerminalExitCause a terminal worker can end with, and the other
+  // structured exits. The cause strings of the stop reports are free text and decide nothing.
+  describe('exit causes', () => {
+    const causes: [TerminalExitCause, 'retry' | 'deliberate' | 'may-still-run'][] = [
+      [{ kind: 'operator_close' }, 'deliberate'],
+      [{ kind: 'signaled', signal: 9 }, 'retry'],
+      [{ kind: 'exited', exitCode: 1 }, 'retry'],
+      [{ kind: 'exited', exitCode: 0 }, 'retry'],
+      [{ kind: 'unknown', reason: 'stop_unverified' }, 'may-still-run'],
+      [{ kind: 'unknown', reason: 'host_lost' }, 'retry'],
+      [{ kind: 'unknown', reason: 'host_status_unavailable' }, 'retry'],
+      [{ kind: 'unknown', reason: 'cause_unreported' }, 'retry']
+    ]
+    it.each(causes)('terminal exit %j -> %s', (cause, expected) => {
+      const decision = decideWorkerRetry(
+        input({
+          stop: {
+            reason: cause.kind === 'operator_close' ? 'lost' : 'exited',
+            // Whatever words the report used, they are not read.
+            cause: 'Terminal closed by operator request',
+            exitKind: workerExitKindOfTerminalCause(cause)
+          }
+        })
+      )
+      expect(decision.retry ? 'retry' : decision.why).toBe(expected)
+    })
+
+    it.each([
+      ['provider_death', 'retry'],
+      ['app_update', 'retry'],
+      ['app_crash', 'retry'],
+      ['agent_exited', 'retry'],
+      ['agent_lost', 'retry'],
+      ['terminal_missing', 'retry'],
+      ['app_quit', 'deliberate'],
+      ['restart_dismissed', 'deliberate'],
+      ['maybe_running', 'may-still-run']
+    ] as const)('exit %s -> %s', (exitKind, expected) => {
+      const decision = decideWorkerRetry(input({ stop: { reason: 'exited', exitKind } }))
+      expect(decision.retry ? 'retry' : decision.why).toBe(expected)
+    })
   })
 })

@@ -5,6 +5,7 @@ import {
   describeTerminalExitCause,
   isDeliberateTerminalExit
 } from '../../../../shared/terminal/pty/lifecycle/terminal-exit-cause'
+import { workerExitKindOfTerminalCause } from '../../../../shared/fork/worker-retry'
 import { terminalLastOutput } from '../output/tail/terminal-tail-read'
 import {
   observeRemoteWorkerExit,
@@ -115,10 +116,11 @@ export abstract class RuntimePtyExitWorkerObservation extends RuntimePtyExitSurf
     lastOutput: string | undefined
   ): void {
     const errorContext = describeTerminalExitCause(cause)
+    const exitKind = workerExitKindOfTerminalCause(cause)
     // A person closing the pane leaves the task unowned; any other end is the agent's exit.
     const gone = isDeliberateTerminalExit(cause)
-      ? { reason: 'lost' as const, cause: 'it was closed in Orca', lastOutput }
-      : { reason: 'exited' as const, cause: errorContext, lastOutput }
+      ? { reason: 'lost' as const, cause: 'it was closed in Orca', exitKind, lastOutput }
+      : { reason: 'exited' as const, cause: errorContext, exitKind, lastOutput }
     const settledLocally = observeTerminalWorkerExit(
       db,
       this.getRuntimeId(),
@@ -148,7 +150,11 @@ export abstract class RuntimePtyExitWorkerObservation extends RuntimePtyExitSurf
     this.settleEndedAgentSession(ptyId, {
       error: reason,
       workerStage: 'agent_session_lost',
-      gone: { reason: 'lost', cause: `${reason}; its terminal is still open for inspection` }
+      gone: {
+        reason: 'lost',
+        cause: `${reason}; its terminal is still open for inspection`,
+        exitKind: 'agent_lost'
+      }
     })
   }
 
@@ -162,7 +168,11 @@ export abstract class RuntimePtyExitWorkerObservation extends RuntimePtyExitSurf
     }
     this.settleEndedAgentSession(ptyId, {
       error: "The worker's agent exited",
-      gone: { reason: 'exited', cause: 'its agent exited; its terminal is still open' },
+      gone: {
+        reason: 'exited',
+        cause: 'its agent exited; its terminal is still open',
+        exitKind: 'agent_exited'
+      },
       startDecides: true
     })
   }
@@ -174,7 +184,7 @@ export abstract class RuntimePtyExitWorkerObservation extends RuntimePtyExitSurf
     ending: {
       error: string
       workerStage?: string
-      gone: Pick<WorkerGone, 'reason' | 'cause'>
+      gone: Pick<WorkerGone, 'reason' | 'cause' | 'exitKind'>
       /** A start still deciding reports its own outcome; an agent in its pane before then may be another's. */
       startDecides?: true
     }

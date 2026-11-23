@@ -155,6 +155,7 @@ export class RuntimeLegacyWorkerTerminalRecoveryPersistence {
                 gone: {
                   from: candidate.terminalHandle,
                   reason: 'lost',
+                  exitKind: 'terminal_missing',
                   cause: 'its terminal was gone when Orca restarted',
                   lastOutput
                 },

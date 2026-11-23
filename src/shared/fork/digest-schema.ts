@@ -64,7 +64,7 @@ const RetrySchema = z.object({
   title: text,
   attempt: z.number().int().min(1),
   reason: text,
-  status: z.enum(['scheduled', 'started', 'failed', 'cancelled']),
+  status: z.enum(['scheduled', 'started', 'failed', 'cancelled', 'skipped']),
   at: time
 })
 

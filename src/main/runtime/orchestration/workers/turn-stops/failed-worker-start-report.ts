@@ -78,6 +78,7 @@ export function reportFailedWorkerStart(
       gone: {
         from: `dispatch:${dispatch.id}`,
         reason: 'lost',
+        exitKind: 'start_failed',
         cause: `it never started: ${worker.last_error ?? 'its start failed'}`,
         lastOutput: undefined,
         leftover: describeLeftover(worker.residual_resources),

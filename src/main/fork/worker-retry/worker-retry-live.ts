@@ -17,10 +17,13 @@ import {
   startWorkerFollowUp
 } from '../../runtime/rpc/methods/orchestration/messaging/worker-follow-up'
 import { escalateWorkerFailure } from '../../runtime/orchestration/workers/reports/worker-failure-escalation'
+import { readWorkerPresence } from '../../runtime/orchestration/db/worker-presence/worker-presence-store'
 import { dispatchReportMailbox } from '../../runtime/orchestration/workers/reports/dispatch-report-mailbox'
 import {
   decideWorkerRetry,
   resolveWorkerRetryPolicy,
+  workerRetryReason,
+  WORKER_RETRY_HOLD_TEXT,
   type WorkerRetryHold,
   type WorkerRetryStop
 } from '../../../shared/fork/worker-retry'
@@ -30,8 +33,10 @@ import {
   readRetryOf,
   readRunPolicy,
   recordRetry,
+  recordSkippedRetry,
   settleRetry
 } from './retry-store'
+import { restartBlocker, resolveRetryCoordinator } from './retry-coordinator'
 
 type Live = { runtime: OrcaRuntimeService; db: OrchestrationDb }
 
@@ -61,7 +66,10 @@ export function installForkWorkerRetry(runtime: OrcaRuntimeService, db: Orchestr
   }, 0).unref?.()
 }
 
-export type ForkWorkerRetryNotice = { subject: string; body: (task: string) => string }
+export type ForkWorkerRetryNotice = {
+  subject: string
+  body: (task: string) => string
+}
 
 /** True when a worker sent its own worker_done for this Dispatch and the lifecycle took it. */
 function workerSentDone(db: OrchestrationDb, dispatchId: string): boolean {
@@ -99,6 +107,10 @@ export function forkWorkerRetryOnStop(
       body: (task) =>
         `The worker of ${task} ended: ${reason}. Orca will restart it in the same workspace in about ${formatDelay(delayMs)} (automatic retry ${attempt} of ${policy.max}). Do not start it again yourself; you hear again if the retry fails or the limit is reached. \`orca retry show --task ${dispatch.task_id}\` lists the retries.`
     })
+    if (earlier?.status === 'skipped') {
+      // The same stop reported again: already decided, and it stays with the coordinator.
+      return undefined
+    }
     if (earlier && earlier.status !== 'cancelled') {
       // The same stop reported again: it is the same retry.
       return noticeOf(
@@ -107,14 +119,28 @@ export function forkWorkerRetryOnStop(
         earlier.reason
       )
     }
+    const attemptsUsed = countRetryChain(db, dispatch.id)
     const decision = decideWorkerRetry({
       policy,
       stop,
-      attemptsUsed: countRetryChain(db, dispatch.id),
+      attemptsUsed,
+      blocked: restartBlocker(db, dispatch.run_id, dispatch.id),
       workerReported: workerSentDone(db, dispatch.id),
       taskStatus: db.getTask(dispatch.task_id, dispatch.run_id)?.status ?? null
     })
     if (!decision.retry) {
+      // `orca retry show` says why a failure was left to the coordinator. Stops that are no failure
+      // and a policy that is off are not worth a row.
+      if (policy.enabled && WORKER_RETRY_SKIP_RECORDED.has(decision.why)) {
+        recordSkippedRetry(db, {
+          taskId: dispatch.task_id,
+          runId: dispatch.run_id,
+          dispatchId: dispatch.id,
+          attempt: attemptsUsed,
+          reason: workerRetryReason(stop),
+          detail: WORKER_RETRY_HOLD_TEXT[decision.why]
+        })
+      }
       return undefined
     }
     const dueAtMs = Date.now() + decision.delayMs
@@ -160,15 +186,20 @@ function arm(db: OrchestrationDb, dispatchId: string, dueAtMs: number): void {
   timers.set(dispatchId, timer)
 }
 
+/** Holds worth a row in `orca retry show`: a failure the policy left to the coordinator. */
+const WORKER_RETRY_SKIP_RECORDED: ReadonlySet<WorkerRetryHold> = new Set([
+  'deliberate',
+  'may-still-run',
+  'never-started',
+  'not-transient',
+  'exhausted',
+  'worker-reported',
+  'cannot-resume',
+  'no-coordinator'
+])
+
 const NOT_RETRIED: Record<WorkerRetryHold | 'steered', string> = {
-  off: 'retries were switched off',
-  'worker-reported': 'the worker reported',
-  'task-settled': 'the Task is settled',
-  'not-a-failure': 'the worker had not failed',
-  deliberate: 'the worker was closed on purpose',
-  'never-started': 'the worker never started',
-  'not-transient': 'the error is not one a retry fixes',
-  exhausted: 'the limit was reached',
+  ...WORKER_RETRY_HOLD_TEXT,
   steered: 'the worker was already started again'
 }
 
@@ -209,28 +240,56 @@ async function runRetry(db: OrchestrationDb, dispatchId: string): Promise<void> 
     }
     const task = db.getTask(dispatch.task_id, dispatch.run_id)
     if (task?.status === 'completed' || task?.status === 'failed') {
-      settleRetry(db, dispatchId, 'cancelled', { detail: NOT_RETRIED['task-settled'] })
+      settleRetry(db, dispatchId, 'cancelled', {
+        detail: NOT_RETRIED['task-settled']
+      })
       return
+    }
+    // A chat worker that hit a provider error or lost its provider leaves its Dispatch open (mail
+    // starts it again), and no follow-up plan exists for an open Dispatch. Settle it first, unless
+    // the worker is working again, which is the restart some other path already did.
+    if (dispatch.status === 'pending' || dispatch.status === 'dispatched') {
+      if (readWorkerPresence(db, dispatchId)?.presence === 'working') {
+        settleRetry(db, dispatchId, 'cancelled', {
+          detail: NOT_RETRIED.steered
+        })
+        return
+      }
+      db.failDispatch(dispatchId, `${entry.reason}; Orca is restarting it`, {
+        workerProcessExited: true,
+        workerStage: 'retry_restart'
+      })
+      if (db.getTask(dispatch.task_id, dispatch.run_id)?.status === 'failed') {
+        settleRetry(db, dispatchId, 'cancelled', {
+          detail: NOT_RETRIED['task-settled']
+        })
+        return
+      }
     }
     const plan = planWorkerFollowUp(db, dispatchId, 'dispatch')
     if (plan?.kind === 'steer') {
       settleRetry(db, dispatchId, 'cancelled', { detail: NOT_RETRIED.steered })
       return
     }
-    const run = db.getRun?.(dispatch.run_id)
-    const from = run?.coordinator_handle ?? db.getActiveCoordinatorRun?.()?.coordinator_handle
-    if (plan?.kind !== 'start' || !from) {
-      const why = plan?.kind !== 'start' ? 'this worker cannot be resumed' : 'no coordinator'
+    const coordinator = await resolveRetryCoordinator(runtime, db, db.getRun?.(dispatch.run_id))
+    if (plan?.kind !== 'start' || 'refused' in coordinator) {
+      const why =
+        plan?.kind !== 'start'
+          ? WORKER_RETRY_HOLD_TEXT['cannot-resume']
+          : (coordinator as { refused: string }).refused
       settleRetry(db, dispatchId, 'failed', { detail: why })
       escalateFailedRetry(db, dispatchId, why)
       return
     }
     const spec = typeof task?.spec === 'string' ? task.spec : ''
     const outcome = await startWorkerFollowUp({
-      ctx: { runtime },
+      ctx: {
+        runtime,
+        ...(coordinator.caller ? { orchestrationCaller: coordinator.caller } : {})
+      },
       db,
       plan,
-      from,
+      from: coordinator.from,
       message: {
         subject: `Automatic retry ${entry.attempt} after a failure`,
         body: retryBrief(entry.attempt, entry.reason, spec)

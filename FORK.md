@@ -2841,17 +2841,33 @@ ones `SLRM-123 `).
     started (the start breaker has its own count), an exit the user or the app chose (`user-close`,
     `quit`), a usage limit, an untyped error, a finished or waiting worker, and a Task past its
     restarts. The decision table is `decideWorkerRetry` in `src/shared/fork/worker-retry.ts`.
+  - **Coverage (BAD-765).** The decision reads the structured exit (`exitKind`, from
+    `TerminalExitCause` and the other producers of a stop), never the free text of a stop report.
+    Retried: a process that exited or was signaled, a lost host, an agent that exited or was lost
+    with its terminal still open, a chat worker whose provider died, a chat worker's transient
+    provider error, and a worker an app update or crash cut off. Never retried: a terminal the user
+    closed or Orca stopped (`operator_close`), a worker cut off by a quit the user chose or whose
+    restart offer was dismissed, and an agent that may still be running (an unconfirmed stop, a
+    cut whose exit is unproven), since a restart could start a second one beside it. A chat worker's
+    Dispatch stays open on a provider error, so just before the restart Orca settles it as failed
+    (unless the worker is working again, which cancels the restart) and plans the follow-up on the
+    settled Dispatch. A Run a native chat coordinates has no terminal handle: the restart is started
+    as that chat's own session. Carrying the done contract to the restart is BAD-763.
   - **How it restarts.** The same path as a message to a finished worker: the worker's own
     workspace, its saved conversation when its agent keeps one, and a new Task whose brief says why
     and repeats the original spec unchanged. No new permissions and no new spec. The restarts of
     one worker chain, so the limit counts across them.
   - **What the coordinator sees.** Instead of the demand to act, a normal status notice "Worker
     ended; Orca is retrying it" with the reason, the wait and "retry N of M", which tells it not
-    to start the worker itself. When the retry cannot start, or the limit is reached, it gets the
+    to start the worker itself. That notice goes out only when the restart can start: a worker
+    with no record to resume, or a Run with no coordinator to start it as, gets the usual
+    escalation at once. When the retry cannot start, or the limit is reached, it gets the
     usual escalation (the limit case is the unchanged stop report).
   - **Visibility.** `orca retry show [--task] [--run]` (RPC `fork.workerRetry.show`) lists every
     retry with its reason, state (scheduled, started, failed, cancelled) and the Dispatch it
-    started; the digest has a "Worker retries" block per host. Retries waiting for their time
+    started, or `skipped` with why (closed on purpose, not a transient error, may still be
+    running, limit reached, no coordinator, cannot be resumed, the worker reported); the digest
+    has a "Worker retries" block per host. Retries waiting for their time
     arm again after an app restart.
   - **Not done.** Moving the retry to another host (placement) or to the other provider (chat
     handoff) is not part of this change: a retry stays in its own workspace.
@@ -3175,6 +3191,7 @@ Apply these in this order. Each one is a single commit.
 165. `BAD-759 Needs you list: one list of everything waiting on the owner (bots on this computer and paired servers, chats, agents on an approval or a question, board asks), opened from anywhere by Mod+Shift+L or a status bar control, with a jump to each, Next and Back, quick answers through the owner path, and the bot row click chooses list, item or off`
 166. `BAD-769 Fork sync releases main as it is when the upstream merge conflicts (the run still ends red with FORK-SYNC-CONFLICT), and a skip_upstream run input ships a fix without the merge`
 167. `BAD-771 A done check or notify command past its time limit is ended with everything it started (own process group, taskkill /t on Windows) and the run settles at the deadline, also where sh is dash`
+168. `BAD-765 Worker retry covers chat workers, provider errors, Runs a chat coordinates and workers an app update cut off; it reads the structured exit instead of free text, so a worker the user closed is never restarted; the coordinator is told Orca is retrying only when the restart can start; orca retry show lists why a retry was not started`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4380,6 +4397,12 @@ Upstream files only get short hooks, which keeps merges small:
   `fork-global-settings.ts`; the settings catalog is regenerated. The digest section gains an
   optional `retries` list (`digest.ts`, `digest-schema.ts`, `digest-format.ts`,
   `digest-local.ts`, `digest-runtime.ts`).
+  BAD-765 adds an optional `exitKind` to `WorkerTurnStop` and `WorkerGone`
+  (`worker-turn-stop-report.ts`, `worker-presence-report.ts`) that `mailWorkerReport` hands to the
+  hook, and one line each at the places that build a stop of a worker that went away:
+  `pty-exit-worker-observation.ts`, `chat-worker-provider-death.ts`, `restart-worker-stop-report.ts`,
+  `failed-worker-start-report.ts` and `runtime-legacy-worker-terminal-recovery-persistence.ts`.
+  The digest schema accepts the `skipped` retry status (`digest-schema.ts`).
 
 - Agent slice limits (BAD-684), one small edit in a stock file: `terminal-scopes-runtime.ts` calls
   `forkApplyAgentSlice(resolved, log)` right after the terminal scopes resolve. The limits are

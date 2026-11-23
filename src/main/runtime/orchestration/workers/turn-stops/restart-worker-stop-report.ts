@@ -3,6 +3,7 @@
 // as its live stop, so a rest already reported is not reported again, and a chat as the restart left it.
 // Other chats are not opened.
 
+import type { WorkerExitKind } from '../../../../../shared/fork/worker-retry'
 import type { OrchestrationDb } from '../../db/orchestration-db'
 import type {
   StructuredAgentSessionRestartCut,
@@ -41,6 +42,12 @@ export type RestartWorkerStopReportDeps = {
     offeredCuts: StructuredAgentSessionRestartResume['offeredCuts']
     cutOf: StructuredAgentSessionRestartResume['cutOf']
   } | null
+}
+
+const CUT_EXIT_KIND: Record<StructuredAgentSessionRestartCut['cause'], WorkerExitKind> = {
+  crash: 'app_crash',
+  quit: 'app_quit',
+  update: 'app_update'
 }
 
 const CUT_BY: Record<StructuredAgentSessionRestartCut['cause'], string> = {
@@ -111,9 +118,10 @@ function observeCutWorkerGone(
   target: { kind: 'local'; dispatch: DispatchContextRow },
   sessionId: string,
   cut: StructuredAgentSessionRestartCut,
-  gone: { from: string; cause: string; lastOutput: string | undefined }
+  gone: { from: string; cause: string; lastOutput: string | undefined; dismissed?: true }
 ): void {
   const fence = `cut:${sessionId}:${cut.turnId}`
+  const { dismissed, ...fact } = gone
   observeWorker(
     deps.db,
     target,
@@ -125,8 +133,18 @@ function observeCutWorkerGone(
       // to have exited, and mail could start a second one beside it.
       gone:
         cut.exitUnproven || cut.continuationUnconfirmed
-          ? { ...gone, reason: 'lost', cause: `${gone.cause}; its agent may still be running` }
-          : { ...gone, reason: 'exited', restartsOnMail: true }
+          ? {
+              ...fact,
+              reason: 'lost',
+              exitKind: 'maybe_running',
+              cause: `${gone.cause}; its agent may still be running`
+            }
+          : {
+              ...fact,
+              reason: 'exited',
+              exitKind: dismissed ? 'restart_dismissed' : CUT_EXIT_KIND[cut.cause],
+              restartsOnMail: true
+            }
     },
     deps.reportDeps
   )
@@ -147,7 +165,8 @@ export function reportDismissedCutWorkers(
         cause: cut.continuationUnconfirmed
           ? `${CUT_BY[cut.cause]}; Orca asked its agent to continue but never saw it start, and its restart offer was dismissed`
           : `${CUT_BY[cut.cause]}, and its restart offer was dismissed`,
-        lastOutput: deps.lastOutput(sessionId)
+        lastOutput: deps.lastOutput(sessionId),
+        dismissed: true
       })
     }
   }

@@ -29,6 +29,7 @@ export function reportChatWorkerProviderDeath(
           gone: {
             from,
             reason: 'exited',
+            exitKind: 'provider_death',
             ...(death.reason ? { cause: death.reason } : {}),
             restartsOnMail: true,
             lastOutput: undefined

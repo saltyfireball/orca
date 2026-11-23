@@ -12,6 +12,12 @@ export function formatForkWorkerRetry(result: ForkWorkerRetryShowResult): string
     `${policy.run ? `Run ${policy.run}: ` : ''}retries ${policy.enabled ? 'on' : 'off'}, up to ${policy.max} per Task, first wait ${Math.round(policy.backoffMs / 1000)}s (doubling, at most ${Math.round(policy.maxBackoffMs / 1000)}s)`
   ]
   for (const retry of result.retries) {
+    if (retry.status === 'skipped') {
+      lines.push(
+        `${retry.at} ${retry.taskId} not retried: ${retry.reason}${retry.detail ? ` (${retry.detail})` : ''}`
+      )
+      continue
+    }
     lines.push(
       `${retry.at} ${retry.taskId} retry ${retry.attempt} ${retry.status}: ${retry.reason}${retry.retryDispatchId ? ` -> ${retry.retryDispatchId}` : ''}${retry.detail ? ` (${retry.detail})` : ''}`
     )

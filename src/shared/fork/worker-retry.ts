@@ -2,6 +2,7 @@
 // stops on a provider error, Orca can start it again in the same workspace after a backoff instead
 // of waiting for the coordinator. Pure parts shared by the host, the CLI and the tests.
 import { z } from 'zod'
+import type { TerminalExitCause } from '../terminal/pty/lifecycle/terminal-exit-cause'
 
 export type ForkWorkerRetrySettings = {
   /** Fork worker retry (BAD-681): restart a worker that exited, was lost or hit a provider error, in its workspace after a backoff, instead of waiting for the coordinator. A Run's own policy (`orca retry policy --run`) overrides it. Off unless true. */
@@ -86,8 +87,54 @@ export const WORKER_RETRY_TRANSIENT_FAILURE_KINDS: ReadonlySet<string> = new Set
   'restartFailed'
 ])
 
+/** How a worker went away, read from the structured exit and never from the free text of a stop
+ *  report. The terminal kinds come from `TerminalExitCause`; the rest name the other producers of
+ *  an `exited` or `lost` stop. */
+export type WorkerExitKind =
+  | 'operator_close'
+  | 'signaled'
+  | 'process_exited'
+  | 'host_lost'
+  | 'host_status_unavailable'
+  | 'cause_unreported'
+  | 'stop_unverified'
+  | 'agent_exited'
+  | 'agent_lost'
+  | 'terminal_missing'
+  | 'provider_death'
+  | 'start_failed'
+  | 'app_update'
+  | 'app_crash'
+  | 'app_quit'
+  | 'restart_dismissed'
+  | 'maybe_running'
+
+/** The exit kind a terminal's exit cause stands for. */
+export function workerExitKindOfTerminalCause(cause: TerminalExitCause): WorkerExitKind {
+  switch (cause.kind) {
+    case 'operator_close':
+      return 'operator_close'
+    case 'signaled':
+      return 'signaled'
+    case 'exited':
+      return 'process_exited'
+    case 'unknown':
+      return cause.reason
+  }
+}
+
 /** Exits the user or the app chose: nothing to heal. */
-const DELIBERATE_CAUSES: ReadonlySet<string> = new Set(['user-close', 'quit', 'evict', 'shutdown'])
+const DELIBERATE_EXITS: ReadonlySet<WorkerExitKind> = new Set([
+  'operator_close',
+  'app_quit',
+  'restart_dismissed'
+])
+
+/** Exits that may have left the agent running: a restart could start a second one beside it. */
+const MAY_STILL_RUN_EXITS: ReadonlySet<WorkerExitKind> = new Set([
+  'stop_unverified',
+  'maybe_running'
+])
 
 export type WorkerRetryStop = {
   /** The stop reasons upstream reports; 'start-blocked', 'never-ready' and 'background-wait' (added by
@@ -102,8 +149,10 @@ export type WorkerRetryStop = {
     | 'start-blocked'
     | 'never-ready'
     | 'background-wait'
-  /** Why a worker went away, for an exit. */
+  /** Why a worker went away, for an exit, in words for the coordinator. Never matched on. */
   cause?: string | undefined
+  /** How it went away, structured: what the retry decision reads. Absent reads as a plain exit. */
+  exitKind?: WorkerExitKind | undefined
   /** The typed failure kind of a chat request that failed, for an `errored` stop. */
   requestErrorKind?: string | undefined
   neverStarted?: boolean | undefined
@@ -119,6 +168,9 @@ export type WorkerRetryInput = {
   /** The worker sent its own worker_done (succeeded or failed): its report is final. */
   workerReported: boolean
   taskStatus: string | null
+  /** Why a restart could not start even if the policy allows it (no worker to resume, no
+   *  coordinator to start it as): the coordinator is then not told Orca is retrying. */
+  blocked?: 'cannot-resume' | 'no-coordinator' | null
 }
 
 export type WorkerRetryDecision =
@@ -131,9 +183,27 @@ export type WorkerRetryHold =
   | 'task-settled'
   | 'not-a-failure'
   | 'deliberate'
+  | 'may-still-run'
   | 'never-started'
   | 'not-transient'
   | 'exhausted'
+  | 'cannot-resume'
+  | 'no-coordinator'
+
+/** Why a retry was not started, in words for the coordinator and `orca retry show`. */
+export const WORKER_RETRY_HOLD_TEXT: Record<WorkerRetryHold, string> = {
+  off: 'retries were switched off',
+  'worker-reported': 'the worker reported',
+  'task-settled': 'the Task is settled',
+  'not-a-failure': 'the worker had not failed',
+  deliberate: 'the worker was closed on purpose',
+  'may-still-run': 'the agent may still be running',
+  'never-started': 'the worker never started',
+  'not-transient': 'the error is not one a retry fixes',
+  exhausted: 'the limit was reached',
+  'cannot-resume': 'this worker cannot be resumed',
+  'no-coordinator': 'its Run has no coordinator to start it as'
+}
 
 /** Why a stop is worth another attempt, in the words the coordinator reads. */
 export function workerRetryReason(stop: WorkerRetryStop): string {
@@ -147,7 +217,10 @@ export function workerRetryReason(stop: WorkerRetryStop): string {
 /** The decision table. A worker that reported (done or failed on purpose) is never retried. */
 export function decideWorkerRetry(input: WorkerRetryInput): WorkerRetryDecision {
   const { policy, stop } = input
-  const hold = (why: WorkerRetryHold): WorkerRetryDecision => ({ retry: false, why })
+  const hold = (why: WorkerRetryHold): WorkerRetryDecision => ({
+    retry: false,
+    why
+  })
   if (!policy.enabled) {
     return hold('off')
   }
@@ -170,11 +243,16 @@ export function decideWorkerRetry(input: WorkerRetryInput): WorkerRetryDecision 
     ) {
       return hold('not-transient')
     }
-  } else if (stop.cause && DELIBERATE_CAUSES.has(stop.cause)) {
+  } else if (stop.exitKind && DELIBERATE_EXITS.has(stop.exitKind)) {
     return hold('deliberate')
+  } else if (stop.exitKind && MAY_STILL_RUN_EXITS.has(stop.exitKind)) {
+    return hold('may-still-run')
   }
   if (input.attemptsUsed >= policy.max) {
     return hold('exhausted')
+  }
+  if (input.blocked) {
+    return hold(input.blocked)
   }
   const attempt = input.attemptsUsed + 1
   return {
@@ -213,12 +291,15 @@ export type ForkWorkerRetryEntry = {
   reason: string
   at: string
   dueAt: string
-  status: 'scheduled' | 'started' | 'failed' | 'cancelled'
+  status: 'scheduled' | 'started' | 'failed' | 'cancelled' | 'skipped'
   detail: string | null
 }
 
 export type ForkWorkerRetryShowResult = {
-  policy: WorkerRetryPolicy & { run: string | null; own: WorkerRetryRunPolicy | null }
+  policy: WorkerRetryPolicy & {
+    run: string | null
+    own: WorkerRetryRunPolicy | null
+  }
   retries: ForkWorkerRetryEntry[]
 }
 

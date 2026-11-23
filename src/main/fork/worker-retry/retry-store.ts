@@ -66,7 +66,11 @@ export function writeRunPolicy(
   runId: string,
   patch: Partial<WorkerRetryRunPolicy>
 ): WorkerRetryRunPolicy {
-  const current = readRunPolicy(handle, runId) ?? { enabled: null, max: null, backoffSeconds: null }
+  const current = readRunPolicy(handle, runId) ?? {
+    enabled: null,
+    max: null,
+    backoffSeconds: null
+  }
   const next = { ...current, ...patch }
   ensureTables(handle)
     .prepare(
@@ -147,6 +151,35 @@ export function recordRetry(
   return result.changes > 0
 }
 
+/** Records a failure the policy left to the coordinator, with why, for `orca retry show`. */
+export function recordSkippedRetry(
+  handle: RetryDbHandle,
+  entry: {
+    taskId: string
+    runId: string | null
+    dispatchId: string
+    attempt: number
+    reason: string
+    detail: string
+  }
+): void {
+  ensureTables(handle)
+    .prepare(
+      `INSERT OR IGNORE INTO fork_worker_retries
+         (task_id, run_id, dispatch_id, attempt, reason, due_at, status, detail)
+       VALUES (?, ?, ?, ?, ?, ?, 'skipped', ?)`
+    )
+    .run(
+      entry.taskId,
+      entry.runId,
+      entry.dispatchId,
+      entry.attempt,
+      entry.reason,
+      new Date().toISOString(),
+      entry.detail.slice(0, 500)
+    )
+}
+
 export function settleRetry(
   handle: RetryDbHandle,
   dispatchId: string,
@@ -224,7 +257,10 @@ export function listScheduled(
        FROM fork_worker_retries WHERE status = 'scheduled' ORDER BY id`
     )
     .all() as EntryRow[]
-  return rows.map((row) => ({ ...entryOf(row), dueAtMs: Date.parse(row.due_at) || Date.now() }))
+  return rows.map((row) => ({
+    ...entryOf(row),
+    dueAtMs: Date.parse(row.due_at) || Date.now()
+  }))
 }
 
 /** Digest: restarts recorded since a time, newest first. */

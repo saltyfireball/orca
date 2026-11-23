@@ -12,6 +12,7 @@ import type { WorkerApprovalPayload } from '../../../../../shared/orchestration/
 import { describeApprovalClosed } from './worker-approval-text'
 import { describeStop, WORKER_STOP_SUBJECTS } from './worker-turn-stop-wording'
 import { forkWorkerRetryOnStop } from '../../../../fork/worker-retry/worker-retry-live'
+import type { WorkerExitKind } from '../../../../../shared/fork/worker-retry'
 import type { AgentBackgroundWait } from '../../../../../shared/agent-status/lifecycle/agent-background-wait'
 import { workerBackgroundWaitDueAt } from './worker-background-wait-notice'
 import type { UnconfirmedStartEvidence } from './unconfirmed-start-evidence'
@@ -43,6 +44,8 @@ export type WorkerTurnStop = {
   turnStartedAt?: number
   /** Why the worker went away, for an `exited` or `lost` stop. */
   cause?: string
+  /** How it went away, structured (BAD-765): the worker retry decides on this, never on `cause`. */
+  exitKind?: WorkerExitKind
   /** An exited chat: mail starts it again, keeping its history. */
   restartsOnMail?: true
   /** What the worker left behind, such as the workspace of a start that failed. */
@@ -216,6 +219,7 @@ function mailWorkerReport(
   const retry = forkWorkerRetryOnStop(db, dispatch, {
     reason: stop.reason,
     cause: stop.cause,
+    exitKind: stop.exitKind,
     requestErrorKind: stop.requestError?.kind,
     neverStarted: stop.neverStarted,
     settled: stop.settled
