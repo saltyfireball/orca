@@ -4,7 +4,7 @@
 // is audited. command-guards-real-claude.test.ts runs the same against the real CLI.
 import { randomUUID } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -60,7 +60,12 @@ afterEach(async () => {
 })
 
 /** Runs one chat on a stand-in CLI that asks the PreToolUse hook about a force push; returns the answer. */
-async function forceTheHook(session: string, workspaceId?: string): Promise<unknown> {
+async function forceTheHook(
+  session: string,
+  workspaceId?: string,
+  command = 'git push --force origin main'
+): Promise<unknown> {
+  writeFileSync(`${process.env.GUARD_FAKE_ANSWER_FILE}.command`, command)
   const host = await ensureStructuredAgentSessionHost({
     stateDirectory: state,
     hostId: 'local',
@@ -153,6 +158,32 @@ describe('command guard proof: native chat', () => {
       (row) => row.surface === 'native-chat'
     )
     expect(surface).toMatchObject({ guarded: false, chats: { guarded: 0, unguarded: 1 } })
+  })
+})
+
+describe('heredocs in a native chat (BAD-785)', () => {
+  it('lets a heredoc with a quote in its body through', async () => {
+    const before = listCommandGuardAudit(500).length
+    const reply = await forceTheHook(
+      `chat-${randomUUID()}`,
+      undefined,
+      "cat > notes.md <<'EOF'\nit's a `quoted` note\nEOF"
+    )
+    expect(JSON.stringify(reply)).not.toContain('deny')
+    expect(listCommandGuardAudit(500)).toHaveLength(before)
+  })
+
+  it('denies a heredoc fed to bash that breaks a rule', async () => {
+    const reply = await forceTheHook(
+      `chat-${randomUUID()}`,
+      undefined,
+      "bash <<'EOF'\ngit push --force origin main\nEOF"
+    )
+    expect(child(reply, 'hookSpecificOutput').permissionDecision).toBe('deny')
+    expect(listCommandGuardAudit(1)[0]).toMatchObject({
+      rule: 'force-push',
+      surface: 'native-chat'
+    })
   })
 })
 

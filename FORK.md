@@ -2020,6 +2020,22 @@ ones `SLRM-123 `).
     `unreadable-command` (unbalanced quotes or nesting too deep, with a verb the guard watches).
     Wrappers are looked through: `sudo`, `env`, `command`, `nohup`, `xargs`, `bash -c`, `eval`,
     `$(...)`, backticks, and `cd` before the call.
+    **Heredocs and variables (BAD-785).** A heredoc body is data (never tokenized, however many
+    quotes or backticks it holds) unless its reader may run it: a shell (`sh`, `bash`, `zsh`,
+    `dash`, `ksh`, `fish`, also through `sudo`/`env`/`nohup`/`timeout`/`xargs`), `ssh`, `su`,
+    `eval`, `source`, a runner naming a shell (`docker exec ... bash`), a pipe into any of those
+    or into a loop, a process substitution, a function defined in the same command, or the end of
+    a loop (`done <<EOF`). Then the body is read as commands and the rules apply. An unquoted
+    delimiter's body is also read for `$( )` and backticks, a heredoc with no closing line is
+    read as commands, `$((1<<2))` and `${x:-<<EOF}` are not heredocs, and a literal assigned
+    earlier in the same command (`S=/tmp/x; rm -rf $S/sub`) is followed for paths, the last
+    assignment winning; one that is conditional, in a subshell or compound, appended, computed,
+    spaced, or reset by `eval`/`read`/`for` is not. `unreadable-command` now names the part and
+    why. Still open (not a sandbox): a script written by one command and run by another
+    (`tee run.sh <<EOF && bash run.sh`), a data command that prints shell text into a pipe (a
+    `python3` heredoc piped to `bash` is read as shell text, so it only catches what is plain),
+    `echo`/`printf` text fed to `bash -c "$(...)"`, an interpreter running its own heredoc
+    (`python3 -` calling `os.system`), and pipes into a shell that follow a subshell or `&&`.
   - **Overrides.** `forkCommandGuardDisabledRules` (comma list, every project) and
     `orca command-guards allow|disallow <rule> [--project NAME|PATH|ID]` (per project, kept in
     `forkCommandGuardProjectRules` by project id). All are `orca settings` keys too.
@@ -3405,6 +3421,7 @@ Apply these in this order. Each one is a single commit.
 183. `BAD-741 Agent profiles apply at launch: the capped permission mode through each agent's own mode (terminal flags or chat option, or a note where it has none), the account through the Claude account pins (refused when missing or signed out), the preamble once for --task, spec file, retries and follow-ups, carried to a paired server that checks or refuses it, and pickers in the + menu and the automation dialog`
 184. `BAD-676 A later push re-evaluates: a push to the open pull request of a settled --require-pr-checks Task is read again for forkCompletionContractLaterPushHours (24); green is a pass attempt, red a fail attempt and one escalation per head with a Decision inbox row, read where the checks ran and sent on the Run home`
 185. `BAD-681 Retries in the crew view and the Task history: a worker's crew row says which try, why it ended and whether Orca waits (and until when), restarted it or gave up; orca contract show lists the Task's retries and the retry that started it`
+186. `BAD-785 Command guards read heredoc bodies as data unless a shell may run them, follow a literal variable set earlier in the command, and say what part of an unreadable command could not be read`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

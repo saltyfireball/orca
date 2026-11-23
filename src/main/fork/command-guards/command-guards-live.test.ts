@@ -57,6 +57,16 @@ describe('command guard proof: terminal', () => {
     expect(listCommandGuardAudit(1)[0]).toMatchObject({ agent: 'claude', rule: 'force-push' })
   })
 
+  it('reads a heredoc body as data, and as commands when a shell reads it (BAD-785)', () => {
+    const owner = { paneKey: 'tab:1', worktreeId: `repo1::${root}`, hookEventName: 'PreToolUse' }
+    const ask = (command: string): string | null =>
+      forkCommandGuardAnswer('claude', body(command), owner, true)
+    expect(ask("cat > notes.md <<'EOF'\nit's a `quoted` note\nEOF")).toBeNull()
+    expect(ask("git commit -F - <<'EOF'\nfix: user's input\nEOF")).toBeNull()
+    expect(ask("bash <<'EOF'\ngit push --force origin main\nEOF")).toContain('force-push')
+    expect(ask("cat <<'EOF' | bash\ngit push --force origin main\nEOF")).toContain('force-push')
+  })
+
   it('lets a script that does not read the answer through', () => {
     const answer = forkCommandGuardAnswer(
       'claude',

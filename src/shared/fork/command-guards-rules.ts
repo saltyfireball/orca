@@ -249,7 +249,7 @@ export function evaluateCommandGuard(
   command: string,
   ctx: CommandGuardContext
 ): CommandGuardVerdict {
-  const { commands, readable } = readShellCommands(command, ctx.workspaceRoot, ctx.home)
+  const { commands, problem } = readShellCommands(command, ctx.workspaceRoot, ctx.home)
   const verdicts: (CommandGuardVerdict | null)[] = commands.map((call) => {
     if (DELETERS.has(call.name) || call.name === 'find') {
       return checkDelete(call, ctx)
@@ -260,11 +260,12 @@ export function evaluateCommandGuard(
     }
     return call.name === 'orca' ? checkOrca(call) : null
   })
-  if (!readable && RISKY_WORD.test(command)) {
+  const risky = problem ? RISKY_WORD.exec(problem.scope) : null
+  if (problem && risky) {
     verdicts.push(
       deny(
         'unreadable-command',
-        'Orca could not read this command (unbalanced quotes or too deeply nested), and it uses a verb the guard watches.'
+        `Orca could not read this command: ${problem.why} (at: ${problem.part}), and it uses a verb the guard watches (${risky[2]}). Reword it: close the quote, or put quoted text in a heredoc with a quoted delimiter (<<'EOF') so it is read as data.`
       )
     )
   }
