@@ -3335,6 +3335,10 @@ Upstream files only get short hooks, which keeps merges small:
   `macos-daemon-launchd.ts`. Left shared on purpose: the `orca://` scheme (macOS picks one
   app), the serve launchd label prefix and the daemon job label (keyed by data folder, so
   shared mode shares the daemon).
+- Phone page size fence (BAD-770). `verify-mobile-web-app-bundle.mjs` holds
+  `MOBILE_WEB_APP_BUNDLE_MAX_EAGER_BYTES` at 11 MiB where upstream has 10.90625 MiB: the fork's phone
+  screens add about 53 KB over the tag, and every code chunk counts as eager. Take the larger number
+  when a merge brings upstream's budget back.
 - One call in `configureDevUserDataPath` (`src/main/startup/configure-process.ts`) for the
   pinned data folder and shared mode. It runs before anything reads userData or takes the
   instance locks.
