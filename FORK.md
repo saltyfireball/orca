@@ -2734,9 +2734,8 @@ ones `SLRM-123 `).
     if a stray process in another group holds the output pipes. (Under dash a command is a child
     of the shell, so killing only the shell left it running.) The idle-recovery notify command
     ends the same way.
-  - **Limits.** The gate runs on the host that holds the Task's database: a worker started
-    `--on` a paired server is judged there only when that server runs this fork build and
-    receives the flags.
+  - **Limits.** A worker started `--on` a paired server is judged on that server (BAD-763, below),
+    which must run this fork build.
   - Code is in `src/main/fork/completion-contract/` (`completion-gate.ts` the settle/bounce rule
     over the store, `check-runner.ts`, `pr-checks.ts`, `contract-store.ts`,
     `completion-gate-live.ts` the hooks), `src/shared/fork/completion-contract.ts` (the pure
@@ -2795,6 +2794,40 @@ ones `SLRM-123 `).
     (params, settings, prompt, verdict parser, the pure decision and texts),
     `src/cli/fork/reviewer-gate-flag.ts` and the review part of `fork.completionContract.show`.
 
+- **The contract follows the work: paired servers, retries, follow-ups and folders (BAD-763).**
+  The completion contract (BAD-676) and the reviewer gate (BAD-683) used to hold only where the
+  Task was made. Now they travel with it.
+  - **Paired servers.** `worker-start --on <server>` sends the Task's done checks and review request
+    (whether declared on that start, on `task-create`, or inherited as below) in the attach-start.
+    The server stores them under the same Task id and gates the worker's `worker_done` itself, in
+    the workspace the worker ran in, before the report is queued for the Run home. A failing check
+    answers the worker with the same rejected receipt as a local worker and sends nothing home; once
+    the rounds are used up the report goes home as an `escalation`; a pass goes home with the
+    evidence added to the done message. The trust rule is unchanged: the commands are the
+    coordinator's text, carried over the existing paired channel, and nothing a worker wrote is run.
+  - **A server that cannot take them.** A server that does not advertise
+    `orchestration.fork-contract-carry.v1` (an older build) would settle the done unchecked, so a
+    start that has a contract or review to carry is refused before anything is created, with
+    "No effects were applied". A start with neither starts as before. A server whose own
+    `forkCompletionContract` setting is off treats the contract as a plain done, as it does for its
+    own Tasks.
+  - **Retries and follow-ups.** A retry (BAD-681/BAD-765), a follow-up sent to a finished worker and
+    `worker-start --retry-of` create a new Task. It takes the contract and the review request of the
+    Task it continues, with the rounds at zero, unless its own request declares a contract or review
+    (that one wins, per part).
+  - **Folder projects.** A folder workspace has no checkout, but it is a real directory: command
+    checks run in it (before, every check failed with "could not find the workspace"). A pull
+    request check on a folder still fails, since a folder has none.
+  - **Evidence at home.** `orca contract show` on the Run home also asks each paired server the
+    Task's workers ran on for its check attempts and review runs (RPC `fork.completionContract.show`
+    on the server, 15 s limit) and prints them with the home's own, with one line per server; a
+    server that does not answer is named with the reason instead of being left out.
+  - **Not covered.** A server that runs this build but has `forkCompletionContract` off, and
+    workers on servers older than this change, which the refusal above keeps from starting with a
+    contract.
+  - Code: `src/main/fork/completion-contract/contract-carry.ts` (what travels and the retry copy),
+    `gate-subject.ts` (a local Dispatch or a remote attachment as one shape for both gates),
+    `gate-workspace.ts` (folder workspaces) and `contract-show.ts` (the home's read-through).
 - **Goal loop: keep any agent going until a check or a judge passes (BAD-682).** Goals were
   harness-native (Codex and Grok thread goals, Claude /goal), so a terminal agent or a provider
   without a goal mode could not be told "keep going until the tests pass", and nothing capped such a
@@ -3221,6 +3254,7 @@ Apply these in this order. Each one is a single commit.
 168. `BAD-765 Worker retry covers chat workers, provider errors, Runs a chat coordinates and workers an app update cut off; it reads the structured exit instead of free text, so a worker the user closed is never restarted; the coordinator is told Orca is retrying only when the restart can start; orca retry show lists why a retry was not started`
 169. `BAD-764 Command guards cover native Claude chats and chat workers through an in-process PreToolUse hook of the Agent SDK, and orca command-guards status lists each surface (terminal, native chat, chat worker) as guarded only with a test that proves a deny`
 170. `BAD-766 Spend caps reach every agent: orca guards automation-cap is routed, terminal and paired-server workers join their Run, a goal budget reads terminal spend with no cap set, and the cap view says which agents are not counted`
+171. `BAD-763 The completion contract and reviewer gate follow the work: a start on a paired server carries them and that server gates the done, retries and follow-ups inherit them, folder workspaces run command checks, and orca contract show reads the server's evidence`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4387,7 +4421,7 @@ Upstream files only get short hooks, which keeps merges small:
 - Completion contract (BAD-676), small edits in stock files: `send-methods.ts` calls
   `forkGateWorkerDone` after `assertSendParamsDeliverable` (a done turned back answers with a
   rejected receipt; an escalated one is sent as an `escalation`); `message-methods.ts` and
-  `local-worker-start.ts` call `forkStoreDoneContract` after they create the Task;
+  `local-worker-start-dispatch.ts` call `forkStoreDoneContract` after they create the Task;
   `orchestration-params.ts` (`TaskCreateParams`) and `orchestration-worker-start-params.ts` spread
   `ForkDoneContractShape`; `runtime-orchestration-database-access.ts` calls
   `installForkContractInboxSource` where the database opens; `idle-recovery-wire.ts`,
@@ -4440,6 +4474,16 @@ Upstream files only get short hooks, which keeps merges small:
   environment variables read by the terminal host, so there are no store settings and no catalog
   to regenerate.
 
+- Contract carry-over (BAD-763), small edits in stock files: `local-worker-start-dispatch.ts` passes the
+  Dispatch a follow-up continues to `forkStoreDoneContract`, which also reads `--retry-of`; `federated-worker-start.ts`
+  refuses a server without the capability, stores the contract at home and spreads it into the
+  attach-start; `federation.ts` stores what the attach-start carries; `send-remote.ts` calls
+  `forkGateRemoteWorkerDone` before a remote worker's report is queued;
+  `orchestration-federation-start-params.ts` spreads `ForkDoneContractShape` and
+  `ForkReviewGateShape`; `orchestration-runtime-capabilities.ts` adds
+  `orchestration.fork-contract-carry.v1`; `fork-completion-contract.ts` answers through
+  `showWithServerEvidence`. `completion-gate-live.ts` and `reviewer-gate-live.ts` read a
+  `GateSubject` instead of a Dispatch row.
 - Reviewer gate (BAD-683), small edits in stock files and fork files: `completion-gate-live.ts`
   (`forkGateWorkerDone` runs the review after the contract passed; `forkStoreDoneContract` also
   saves the request); `orchestration-params.ts` (`TaskCreateParams`) and

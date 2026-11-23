@@ -35,6 +35,8 @@ export type ForkCompletionContractShowResult = {
       finishedAt: string | null
     }[]
   } | null
+  /** BAD-763: the paired servers the Task's workers ran on and what each said about the checks. */
+  servers?: { name: string; attempts: number; error?: string }[]
   attempts: {
     at: string
     dispatchId: string | null

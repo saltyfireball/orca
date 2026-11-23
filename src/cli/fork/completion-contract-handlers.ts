@@ -30,7 +30,15 @@ export function formatForkContract(result: ForkCompletionContractShowResult): st
       }
     }
   }
-  return [...lines, ...review].join('\n')
+  return [...lines, ...formatForkServers(result), ...review].join('\n')
+}
+
+function formatForkServers(result: ForkCompletionContractShowResult): string[] {
+  return (result.servers ?? []).map((server) =>
+    server.error
+      ? `server ${server.name}: could not read its check attempts (${server.error})`
+      : `server ${server.name}: ${server.attempts} check attempt(s) ran there`
+  )
 }
 
 function formatForkReview(result: ForkCompletionContractShowResult): string[] {

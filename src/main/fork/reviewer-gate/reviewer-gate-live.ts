@@ -12,6 +12,7 @@ import {
   type ReviewerGateSettings
 } from '../../../shared/fork/reviewer-gate'
 import type { GateDeps } from '../completion-contract/completion-gate'
+import type { GateSubject } from '../completion-contract/gate-subject'
 import { sendIdleRecoveryAnswer } from '../idle-recovery/idle-recovery-wake'
 import { runReviewGate, type ReviewGateDeps } from './reviewer-gate'
 import { readReviewGate, saveReviewGate } from './reviewer-store'
@@ -34,42 +35,18 @@ function settingsOf(runtime: OrcaRuntimeService): ReviewerGateSettings {
   return readReviewerGateSettings(settings as never)
 }
 
-function workerAgentOf(db: OrchestrationDb, dispatchId: string): string | null {
-  try {
-    const options: unknown = JSON.parse(db.getWorkerDispatch(dispatchId)?.start_options ?? '{}')
-    const agent = (options as { agent?: unknown } | null)?.agent
-    return typeof agent === 'string' ? agent : null
-  } catch {
-    return null
-  }
-}
-
 /** A message into the worker's own chat (or terminal), the way a person's message is sent. */
-async function deliverToWorker(
-  db: OrchestrationDb,
-  dispatchId: string,
-  text: string
-): Promise<boolean> {
-  const dispatch = db.getDispatchContextById(dispatchId)
-  if (!dispatch) {
-    return false
-  }
-  const agent = workerAgentOf(db, dispatchId) ?? ''
-  if (dispatch.assignee_orca_session_id) {
-    const outcome = await sendIdleRecoveryAnswer(dispatch.assignee_orca_session_id, text, {
-      kind: 'chat',
-      agent
-    })
+async function deliverToWorker(subject: GateSubject, text: string): Promise<boolean> {
+  const agent = subject.agent ?? ''
+  if (subject.sessionId) {
+    const outcome = await sendIdleRecoveryAnswer(subject.sessionId, text, { kind: 'chat', agent })
     if (outcome === 'sent') {
       return true
     }
   }
-  if (dispatch.assignee_pane_key) {
+  if (subject.paneKey) {
     return (
-      (await sendIdleRecoveryAnswer(dispatch.assignee_pane_key, text, {
-        kind: 'terminal',
-        agent
-      })) === 'sent'
+      (await sendIdleRecoveryAnswer(subject.paneKey, text, { kind: 'terminal', agent })) === 'sent'
     )
   }
   return false
@@ -78,7 +55,8 @@ async function deliverToWorker(
 function liveReviewDeps(
   runtime: OrcaRuntimeService,
   db: OrchestrationDb,
-  workspaceOf: GateDeps['workspace']
+  workspaceOf: GateDeps['workspace'],
+  subject: GateSubject
 ): ReviewGateDeps {
   return {
     db,
@@ -89,8 +67,8 @@ function liveReviewDeps(
         ? { target: workspace.target, git: workspace.git, runner: workspace.runner }
         : null
     },
-    workerAgent: (dispatchId) => workerAgentOf(db, dispatchId),
-    deliver: (dispatchId, text) => deliverToWorker(db, dispatchId, text)
+    workerAgent: () => subject.agent,
+    deliver: (_dispatchId, text) => deliverToWorker(subject, text)
   }
 }
 
@@ -119,24 +97,20 @@ export async function forkReviewWorkerDone<P extends SendShape>(
   runtime: OrcaRuntimeService,
   db: OrchestrationDb,
   params: P,
-  dispatchId: string | undefined,
+  subject: GateSubject | null,
   workspaceOf: GateDeps['workspace']
 ): Promise<{ kind: 'carry-on'; params: P } | { kind: 'answer'; receipt: unknown }> {
-  if (params.type !== 'worker_done' || !dispatchId) {
-    return { kind: 'carry-on', params }
-  }
-  const dispatch = db.getDispatchContextById(dispatchId)
-  if (!dispatch || (dispatch.status !== 'pending' && dispatch.status !== 'dispatched')) {
+  if (params.type !== 'worker_done' || !subject) {
     return { kind: 'carry-on', params }
   }
   // Cheap read first: with no request and no all-Tasks setting nothing else loads.
-  if (!readReviewGate(db, dispatch.task_id) && !settingsOf(runtime).allTasks) {
+  if (!readReviewGate(db, subject.taskId) && !settingsOf(runtime).allTasks) {
     return { kind: 'carry-on', params }
   }
-  const outcome = await runReviewGate(liveReviewDeps(runtime, db, workspaceOf), {
-    taskId: dispatch.task_id,
-    dispatchId,
-    worktreeId: db.getWorkerDispatch(dispatchId)?.worktree_id ?? null,
+  const outcome = await runReviewGate(liveReviewDeps(runtime, db, workspaceOf, subject), {
+    taskId: subject.taskId,
+    dispatchId: subject.dispatchId,
+    worktreeId: subject.worktreeId,
     outcome: workerSucceeded(params.payload) ? 'succeeded' : 'failed'
   })
   switch (outcome.kind) {
@@ -160,9 +134,9 @@ export async function forkReviewWorkerDone<P extends SendShape>(
         params: {
           ...params,
           type: 'escalation',
-          subject: `Review gate: Task ${dispatch.task_id}`,
+          subject: `Review gate: Task ${subject.taskId}`,
           body: outcome.text,
-          payload: JSON.stringify({ taskId: dispatch.task_id })
+          payload: JSON.stringify({ taskId: subject.taskId })
         }
       }
   }

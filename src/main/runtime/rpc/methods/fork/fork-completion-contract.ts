@@ -5,8 +5,11 @@ import {
   ForkCompletionContractShowParams,
   type ForkCompletionContractShowResult
 } from '../../../../../shared/fork/completion-contract-wire'
-import { listAttempts, readContract } from '../../../../fork/completion-contract/contract-store'
-import { listReviewRuns, readReviewGate } from '../../../../fork/reviewer-gate/reviewer-store'
+import { showWithServerEvidence } from '../../../../fork/completion-contract/contract-show'
+import { boundedForkPairedCall } from '../../../../fork/paired-server-call/paired-server-call'
+
+/** A paired server that is slow to answer must not hold `orca contract show` for long. */
+const SERVER_SHOW_TIMEOUT_MS = 15_000
 
 export const FORK_COMPLETION_CONTRACT_METHODS = [
   defineMethod({
@@ -14,43 +17,15 @@ export const FORK_COMPLETION_CONTRACT_METHODS = [
     permission: 'workspace',
     params: ForkCompletionContractShowParams,
     handler: async (params, ctx): Promise<ForkCompletionContractShowResult> => {
-      const db = ctx.runtime.getOrchestrationDb()
-      const state = readContract(db, params.task)
-      const review = readReviewGate(db, params.task)
-      return {
-        taskId: params.task,
-        declared: state !== null,
-        checks: state?.contract.checks ?? [],
-        requirePrChecks: state?.contract.requirePrChecks ?? false,
-        maxRounds: state?.contract.maxRounds ?? null,
-        failedRounds: state?.failedRounds ?? 0,
-        escalated: state?.escalated ?? false,
-        review: review
-          ? {
-              focus: review.gate.focus,
-              agent: review.gate.agent,
-              maxRounds: review.gate.maxRounds,
-              escalated: review.escalated,
-              runs: listReviewRuns(db, params.task).map((run) => ({
-                round: run.round,
-                headSha: run.headSha,
-                reviewer: run.reviewer,
-                model: run.model,
-                status: run.status,
-                findingsCount: run.findingsCount,
-                output: run.output,
-                startedAt: run.startedAt,
-                finishedAt: run.finishedAt
-              }))
-            }
-          : null,
-        attempts: listAttempts(db, params.task).map(({ at, dispatchId, outcome, results }) => ({
-          at,
-          dispatchId,
-          outcome,
-          results
-        }))
-      }
+      const call = boundedForkPairedCall((environmentId, method, callParams, timeoutMs) =>
+        ctx.runtime.callOrchestrationWorkerServer(environmentId, method, callParams, timeoutMs)
+      )
+      return showWithServerEvidence(
+        ctx.runtime.getOrchestrationDb(),
+        params.task,
+        (environmentId, method, callParams) =>
+          call(environmentId, method, callParams, SERVER_SHOW_TIMEOUT_MS)
+      )
     }
   })
 ] as const

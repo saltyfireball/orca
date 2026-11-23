@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import { OptionalFiniteNumber, OptionalString, requiredString } from '../rpc-param-primitives'
 import { OptionalWorkerLaunchPreference } from './orchestration-worker-start-params'
+import { ForkDoneContractShape } from '../../fork/completion-contract'
+import { ForkReviewGateShape } from '../../fork/reviewer-gate'
 import { CrossStoreParentRefSchema } from '../workspaces/cross-store-parent-params'
 
 export const FederationAttachStartParams = z.object({
@@ -31,7 +33,11 @@ export const FederationAttachStartParams = z.object({
    * advertising worktree.lineage.crossMachine. The new worktree nests under it. */
   crossStoreParent: CrossStoreParentRefSchema.optional(),
   /** Orchestration picked the parent; omitted by older coordinators, whose children record `cli`. */
-  crossStoreParentInferredFrom: z.literal('orchestration-context').optional()
+  crossStoreParentInferredFrom: z.literal('orchestration-context').optional(),
+  /** Fork (BAD-763): the Task's done checks and review request, carried so this host gates the
+   * worker's done; sent only to servers advertising orchestration.fork-contract-carry.v1. */
+  ...ForkDoneContractShape,
+  ...ForkReviewGateShape
 })
 
 export type FederationAttachStartInput = z.infer<typeof FederationAttachStartParams>

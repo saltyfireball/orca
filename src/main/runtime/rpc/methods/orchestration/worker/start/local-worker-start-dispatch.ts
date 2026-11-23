@@ -8,6 +8,7 @@ import { resolveDispatchAssigneeParty } from '../../../../../orchestration/addre
 import type { WorkerStartInput } from './worker-start-input'
 import type { RunRow } from '../../../../../orchestration/db/orchestration-records'
 import type { startLocalWorker } from './local-worker-start'
+import { forkStoreDoneContract } from '../../../../../../fork/completion-contract/completion-gate-live'
 import { resolveDispatchCreator } from '../../runs/dispatch-creator'
 
 export function createLocalWorkerStartDispatch(
@@ -70,7 +71,7 @@ export function createLocalWorkerStartDispatch(
         : 'orchestration_default'
       : 'existing_worktree'
   }
-  return db.createStartingWorkerDispatch({
+  const started = db.createStartingWorkerDispatch({
     creator: resolveDispatchCreator(runtime, params.from, callerSession),
     maxDepth: runtime.getNestedWorkerMaxDepth(),
     requiredCreatorDispatchId: helperCreator?.id,
@@ -99,5 +100,7 @@ export function createLocalWorkerStartDispatch(
     ...(params.origin ? { originRef: params.origin } : {}),
     ...(params.forQuestion ? { forMessageId: params.forQuestion } : {}),
     ...(chatLineage ? { chatLineage } : {})
-  })
+  }) // Fork (BAD-676, BAD-763): the done checks and review the start declared, or the continued Task's.
+  forkStoreDoneContract(db, started.task.id, params, followUp?.of)
+  return started
 }

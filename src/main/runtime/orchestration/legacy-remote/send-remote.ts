@@ -11,15 +11,19 @@ import { parseRemoteWorkerPayload } from '../../rpc/methods/orchestration/messag
 import type { SendParams } from '../../rpc/methods/orchestration/messaging/send-params'
 import { rejectFederatedExplicitTarget } from '../../rpc/methods/orchestration/routing'
 import { WORKER_DONE_RECORDED_NEXT } from '../../rpc/methods/orchestration/receipt-next'
+import { forkGateRemoteWorkerDone } from '../../../fork/completion-contract/completion-gate-live'
 import { assertWorkerCanReport } from '../workers/reports/worker-report-admission'
 
 type SendParamsInput = z.infer<typeof SendParams>
 
 type RemoteAttachment = {
   dispatch_id: string
+  task_id: string
   home_run_id: string
   state: WorkerDispatchState
   protocol_version: number
+  worktree_id: string | null
+  pane_key: string | null
 }
 
 export async function sendRemoteMessage(args: {
@@ -32,7 +36,8 @@ export async function sendRemoteMessage(args: {
   processIncarnation?: string | null
   signal?: AbortSignal
 }) {
-  const { params, runtime, db, from, senderPaneKey, remoteAttachment } = args
+  const { runtime, db, from, senderPaneKey, remoteAttachment } = args
+  let { params } = args
   rejectFederatedExplicitTarget(params, remoteAttachment.home_run_id)
   assertWorkerCanReport({
     dispatchId: remoteAttachment.dispatch_id,
@@ -44,6 +49,14 @@ export async function sendRemoteMessage(args: {
       processIncarnation: args.processIncarnation ?? null
     })
   })
+
+  // Fork (BAD-763): the Task's done checks and review run here, where the workspace is, before the
+  // report is queued for the Run home. A failure answers the worker and nothing is sent home.
+  const gated = await forkGateRemoteWorkerDone(runtime, db, params, remoteAttachment)
+  if (gated.kind === 'answer') {
+    return gated.receipt as never
+  }
+  params = gated.params
 
   const type = (params.type ?? 'status') as MessageType
   const payload = parseRemoteWorkerPayload(params.payload)
