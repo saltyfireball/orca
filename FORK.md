@@ -1998,11 +1998,23 @@ ones `SLRM-123 `).
     (`orca command-guards list`; `forkCommandGuardAuditLimit`, 200 kept) in
     `fork-command-guard-audit.json` in the data folder (mode 0600; commands cut to 400
     characters).
-  - **Who is guarded.** Only an agent whose hook script reads Orca's answer: Claude Code on macOS
-    and Linux. `orca command-guards status` lists every other hook agent as unguarded (their
-    scripts discard the reply; Claude's Windows script, and SSH and WSL hosts, post to a relay
-    that cannot answer). Adding an agent means its hook contract allows a deny, a script that
-    prints it, and a row in `commandGuardCoverage`.
+  - **Who is guarded.** Claude Code on three surfaces, each through its own path, and
+    `orca command-guards status` lists each one (`CLAUDE SURFACE` table) as guarded only when a
+    test proves a deny there (`COMMAND_GUARD_SURFACE_PROOFS`, one test file per surface; a unit
+    test checks the named file holds the proof). No proof, no `guarded`.
+    - **terminal**: the PreToolUse hook script Orca installs, macOS and Linux (Claude's Windows
+      script, SSH and WSL hosts post to a relay that cannot answer).
+    - **native chat** and **chat worker** (BAD-764): their child has no pane identity or hook
+      endpoint (the seal drops them so one chat cannot pose as another, and nothing of the sort
+      is added back), so the script never reaches Orca. Orca instead answers PreToolUse itself,
+      as an in-process hook callback of the Claude Agent SDK passed in the chat's own query
+      (`command-guards-native-chat.ts`). It runs in Full access too and needs no variable in the
+      child. A chat started while the guards are not running on its host shows as unguarded (the
+      surface row names how many), and a failing callback lets the call through.
+    - Every other hook agent is unguarded (their scripts discard the reply). Adding an agent means
+      its hook contract allows a deny, a path that prints it, a proving test and a row in
+      `commandGuardCoverage`.
+    - A block's audit line names the surface (`orca command-guards list`).
   - **CLI.** `orca command-guards list|status|allow|disallow` over `fork.commandGuards.*`
     (workspace permission; `--environment` for a paired server).
   - Code is in `src/shared/fork/command-guards*.ts` (rules, shell reader, settings, wire),
@@ -3175,6 +3187,7 @@ Apply these in this order. Each one is a single commit.
 165. `BAD-759 Needs you list: one list of everything waiting on the owner (bots on this computer and paired servers, chats, agents on an approval or a question, board asks), opened from anywhere by Mod+Shift+L or a status bar control, with a jump to each, Next and Back, quick answers through the owner path, and the bot row click chooses list, item or off`
 166. `BAD-769 Fork sync releases main as it is when the upstream merge conflicts (the run still ends red with FORK-SYNC-CONFLICT), and a skip_upstream run input ships a fix without the merge`
 167. `BAD-771 A done check or notify command past its time limit is ended with everything it started (own process group, taskkill /t on Windows) and the run settles at the deadline, also where sh is dash`
+168. `BAD-764 Command guards cover native Claude chats and chat workers through an in-process PreToolUse hook of the Agent SDK, and orca command-guards status lists each surface (terminal, native chat, chat worker) as guarded only with a test that proves a deny`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4421,6 +4434,14 @@ Upstream files only get short hooks, which keeps merges small:
   `withForkMcpProfileFlag` also calls `withForkServiceSendFlag` (`src/cli/fork/service-send-specs.ts`),
   which adds the boolean `--as-service` flag, usage and note to the `orchestration send` spec, so
   `src/cli/specs/orchestration.ts` is untouched. The host is untouched.
+
+- Command guards in native chats (BAD-764), one small edit in a stock file:
+  `claude-structured-session-acquisition.ts` wraps `launch.options` in
+  `forkChatGuardOptions(options, sessionId, cwd)`, which adds the SDK `hooks` (they reach `query`
+  through the launch options, so `claude-stream-json-connection.ts` is untouched). The seal in
+  `structured-session-child-env.ts` is untouched. Proof tests: `command-guards-native-chat.test.ts`
+  (host, SDK and a stand-in CLI, always run) and `command-guards-real-claude.test.ts` (the real CLI,
+  `ORCA_COMMAND_GUARDS_E2E=1`).
 
 - Command guards (BAD-686), one small edit in a stock file: `agent-tool-plugin-hooks.ts`
   (`respondAfterAgentToolPluginHooks`) asks `forkCommandGuardAnswer` before it reads the plugin

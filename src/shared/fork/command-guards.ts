@@ -125,6 +125,8 @@ export type CommandGuardAuditEntry = {
   id: string
   at: number
   agent: string
+  /** Where the agent ran; absent on entries from before surfaces were told apart (a terminal). */
+  surface?: CommandGuardSurface
   /** The workspace (worktree id) the agent runs in. */
   workspaceId: string
   rule: CommandGuardRuleId
@@ -190,8 +192,8 @@ export const COMMAND_GUARD_SURFACES: readonly CommandGuardSurface[] = [
  */
 export const COMMAND_GUARD_SURFACE_PROOFS: Record<CommandGuardSurface, string | null> = {
   terminal: 'src/main/fork/command-guards/command-guards-live.test.ts',
-  'native-chat': null,
-  'chat-worker': null
+  'native-chat': 'src/main/fork/command-guards/command-guards-native-chat.test.ts',
+  'chat-worker': 'src/main/fork/command-guards/command-guards-native-chat.test.ts'
 }
 
 const SURFACE_NOTES: Record<CommandGuardSurface, { guarded: string; unguarded: string }> = {
@@ -202,11 +204,13 @@ const SURFACE_NOTES: Record<CommandGuardSurface, { guarded: string; unguarded: s
   },
   'native-chat': {
     guarded: 'Claude native chat: PreToolUse hook answered inside Orca for each chat',
-    unguarded: 'unguarded: the chat drops the pane identity the terminal hook needs'
+    unguarded:
+      'unguarded: the chat drops the pane identity the terminal hook needs and no test proves the in-Orca hook'
   },
   'chat-worker': {
     guarded: 'Claude chat worker: the same in-Orca PreToolUse hook as a native chat',
-    unguarded: 'unguarded: the worker drops the pane identity the terminal hook needs'
+    unguarded:
+      'unguarded: the worker drops the pane identity the terminal hook needs and no test proves the in-Orca hook'
   }
 }
 
@@ -216,6 +220,8 @@ export type CommandGuardSurfaceCoverage = {
   note: string
   /** The test that proves a deny here; null while the surface is unguarded. */
   proof: string | null
+  /** Chats of this surface started since this host launched, by whether a guard was attached. */
+  chats?: { guarded: number; unguarded: number }
 }
 
 /** Claude Code's coverage per surface; a surface with no proving test is never guarded. */

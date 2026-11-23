@@ -1,5 +1,6 @@
 import type { AgentSessionAcquisition } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
 import { openClaudeStreamJsonConnection } from '../../claude-stream-json-connection'
+import { forkChatGuardOptions } from '../../../fork/command-guards/command-guards-native-chat'
 import { claudeLaunchPermissions } from '../permissions/claude-structured-inbound-control'
 import * as replay from '../turns/claude-replay-turn-resolution'
 import { claudeFrameSendFacts } from '../turns/claude-command-lifecycle'
@@ -195,7 +196,7 @@ export async function acquireClaudeSession({
         {
           pathToClaudeCodeExecutable: launch.pathToClaudeCodeExecutable,
           prefixArgs: launch.prefixArgs,
-          options: launch.options,
+          options: forkChatGuardOptions(launch.options, sessionId, launch.cwd),
           cwd: launch.cwd,
           env: {
             ...launch.env,

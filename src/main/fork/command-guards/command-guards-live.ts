@@ -10,13 +10,13 @@ import {
   COMMAND_GUARD_RULES,
   COMMAND_GUARD_RULE_TEXT,
   commandGuardCoverage,
-  commandGuardSurfaceCoverage,
   commandGuardOffRules,
   isCommandGuardRule,
   parseCommandGuardRules,
   readCommandGuardConfig,
   type CommandGuardConfig,
   type CommandGuardRuleId,
+  type CommandGuardSurface,
   type ForkCommandGuardSettings
 } from '../../../shared/fork/command-guards'
 import { evaluateCommandGuard } from '../../../shared/fork/command-guards-rules'
@@ -39,6 +39,7 @@ import {
   recordCommandGuardBlock
 } from './command-guards-audit'
 import { readCommandGuardGit } from './command-guards-git-state'
+import { forkCommandGuardChatSurfaces } from './command-guards-chat-registry'
 
 export type ForkCommandGuardsRuntime = {
   requireStore: () => {
@@ -101,6 +102,56 @@ function denyAnswer(reason: string): string {
   })
 }
 
+type GuardedShellCall = {
+  agent: string
+  surface: CommandGuardSurface
+  command: string
+  /** The workspace id the audit and the project allows use (a worktree id, or `folder:<id>`). */
+  workspaceId: string
+  /** The folder the agent works in. */
+  root: string
+}
+
+/**
+ * The deny text when the command breaks a rule, else null; the block is audited. Never throws: a
+ * fault in the guard lets the call through. Shared by the terminal hook and the chat hook.
+ */
+export function guardShellCommand(call: GuardedShellCall): string | null {
+  try {
+    const settled = config()
+    if (!settled.enabled) {
+      return null
+    }
+    const verdict = evaluateCommandGuard(call.command, {
+      workspaceRoot: call.root,
+      home: homedir() || null,
+      deleteRoots: [...settled.deleteRoots, ...(settled.allowTempDeletes ? tempRoots() : [])],
+      protectedBranches: settled.protectedBranches,
+      gitState: readCommandGuardGit,
+      off: commandGuardOffRules(settled, getRepoIdFromWorktreeId(call.workspaceId))
+    })
+    if (verdict.allowed) {
+      return null
+    }
+    recordCommandGuardBlock(
+      {
+        at: Date.now(),
+        agent: call.agent,
+        surface: call.surface,
+        workspaceId: call.workspaceId,
+        rule: verdict.rule,
+        reason: verdict.reason,
+        command: call.command
+      },
+      settled.auditLimit
+    )
+    return `Blocked by Orca's command guard (${verdict.rule}): ${verdict.reason} Do not retry this command or look for a way around it; tell the user what you wanted to do so they can do it or allow it.`
+  } catch (error) {
+    console.warn('[fork-command-guards] check failed; the call goes through', error)
+    return null
+  }
+}
+
 /**
  * Hook (the hook server, before plugins): Claude Code's PreToolUse answer when the call breaks a
  * command guard, else null. `decides` is true when the hook script reads Orca's answer, so only
@@ -113,8 +164,7 @@ export function forkCommandGuardAnswer(
   decides: boolean
 ): string | null {
   try {
-    const settled = config()
-    if (!decides || !settled.enabled || !owner.worktreeId) {
+    if (!decides || !owner.worktreeId) {
       return null
     }
     const call = readAgentToolCall(source, body, owner)
@@ -130,35 +180,28 @@ export function forkCommandGuardAnswer(
     ) {
       return null
     }
-    const verdict = evaluateCommandGuard(command, {
-      workspaceRoot: root,
-      home: homedir() || null,
-      deleteRoots: [...settled.deleteRoots, ...(settled.allowTempDeletes ? tempRoots() : [])],
-      protectedBranches: settled.protectedBranches,
-      gitState: readCommandGuardGit,
-      off: commandGuardOffRules(settled, getRepoIdFromWorktreeId(owner.worktreeId))
+    const reason = guardShellCommand({
+      agent: source,
+      surface: 'terminal',
+      command,
+      workspaceId: owner.worktreeId,
+      root
     })
-    if (verdict.allowed) {
-      return null
-    }
-    recordCommandGuardBlock(
-      {
-        at: Date.now(),
-        agent: source,
-        workspaceId: owner.worktreeId,
-        rule: verdict.rule,
-        reason: verdict.reason,
-        command
-      },
-      settled.auditLimit
-    )
-    return denyAnswer(
-      `Blocked by Orca's command guard (${verdict.rule}): ${verdict.reason} Do not retry this command or look for a way around it; tell the user what you wanted to do so they can do it or allow it.`
-    )
+    return reason ? denyAnswer(reason) : null
   } catch (error) {
     console.warn('[fork-command-guards] check failed; the call goes through', error)
     return null
   }
+}
+
+/** Stops the guards on this host (a chat started after this has none, and shows unguarded). */
+export function stopForkCommandGuards(): void {
+  runtime = null
+}
+
+/** Whether the guards are running on this host (the runtime settled); a chat needs it. */
+export function forkCommandGuardsRunning(): boolean {
+  return runtime !== null
 }
 
 export function forkCommandGuardList(): ForkCommandGuardsListResult {
@@ -190,7 +233,7 @@ export function forkCommandGuardStatus(): ForkCommandGuardsStatusResult {
         .map(([id]) => names.get(id) ?? id)
     })),
     agents: commandGuardCoverage(),
-    surfaces: commandGuardSurfaceCoverage()
+    surfaces: forkCommandGuardChatSurfaces()
   }
 }
 
