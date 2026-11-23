@@ -30,7 +30,10 @@ export async function sendGoalText(
     return false
   }
   const clear = async (): Promise<boolean> =>
-    (await ports.terminal.refusal(chatId, bound.handle, target.idleSince)) === null
+    // The loop lists only agents the status store shows idle, so "no live status yet" is not a veto.
+    (await ports.terminal.refusal(chatId, bound.handle, target.idleSince, {
+      acceptUnverified: true
+    })) === null
   if (!(await clear())) {
     return false
   }

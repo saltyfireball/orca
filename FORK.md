@@ -2977,7 +2977,11 @@ ones `SLRM-123 `).
     check is `--until-cmd`, run in the agent's workspace (exit 0 is met), or the judge. A failure
     is sent to the agent as a continue message with the output's last lines in a fenced block that
     is marked as data, not instructions. The send is idle recovery's: never into a chat that is
-    asleep or in a turn, nor a terminal with typed text or a dialog, and never twice.
+    asleep or in a turn, nor a terminal with typed text or a dialog, and never twice. A terminal
+    whose status this process never saw change live (a headless server restarted under its agent,
+    which the mail gate reads as "unverified") is not refused for that alone: the loop lists only
+    agents the status store shows idle, and the typed-text, dialog and agent-in-front checks still
+    apply. `goal-send-headless.test.ts` runs the send against a real headless runtime and PTY.
   - **Judge.** `--until-judge` runs the command in `forkGoalJudgeCommand` (none by default, and
     the flag is refused without it). It is one shell line that reads a JSON object on stdin
     (`criteria`, and `agent_output`, the agent's last message fenced as untrusted data) and prints
@@ -3477,6 +3481,7 @@ Apply these in this order. Each one is a single commit.
 189. `BAD-763 orca contract show at home shows the done checks, each attempt and its output tail of a worker started on a server that owns its workers, live and after it settles; a server too old to answer is named as one whose evidence cannot be seen`
 190. `BAD-764 Command guards allow a worktree removal command whose only other argument is --help or -h, which prints usage and removes nothing`
 191. `BAD-785 Command guards no longer read an escaped backtick or escaped $( inside double quotes as a command substitution; a real one, and one a later eval or bash -c would run, is still denied`
+192. `BAD-682 The goal loop sends to a terminal agent of a headless server whose status it never saw change live, which the mail gate refused as unverified so the text was never typed; tested with a real headless runtime and PTY`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

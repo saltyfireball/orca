@@ -57,8 +57,16 @@ export type IdleRecoveryTerminalPort = {
   /**
    * Why nothing may be typed into the terminal now, or null when it rests at an empty prompt.
    * With `untouchedSince` (epoch ms), keys the user typed there after that time refuse it too.
+   * `acceptUnverified` (BAD-682): a terminal whose status this process never saw change live (a
+   * server restarted under it, a headless host) is not refused for that alone; a caller that
+   * already knows the agent is idle from the status store passes it.
    */
-  refusal: (paneKey: string, handle: string, untouchedSince?: number) => Promise<string | null>
+  refusal: (
+    paneKey: string,
+    handle: string,
+    untouchedSince?: number,
+    options?: { acceptUnverified?: boolean }
+  ) => Promise<string | null>
   /** `stillClear` runs right before the first write: false refuses it. */
   send: (
     bound: IdleRecoveryTerminalBinding,
@@ -168,7 +176,7 @@ export function idleRecoveryTerminalPort(
         return null
       }
     },
-    refusal: async (paneKey, handle, untouchedSince) => {
+    refusal: async (paneKey, handle, untouchedSince, options) => {
       const runtime = getRuntime()
       if (!runtime) {
         return 'no-runtime'
@@ -187,7 +195,7 @@ export function idleRecoveryTerminalPort(
         }
         // The gate orchestration mail uses: a dialog, a draft, a restoring or unsettled screen.
         const hold = runtime.readTerminalMailHold(handle)
-        if (hold) {
+        if (hold && !(options?.acceptUnverified && hold.kind === 'unverified')) {
           return hold.kind
         }
         // That gate forgets a draft after ten minutes; the screen itself never does.
