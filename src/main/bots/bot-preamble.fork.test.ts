@@ -25,6 +25,12 @@ describe('buildBotPreamble (fork)', () => {
     expect(preamble).toContain('a review for anyone else is a comment review')
   })
 
+  it('names saved agent profiles and the --profile flag (BAD-741)', () => {
+    expect(preambleOf()).toContain(
+      "profiles list`; when one fits a worker's job, add `--profile <name>`"
+    )
+  })
+
   it('tells the bot to put owner steps in --steps-file and not to say below or above', () => {
     const preamble = preambleOf()
     expect(preamble).toContain('--steps-file')

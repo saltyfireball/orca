@@ -19,6 +19,8 @@ import type { PrChecksPort } from './pr-checks'
 import { notifyContractInboxChanged } from './contract-inbox'
 import { forkReviewWorkerDone, forkStoreReviewGate } from '../reviewer-gate/reviewer-gate-live'
 import { forkCarryContract } from './contract-carry'
+import { currentForkAgentProfileLaunch } from '../agent-profiles/agent-profile-launch-scope'
+import { forkStoreTaskProfilePreamble } from '../agent-profiles/agent-profile-task-store'
 import { subjectOfDispatch, subjectOfRemoteAttachment, type GateSubject } from './gate-subject'
 import type { RemoteDispatchAttachmentRow } from '../../runtime/orchestration/db/orchestration-records'
 
@@ -46,6 +48,14 @@ export function forkStoreDoneContract(
   // BAD-683: a review the request asked for rides the same hook.
   forkStoreReviewGate(db, taskId, rawParams)
   forkCarryContract(db, taskId, continuesDispatchId ?? retryOfOf(rawParams))
+  // BAD-741: the --profile preamble follows the Task the same way.
+  const launch = currentForkAgentProfileLaunch()
+  forkStoreTaskProfilePreamble(
+    db,
+    taskId,
+    launch && { profile: launch.name, preamble: launch.preamble },
+    continuesDispatchId ?? retryOfOf(rawParams)
+  )
 }
 
 function settingsOf(runtime: OrcaRuntimeService): CompletionContractSettings {

@@ -6,6 +6,7 @@ import {
   ForkAgentProfilesListParams
 } from '../../../../../shared/fork/agent-profiles/agent-profiles-wire'
 import {
+  forkAgentProfileLaunchSummary,
   forkAgentProfileListRows,
   forkAgentProfileResolve
 } from '../../../../fork/agent-profiles/agent-profiles-service'
@@ -33,7 +34,15 @@ export const FORK_AGENT_PROFILE_METHODS = [
       if (!resolution.ok) {
         throw new InvalidArgumentError(resolution.message)
       }
-      return { resolved: resolution.resolved }
+      const launch = forkAgentProfileLaunchSummary(
+        runtime.requireStore().getSettings(),
+        resolution.resolved,
+        params.remote === true
+      )
+      if (!launch.ok) {
+        throw new InvalidArgumentError(launch.message)
+      }
+      return { resolved: resolution.resolved, launch: launch.summary }
     }
   })
 ] as const

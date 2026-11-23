@@ -5,6 +5,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { InvalidArgumentError } from '../../runtime/rpc/core'
 import { FORK_MCP_PROFILE_PARAM, type ForkMcpLaunchKind } from '../../../shared/fork/mcp-profiles'
+import { withForkAgentProfileLaunchScope } from '../agent-profiles/agent-profile-launch-scope'
 
 export type ForkMcpLaunchScope = { kind: ForkMcpLaunchKind; profile?: string }
 
@@ -63,6 +64,14 @@ export function setForkMcpProfileCheck(check: ((name: string) => boolean) | null
  * refuses the launch before anything starts. Other methods run untouched.
  */
 export function withForkMcpLaunchScope<T>(
+  call: { request: { method: string; params?: unknown } },
+  run: () => T
+): T {
+  // BAD-741: a --profile launch's own scope (FORK.md "Agent profiles") rides the same hook.
+  return withForkAgentProfileLaunchScope(call, () => mcpLaunchScope(call, run))
+}
+
+function mcpLaunchScope<T>(
   call: { request: { method: string; params?: unknown } },
   run: () => T
 ): T {

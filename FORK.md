@@ -3030,10 +3030,28 @@ ones `SLRM-123 `).
     `forkAgentProfilePermissionCap` (default `accept-edits`), and a launch says so.
   - **Settings.** `forkAgentProfiles` (the list, also editable in the settings file or with
     `orca settings`) and `forkAgentProfilePermissionCap`.
-  - **Not covered yet.** The permission mode and account are resolved, capped and shown, but a
-    launch does not apply them: Orca has no per-launch permission or account input, so the agent
-    runs on Settings > Agents' permission and the account chosen with `orca account select`.
-    There is no profile picker in the new-chat UI or the automation dialog.
+  - **Applied at launch (BAD-741).** The host that runs the agent resolves the profile again in an
+    async launch scope around agent launch, worktree create and worker-start, and applies it where
+    the stock launch already takes it: the capped mode as the terminal's `permissionMode` session
+    option (`--permission-mode` and the like) or the chat's permission session option; an agent
+    with no such mode on that surface starts on its default and the launch says so. A Claude
+    account rides the account-move pins (terminal env marker, chat session pin); Codex applies
+    only when it is the selected account, other agents get a note. A missing or signed-out
+    account is refused before anything is created; no credential is read. Automations store the
+    capped mode; they run on the selected account (a note says so).
+  - **Preamble.** Prepended by the CLI to `--spec`/`--prompt` text; with none (`--task`,
+    spec file, retry) the host puts it in the dispatch preamble, once (a spec that holds it is
+    left as is). It is kept per task in `fork_task_agent_profiles`, so retries and follow-ups
+    keep it. An unconfirmed import is refused on the host too.
+  - **Paired servers (`--on`).** Resolved at home; the name, agent, capped mode, account and
+    preamble travel as `forkAgentProfileLaunch`. The server checks them: a mode wider than its own
+    policy or an account it lacks is refused. A server without
+    `orchestration.fork-agent-profile-launch.v1` is refused with no effects applied.
+  - **Pickers.** A Profiles section in the + menu (after the agents) and a Profile field under
+    the automation dialog's agent; both show only when a profile exists, apply the cap and hold
+    back an unconfirmed import. The orchestration guide and bot preamble name `profiles list`.
+  - **Not covered yet.** Automatic retries and follow-ups keep the preamble, not the mode or
+    account. A UI start does not switch accounts. The MCP profile does not travel with `--on`.
   - Code is in `src/shared/fork/agent-profiles/`, `src/main/fork/agent-profiles/` and
     `src/cli/fork/agent-profile-*`.
 
@@ -3352,6 +3370,7 @@ Apply these in this order. Each one is a single commit.
 180. `BAD-780 A failed GitHub API call no longer ends a fork release: the run's waits retry a 5xx, 429 or network error until their own deadline (fork-run-gate.mjs, fork-sync.sh released, upstream's lane-wait step with github-script retries), while a real lane failure or an auth or 4xx error still fails at once`
 181. `BAD-686 Command guards in the agent's info: a shield on each agent row and a command guard line in orca agent list|show say guarded or unguarded with the reason, from the host's status; a gap workspace clears once it has no live agent`
 182. `BAD-682 Goal loop on a paired server: a test sets, lists and clears a goal with --environment through the real client and pairing, and the server's loop runs the check there and stops on success, max rounds and the budget`
+183. `BAD-741 Agent profiles apply at launch: the capped permission mode through each agent's own mode (terminal flags or chat option, or a note where it has none), the account through the Claude account pins (refused when missing or signed out), the preamble once for --task, spec file, retries and follow-ups, carried to a paired server that checks or refuses it, and pickers in the + menu and the automation dialog`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4619,6 +4638,17 @@ Upstream files only get short hooks, which keeps merges small:
   `profiles`; `FORK_AGENT_PROFILE_METHODS` is spread into `FORK_LAUNCH_DEFAULTS_METHODS`
   (`rpc-method-registry.ts` is untouched) and `rpc-params-catalog.generated.ts` is regenerated. The two settings are intersected in
   `fork-global-settings.ts`; the settings catalog is regenerated.
+- Agent profiles at launch (BAD-741), one hook each in stock files; the launch scope rides the
+  dispatcher's existing `withForkMcpLaunchScope`, so `dispatcher.ts` is untouched:
+  `runtime-agent-terminal-startup.ts` passes `opts` and session options through
+  `forkAgentProfileTerminalLaunch`; `structured-agent-session-entry-delegates.ts` passes the
+  create params through `forkAgentProfileChatCreate`; `worker-dispatch-preamble.ts` passes the
+  task spec through `forkAgentProfileTaskSpec`; `remote-owned-start.ts` spreads
+  `forkAgentProfileRemoteOwnedCarry` into the forwarded lineage;
+  `orchestration-runtime-capabilities.ts` lists `orchestration.fork-agent-profile-launch.v1`;
+  `bot-preamble.ts` adds `forkAgentProfileToolLine`; `AutomationAgentLaunchPicker.tsx` renders
+  `ForkAgentProfileAutomationField` and `tab-bar-surface.tsx` renders `ForkAgentProfileMenuItems`.
+  The orchestration guide has one line; the injected-context baseline is raised for it.
 
 - Services mail a bot (BAD-742), two small edits in stock files, `message-send-handler.ts`
   calls `assertServiceSend` when `--as-service` is given and then sends with no `from`, and

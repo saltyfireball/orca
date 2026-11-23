@@ -11,6 +11,10 @@ import {
   forkTaskContractWire,
   type ForkContractWire
 } from './contract-carry'
+import {
+  forkAgentProfileServerCarry,
+  type ForkAgentProfileCarry
+} from '../agent-profiles/agent-profile-remote-carry'
 
 export function forkFederatedCarry(
   db: OrchestrationDb,
@@ -18,7 +22,9 @@ export function forkFederatedCarry(
   taskId: string | undefined,
   serverName: string,
   capabilities: readonly string[] | undefined
-): (taskId: string) => ForkContractWire | null {
+): (taskId: string) => (ForkContractWire & ForkAgentProfileCarry) | null {
+  // BAD-741: a --profile start's permission mode, account and preamble ride the same attach-start.
+  const profile = forkAgentProfileServerCarry(serverName, capabilities)
   if (
     !capabilities?.includes(ORCHESTRATION_FORK_CONTRACT_CARRY_RUNTIME_CAPABILITY) &&
     forkStartCarriesContract(db, { params, taskId, continuesDispatchId: params.retryOf })
@@ -31,6 +37,7 @@ export function forkFederatedCarry(
   }
   return (taskForRemote) => {
     forkStoreDoneContract(db, taskForRemote, params)
-    return forkTaskContractWire(db, taskForRemote)
+    const contract = forkTaskContractWire(db, taskForRemote)
+    return contract || profile.forkAgentProfileLaunch ? { ...contract, ...profile } : null
   }
 }

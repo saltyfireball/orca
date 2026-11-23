@@ -4,6 +4,13 @@ import { RuntimeClientError } from '../runtime/connection/types'
 import type { RuntimeStatus } from '../../shared/remote-runtime/session-graph/runtime-session-contracts'
 import { AUTOMATION_LAUNCH_SETUP_RUNTIME_CAPABILITY } from '../../shared/automations/automation-runtime-capabilities'
 import type { RuntimeClient } from '../runtime/client'
+import { FORK_AGENT_PROFILE_PERMISSION_MODES } from '../../shared/fork/agent-profiles/agent-profiles-types'
+import { FORK_AGENT_PROFILE_PERMISSION_FLAG } from '../fork/agent-profile-flag'
+
+function forkProfilePermissionChoice(flags: Map<string, string | boolean>) {
+  const value = flags.get(FORK_AGENT_PROFILE_PERMISSION_FLAG)
+  return FORK_AGENT_PROFILE_PERMISSION_MODES.find((mode) => mode === value)
+}
 
 /**
  * --model and --effort on a project automation, as a launch setup change. An empty value goes
@@ -14,7 +21,9 @@ export function getProjectLaunchChoicesPatch(
 ): Pick<AutomationLaunchSetupPatch, 'choices'> | undefined {
   const model = getOptionalStringFlagAllowingEmpty(flags, 'model')
   const effort = getOptionalStringFlagAllowingEmpty(flags, 'effort')
-  if (model === undefined && effort === undefined) {
+  // BAD-741: a --profile's permission mode, already capped by the host (FORK.md "Agent profiles").
+  const permissionMode = forkProfilePermissionChoice(flags)
+  if (model === undefined && effort === undefined && !permissionMode) {
     return undefined
   }
   if (flags.has('extra-agent-args')) {
@@ -26,7 +35,8 @@ export function getProjectLaunchChoicesPatch(
   return {
     choices: {
       ...(model !== undefined ? { model: model || null } : {}),
-      ...(effort !== undefined ? { options: { effort: effort || null } } : {})
+      ...(effort !== undefined ? { options: { effort: effort || null } } : {}),
+      ...(permissionMode ? { permissionMode } : {})
     }
   }
 }

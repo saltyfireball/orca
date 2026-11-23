@@ -74,6 +74,7 @@ that the CLI is installed; a missing one fails as an `agent_readiness` timeout.
   `references/placement-and-remote.md` ("Which machine"). Otherwise your
   current workspace's project runs where you are, with no host check.
 - Add `--model` only if the user named one.
+- `ORCA profiles list` shows saved agent profiles; add `--profile <name>` when one fits.
 - If `worker-start` fails, do not rerun it; read `failedStage` and load
   `references/recovery-and-cleanup.md`.
 - To talk to a worker, use

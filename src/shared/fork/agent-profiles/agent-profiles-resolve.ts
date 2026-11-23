@@ -58,15 +58,18 @@ export function forkAgentProfileNeedsConfirm(profile: ForkAgentProfile): boolean
   )
 }
 
-type PolicySettings = {
+export type ForkAgentProfilePolicySettings = {
   agentPermissionDefault?: string
   agentPermissionOverrides?: Record<string, string | undefined>
   forkAgentProfilePermissionCap?: unknown
 }
+type PolicySettings = ForkAgentProfilePolicySettings
 
-function rank(mode: string): number {
+/** How wide a mode is, so a launch can tell whether a mode passes a cap. */
+export function forkAgentProfilePermissionRank(mode: string): number {
   return (FORK_AGENT_PROFILE_PERMISSION_MODES as readonly string[]).indexOf(mode)
 }
+const rank = forkAgentProfilePermissionRank
 
 /** The widest mode a profile may use for an agent: Settings > Agents when it sets one, else the cap. */
 export function forkAgentProfileMaxPermission(

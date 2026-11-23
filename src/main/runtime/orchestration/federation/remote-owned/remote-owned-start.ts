@@ -32,6 +32,7 @@ import { openRemoteRunLink } from '../../db/remote-owned/remote-run-links'
 import { callRemoteOwnedServer } from './remote-owned-calls'
 import { resolveCrossMachineChildParent } from '../cross-machine-child-parent'
 import { remoteForwardKey } from './remote-forward-caller'
+import { forkAgentProfileRemoteOwnedCarry } from '../../../../fork/agent-profiles/agent-profile-remote-carry'
 import {
   errorData,
   failedBeforeSending,
@@ -147,7 +148,11 @@ export async function startRemoteOwnedWorker(
     params.worktree === 'new-child'
       ? await resolveCrossMachineChildParent(runtime, params.from, ctx.orchestrationCaller)
       : undefined
-  const lineage = await forwardedChatLineage(runtime, db, params, ctx.orchestrationCaller, server)
+  const lineage = {
+    ...(await forwardedChatLineage(runtime, db, params, ctx.orchestrationCaller, server)),
+    // Fork (BAD-741): a --profile start's mode, account and preamble; refuses an older server.
+    ...(await forkAgentProfileRemoteOwnedCarry(runtime, server))
+  }
   const { run } = bindRun()
   // An older CLI sends no request ID; the start still runs, but a retry cannot find it.
   const forward = remoteForwardKey(runtime, ctx, params.from, callerRequestId ?? randomUUID())!

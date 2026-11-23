@@ -34,7 +34,7 @@
 10941 skill-guides/orca-plugin-authoring/references/recipes.md
 8894 skill-guides/orca-plugin-authoring/references/testing.md
 15299 skill-guides/orca-plugin-authoring/references/workflow.md
-9432 skill-guides/orchestration.md
+9521 skill-guides/orchestration.md
 770 skill-guides/orchestration/references/coordinator-loop.md
 423 skill-guides/orchestration/references/low-level-topology.md
 435 skill-guides/orchestration/references/messaging-and-gates.md
@@ -53,4 +53,4 @@
 2768 skills/orca-per-workspace-env/SKILL.md
 2831 skills/orca-plugin-authoring/SKILL.md
 3928 skills/orchestration/SKILL.md
-10188 src/main/runtime/orchestration/workers/launch/worker-dispatch-preamble.ts
+10331 src/main/runtime/orchestration/workers/launch/worker-dispatch-preamble.ts

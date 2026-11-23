@@ -1,4 +1,5 @@
 import React from 'react'
+import { ForkAgentProfileMenuItems } from '@/fork/agent-profiles/ForkAgentProfileMenuItems'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
 import type { Translate } from '@/i18n/use-translate'
@@ -286,6 +287,10 @@ export function renderTabBarSurface(
               />
               {showStaticCreateMenuItems ? <DropdownMenuSeparator className="my-0 mb-1.5" /> : null}
             </>
+          ) : null}
+          {/* Fork (BAD-741): agent profiles (FORK.md). */}
+          {!bot && !terminalOnly ? (
+            <ForkAgentProfileMenuItems model={agentMenu} onLaunch={launchAgentFromNewTabEntry} />
           ) : null}
           {bot && !terminalOnly ? <BotNewChatMenuItems bot={bot} model={agentMenu} /> : null}
           {botGroup && !terminalOnly ? (

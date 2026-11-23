@@ -10,6 +10,9 @@ import { isForkAgentProfileName } from '../../shared/fork/agent-profiles/agent-p
 import type { ForkAgentProfileResolveResult } from '../../shared/fork/agent-profiles/agent-profiles-wire'
 import { FORK_AGENT_PROFILE_FLAG } from './agent-profile-specs'
 
+/** Set for `automations create`: the profile's capped mode, read by its launch choices. */
+export const FORK_AGENT_PROFILE_PERMISSION_FLAG = 'fork-profile-permission'
+
 type Target = {
   /** The flag naming the agent. */
   agent: string
@@ -68,7 +71,8 @@ export async function applyForkAgentProfile(key: string, ctx: HandlerContext): P
       ...(present(flags, 'model') ? { model: present(flags, 'model') } : {}),
       ...(present(flags, 'effort') ? { effort: present(flags, 'effort') } : {}),
       ...(present(flags, 'mcp-profile') ? { mcpProfile: present(flags, 'mcp-profile') } : {}),
-      createsWorktree: target.createsWorktree
+      createsWorktree: target.createsWorktree,
+      ...(key === 'orchestration worker-start' && flags.has('on') ? { remote: true } : {})
     })
     .catch((error: unknown) => {
       if (error instanceof RuntimeClientError && error.code === 'method_not_found') {
@@ -79,7 +83,15 @@ export async function applyForkAgentProfile(key: string, ctx: HandlerContext): P
       }
       throw error
     })
-  const { resolved } = response.result
+  const { resolved, launch } = response.result
+  const text = await readTextOrFileFlag(flags, ctx.cwd, target.text, false)
+  // BAD-741: only the host applies these; one older than that would drop them without a word.
+  if (!launch && (resolved.permissionMode || resolved.account || (resolved.preamble && !text))) {
+    throw new RuntimeClientError(
+      'incompatible_runtime',
+      `This Orca host cannot apply profile "${resolved.name}"'s permission mode, account or preamble. Update Orca on the execution host and try again.`
+    )
+  }
   flags.set(target.agent, resolved.agent)
   if (resolved.model && !flags.has('model')) {
     flags.set('model', resolved.model)
@@ -90,17 +102,37 @@ export async function applyForkAgentProfile(key: string, ctx: HandlerContext): P
   if (resolved.mcpProfile && !flags.has('mcp-profile')) {
     flags.set('mcp-profile', resolved.mcpProfile)
   }
-  if (resolved.preamble) {
-    const existing = await readTextOrFileFlag(flags, ctx.cwd, target.text, false)
-    if (existing !== undefined) {
-      flags.delete(`${target.text}-file`)
-      flags.set(target.text, `${resolved.preamble}\n\n${existing}`)
-    }
+  // With no text (worker-start --task, --retry-of) the host puts the preamble in front of the task.
+  if (text !== undefined) {
+    // Read once: a `-file -` was stdin, which the handler cannot read again.
+    flags.delete(`${target.text}-file`)
+    flags.set(target.text, resolved.preamble ? `${resolved.preamble}\n\n${text}` : text)
+  }
+  if (key === 'automations create') {
+    noteAutomationProfile(flags, resolved, launch)
   }
   const lines = [
     `profile: ${resolved.name}`,
-    ...resolved.notes.map((note) => `profile note: ${note}`)
+    ...(launch?.lines ?? []),
+    ...[...resolved.notes, ...(launch?.notes ?? [])].map((note) => `profile note: ${note}`)
   ]
   // Stderr keeps --json output on stdout parseable.
   process.stderr.write(`${lines.join('\n')}\n`)
+}
+
+/** An automation keeps the mode as its own launch choice; its runs use the selected account. */
+function noteAutomationProfile(
+  flags: Map<string, string | boolean>,
+  resolved: ForkAgentProfileResolveResult['resolved'],
+  launch: ForkAgentProfileResolveResult['launch']
+): void {
+  if (resolved.permissionMode) {
+    flags.set(FORK_AGENT_PROFILE_PERMISSION_FLAG, resolved.permissionMode)
+  }
+  if (resolved.account && launch) {
+    launch.lines = launch.lines.filter((line) => !line.startsWith('profile account:'))
+    launch.notes.push(
+      `An automation runs on the account selected on its host when it runs, so the profile's account ${resolved.account} is not used.`
+    )
+  }
 }

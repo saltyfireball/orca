@@ -1,4 +1,5 @@
 // FORK.md "MCP profiles": the main-process start-up hook and the window's IPC.
+import { installForkAgentProfileLaunch } from '../agent-profiles/agent-profile-launch-scope'
 import { app, ipcMain } from 'electron'
 import { join } from 'node:path'
 import { FORK_MCP_CHANNELS as CHANNELS } from '../../../shared/fork/mcp-profiles'
@@ -21,6 +22,8 @@ function mainWindowContents(): Electron.WebContents | null {
 export function installForkMcpProfilesApp(
   readSettings: () => ForkGlobalSettings | undefined
 ): void {
+  // BAD-741: agent profile launches read the same settings (FORK.md "Agent profiles").
+  installForkAgentProfileLaunch({ readSettings })
   const dataFolder = join(app.getPath('userData'), 'fork-mcp-profiles')
   void installForkMcpProfiles({ readSettings, dataFolder }).catch((error: unknown) =>
     console.warn('[fork-mcp-profiles] start-up failed', String(error))

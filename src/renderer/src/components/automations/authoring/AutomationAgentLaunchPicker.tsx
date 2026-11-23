@@ -31,6 +31,7 @@ import {
   editsSupplementalArguments
 } from './automation-launch-draft'
 import type { GlobalSettings } from '../../../../../shared/settings/global-settings-types'
+import { ForkAgentProfileAutomationField } from '@/fork/agent-profiles/ForkAgentProfileAutomationField'
 
 function legacyArgumentsDraft(draft: AutomationDraft): AutomationDraft {
   return {
@@ -170,6 +171,13 @@ export function AutomationAgentLaunchPicker({
         onOpenChange={setMenuOpen}
         onCatalogOpen={setCatalogAgent}
         onPick={onPick}
+      />
+      {/* Fork (BAD-741): agent profiles (FORK.md). */}
+      <ForkAgentProfileAutomationField
+        settings={settings}
+        modern={modern}
+        surface={surface}
+        onDraftChange={onDraftChange}
       />
       {!modern ? (
         <AutomationSurfaceField

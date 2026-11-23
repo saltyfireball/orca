@@ -39,6 +39,7 @@ import { resolveStartupShell } from '../../../../shared/agent-launch/startup/tui
 import { resolveWslSessionContext } from '../../../daemon/pty-subprocess/wsl-session-context'
 import { isTuiAgentEnabled } from '../../../../shared/agent-launch/catalog/tui-agent-selection'
 import { resolveWslHostAgentLaunchInputs } from './wsl-host-agent-terminal-launch'
+import { forkAgentProfileTerminalLaunch } from '../../../fork/agent-profiles/agent-profile-launch-apply'
 
 /** No launch command could be built for a requested `startupAgent`. */
 export class AgentLaunchUnbuildableError extends Error {}
@@ -58,6 +59,8 @@ export async function resolveAgentTerminalCreateOptions(
   host: AgentTerminalPlanHost,
   sessionOptions?: Readonly<Record<string, SessionOptionValue>>
 ): Promise<TerminalCreateOptions> {
+  // Fork (BAD-741): a --profile launch's permission mode and Claude account (FORK.md).
+  ;({ opts, sessionOptions } = forkAgentProfileTerminalLaunch(opts, sessionOptions))
   const store = host.store ?? undefined
   // Preserve raw commands such as codex exec; Settings defaults apply only to unmanaged repo-backed bare agents.
   const callerSuppliedLaunch =
