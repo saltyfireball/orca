@@ -1831,6 +1831,10 @@ ones `SLRM-123 `).
     snapshots are pruned by a timer (`worktree-snapshot-prune.ts`, started with the runtime: first
     pass 10 minutes after start, then every 10 minutes while it finds something, doubling to 6
     hours when idle), on this host's local projects, in the desktop app and `orca serve`.
+    A snapshot that cannot be written during a Lost work delete stops it with a message that
+    says to free disk space or remove the worktree with git by hand (Lost work cannot force a
+    delete); the normal removal path keeps "Force the delete". A clean detached worktree whose
+    commits are on no branch is snapshotted too. Tests run the service over real git.
   - Code: `src/shared/fork/worktree-snapshots.ts`, `src/main/fork/worktree-snapshots/`,
     `src/cli/fork/worktree-snapshots-*.ts`. The tests run real git in a temp repo.
 
@@ -3277,6 +3281,7 @@ Apply these in this order. Each one is a single commit.
 171. `BAD-763 The completion contract and reviewer gate follow the work: a start on a paired server carries them and that server gates the done, retries and follow-ups inherit them, folder workspaces run command checks, and orca contract show reads the server's evidence`
 172. `BAD-767 Snapshots also cover Lost work deletes of untracked worktrees and prune on a timer; SSH removal stays refused by the stock route, pinned by a test`
 173. `BAD-763 A done never settles unchecked in silence: a Task that declared checks or asked for a review gets one plain line on its done, and an attempt in orca contract show, when the setting is off or a folder has no commit to review`
+174. `BAD-766 BAD-767 Follow-up: worker links survive a restart (read from the orchestration database), Lost work snapshot failures say what to do instead of forcing, and the hooks of both are covered by tests`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
