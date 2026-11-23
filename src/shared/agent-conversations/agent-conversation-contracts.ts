@@ -1,5 +1,6 @@
 import type { AgentStatusState } from '../agent-status/contracts/agent-status-types'
 import type { RuntimeListingHostScope } from '../execution-host/runtime-listing-host-scope'
+import type { CommandGuardAgentLine } from '../fork/command-guards-agent-line'
 
 export type AgentConversationKind = 'chat' | 'terminal'
 
@@ -20,6 +21,8 @@ export type AgentConversationRow = {
   title: string | null
   lastAssistantMessage: string | null
   updatedAt: number
+  /** Fork (BAD-686): whether Orca's command guards cover this agent; absent when they are off. */
+  commandGuard?: CommandGuardAgentLine
 }
 
 export type AgentListResult = {

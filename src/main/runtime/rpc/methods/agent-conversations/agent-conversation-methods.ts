@@ -15,6 +15,7 @@ import {
 } from '../../../agent-conversations/agent-conversation-list'
 import { resolveAgentConversation } from '../../../agent-conversations/agent-conversation-address'
 import { readAgentConversation } from '../../../agent-conversations/agent-conversation-read'
+import { forkAgentRowsWithCommandGuards } from '../../../../fork/command-guards/command-guards-agent-rows'
 
 // Listing reads every workspace's open agents, so no workspace page may hide one.
 const AGENT_LIST_WORKTREE_LIMIT = 10_000
@@ -26,11 +27,13 @@ export const AGENT_CONVERSATION_METHODS = [
     name: 'agent.list',
     permission: 'workspace',
     params: AgentListParams,
-    handler: async (params, { runtime }): Promise<AgentListResult> =>
-      projectAgentConversationList(
+    handler: async (params, { runtime }): Promise<AgentListResult> => {
+      const list = projectAgentConversationList(
         await runtime.getWorktreePs(AGENT_LIST_WORKTREE_LIMIT, true, false, params.worktreeId),
         params
       )
+      return { ...list, agents: forkAgentRowsWithCommandGuards(list.agents) }
+    }
   }),
   defineMethod({
     name: 'agent.show',
@@ -41,7 +44,7 @@ export const AGENT_CONVERSATION_METHODS = [
       return {
         orcaSessionId: resolved.orcaSessionId,
         kind: resolved.kind,
-        places: await agentConversationPlaces(runtime, resolved)
+        places: forkAgentRowsWithCommandGuards(await agentConversationPlaces(runtime, resolved))
       }
     }
   }),

@@ -2037,7 +2037,10 @@ ones `SLRM-123 `).
       from `forkLocalWorkspaceFolder`, so a folder workspace (`folder:<id>`) is guarded at its
       folder (BAD-678). A shell call whose workspace has no folder on this host (a folder
       workspace on an SSH host or a WSL path, or one the host does not know) goes through, and
-      the terminal row then shows as unguarded and says how many workspaces.
+      the terminal row then shows as unguarded and says how many workspaces. A live Claude
+      terminal in such a workspace counts too, before any call, and a workspace with no live
+      agent any more drops out, so the row clears without a restart. On a Windows host the
+      terminal row is unguarded (its script cannot answer).
     - **native chat** and **chat worker** (BAD-764): their child has no pane identity or hook
       endpoint (the seal drops them so one chat cannot pose as another, and nothing of the sort
       is added back), so the script never reaches Orca. Orca instead answers PreToolUse itself,
@@ -2051,6 +2054,16 @@ ones `SLRM-123 `).
       its hook contract allows a deny, a path that prints it, a proving test and a row in
       `commandGuardCoverage`.
     - A block's audit line names the surface (`orca command-guards list`).
+  - **In the agent's info.** Each agent row in the sidebar and the dashboard has a small shield
+    (BAD-686): its tooltip is one line, guarded, or unguarded with the reason (a Codex terminal,
+    an OpenCode chat, a Claude chat its host started with no guard, a terminal in a workspace with
+    no folder on its host). `orca agent list|show` rows say the same (`command guard:` line,
+    `commandGuard` in `--json`). Both come from `commandGuardAgentLine`
+    (`src/shared/fork/command-guards-agent-line.ts`) over the agent's own host's
+    `fork.commandGuards.status` (which now also lists the gap workspaces and each chat), so the
+    line cannot disagree with the status. Nothing shows while command guards are off. The rows
+    were picked over the chat header because they show terminals and chats alike; a direct SSH
+    workspace (no Orca host to ask) and another host's agents in a listing get no line.
   - **CLI.** `orca command-guards list|status|allow|disallow` over `fork.commandGuards.*`
     (workspace permission; `--environment` for a paired server).
   - Code is in `src/shared/fork/command-guards*.ts` (rules, shell reader, settings, wire),
@@ -3333,6 +3346,7 @@ Apply these in this order. Each one is a single commit.
 178. `BAD-684 Agent slice finish: the slice log line says what is not covered, the daemon hook and the log are tested, and real-systemd tests prove MemoryHigh throttling and the kill -9 scope cleanup`
 179. `BAD-783 PR nudge and babysitter messages end with one sentence that grants no permission to merge and places no hold; the conflict request merges the base in by default, never mentions a force push, and forkPrNudgeConflictUpdate chooses rebase`
 180. `BAD-780 A failed GitHub API call no longer ends a fork release: the run's waits retry a 5xx, 429 or network error until their own deadline (fork-run-gate.mjs, fork-sync.sh released, upstream's lane-wait step with github-script retries), while a real lane failure or an auth or 4xx error still fails at once`
+181. `BAD-686 Command guards in the agent's info: a shield on each agent row and a command guard line in orca agent list|show say guarded or unguarded with the reason, from the host's status; a gap workspace clears once it has no live agent`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4606,6 +4620,14 @@ Upstream files only get short hooks, which keeps merges small:
   `withForkMcpProfileFlag` also calls `withForkServiceSendFlag` (`src/cli/fork/service-send-specs.ts`),
   which adds the boolean `--as-service` flag, usage and note to the `orchestration send` spec, so
   `src/cli/specs/orchestration.ts` is untouched. The host is untouched.
+
+- Command guards in the agent's info (BAD-686), small edits in stock files:
+  `agent-conversation-contracts.ts` adds the optional `commandGuard` field to
+  `AgentConversationRow`; `agent-conversation-methods.ts` passes `agent.list` rows and
+  `agent.show` places through `forkAgentRowsWithCommandGuards`; `agent-conversations.ts`
+  (`formatAgentRow`) prints `forkCommandGuardRowLines(row)`. Proof tests:
+  `command-guards-agent-rows.test.ts` and `src/cli/fork/command-guards-row-line.test.ts`. The
+  row shield is in the fork's `ForkAgentRowStatus.tsx`.
 
 - Command guards in native chats (BAD-764), one small edit in a stock file:
   `claude-structured-session-acquisition.ts` wraps `launch.options` in

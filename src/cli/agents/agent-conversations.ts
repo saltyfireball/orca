@@ -7,6 +7,7 @@ import {
 import { printResult } from '../output/command-result-output'
 import { RuntimeClientError } from '../runtime/connection/types'
 import type { RuntimeClient } from '../runtime/client'
+import { forkCommandGuardRowLines } from '../fork/command-guards-handlers'
 import { getOptionalWorktreeSelector } from '../workspace-selection/workspace-selector'
 import {
   annotateOmittedHostScope,
@@ -117,6 +118,7 @@ function formatAgentRow(row: AgentConversationRow): string {
     `${row.repo ? `${row.repo} › ` : ''}${row.workspace} · ${row.agent ?? 'agent'} ${row.kind} · ${row.state}`,
     `  id: ${address(row)}`,
     ...(row.title ? [`  title: ${row.title}`] : []),
+    ...forkCommandGuardRowLines(row),
     ...(row.lastAssistantMessage
       ? [`  last reply: ${row.lastAssistantMessage.replace(/\s+/g, ' ').slice(0, 200)}`]
       : [])

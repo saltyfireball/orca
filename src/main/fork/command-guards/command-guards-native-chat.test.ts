@@ -126,7 +126,7 @@ describe('command guard proof: native chat', () => {
       command: 'git push --force origin main'
     })
     expect(
-      forkCommandGuardStatus().surfaces?.find((row) => row.surface === 'native-chat')
+      forkCommandGuardStatus([]).surfaces?.find((row) => row.surface === 'native-chat')
     ).toMatchObject({
       guarded: true,
       chats: { guarded: 1, unguarded: 0 }
@@ -149,7 +149,9 @@ describe('command guard proof: native chat', () => {
     const reply = await forceTheHook(`chat-${randomUUID()}`)
     expect(reply).toBeNull()
     expect(listCommandGuardAudit(500)).toHaveLength(before)
-    const surface = forkCommandGuardStatus().surfaces?.find((row) => row.surface === 'native-chat')
+    const surface = forkCommandGuardStatus([]).surfaces?.find(
+      (row) => row.surface === 'native-chat'
+    )
     expect(surface).toMatchObject({ guarded: false, chats: { guarded: 0, unguarded: 1 } })
   })
 })
@@ -174,7 +176,7 @@ describe('command guard proof: chat worker', () => {
       workspaceId: 'folder:notes'
     })
     expect(
-      forkCommandGuardStatus().surfaces?.find((row) => row.surface === 'chat-worker')
+      forkCommandGuardStatus([]).surfaces?.find((row) => row.surface === 'chat-worker')
     ).toMatchObject({
       guarded: true,
       chats: { guarded: 1, unguarded: 0 }

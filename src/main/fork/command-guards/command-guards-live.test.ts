@@ -68,7 +68,7 @@ describe('command guard proof: terminal', () => {
   })
 
   it('reports the terminal as guarded only because this test exists', () => {
-    const terminal = forkCommandGuardStatus().surfaces?.find((row) => row.surface === 'terminal')
+    const terminal = forkCommandGuardStatus([]).surfaces?.find((row) => row.surface === 'terminal')
     expect(terminal).toMatchObject({
       guarded: true,
       proof: 'src/main/fork/command-guards/command-guards-live.test.ts'
@@ -94,7 +94,6 @@ describe('command guard proof: terminal in a folder workspace', () => {
     })
   })
 
-  // Runs last: it marks the terminal surface unguarded for the rest of this process.
   it('lets a folder workspace with no folder here through and says so in the status', () => {
     for (const worktreeId of ['folder:remote', 'folder:gone']) {
       const answer = forkCommandGuardAnswer(
@@ -105,8 +104,31 @@ describe('command guard proof: terminal in a folder workspace', () => {
       )
       expect(answer).toBeNull()
     }
-    const terminal = forkCommandGuardStatus().surfaces?.find((row) => row.surface === 'terminal')
+    const live = ['folder:remote', 'folder:gone'].map((worktreeId) => ({
+      worktreeId,
+      paneKey: 'tab:3',
+      agentType: 'claude'
+    }))
+    const terminal = forkCommandGuardStatus(live).surfaces?.find(
+      (row) => row.surface === 'terminal'
+    )
     expect(terminal?.guarded).toBe(false)
     expect(terminal?.note).toMatch(/^unguarded: 2 workspaces with no folder on this host/)
+  })
+
+  it('clears the terminal row once those workspaces have no live agent', () => {
+    forkCommandGuardAnswer(
+      'claude',
+      body('git push --force origin main'),
+      { paneKey: 'tab:4', worktreeId: 'folder:gone', hookEventName: 'PreToolUse' },
+      true
+    )
+    const status = (live: { worktreeId: string; paneKey: string }[]) =>
+      forkCommandGuardStatus(live).surfaces?.find((row) => row.surface === 'terminal')
+    expect(status([{ worktreeId: 'folder:gone', paneKey: 'tab:4' }])?.guarded).toBe(false)
+    expect(status([{ worktreeId: 'folder:notes', paneKey: 'tab:5' }])).toMatchObject({
+      guarded: true,
+      note: expect.stringMatching(/^Claude Code in a terminal/)
+    })
   })
 })

@@ -4,6 +4,7 @@ import { z } from 'zod'
 import type {
   CommandGuardAgentCoverage,
   CommandGuardAuditEntry,
+  CommandGuardSurface,
   CommandGuardSurfaceCoverage
 } from './command-guards'
 
@@ -41,6 +42,10 @@ export type ForkCommandGuardsStatusResult = {
   agents: CommandGuardAgentCoverage[]
   /** Claude Code per surface; an older host sends none. */
   surfaces?: CommandGuardSurfaceCoverage[]
+  /** Workspaces with a live agent and no folder on this host, so terminal shell calls there go through unchecked. */
+  unguardedWorkspaces?: string[]
+  /** Native chats and chat workers started on this host, by whether a guard was attached. */
+  chats?: { sessionId: string; surface: CommandGuardSurface; guarded: boolean }[]
 }
 
 export type ForkCommandGuardsAllowResult = {

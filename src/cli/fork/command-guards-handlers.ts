@@ -5,6 +5,7 @@ import { getOptionalStringFlag } from '../arguments/flags'
 import { printResult } from '../output/command-result-output'
 import { RuntimeClientError } from '../runtime/connection/types'
 import type { CommandGuardAuditEntry } from '../../shared/fork/command-guards'
+import type { CommandGuardAgentLine } from '../../shared/fork/command-guards-agent-line'
 import type {
   ForkCommandGuardsAllowResult,
   ForkCommandGuardsListResult,
@@ -76,6 +77,17 @@ export function formatCommandGuardsStatus(result: ForkCommandGuardsStatusResult)
     ...(result.surfaces ? [...surfaces, ''] : []),
     ...agents
   ].join('\n')
+}
+
+/** The guard line under an `orca agent list|show` row; none when the host sent none. */
+export function forkCommandGuardRowLines(row: { commandGuard?: CommandGuardAgentLine }): string[] {
+  const line = row.commandGuard
+  if (!line) {
+    return []
+  }
+  return [
+    `  command guard: ${line.guarded ? `guarded (${oneLine(line.note)})` : oneLine(line.note)}`
+  ]
 }
 
 function requireRule(ctx: HandlerContext): string {

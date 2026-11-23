@@ -30,8 +30,14 @@ import { chatSessionIdForRow } from '../cache-cold/cache-cold-view'
 import { useCacheState } from '../cache-cold/use-fork-cache-cold'
 import { useForkRowReview } from './use-fork-row-review'
 import { forkAskAgentToFixChecks } from './fork-row-fix-checks'
+import { ForkCommandGuardMark } from '../command-guard-line/ForkCommandGuardMark'
 
-type Row = { paneKey: string; tab: { id: string; worktreeId: string }; rowSource?: string }
+type Row = {
+  paneKey: string
+  tab: { id: string; worktreeId: string }
+  rowSource?: string
+  agentType?: string | null
+}
 
 /** The child count badge's chip (SLRM-2095), so every fork chip on a row looks the same. */
 function chipClass(highlighted: boolean): string {
@@ -181,11 +187,13 @@ export function ForkAgentRowStatus({
     review.provider === 'github' &&
     (review.state === 'open' || review.state === 'draft') &&
     forkRowChecksOutcome(review) === 'failure'
+  const guard = <ForkCommandGuardMark agent={agent} highlighted={highlighted} />
   if (!spend && !context && !review) {
-    return null
+    return guard
   }
   return (
     <>
+      {guard}
       {spend ? (
         <Chip label={spend.label} highlighted={highlighted} data="spend">
           {spend.text}

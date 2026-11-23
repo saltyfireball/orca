@@ -12,6 +12,7 @@ import {
   forkCommandGuardSetAllow,
   forkCommandGuardStatus
 } from '../../../../fork/command-guards/command-guards-live'
+import { agentHookServer } from '../../../../agent-hooks/server/agent-hook-server'
 
 export const FORK_COMMAND_GUARDS_METHODS = [
   defineMethod({
@@ -24,7 +25,7 @@ export const FORK_COMMAND_GUARDS_METHODS = [
     name: 'fork.commandGuards.status',
     permission: 'workspace',
     params: ForkCommandGuardsStatusParams,
-    handler: async () => forkCommandGuardStatus()
+    handler: async () => forkCommandGuardStatus(agentHookServer.getStatusSnapshot())
   }),
   defineMethod({
     name: 'fork.commandGuards.allow',

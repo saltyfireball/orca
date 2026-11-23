@@ -214,6 +214,11 @@ const SURFACE_NOTES: Record<CommandGuardSurface, { guarded: string; unguarded: s
   }
 }
 
+/** The status's note for a surface with its proof, as an agent's guard line shows it. */
+export function commandGuardSurfaceGuardedNote(surface: CommandGuardSurface): string {
+  return SURFACE_NOTES[surface].guarded
+}
+
 export type CommandGuardSurfaceCoverage = {
   surface: CommandGuardSurface
   guarded: boolean

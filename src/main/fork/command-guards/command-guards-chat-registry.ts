@@ -28,6 +28,15 @@ export function noteCommandGuardChat(
   }
 }
 
+/** The chats this host started, for an agent's guard line. */
+export function forkCommandGuardChatList(): {
+  sessionId: string
+  surface: GuardedChatSurface
+  guarded: boolean
+}[] {
+  return [...chats].map(([sessionId, chat]) => ({ sessionId, ...chat }))
+}
+
 export function resetCommandGuardChats(): void {
   chats.clear()
 }
