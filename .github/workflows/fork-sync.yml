@@ -2,7 +2,9 @@ name: Fork sync
 
 # Merges the newest stable upstream tag into main (one merge commit, never a rebase), checks it, pushes main,
 # without force, keeps upstream workflows disabled, then builds and releases a self-signed macOS app. Every run,
-# success or failure, ends by publishing its sync status for the app and the run summary. See FORK.md.
+# success or failure, ends by publishing its sync status for the app and the run summary. When the merge
+# conflicts it is aborted, main is released as it is when it has no release yet, and the run still ends red.
+# See FORK.md.
 
 on:
   schedule:
@@ -11,6 +13,11 @@ on:
     inputs:
       force_build:
         description: Build and release even when main already has a fork release
+        required: false
+        default: false
+        type: boolean
+      skip_upstream:
+        description: Skip the upstream merge for this run and release main as it is (to ship a fix on purpose)
         required: false
         default: false
         type: boolean
@@ -88,7 +95,7 @@ jobs:
       # The merge commit is SSH-signed with this key, as the fork owner.
       - name: Set up commit signing
         id: signing
-        if: steps.tags.outputs.state == 'behind'
+        if: steps.tags.outputs.state == 'behind' && !inputs.skip_upstream
         shell: bash
         env:
           FORK_GIT_SIGNING_KEY: ${{ secrets.FORK_GIT_SIGNING_KEY }}
@@ -118,16 +125,17 @@ jobs:
           echo "enabled=true" >>"$GITHUB_OUTPUT"
           echo "The merge commit will be signed and committed by $name."
 
-      # On a conflict this step fails fast: it prints FORK-SYNC-CONFLICT <tag> first, nothing is built
-      # or pushed, and the status job lists the conflicted files in the run summary.
+      # On a conflict the merge is aborted (main untouched) after the step prints FORK-SYNC-CONFLICT <tag>
+      # first. The step then succeeds, so main can be released as it is; the last job fails the run.
       - name: Merge the newest upstream tag into main
         id: merge
-        if: steps.tags.outputs.state == 'behind'
+        if: steps.tags.outputs.state == 'behind' && !inputs.skip_upstream
         shell: bash
         env:
           LATEST: ${{ steps.tags.outputs.latest }}
           LATEST_SHA: ${{ steps.tags.outputs.latest_sha }}
           SIGNING: ${{ steps.signing.outputs.enabled }}
+          CONFLICT_CONTINUES: 'true'
         run: |
           set -euo pipefail
           if [ "$SIGNING" != 'true' ]; then
@@ -146,15 +154,24 @@ jobs:
           git config --unset user.signingkey || true
           git config --unset gpg.ssh.allowedSignersFile || true
 
+      # After a conflict, or a run that skips the merge, main itself is released when it has no release
+      # yet, after the same checks as a merged one. Nothing is pushed: main is as it was.
+      - name: Check whether main needs a release on its own
+        id: plan
+        if: steps.merge.outputs.conflict == 'true' || inputs.skip_upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash config/scripts/fork/fork-sync.sh released
+
       # Mirrors release-mac-build.yml: "Setup pnpm" and "Setup Node.js".
       - name: Setup pnpm
-        if: steps.merge.outputs.changed == 'true'
+        if: steps.merge.outputs.changed == 'true' || steps.plan.outputs.released == 'false'
         uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2
         with:
           install: false
 
       - name: Setup Node.js
-        if: steps.merge.outputs.changed == 'true'
+        if: steps.merge.outputs.changed == 'true' || steps.plan.outputs.released == 'false'
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version-file: package.json
@@ -165,24 +182,24 @@ jobs:
             mobile/pnpm-lock.yaml
 
       - name: Install dependencies
-        if: steps.merge.outputs.changed == 'true'
+        if: steps.merge.outputs.changed == 'true' || steps.plan.outputs.released == 'false'
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck
-        if: steps.merge.outputs.changed == 'true'
+        if: steps.merge.outputs.changed == 'true' || steps.plan.outputs.released == 'false'
         run: pnpm typecheck
 
       - name: Fork tests
-        if: steps.merge.outputs.changed == 'true'
+        if: steps.merge.outputs.changed == 'true' || steps.plan.outputs.released == 'false'
         run: pnpm test src/shared/fork src/main/fork src/main/updater src/renderer/src/components/native-chat/fork config/scripts/fork --maxWorkers=2
 
       # Mirrors release-mac-build.yml: the install-mobile-dependencies action.
       - name: Install mobile dependencies
-        if: steps.merge.outputs.changed == 'true'
+        if: steps.merge.outputs.changed == 'true' || steps.plan.outputs.released == 'false'
         uses: ./.github/actions/install-mobile-dependencies
 
       - name: Mobile typecheck
-        if: steps.merge.outputs.changed == 'true'
+        if: steps.merge.outputs.changed == 'true' || steps.plan.outputs.released == 'false'
         working-directory: mobile
         run: pnpm typecheck
 
@@ -236,20 +253,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ steps.result.outputs.sha }}
         shell: bash
-        run: |
-          set -euo pipefail
-          tags_at_sha="$(git ls-remote --tags origin 'v*' \
-            | awk -v sha="$SHA" '$1 == sha { sub("refs/tags/", "", $2); sub("\\^\\{\\}$", "", $2); print $2 }' \
-            | sort -u)"
-          published="$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" \
-            --jq '.[] | select(.draft == false) | .tag_name' | sort -u)"
-          if [ -n "$tags_at_sha" ] && [ -n "$(comm -12 <(printf '%s\n' "$tags_at_sha") <(printf '%s\n' "$published"))" ]; then
-            echo "released=true" >>"$GITHUB_OUTPUT"
-            echo "$SHA already has a fork release"
-          else
-            echo "released=false" >>"$GITHUB_OUTPUT"
-            echo "$SHA has no fork release yet"
-          fi
+        run: bash config/scripts/fork/fork-sync.sh released
 
   # As upstream's daily build does: every SSH host runs orcad, deployed from the template the app
   # ships. Without it the app has no server to install on an SSH host (SLRM-1758). This qualifies
@@ -258,7 +262,8 @@ jobs:
     needs: sync
     if: >-
       github.repository != 'stablyai/orca' &&
-      (needs.sync.outputs.changed == 'true' || needs.sync.outputs.released != 'true' || inputs.force_build)
+      (needs.sync.outputs.changed == 'true' || needs.sync.outputs.released != 'true' ||
+      (inputs.force_build && needs.sync.outputs.conflict != 'true'))
     permissions:
       contents: read
       actions: read
@@ -277,7 +282,8 @@ jobs:
     needs: sync
     if: >-
       github.repository != 'stablyai/orca' &&
-      (needs.sync.outputs.changed == 'true' || needs.sync.outputs.released != 'true' || inputs.force_build)
+      (needs.sync.outputs.changed == 'true' || needs.sync.outputs.released != 'true' ||
+      (inputs.force_build && needs.sync.outputs.conflict != 'true'))
     runs-on: ubuntu-latest
     timeout-minutes: 75
     permissions:
@@ -366,7 +372,8 @@ jobs:
     needs: sync
     if: >-
       github.repository != 'stablyai/orca' &&
-      (needs.sync.outputs.changed == 'true' || needs.sync.outputs.released != 'true' || inputs.force_build)
+      (needs.sync.outputs.changed == 'true' || needs.sync.outputs.released != 'true' ||
+      (inputs.force_build && needs.sync.outputs.conflict != 'true'))
     runs-on: macos-15
     timeout-minutes: 90
     permissions:
@@ -617,7 +624,8 @@ jobs:
   # update check) and states the outcome, with resync commands, in the run summary. GITHUB_TOKEN
   # suffices: that branch's tree holds no workflow files, and token pushes start no workflows.
   # Its steps continue on error: a status that cannot be published must not turn a run red
-  # whose release went out.
+  # whose release went out. A run that skips the upstream merge (skip_upstream) publishes nothing:
+  # it never looked at upstream, so the last published status still stands.
   status:
     needs: [sync, orcad-template, orcad-template-fork, build-mac]
     if: always() && github.repository != 'stablyai/orca'
@@ -632,16 +640,19 @@ jobs:
           ref: ${{ github.sha }}
 
       - name: Read the last published status
+        if: ${{ !inputs.skip_upstream }}
         continue-on-error: true
         shell: bash
         run: bash config/scripts/fork/fork-sync.sh previous >"$RUNNER_TEMP/previous-status.json"
 
       - name: Compose the sync status and the run summary
         id: compose
+        if: ${{ !inputs.skip_upstream }}
         continue-on-error: true
         shell: bash
         env:
-          SYNC_RESULT: ${{ needs.sync.result }}
+          # A conflict ends the sync job green so main can be released, but it is a failed sync.
+          SYNC_RESULT: ${{ needs.sync.outputs.conflict == 'true' && 'failure' || needs.sync.result }}
           BUILD_RESULTS: ${{ needs.orcad-template.result }} ${{ needs.orcad-template-fork.result }} ${{ needs.build-mac.result }}
           LATEST: ${{ needs.sync.outputs.upstream_tag }}
           LATEST_SHA: ${{ needs.sync.outputs.latest_sha }}
@@ -659,8 +670,35 @@ jobs:
         run: node config/scripts/fork/fork-sync-status.mjs "$RUNNER_TEMP/status.json" "$RUNNER_TEMP/previous-status.json"
 
       - name: Publish the sync status
+        if: ${{ !inputs.skip_upstream }}
         continue-on-error: true
         shell: bash
         env:
           STATUS_FILE: ${{ runner.temp }}/status.json
         run: bash config/scripts/fork/fork-sync.sh publish
+
+      - name: Say whether main was released anyway
+        if: ${{ always() && (needs.sync.outputs.conflict == 'true' || inputs.skip_upstream) }}
+        shell: bash
+        env:
+          WHY: ${{ needs.sync.outputs.conflict == 'true' && 'conflict' || 'skipped' }}
+          RELEASED: ${{ needs.sync.outputs.released }}
+          BUILD_RESULT: ${{ needs.build-mac.result }}
+          VERSION: ${{ needs.sync.outputs.version }}
+          SHA: ${{ needs.sync.outputs.sha }}
+        run: bash config/scripts/fork/fork-sync.sh release-line | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # The run of a conflict ends red, whatever was released from main meanwhile: the merge is still
+  # to do by hand, and the red run is what an automation and the owner see.
+  conflict:
+    needs: [sync, status]
+    if: always() && github.repository != 'stablyai/orca' && needs.sync.outputs.conflict == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail the run
+        env:
+          LATEST: ${{ needs.sync.outputs.upstream_tag }}
+        run: |
+          echo "::error::FORK-SYNC-CONFLICT $LATEST: the merge is still to do by hand (see the run summary)."
+          exit 1

@@ -1,6 +1,6 @@
 // fork-sync.sh against throwaway repos: an upstream, the fork's bare origin and the job's clone.
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -290,6 +290,96 @@ describe('fork-sync.sh', () => {
     expect(git(job, 'rev-parse', 'main')).toBe(oldMain)
     expect(git(job, 'status', '--porcelain')).toBe('')
     expect(git(join(root, 'origin.git'), 'rev-parse', 'main')).toBe(oldMain)
+  })
+
+  it('exits 0 on a conflict when told to go on, with the marker and outputs the same', () => {
+    const { up } = setUp()
+    const job = join(root, 'job')
+    commit(job, 'shared.txt', 'fork\n', 'f3')
+    git(job, 'push', '-q', 'origin', 'main')
+    const oldMain = git(job, 'rev-parse', 'main')
+    const v2 = commit(up, 'shared.txt', 'upstream\n', 'u3')
+    git(up, 'tag', 'v1.1.0')
+    expect(sync('detect').status).toBe(0)
+    const merge = sync('merge', { LATEST: 'v1.1.0', LATEST_SHA: v2, CONFLICT_CONTINUES: 'true' })
+    expect(merge.status).toBe(0)
+    expect(merge.log.split('\n')[0]).toBe('FORK-SYNC-CONFLICT v1.1.0')
+    expect(merge.out.conflict).toBe('true')
+    expect(merge.out.conflicts).toBe('shared.txt')
+    expect(merge.out.changed).toBeUndefined()
+    expect(git(job, 'rev-parse', 'HEAD')).toBe(oldMain)
+    expect(git(job, 'status', '--porcelain')).toBe('')
+    // The merge-less base is still found, so the release of main keeps the current base tag.
+    expect(sync('merged-tag').log.trim()).toBe('1.0.0')
+  })
+
+  it('still fails a merge error when told to go on after a conflict', () => {
+    setUp()
+    const merge = sync('merge', {
+      LATEST: 'v9.9.9',
+      LATEST_SHA: 'f'.repeat(40),
+      CONFLICT_CONTINUES: 'true'
+    })
+    expect(merge.status).toBe(1)
+    expect(merge.out.merge_error).toBe('true')
+  })
+
+  describe('released and release-line', () => {
+    // A fake gh on PATH that lists the published release tags, one per line.
+    function withReleases(tags) {
+      const bin = join(root, 'bin')
+      mkdirSync(bin, { recursive: true })
+      writeFileSync(
+        join(bin, 'gh'),
+        `#!/bin/sh\nprintf '%s\\n' ${tags.map((t) => `'${t}'`).join(' ')}\n`
+      )
+      chmodSync(join(bin, 'gh'), 0o755)
+      return { PATH: `${bin}:${process.env.PATH}`, GITHUB_REPOSITORY: 'example/fork' }
+    }
+
+    it('says main has no release when no release tag points at it', () => {
+      setUp()
+      const job = join(root, 'job')
+      // An older release exists, and main has moved on since.
+      git(job, 'tag', 'v1.0.1001')
+      git(job, 'push', '-q', 'origin', 'v1.0.1001')
+      commit(job, 'fork-c.txt', 'c\n', 'f3')
+      git(job, 'push', '-q', 'origin', 'main')
+      const result = sync('released', withReleases(['v1.0.1001']))
+      expect(result.status).toBe(0)
+      expect(result.out.released).toBe('false')
+    })
+
+    it('says main is released when a published release tag points at it', () => {
+      setUp()
+      const job = join(root, 'job')
+      git(job, 'tag', 'v1.0.1002')
+      git(job, 'push', '-q', 'origin', 'v1.0.1002')
+      expect(sync('released', withReleases(['v1.0.1002'])).out.released).toBe('true')
+      // A tag with no published (non-draft) release does not count.
+      expect(sync('released', withReleases(['v1.0.1009'])).out.released).toBe('false')
+    })
+
+    it('names the release of main after a conflict, or why none went out', () => {
+      setUp()
+      const line = (extra) => sync('release-line', extra).log.trim()
+      const base = { WHY: 'conflict', VERSION: '1.0.1003', SHA: 'abc123' }
+      expect(line({ ...base, RELEASED: 'false', BUILD_RESULT: 'success' })).toBe(
+        'Release of main despite the upstream conflict: yes, v1.0.1003 (abc123) went out.'
+      )
+      expect(line({ ...base, RELEASED: 'true', BUILD_RESULT: 'skipped' })).toMatch(
+        /none built, main already has a fork release/
+      )
+      expect(line({ ...base, RELEASED: 'false', BUILD_RESULT: 'failure' })).toMatch(
+        /did not go out \(build failure\)/
+      )
+      expect(line({ ...base, RELEASED: '', BUILD_RESULT: 'skipped' })).toMatch(
+        /none, the sync job stopped/
+      )
+      expect(line({ ...base, WHY: 'skipped', RELEASED: 'false', BUILD_RESULT: 'success' })).toMatch(
+        /^Release of main with the upstream merge skipped: yes/
+      )
+    })
   })
 
   it('does nothing on a release-only run: main already has the newest tag', () => {

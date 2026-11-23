@@ -24,9 +24,11 @@ ones `SLRM-123 `).
 - **Landing a change.** Work on a branch from `origin/main`, fast-forward `main` to it:
   `git push origin <sha>:refs/heads/main`. If `main` moved, cherry-pick onto a new branch from
   the new `main`. Never rebase or force-push `main` or a pushed branch.
-- **A conflicted merge.** The workflow stops before building, pushes nothing, and prints
+- **A conflicted merge.** The workflow aborts the merge, pushes nothing, and prints
   `FORK-SYNC-CONFLICT <tag>` as the first line of the merge step and of the run summary,
-  which lists the conflicting files. To resolve it by hand:
+  which lists the conflicting files. When `main` has no fork release yet, the run releases
+  `main` as it is first (see How sync works), so landed fork work never waits for the merge;
+  the run still ends red. To resolve it by hand:
   1. `git fetch origin` and fetch the tag from upstream.
   2. `git switch -c fork-sync-<tag> origin/main`, then `git merge <tag>`.
   3. Resolve each file: keep upstream's change plus the fork's intent (fork-only files keep
@@ -3166,6 +3168,7 @@ Apply these in this order. Each one is a single commit.
 163. `BAD-762 Owner steps: the checklist sits inside the Needs you card it was set with (comment, steps, question) on desktop and phone, with a slim Steps 1 of 3 line and a scroll to the first step not done; a step title wraps beside its number; a step takes text: (words to copy and paste elsewhere, Copy only) or command: (Open in terminal); a manual step shows no host badge; agents are told not to write below or above about steps`
 164. `BAD-768 Public repo: owner-private bot, host and item names replaced by neutral ones in fork tests, fixtures, help text and FORK.md; check:private-names reads its private list from outside the repo`
 165. `BAD-759 Needs you list: one list of everything waiting on the owner (bots on this computer and paired servers, chats, agents on an approval or a question, board asks), opened from anywhere by Mod+Shift+L or a status bar control, with a jump to each, Next and Back, quick answers through the owner path, and the bot row click chooses list, item or off`
+166. `BAD-769 Fork sync releases main as it is when the upstream merge conflicts (the run still ends red with FORK-SYNC-CONFLICT), and a skip_upstream run input ships a fix without the merge`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4645,7 +4648,10 @@ files, where electron-builder's default makes one call per file.
 ## How sync works
 
 `.github/workflows/fork-sync.yml` runs every day at 09:17 UTC. You can also run it by hand
-(Actions, Fork sync, Run workflow). Set `force_build` to rebuild and release anyway. It only
+(Actions, Fork sync, Run workflow). Set `force_build` to rebuild and release anyway, and
+`skip_upstream` (default false) to skip the upstream merge for one run and release `main` as
+it is, to ship a fix on purpose; such a run ends green and publishes no sync status, since it
+never looked at upstream. It only
 runs in a fork, never in the upstream repository (`stablyai/orca`). Every third-party action is pinned to a full commit SHA.
 
 1. **sync** (ubuntu-latest):
@@ -4657,11 +4663,23 @@ runs in a fork, never in the upstream repository (`stablyai/orca`). Every third-
    - If the newest tag's commit is not under `main`, `fork-sync.sh merge` runs
      `git merge --no-ff <tag>`: one merge commit, SSH-signed when `FORK_GIT_SIGNING_KEY` is set
      (see Signed merge commits). With no newer tag it does nothing (a release-only run).
-   - **If the merge conflicts**, the run fails at once, before any install or build: the merge is
-     aborted, `main` is untouched and nothing is pushed. The step prints
-     `FORK-SYNC-CONFLICT <tag>` as its first line, and the status job puts the same marker on
-     the first line of the run summary, followed by the conflicting files and the commands to
-     merge by hand (see Sync status and Merge model).
+   - **If the merge conflicts**, the merge is aborted, `main` is untouched and nothing is
+     pushed. The step prints `FORK-SYNC-CONFLICT <tag>` as its first line, and the status job
+     puts the same marker on the first line of the run summary, followed by the conflicting
+     files and the commands to merge by hand (see Sync status and Merge model). The step
+     itself succeeds, so `main` can still be released:
+     - If a published fork release already has a tag on `main`'s commit, nothing is built, as
+       before.
+     - Otherwise `main` is checked (typecheck, fork tests, mobile typecheck) and built as it
+       stands, on its current base tag and version scheme (the next `M.m.(p*1000+N)`), by the
+       same jobs and gates as any release. `main` is not changed or pushed.
+     - The last job, **conflict**, then fails the run, so a conflict is always red. The
+       published sync status is still `conflict`, and the run summary ends with one line,
+       `Release of main despite the upstream conflict: ...`, saying whether a release went out
+       and which.
+   - With `skip_upstream` the signing and merge steps are skipped and `main` takes the same path
+     as after a conflict: checked and built when it has no release yet, nothing when it has
+     (unless `force_build`). The run ends green, and its summary ends with the same kind of line.
    - **If the merge succeeds**, it installs and checks the result:
      - root typecheck
      - the fork and updater tests

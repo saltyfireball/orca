@@ -5,6 +5,8 @@
 #   fork-sync.sh detect      newest stable upstream tag, and the newest one already merged into main
 #   fork-sync.sh merge       merge that tag into main as one merge commit; main is untouched on conflict
 #   fork-sync.sh merged-tag  the newest stable upstream tag merged into HEAD (needs a detect first)
+#   fork-sync.sh released    whether HEAD (or $SHA) already has a published fork release
+#   fork-sync.sh release-line  one summary line: did a release of main go out despite a conflict or skip
 #   fork-sync.sh publish     commit status.json to the status branch
 #
 # main is never rebased or force-pushed: each new upstream tag is merged in with `git merge --no-ff`.
@@ -164,7 +166,8 @@ resolve_package_version_conflict() {
 }
 
 # Env: LATEST (the tag name), LATEST_SHA, SIGNING ('true' to require a good signature),
-# CONFLICTS_FILE. One merge commit on the local main; on a conflict the merge is aborted, the
+# CONFLICTS_FILE, CONFLICT_CONTINUES ('true' to exit 0 on a conflict: the workflow then goes on to
+# release main as it is and fails the run in its last job). One merge commit on the local main; on a conflict the merge is aborted, the
 # conflicted files are listed and nothing was changed. The step's first output line on a conflict
 # is the marker an Orca automation matches: FORK-SYNC-CONFLICT <tag>.
 cmd_merge() {
@@ -201,6 +204,7 @@ cmd_merge() {
     local eof="FORK_SYNC_EOF_${RANDOM}${RANDOM}${RANDOM}"
     { echo "conflicts<<$eof"; printf '%s\n' "$conflicts"; echo "$eof"; } >>"$OUT"
     echo "::error::FORK-SYNC-CONFLICT $LATEST: merging stopped on conflicts in: ${conflicts//$'\n'/, }"
+    [ "${CONFLICT_CONTINUES:-}" = 'true' ] && return 0
     return 1
   fi
   cat "$log"
@@ -216,6 +220,42 @@ cmd_merge() {
     echo "The merge commit is signed."
   fi
   output changed 'true'
+}
+
+# Env: SHA (default HEAD). Outputs released=true when a published, non-draft release carries a tag at
+# that commit, else released=false. A main with commits newer than the last release has none.
+cmd_released() {
+  local sha="${SHA:-$(git rev-parse HEAD)}" tags_at_sha published
+  tags_at_sha="$(git ls-remote --tags "$ORIGIN_REMOTE" 'v*' \
+    | awk -v sha="$sha" '$1 == sha { sub("refs/tags/", "", $2); sub("\\^\\{\\}$", "", $2); print $2 }' \
+    | sort -u)"
+  published="$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" \
+    --jq '.[] | select(.draft == false) | .tag_name' | sort -u)"
+  if [ -n "$tags_at_sha" ] && [ -n "$(comm -12 <(printf '%s\n' "$tags_at_sha") <(printf '%s\n' "$published"))" ]; then
+    output released 'true'
+    echo "$sha already has a fork release"
+  else
+    output released 'false'
+    echo "$sha has no fork release yet"
+  fi
+}
+
+# Env: WHY ('conflict' or 'skipped'), RELEASED (the sync job's released output), BUILD_RESULT
+# (build-mac's result), VERSION, SHA. One line for the run summary and log: whether main was
+# released although the upstream merge did not happen, and which release.
+cmd_release_line() {
+  local why="${WHY:?}" prefix='Release of main'
+  [ "$why" = 'conflict' ] && prefix='Release of main despite the upstream conflict'
+  [ "$why" = 'skipped' ] && prefix='Release of main with the upstream merge skipped'
+  if [ "${RELEASED:-}" = 'true' ]; then
+    echo "$prefix: none built, main already has a fork release."
+  elif [ "${RELEASED:-}" = 'false' ] && [ "${BUILD_RESULT:-}" = 'success' ]; then
+    echo "$prefix: yes, v${VERSION:-?} (${SHA:-?}) went out."
+  elif [ "${RELEASED:-}" = 'false' ]; then
+    echo "$prefix: v${VERSION:-?} (${SHA:-?}) was tried and did not go out (build ${BUILD_RESULT:-unknown})."
+  else
+    echo "$prefix: none, the sync job stopped before it could be built."
+  fi
 }
 
 # Env: STATUS_FILE (the JSON to publish). Builds one commit on the status branch with plumbing, so the job's checkout and
@@ -255,10 +295,12 @@ case "${1:-}" in
   detect) cmd_detect ;;
   merge) cmd_merge ;;
   merged-tag) cmd_merged_tag ;;
+  released) cmd_released ;;
+  release-line) cmd_release_line ;;
   publish) cmd_publish ;;
   previous) cmd_previous ;;
   *)
-    echo "usage: $0 detect|merge|merged-tag|publish|previous" >&2
+    echo "usage: $0 detect|merge|merged-tag|released|release-line|publish|previous" >&2
     exit 2
     ;;
 esac
