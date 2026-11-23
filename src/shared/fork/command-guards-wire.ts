@@ -1,7 +1,11 @@
 // Command guards (FORK.md, BAD-686): the fork.commandGuards.* RPC contract behind
 // `orca command-guards`. Plain objects, no transforms: the mobile RPC fence refuses wider shapes.
 import { z } from 'zod'
-import type { CommandGuardAgentCoverage, CommandGuardAuditEntry } from './command-guards'
+import type {
+  CommandGuardAgentCoverage,
+  CommandGuardAuditEntry,
+  CommandGuardSurfaceCoverage
+} from './command-guards'
 
 export const ForkCommandGuardsListParams = z.object({})
 
@@ -35,6 +39,8 @@ export type ForkCommandGuardsStatusResult = {
   enabled: boolean
   rules: ForkCommandGuardsRuleRow[]
   agents: CommandGuardAgentCoverage[]
+  /** Claude Code per surface; an older host sends none. */
+  surfaces?: CommandGuardSurfaceCoverage[]
 }
 
 export type ForkCommandGuardsAllowResult = {

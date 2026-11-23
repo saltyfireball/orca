@@ -64,11 +64,16 @@ export function formatCommandGuardsStatus(result: ForkCommandGuardsStatusResult)
     ['AGENT', 'GUARDED', 'NOTE'],
     ...result.agents.map((row) => [row.agent, row.guarded ? 'yes' : 'no', row.note])
   ])
+  const surfaces = table([
+    ['CLAUDE SURFACE', 'GUARDED', 'NOTE'],
+    ...(result.surfaces ?? []).map((row) => [row.surface, row.guarded ? 'yes' : 'no', row.note])
+  ])
   return [
     result.enabled ? 'Command guards are on.' : 'Command guards are off (forkCommandGuards).',
     '',
     ...rules,
     '',
+    ...(result.surfaces ? [...surfaces, ''] : []),
     ...agents
   ].join('\n')
 }

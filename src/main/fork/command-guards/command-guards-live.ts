@@ -10,6 +10,7 @@ import {
   COMMAND_GUARD_RULES,
   COMMAND_GUARD_RULE_TEXT,
   commandGuardCoverage,
+  commandGuardSurfaceCoverage,
   commandGuardOffRules,
   isCommandGuardRule,
   parseCommandGuardRules,
@@ -188,7 +189,8 @@ export function forkCommandGuardStatus(): ForkCommandGuardsStatusResult {
         .filter(([, rules]) => rules.has(rule))
         .map(([id]) => names.get(id) ?? id)
     })),
-    agents: commandGuardCoverage()
+    agents: commandGuardCoverage(),
+    surfaces: commandGuardSurfaceCoverage()
   }
 }
 

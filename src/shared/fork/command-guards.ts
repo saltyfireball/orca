@@ -175,14 +175,79 @@ const HOOK_SOURCES: Record<AgentHookSource, true> = {
   kiro: true
 }
 
+/** Where an agent runs; each surface reaches the guard by its own path, so each is proven alone. */
+export type CommandGuardSurface = 'terminal' | 'native-chat' | 'chat-worker'
+
+export const COMMAND_GUARD_SURFACES: readonly CommandGuardSurface[] = [
+  'terminal',
+  'native-chat',
+  'chat-worker'
+]
+
+/**
+ * The test file that proves a deny on each surface (repo-relative); null means no proof, so the
+ * surface is reported unguarded. A surface moves to guarded only together with its test.
+ */
+export const COMMAND_GUARD_SURFACE_PROOFS: Record<CommandGuardSurface, string | null> = {
+  terminal: 'src/main/fork/command-guards/command-guards-live.test.ts',
+  'native-chat': null,
+  'chat-worker': null
+}
+
+const SURFACE_NOTES: Record<CommandGuardSurface, { guarded: string; unguarded: string }> = {
+  terminal: {
+    guarded:
+      'Claude Code in a terminal: PreToolUse hook (macOS and Linux; the Windows script and SSH or WSL hosts are not guarded)',
+    unguarded: 'unguarded: no test proves a deny through the terminal hook'
+  },
+  'native-chat': {
+    guarded: 'Claude native chat: PreToolUse hook answered inside Orca for each chat',
+    unguarded: 'unguarded: the chat drops the pane identity the terminal hook needs'
+  },
+  'chat-worker': {
+    guarded: 'Claude chat worker: the same in-Orca PreToolUse hook as a native chat',
+    unguarded: 'unguarded: the worker drops the pane identity the terminal hook needs'
+  }
+}
+
+export type CommandGuardSurfaceCoverage = {
+  surface: CommandGuardSurface
+  guarded: boolean
+  note: string
+  /** The test that proves a deny here; null while the surface is unguarded. */
+  proof: string | null
+}
+
+/** Claude Code's coverage per surface; a surface with no proving test is never guarded. */
+export function commandGuardSurfaceCoverage(
+  proofs: Record<CommandGuardSurface, string | null> = COMMAND_GUARD_SURFACE_PROOFS
+): CommandGuardSurfaceCoverage[] {
+  return COMMAND_GUARD_SURFACES.map((surface) => {
+    const proof = proofs[surface]
+    return {
+      surface,
+      guarded: proof !== null,
+      note: proof !== null ? SURFACE_NOTES[surface].guarded : SURFACE_NOTES[surface].unguarded,
+      proof
+    }
+  })
+}
+
 /** Which agents Orca can block for: only an agent whose hook script reads Orca's reply. */
-export function commandGuardCoverage(): CommandGuardAgentCoverage[] {
+export function commandGuardCoverage(
+  proofs: Record<CommandGuardSurface, string | null> = COMMAND_GUARD_SURFACE_PROOFS
+): CommandGuardAgentCoverage[] {
+  const surfaces = commandGuardSurfaceCoverage(proofs)
   return Object.keys(HOOK_SOURCES).map((agent) => {
     if (agent === 'claude') {
+      const open = surfaces.filter((row) => !row.guarded).map((row) => row.surface)
       return {
         agent,
-        guarded: true,
-        note: 'PreToolUse hook (macOS and Linux; the Windows script and SSH or WSL hosts are not guarded)'
+        guarded: open.length === 0,
+        note:
+          open.length === 0
+            ? 'guarded on every surface (see the surface list)'
+            : `not guarded on: ${open.join(', ')} (see the surface list)`
       }
     }
     return {
