@@ -3084,10 +3084,32 @@ ones `SLRM-123 `).
     cannot enforce is skipped, and one `agent-slice` line in the terminal host log lists what was
     applied and what was refused, or says the terminal scopes are off and why. A launch is never
     affected. User slices only, no privilege.
-  - **Leftover scopes.** The slice is bound to the terminal host's scope (`BindsTo`), so systemd
-    removes the slice and its scopes when the host stops; there is nothing to clean up by hand.
-  - **Not done.** Chat providers keep the stock process tree and are not placed in the slice;
-    the slice's pressure is not shown in Resource Usage yet.
+  - **The slice's name (wording of the card).** The card says agents appear under
+    `orca-agents.slice`. They do not: the terminal host puts each terminal in
+    `orca_pty_<launchId>_<n>.scope` under `orca_ptys_<launchId>.slice` (upstream, on by default,
+    one slice per terminal host), and the limits above go on that slice. It is the owned slice
+    the card asks for, with another name; renaming it would change upstream code and every
+    reader of the name for nothing. Checked on a Linux server with systemd --user: live
+    terminals sit in that slice, which has no limits until `ORCA_AGENT_SLICE=1` is set.
+  - **Leftover scopes.** There is no start-time cleanup pass, on purpose: the slice is bound to
+    the terminal host's scope (`BindsTo`), so systemd stops the slice and every terminal scope in
+    it when the host's scope ends, also after `kill -9`. Proved with real systemd by
+    `agent-slice-real.test.ts` (kill -9 of a stand-in host: the slice, its cgroup and its
+    terminal scope are gone; with the binding changed to `Wants` the test fails) and by
+    upstream's container case `config/docker/daemon-scope-lifetime`. A pass that stopped
+    scopes by name pattern could only stop the scopes of a live server, so none was added.
+  - **Not in the slice: native chat providers.** Their processes are started by the provider
+    supervisor, not the terminal host, and stay in the server's own scope. Putting them in a
+    scope needs a wrapper around the provider spawn in upstream code and a second slice to
+    limit; not done. The one `agent-slice` log line says so (`notCovered`).
+  - **Tests.** Unit: `agent-slice-limits.test.ts`, `agent-slice-install.test.ts` (the log line,
+    including the reason when scopes are off), `agent-slice-hook.test.ts` (the daemon calls it).
+    Real systemd, Linux only, run with `ORCA_REAL_SLICE_TEST=1` (every unit prefixed
+    `orcatest684`, MemoryHigh 128M, MemoryMax 256M, a runtime limit, stopped by exact name):
+    `agent-slice-real.test.ts` checks that a process allocating past `MemoryHigh` is throttled
+    (`memory.events` high count rises, the slice stays near the limit) while an outside process
+    answers, and the kill -9 case above.
+  - **Not done.** Slice pressure is not shown in Resource Usage (a proposal, not a criterion).
   - Code is in `src/main/fork/agent-slice/`.
 
 - **Automation run triggers: an automation that starts when another automation's run finishes or fails (BAD-689).**
@@ -3303,6 +3325,7 @@ Apply these in this order. Each one is a single commit.
 175. `BAD-690 pnpm check:changed runs the injected-context ratchet when only skill guides, skills or skill stubs change`
 176. `BAD-686 Command guards in folder workspaces: terminal agents there are guarded at the folder, a workspace with no folder on the host shows the terminal as unguarded, and chats and chat workers there are proven guarded`
 177. `BAD-766 BAD-767 Follow-up: worker links survive a restart (read from the orchestration database), Lost work snapshot failures say what to do instead of forcing, and the hooks of both are covered by tests`
+178. `BAD-684 Agent slice finish: the slice log line says what is not covered, the daemon hook and the log are tested, and real-systemd tests prove MemoryHigh throttling and the kill -9 scope cleanup`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

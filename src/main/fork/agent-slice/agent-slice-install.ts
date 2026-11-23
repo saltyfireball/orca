@@ -9,6 +9,13 @@ import {
   requestedAgentSliceLimits
 } from './agent-slice-limits'
 
+/**
+ * The agents the slice does not hold, said in the one `agent-slice` line (BAD-684): native chat
+ * providers are started by the provider supervisor, not the terminal host, so they stay in the
+ * server's own scope.
+ */
+export const AGENT_SLICE_NOT_COVERED = 'native chat providers'
+
 type DaemonLog = (event: string, details?: Record<string, unknown>) => void
 
 export function forkApplyAgentSlice(
@@ -26,7 +33,11 @@ export function forkApplyAgentSlice(
       return
     }
     if (!('on' in resolved.scopes)) {
-      log('agent-slice', { applied: [], reason: `terminal scopes off: ${resolved.scopes.off}` })
+      log('agent-slice', {
+        applied: [],
+        reason: `terminal scopes off: ${resolved.scopes.off}`,
+        notCovered: AGENT_SLICE_NOT_COVERED
+      })
       return
     }
     const managerEnv = userManagerEnv(env)
@@ -37,8 +48,12 @@ export function forkApplyAgentSlice(
       run: (args) =>
         runProcessSync({ program: 'systemctl', args, env: managerEnv, timeoutMs: 1_500 })
     })
-    log('agent-slice', { slice: resolved.scopes.on.slice, ...report })
+    log('agent-slice', {
+      slice: resolved.scopes.on.slice,
+      ...report,
+      notCovered: AGENT_SLICE_NOT_COVERED
+    })
   } catch (error) {
-    log('agent-slice', { applied: [], reason: String(error) })
+    log('agent-slice', { applied: [], reason: String(error), notCovered: AGENT_SLICE_NOT_COVERED })
   }
 }
