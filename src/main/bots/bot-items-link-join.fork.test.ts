@@ -26,10 +26,13 @@ const serverAttempt: BotWorkWorker = { ...worker, dispatchId: 'ctx_srv', host: '
 vi.mock('../runtime/orchestration/dock/worker-dock-read', () => ({
   readWorkerDockReasons: () => new Map()
 }))
-vi.mock('./bot-work-runtime', () => ({
+vi.mock('./bot-work-workers-read', () => ({
   readWorkers: async (_runtime: unknown, ids: readonly string[]) =>
-    new Map(ids.map((id) => [id, id === 'ctx_srv' ? serverAttempt : worker])),
-  readWorkspace: async () => ({
+    new Map(ids.map((id) => [id, id === 'ctx_srv' ? serverAttempt : worker]))
+}))
+vi.mock('./bot-work-runtime', () => ({
+  // Upstream 1.4.273 reads a worker's workspace through `workspaceReader`.
+  workspaceReader: () => async () => ({
     name: 'share',
     branch: 'share',
     head: 'abc',
