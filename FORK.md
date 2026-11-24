@@ -2247,7 +2247,8 @@ ones `SLRM-123 `).
   - **Automation caps.** `forkAutomationCapRunUsd`, `forkAutomationCapDayUsd` and
     `forkAutomationCapWeekUsd` (0 = off) are defaults for every automation;
     `orca guards automation-cap <id> [--per-run|--day|--week <usd|default>]` sets one
-    automation's own (kept in `fork-automation-caps.json`, mode 0600; 0 is none, `default`
+    automation's own (the id, or a unique prefix of 4+ characters; kept in
+    `fork-automation-caps.json`, mode 0600; 0 is none, `default`
     follows the setting). Spend is what the ledger holds for each run's chat or terminal, by
     local day, else the cost the run recorded when it finished; a reused session counts once.
     Per run: the run's agent is paused at its turn's end (the agent is noted at launch, so a run
@@ -3533,6 +3534,7 @@ Apply these in this order. Each one is a single commit.
 193. `BAD-795 Command guards keep the hooks a chat already has, so a bot's look-around and tidy-up stay read-only with the guards on; a permission prompt in a read-only run is refused at once, and a tidy-up takes no MCP profile`
 194. `BAD-795 One Needs you count per bot: a look-around or tidy-up never counts as needing the owner, a waiting chat is a line in the bot's panel, and the row's number is the panel's whether the bot is selected or not`
 195. `BAD-764 The command guard hook is attached to every native chat and chat worker whatever the state at launch, the guards start before any chat can, and a chat carried over an app restart is guarded by the app that takes it over or shows as unguarded`
+196. `BAD-764 Every flag of a fork command has its own help line, and orca guards automation-cap takes a unique id prefix of 4 or more characters and names orca automations list`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4255,7 +4257,12 @@ Upstream files only get short hooks, which keeps merges small:
   - `src/cli/specs/index.ts` adds `FORK_SETTINGS_COMMAND_SPECS`, the manifest lists the
     `fork-settings` group, and `cli-command-names.ts` lists `settings`.
   - `src/cli/discovery/help.ts` wraps the root help in `withForkSettingsRootHelp`, which adds the
-    "Settings:" section, and asks `forkSettingsFlagHelp` first for an option's help line.
+    "Settings:" section, and asks `forkFlagHelp` first for an option's help line
+    (`src/cli/fork/fork-flag-help.ts`; the settings commands' lines stay in `settings-specs.ts`).
+    BAD-764: every flag of a fork command, and every flag the fork adds to a stock command, has its
+    own line there (`fork-flag-help-*.ts`), because one without it prints the stock text of any flag
+    of the same name (`--day` read "Day used with weekly preset") or nothing. A new flag needs its
+    line; `fork-flag-help.test.ts` fails without it.
   - `package.json` gains the `generate:fork-settings-catalog` script.
 
 - Auto placement (SLRM-2266), from `src/shared/fork/auto-placement*.ts`,

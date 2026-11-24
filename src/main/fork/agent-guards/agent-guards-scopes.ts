@@ -232,9 +232,27 @@ export function agentGuardAutomationRows(now: number): ForkGuardsAutomationRow[]
   return rows
 }
 
+/** The automation with this id, or the one whose id starts with it (4+ characters). */
+function matchAutomation(query: string): string {
+  // Called on the store: a class-backed store fails when the method is taken off it.
+  const known = storeOf()?.listAutomations?.()
+  if (!known || known.some((entry) => entry.id === query)) {
+    return query
+  }
+  const matches = query.length >= 4 ? known.filter((entry) => entry.id.startsWith(query)) : []
+  if (matches.length !== 1) {
+    throw new Error(
+      matches.length === 0
+        ? `No automation "${query.slice(0, 80)}" on this host. Run "orca automations list" for ids.`
+        : `"${query.slice(0, 80)}" matches more than one automation; use more of its id.`
+    )
+  }
+  return matches[0].id
+}
+
 /** `orca guards automation-cap`: one automation's own caps; throws for an unknown automation. */
 export async function setAgentGuardAutomationCap(
-  automationId: string,
+  query: string,
   change: {
     runUsd?: number | null
     dayUsd?: number | null
@@ -244,13 +262,7 @@ export async function setAgentGuardAutomationCap(
   if (!overridesPath) {
     throw new Error('Agent guards are not running on this host yet; try again in a moment.')
   }
-  // Called on the store: a class-backed store fails when the method is taken off it.
-  const known = storeOf()?.listAutomations?.()
-  if (known && !known.some((entry) => entry.id === automationId)) {
-    throw new Error(
-      `No automation "${automationId.slice(0, 80)}" on this host. Run "orca automation list" for ids.`
-    )
-  }
+  const automationId = matchAutomation(query)
   applyAutomationCapChange(overrides, automationId, change)
   await writeAutomationCapOverrides(overridesPath, overrides)
   const caps = capsOf(automationId)

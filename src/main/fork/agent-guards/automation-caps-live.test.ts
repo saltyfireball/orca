@@ -8,6 +8,12 @@ import { closeTestStores, createStore, testState } from '../../persistence/persi
 import { readAgentGuardSettings } from '../../../shared/fork/agent-guards'
 import { FORK_AGENT_GUARDS_METHODS } from '../../runtime/rpc/methods/fork/fork-agent-guards'
 import type { RpcContext } from '../../runtime/rpc/core'
+import { RpcDispatcher } from '../../runtime/rpc/dispatcher'
+import type { OrcaRuntimeService } from '../../runtime/orca-runtime'
+import type { HandlerContext } from '../../../cli/dispatch/dispatch'
+import { normalizeCommandPositionals, parseArgs } from '../../../cli/arguments/args'
+import { FORK_GUARDS_COMMAND_SPECS } from '../../../cli/fork/guards-specs'
+import { FORK_GUARDS_HANDLERS } from '../../../cli/fork/guards-handlers'
 import { installForkUsageLedgerService } from '../usage-ledger/usage-ledger-service'
 import { forkUsageLedgerObserveClaudeEvent } from '../usage-ledger/usage-ledger-service'
 import { assistantFrame } from '../usage-ledger/usage-ledger-fixtures'
@@ -44,6 +50,46 @@ async function setCap(id: string, flags: { run?: number | null; day?: number | n
   const params = capMethod().params.parse({ id, ...flags })
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the method reads no context.
   return capMethod().handler(params, {} as RpcContext)
+}
+
+/** `orca guards automation-cap ...`: the CLI's own parsing and handler, over the real dispatcher. */
+async function runCli(...argv: string[]): Promise<string> {
+  const dispatcher = new RpcDispatcher({
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the guards methods read no runtime; the dispatcher reads its id.
+    runtime: { getRuntimeId: () => 'runtime-1' } as unknown as OrcaRuntimeService,
+    methods: FORK_AGENT_GUARDS_METHODS
+  })
+  const client = {
+    call: async (method: string, params: unknown) => {
+      const reply = await dispatcher.dispatch({ id: 'req-1', authToken: 'tok', method, params })
+      if (!reply.ok) {
+        throw new Error(reply.error.message)
+      }
+      return reply
+    }
+  }
+  const { flags } = normalizeCommandPositionals(
+    FORK_GUARDS_COMMAND_SPECS,
+    parseArgs(
+      ['guards', 'automation-cap', ...argv],
+      FORK_GUARDS_COMMAND_SPECS.map((spec) => spec.path),
+      FORK_GUARDS_COMMAND_SPECS
+    )
+  )
+  const printed: string[] = []
+  const log = vi.spyOn(console, 'log').mockImplementation((line) => void printed.push(String(line)))
+  try {
+    await FORK_GUARDS_HANDLERS['guards automation-cap']({
+      flags,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the handler only calls `call`.
+      client: client as unknown as HandlerContext['client'],
+      cwd: testState.dir,
+      json: false
+    })
+  } finally {
+    log.mockRestore()
+  }
+  return printed.join('\n')
 }
 
 async function bootstrap(): Promise<{ store: Store; automationId: string }> {
@@ -157,5 +203,35 @@ describe('orca guards automation-cap on a real store', () => {
     expect(agentGuardAutomationLimits('chat-1', automationId)).toEqual([
       { scope: 'automation-run', capUsd: 2, spentUsd: 15 }
     ])
+  })
+
+  it('takes a unique prefix of the id, as its examples show', async () => {
+    const { automationId } = await bootstrap()
+
+    expect(await runCli(automationId.slice(0, 4), '--day', '10')).toBe(
+      `${automationId}: per run none, per day $10.00, per 7 days none`
+    )
+    expect(agentGuardAutomationRows(Date.now()).map((row) => row.dayCapUsd)).toEqual([10])
+    // A row keyed by the prefix would be a cap no run reads.
+    expect(agentGuardAutomationRows(Date.now()).map((row) => row.id)).toEqual([automationId])
+    expect(await runCli(automationId, '--day', 'default')).toContain('per day none')
+  })
+
+  it('refuses a prefix that is short, unknown or shared, and names the command that lists ids', async () => {
+    const { store, automationId } = await bootstrap()
+    const listed = store.listAutomations()
+    const twin = { ...listed[0], id: `${automationId.slice(0, 6)}-twin` }
+    const list = vi.spyOn(store, 'listAutomations')
+
+    await expect(runCli(automationId.slice(0, 3), '--day', '10')).rejects.toThrow(
+      /No automation .* Run "orca automations list" for ids/
+    )
+    await expect(runCli('zzzz', '--day', '10')).rejects.toThrow(/No automation "zzzz"/)
+    list.mockReturnValue([...listed, twin])
+    await expect(runCli(automationId.slice(0, 6), '--day', '10')).rejects.toThrow(
+      /matches more than one automation/
+    )
+    expect(await runCli(automationId, '--day', '10')).toContain(automationId)
+    list.mockRestore()
   })
 })

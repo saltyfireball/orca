@@ -65,6 +65,7 @@ export const FORK_GUARDS_COMMAND_SPECS: CommandSpec[] = [
       'A run past --per-run has its agent paused at the end of its turn. Past --day (the local day) or --week (the last 7 days) further scheduled and event runs are skipped, with the reason in run history, and a run in progress is paused; Run now still goes.',
       'A number sets that cap (0 means none for this automation); default follows the Blackfish setting again. A flag you leave out is unchanged.',
       "Spend is what the usage ledger holds for the run's agent, else the cost the run recorded when it finished.",
+      'An id is as `orca automations list` prints it; a unique prefix of 4+ characters is enough.',
       HOST_NOTE
     ],
     examples: [

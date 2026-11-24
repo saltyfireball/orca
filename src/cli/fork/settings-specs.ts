@@ -121,7 +121,7 @@ const FLAG_HELP: Record<string, string> = {
   'dry-run': '--dry-run              Print the changes and write nothing'
 }
 
-/** Hook in help.ts: the option lines of the `orca settings` commands. */
+/** The option lines of the `orca settings` commands (fork-flag-help.ts). */
 export function forkSettingsFlagHelp(command: string, flag: string): string | undefined {
   return command.startsWith('settings ') ? FLAG_HELP[flag] : undefined
 }
