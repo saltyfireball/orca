@@ -16,6 +16,10 @@ export type CommandGuardAgentSubject = {
   sessionId?: string | null
 }
 
+/** A chat nothing is known about is not guarded. */
+export const COMMAND_GUARD_UNKNOWN_CHAT =
+  'this chat is not known to this app: it has not started it, or lost track of it'
+
 // Agent types that run Claude Code and so post through its hook.
 const CLAUDE_AGENT_TYPES = new Set(['claude', 'claude-agent-teams'])
 
@@ -30,6 +34,9 @@ function surfaceLine(
   sessionId: string | null
 ): CommandGuardAgentLine {
   const row = status.surfaces?.find((entry) => entry.surface === surface)
+  if (sessionId && !status.chats) {
+    return unguarded('its host does not say which of its chats have the guard')
+  }
   if (!row) {
     // A host from before surfaces were told apart: its Claude row is all it says.
     const claude = status.agents.find((entry) => entry.agent === 'claude')
@@ -45,13 +52,16 @@ function surfaceLine(
       'this workspace has no folder on its host (a folder workspace on an SSH host or in WSL, or one the host does not know), so its shell commands go through unchecked'
     )
   }
-  const open = sessionId
-    ? status.chats?.find((chat) => chat.sessionId === sessionId && !chat.guarded)
-    : undefined
-  if (open) {
-    return unguarded(
-      open.reason ?? 'this chat started while the guards were not running on its host'
-    )
+  if (sessionId) {
+    const chat = status.chats?.find((entry) => entry.sessionId === sessionId)
+    if (!chat) {
+      return unguarded(COMMAND_GUARD_UNKNOWN_CHAT)
+    }
+    if (!chat.guarded) {
+      return unguarded(
+        chat.reason ?? 'this chat started while the guards were not running on its host'
+      )
+    }
   }
   return { guarded: true, note: commandGuardSurfaceGuardedNote(surface) }
 }

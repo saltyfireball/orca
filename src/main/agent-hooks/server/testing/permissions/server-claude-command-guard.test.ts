@@ -5,6 +5,7 @@ import {
   AGENT_TOOL_DECISION_HEADER,
   CLAUDE_PRE_TOOL_USE_DECISION
 } from '../../../tool-events/agent-tool-plugin-hooks'
+import { CLAUDE_SHELL_TOOLS } from '../../../../../shared/fork/command-guards-shell-tools'
 import {
   forkCommandGuardList,
   startForkCommandGuards
@@ -43,7 +44,11 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-async function bash(command: string, decides = true): Promise<{ status: number; body: string }> {
+async function toolCall(
+  tool: string,
+  input: Record<string, unknown>,
+  decides = true
+): Promise<{ status: number; body: string }> {
   const response = await fetch(hookUrl, {
     method: 'POST',
     headers: {
@@ -55,8 +60,8 @@ async function bash(command: string, decides = true): Promise<{ status: number; 
       buildBody(
         {
           hook_event_name: 'PreToolUse',
-          tool_name: 'Bash',
-          tool_input: { command },
+          tool_name: tool,
+          tool_input: input,
           tool_use_id: 'toolu_guard_1'
         },
         { worktreeId: WORKTREE }
@@ -65,6 +70,8 @@ async function bash(command: string, decides = true): Promise<{ status: number; 
   })
   return { status: response.status, body: await response.text() }
 }
+
+const bash = (command: string, decides = true) => toolCall('Bash', { command }, decides)
 
 describe('command guards at the Claude PreToolUse hook', () => {
   it('denies rm -rf .. with the reason and writes the audit entry', async () => {
@@ -92,6 +99,18 @@ describe('command guards at the Claude PreToolUse hook', () => {
     expect((await bash('git push --force origin feature')).status).toBe(204)
     useSettings({ forkCommandGuards: false })
     expect((await bash('rm -rf ..')).status).toBe(204)
+  })
+
+  it.each(CLAUDE_SHELL_TOOLS)('reads the command of %s', async (tool) => {
+    const reply = await toolCall(tool, { command: 'git push --force origin main' })
+    expect(JSON.parse(reply.body).hookSpecificOutput.permissionDecision).toBe('deny')
+    expect((await toolCall(tool, { command: 'tail -f build.log' })).status).toBe(204)
+  })
+
+  it('lets a Monitor with no command and a tool that runs none through', async () => {
+    expect((await toolCall('Monitor', { ws: { url: 'wss://example.com' } })).status).toBe(204)
+    const write = { file_path: 'a', content: 'git push --force origin main' }
+    expect((await toolCall('Write', write)).status).toBe(204)
   })
 
   it('does not block when the hook script does not read the answer', async () => {

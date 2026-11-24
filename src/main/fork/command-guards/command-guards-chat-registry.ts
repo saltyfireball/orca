@@ -2,9 +2,10 @@
 // a working guard hook, so `orca command-guards status` can show a chat that has none as unguarded.
 // Every chat is launched with the hook. A chat carried over an app restart (chat survive) was started
 // by the earlier app, whose hook answers no more: it counts as unguarded until Claude Code confirms
-// it took this app's hook, or that hook is called.
-// Keep electron out of this file.
+// it took this app's hook, or that hook is called. A live chat this registry does not know is
+// unguarded too. Keep electron out of this file.
 import type { ForkCommandGuardsStatusResult } from '../../../shared/fork/command-guards-wire'
+import { COMMAND_GUARD_UNKNOWN_CHAT } from '../../../shared/fork/command-guards-agent-line'
 import {
   commandGuardSurfaceCoverage,
   type CommandGuardSurface,
@@ -20,16 +21,32 @@ const NOT_RUNNING = 'the command guards are not running on its host'
 const UNCONFIRMED =
   'this chat was carried over an app restart and Claude Code has not confirmed its guard hook yet'
 
-/** Records the newest launch of a chat, with the guard hook in its options. */
-export function noteCommandGuardChat(sessionId: string, surface: GuardedChatSurface): void {
-  chats.delete(sessionId)
-  chats.set(sessionId, { surface, unconfirmed: false })
-  if (chats.size > MAX_CHATS) {
-    const oldest = chats.keys().next().value
-    if (oldest !== undefined) {
-      chats.delete(oldest)
+/** The live chats of this host by session id (liveCommandGuardChats). */
+export type LiveGuardChats = ReadonlyMap<string, GuardedChatSurface>
+
+/** Over the limit the oldest ended chat goes; a live one stays, however many there are. */
+function dropEndedChat(newest: string, live: () => LiveGuardChats): void {
+  if (chats.size <= MAX_CHATS) {
+    return
+  }
+  const running = live()
+  for (const sessionId of chats.keys()) {
+    if (sessionId !== newest && !running.has(sessionId)) {
+      chats.delete(sessionId)
+      return
     }
   }
+}
+
+/** Records the newest launch of a chat, with the guard hook in its options. */
+export function noteCommandGuardChat(
+  sessionId: string,
+  surface: GuardedChatSurface,
+  live: () => LiveGuardChats
+): void {
+  chats.delete(sessionId)
+  chats.set(sessionId, { surface, unconfirmed: false })
+  dropEndedChat(sessionId, live)
 }
 
 /** Hook (chat survive): this launch took over a provider that an earlier app instance started. */
@@ -40,12 +57,20 @@ export function noteCommandGuardChatAdopted(sessionId: string): void {
   }
 }
 
-/** The hook of the newest launch works: Claude Code called it, or confirmed it (below). */
-export function noteCommandGuardChatAnswers(sessionId: string): void {
+/** The hook of the newest launch works: Claude Code confirmed it. */
+function confirm(sessionId: string): void {
   const chat = chats.get(sessionId)
   if (chat) {
     chat.unconfirmed = false
   }
+}
+
+/** The hook of the newest launch works: Claude Code called it. */
+export function noteCommandGuardChatAnswers(sessionId: string, surface: GuardedChatSurface): void {
+  if (!chats.has(sessionId)) {
+    chats.set(sessionId, { surface, unconfirmed: false })
+  }
+  confirm(sessionId)
 }
 
 /**
@@ -59,43 +84,77 @@ export function noteCommandGuardChatInitialized(sessionId: string, reply: unknow
     'hooks_applied' in reply &&
     reply.hooks_applied === true
   ) {
-    noteCommandGuardChatAnswers(sessionId)
+    confirm(sessionId)
   }
 }
 
-/** The chats this host started, for an agent's guard line; `running` is whether the guards run here. */
+/**
+ * The chats an agent's guard line is read from: those this host started and any other live one. A
+ * chat that is not in the list is not known to this app.
+ */
 export function forkCommandGuardChatList(
-  running: boolean
+  running: boolean,
+  live: LiveGuardChats
 ): NonNullable<ForkCommandGuardsStatusResult['chats']> {
-  return [...chats].map(([sessionId, { surface, unconfirmed }]) => ({
-    sessionId,
-    surface,
-    guarded: running && !unconfirmed,
-    ...(running ? (unconfirmed ? { reason: UNCONFIRMED } : {}) : { reason: NOT_RUNNING })
-  }))
+  const reasonOf = (unconfirmed: boolean): string | null =>
+    running ? (unconfirmed ? UNCONFIRMED : null) : NOT_RUNNING
+  const known = [...chats].map(([sessionId, { surface, unconfirmed }]) => {
+    const reason = reasonOf(unconfirmed)
+    return { sessionId, surface, guarded: reason === null, ...(reason ? { reason } : {}) }
+  })
+  const unknown = [...live]
+    .filter(([sessionId]) => !chats.has(sessionId))
+    .map(([sessionId, surface]) => ({
+      sessionId,
+      surface,
+      guarded: false,
+      reason: running ? COMMAND_GUARD_UNKNOWN_CHAT : NOT_RUNNING
+    }))
+  return [...known, ...unknown]
 }
 
 export function resetCommandGuardChats(): void {
   chats.clear()
 }
 
-/** The per-surface coverage with this host's live chats: any chat without a guard makes its surface unguarded. */
-export function forkCommandGuardChatSurfaces(running: boolean): CommandGuardSurfaceCoverage[] {
-  const list = forkCommandGuardChatList(running)
+const SURFACE_REASONS: Record<string, string> = {
+  [NOT_RUNNING]: 'started without a guard attached',
+  [UNCONFIRMED]: 'carried over an app restart, guard hook not confirmed by Claude Code yet',
+  [COMMAND_GUARD_UNKNOWN_CHAT]: 'not known to this app'
+}
+
+function unguardedNote(reasons: readonly string[]): string {
+  const counts = new Map<string, number>()
+  for (const reason of reasons) {
+    counts.set(reason, (counts.get(reason) ?? 0) + 1)
+  }
+  const parts = [...counts].map(
+    ([reason, count]) =>
+      `${count} chat${count === 1 ? '' : 's'} ${SURFACE_REASONS[reason] ?? reason}`
+  )
+  return `unguarded: ${parts.join('; ')}`
+}
+
+/** The per-surface coverage of this host's live chats: any one without a guard makes its surface unguarded. */
+export function forkCommandGuardChatSurfaces(
+  running: boolean,
+  live: LiveGuardChats
+): CommandGuardSurfaceCoverage[] {
+  const list = forkCommandGuardChatList(running, live).filter((chat) => live.has(chat.sessionId))
   return commandGuardSurfaceCoverage().map((row) => {
     if (row.surface === 'terminal') {
       return row
     }
     const mine = list.filter((chat) => chat.surface === row.surface)
-    const unguarded = mine.filter((chat) => !chat.guarded).length
+    const unguarded = mine.filter((chat) => !chat.guarded)
     return {
       ...row,
-      guarded: row.guarded && unguarded === 0,
+      guarded: row.guarded && unguarded.length === 0,
       note:
-        row.guarded && unguarded > 0
-          ? `unguarded: ${unguarded} chat${unguarded === 1 ? '' : 's'} ${running ? 'carried over an app restart, guard hook not confirmed by Claude Code yet' : 'started without a guard attached'}`
+        row.guarded && unguarded.length > 0
+          ? unguardedNote(unguarded.map((chat) => chat.reason ?? ''))
           : row.note,
-      chats: { guarded: mine.length - unguarded, unguarded }
+      chats: { guarded: mine.length - unguarded.length, unguarded: unguarded.length }
     }
   })
 }

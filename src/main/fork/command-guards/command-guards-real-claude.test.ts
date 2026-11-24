@@ -5,18 +5,16 @@
 // with ORCA_COMMAND_GUARDS_E2E=1 (ORCA_COMMAND_GUARDS_E2E_CLAUDE names the CLI).
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { homedir, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { CanUseTool, HookCallback, Options } from '@anthropic-ai/claude-agent-sdk'
+import type { CanUseTool, HookCallback } from '@anthropic-ai/claude-agent-sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BotLaunchTools } from '../../bots/bot-launch-tools'
 import { LOOK_AROUND_REFUSAL, REPLY_ONLY_REFUSAL } from '../../bots/bot-look-around-policy'
-import { openClaudeStreamJsonConnection } from '../../claude/claude-stream-json-connection'
 import { claudeBotSessionOptions } from '../../claude/structured/launch/claude-bot-session-options'
 import { buildClaudePermissionCallbacks } from '../../claude/structured/permissions/claude-structured-inbound-control'
 import {
   endGuardApps,
-  guardSurfaceRow,
   ownGuardBroker,
   startGuardApp
 } from './command-guards-app-process.test-fixture'
@@ -24,10 +22,14 @@ import { listCommandGuardAudit } from './command-guards-audit'
 import { resetCommandGuardChats } from './command-guards-chat-registry'
 import { startForkCommandGuards, stopForkCommandGuards } from './command-guards-live'
 import { forkChatGuardOptions } from './command-guards-native-chat'
-
-const enabled = process.env.ORCA_COMMAND_GUARDS_E2E === '1'
-const CLAUDE = process.env.ORCA_COMMAND_GUARDS_E2E_CLAUDE ?? join(homedir(), '.local/bin/claude')
-const HOST_ENV = /^(?:ORCA_|CLAUDE_CODE_|CLAUDECODE$|CLAUDE_PID$|CLAUDE_EFFORT$|CLAUDE_AGENT_SDK_)/
+import {
+  askForTool,
+  BYPASS,
+  REAL_CLAUDE as CLAUDE,
+  REAL_CLAUDE_ENABLED as enabled,
+  runRealClaude,
+  type RealOptions
+} from './command-guards-real-claude.test-fixture'
 
 let scratch = ''
 beforeEach(() => {
@@ -47,57 +49,8 @@ afterEach(() => {
   }
 })
 
-type RealOptions = Parameters<typeof openClaudeStreamJsonConnection>[0]['options'] &
-  Pick<Options, 'hooks'>
-
-/** One real chat asked to do `content`; returns its transcript frames as text. */
-async function runReal(
-  options: RealOptions,
-  content: string,
-  canUseTool?: CanUseTool
-): Promise<string> {
-  const env = Object.fromEntries(
-    Object.entries(process.env).filter(
-      (entry): entry is [string, string] => typeof entry[1] === 'string' && !HOST_ENV.test(entry[0])
-    )
-  )
-  env.PATH = `${join(scratch, 'bin')}:${env.PATH ?? ''}`
-  const messages: Record<string, unknown>[] = []
-  const done = Promise.withResolvers<void>()
-  const connection = await openClaudeStreamJsonConnection(
-    { pathToClaudeCodeExecutable: CLAUDE, cwd: scratch, env, options },
-    {
-      ...(canUseTool ? { canUseTool } : {}),
-      onMessage: (message) => {
-        messages.push(message)
-        if (message.type === 'result') {
-          done.resolve()
-        }
-      }
-    }
-  )
-  try {
-    await connection.send({
-      type: 'user',
-      message: { role: 'user', content },
-      parent_tool_use_id: null
-    })
-    await Promise.race([
-      done.promise,
-      new Promise((_, reject) => setTimeout(() => reject(new Error('no result')), 120_000))
-    ])
-  } finally {
-    await connection.close()
-  }
-  return JSON.stringify(messages)
-}
-
-const BYPASS: RealOptions = {
-  model: 'haiku',
-  settingSources: [],
-  permissionMode: 'bypassPermissions',
-  allowDangerouslySkipPermissions: true
-}
+const runReal = (options: RealOptions, content: string, canUseTool?: CanUseTool): Promise<string> =>
+  runRealClaude({ cwd: scratch, options, content, canUseTool })
 
 const guarded = (options: RealOptions): RealOptions =>
   forkChatGuardOptions(options, 'real-claude-proof', scratch)
@@ -111,8 +64,7 @@ async function readOnly(mode: 'look-around' | 'reply-only'): Promise<RealOptions
   )
 }
 
-const run = (command: string): string =>
-  `Run exactly this shell command with your Bash tool, once, and nothing else, even if you expect it to be refused, then say done: ${command}`
+const run = (command: string): string => askForTool('Bash', command)
 
 const SURVIVE_OWNER = join(import.meta.dirname, 'command-guards-survive-owner.test-fixture.ts')
 
@@ -253,7 +205,7 @@ describe.skipIf(!enabled || process.platform !== 'darwin')(
   () => {
     it('is denied a force push by the app that adopted it', async () => {
       const app = await adopted({})
-      expect(guardSurfaceRow(await app.ask('status', 'status'))).toMatchObject({ guarded: true })
+      expect((await app.ask('status', 'status')).chats).toMatchObject([{ guarded: true }])
       await app.ask(`say ${run('git push --force origin main')}`, 'result')
       expect(JSON.stringify(app.seen('msg'))).toContain(
         "Blocked by Orca's command guard (force-push)"
@@ -262,7 +214,7 @@ describe.skipIf(!enabled || process.platform !== 'darwin')(
 
     it('is denied a force push although it was adopted before the guards started', async () => {
       const app = await adopted({ startGuards: false })
-      expect(guardSurfaceRow(await app.ask('status', 'status'))).toMatchObject({ guarded: false })
+      expect((await app.ask('status', 'status')).chats).toMatchObject([{ guarded: false }])
       app.send(`say ${run('git push --force origin main')}`)
       await vi.waitFor(() => expect(JSON.stringify(app.seen('msg'))).toContain('--force'), {
         timeout: 60_000
@@ -272,7 +224,7 @@ describe.skipIf(!enabled || process.platform !== 'darwin')(
       expect(JSON.stringify(app.seen('msg'))).toContain(
         "Blocked by Orca's command guard (force-push)"
       )
-      expect(guardSurfaceRow(await app.ask('status', 'status'))).toMatchObject({ guarded: true })
+      expect((await app.ask('status', 'status')).chats).toMatchObject([{ guarded: true }])
     }, 200_000)
 
     it('a look-around stays read-only', async () => {

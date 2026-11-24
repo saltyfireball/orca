@@ -2,7 +2,7 @@
 // BAD-686: the guard line on an agent row, from its host's status through the shared line function.
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useAppStore } from '@/store'
 import type { AppState } from '@/store/types'
@@ -40,7 +40,8 @@ afterEach(() => {
 
 async function mark(
   status: ForkCommandGuardsStatusResult,
-  agent: { paneKey: string; agentType: string; tabId: string }
+  agent: { paneKey: string; agentType: string; tabId: string },
+  read: () => ForkCommandGuardsStatusResult = () => status
 ): Promise<HTMLElement | null> {
   useAppStore.setState({
     unifiedTabsByWorktree: {
@@ -49,7 +50,7 @@ async function mark(
       ] as unknown as AppState['unifiedTabsByWorktree'][string]
     }
   })
-  resetCommandGuardHostStatusForTests(async () => status)
+  resetCommandGuardHostStatusForTests(async () => read())
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -70,6 +71,12 @@ async function mark(
   return container.querySelector('[data-fork-command-guard]')
 }
 
+const CHAT = {
+  paneKey: structuredAgentSessionPaneKey('tab-chat', 'sess-1'),
+  agentType: 'claude',
+  tabId: 'tab-chat'
+}
+
 describe('ForkCommandGuardMark', () => {
   it('shows a Codex terminal as unguarded with the reason', async () => {
     const node = await mark(STATUS, { paneKey: 'tab-t:leaf-1', agentType: 'codex', tabId: 'tab-t' })
@@ -80,14 +87,28 @@ describe('ForkCommandGuardMark', () => {
   })
 
   it('shows a Claude chat its host started with no guard as unguarded', async () => {
-    const node = await mark(STATUS, {
-      paneKey: structuredAgentSessionPaneKey('tab-chat', 'sess-1'),
-      agentType: 'claude',
-      tabId: 'tab-chat'
-    })
+    const node = await mark(STATUS, CHAT)
     expect(node?.getAttribute('aria-label')).toBe(
       'Command guards: unguarded: this chat started while the guards were not running on its host'
     )
+  })
+
+  it('reads the host once more for a chat its answer does not know, which may have just started', async () => {
+    vi.useFakeTimers()
+    const reads: number[] = []
+    const node = await mark({ ...STATUS, chats: [] }, CHAT, () => {
+      reads.push(1)
+      const chats = reads.length > 1 ? [{ ...STATUS.chats![0], guarded: true }] : []
+      return { ...STATUS, chats }
+    })
+    expect(node?.getAttribute('aria-label')).toContain('this chat is not known to this app')
+    await act(() => vi.advanceTimersByTimeAsync(5_000))
+    expect(
+      document.querySelector('[data-fork-command-guard]')?.getAttribute('data-fork-command-guard')
+    ).toBe('guarded')
+    await act(() => vi.advanceTimersByTimeAsync(30_000))
+    expect(reads).toHaveLength(2)
+    vi.useRealTimers()
   })
 
   it('shows a Claude terminal as guarded', async () => {

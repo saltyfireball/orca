@@ -2,7 +2,7 @@
 // guard line: guarded, or unguarded with the reason. The line comes from the agent's own host's
 // `fork.commandGuards.status` through the same function `orca agent list` uses, so it matches the
 // status. Nothing shows while the host's command guards are off, or before the host has answered.
-import React from 'react'
+import React, { useEffect } from 'react'
 import { ShieldCheck, ShieldOff } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { STATE_INDICATOR_TOOLTIP_DELAY_MS } from '@/components/agent/status/StateIndicatorTooltip'
@@ -12,7 +12,10 @@ import { useAppStore } from '@/store'
 import { getExecutionHostIdForWorktree } from '@/lib/workspace/ownership/worktree-runtime-owner'
 import { runtimeRpcTargetForAuthorityKey } from '@/runtime/rpc/targets/runtime-client-target'
 import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
-import { commandGuardAgentLine } from '../../../../shared/fork/command-guards-agent-line'
+import {
+  COMMAND_GUARD_UNKNOWN_CHAT,
+  commandGuardAgentLine
+} from '../../../../shared/fork/command-guards-agent-line'
 import { chatSessionIdForRow } from '../cache-cold/cache-cold-view'
 import {
   commandGuardHostKey,
@@ -27,6 +30,7 @@ export type ForkCommandGuardMarkRow = {
 }
 
 const ENVIRONMENT = 'environment:'
+const UNKNOWN_REREAD_MS = 3_000
 
 function hostTarget(key: string): RuntimeClientTarget | null {
   if (key === 'local') {
@@ -65,6 +69,16 @@ export function ForkCommandGuardMark({
         sessionId
       })
     : null
+  const unknown = line?.note.endsWith(COMMAND_GUARD_UNKNOWN_CHAT) === true
+  useEffect(() => {
+    const asked = unknown ? hostTarget(targetKey) : null
+    if (!asked) {
+      return
+    }
+    // The answer may be from before the chat started: read it once more, not on a timer.
+    const timer = setTimeout(() => void loadCommandGuardHostStatus(asked, true), UNKNOWN_REREAD_MS)
+    return () => clearTimeout(timer)
+  }, [unknown, targetKey])
   if (!line) {
     return null
   }

@@ -95,14 +95,17 @@ export function guardChatReady(host: StructuredAgentSessionHost, session: string
 const lines = (file: string): string[] =>
   existsSync(file) ? readFileSync(file, 'utf8').trim().split('\n').filter(Boolean) : []
 
+export type GuardToolCall = { tool: string; input: Record<string, unknown> }
+
 /** Sends a message without waiting for the hook's answer. */
 export async function sendGuardChat(
   host: StructuredAgentSessionHost,
   session: string,
-  command: string
+  asked: string | GuardToolCall
 ): Promise<() => Promise<unknown>> {
   const file = process.env.GUARD_FAKE_ANSWER_FILE ?? ''
-  writeFileSync(`${file}.command`, command)
+  const call = typeof asked === 'string' ? { tool: 'Bash', input: { command: asked } } : asked
+  writeFileSync(`${file}.call`, JSON.stringify(call))
   const before = lines(file).length
   const body = hostTestMessage('go')
   await host.send(CALLER, {
@@ -124,13 +127,13 @@ export async function sendGuardChat(
   }
 }
 
-/** The answer Claude Code would act on when the chat runs `command`. */
+/** The answer Claude Code would act on when the chat makes the call (a string is a Bash command). */
 export async function askGuardChat(
   host: StructuredAgentSessionHost,
   session: string,
-  command = 'git push --force origin main'
+  asked: string | GuardToolCall = 'git push --force origin main'
 ): Promise<unknown> {
-  return (await sendGuardChat(host, session, command))()
+  return (await sendGuardChat(host, session, asked))()
 }
 
 /** The decision and reason in a hook answer. */

@@ -50,8 +50,12 @@ const CASES = [
   { tool: 'mcp__notes__search', input: { query: 'x' } },
   { tool: 'Bash', input: { command: 'orca bot list' } },
   { tool: 'Bash', input: { command: 'git push --force origin main' } },
-  { tool: 'Read', input: { file_path: '/tmp/x' } }
+  { tool: 'Read', input: { file_path: '/tmp/x' } },
+  { tool: 'Monitor', input: { command: 'orca bot list' } }
 ]
+
+/** A command a look-around may run in Bash is no Monitor command: that rule is its own. */
+const LOOK_AROUND_DECISIONS = ['deny', 'deny', 'deny', 'allow', 'deny', 'allow', 'deny']
 
 /** What Claude Code does with several hooks' answers: deny over ask over allow over silence. */
 function strictest(answers: readonly Answer[]): string | null {
@@ -138,7 +142,7 @@ const reasons = (answers: readonly Answer[]): string =>
 describe('read-only sessions with the command guards on (BAD-795)', () => {
   it('a look-around keeps its limit and gets the guard', async () => {
     const run = await runChat('look-around', true)
-    expect(run.results.map(strictest)).toEqual(['deny', 'deny', 'deny', 'allow', 'deny', 'allow'])
+    expect(run.results.map(strictest)).toEqual(LOOK_AROUND_DECISIONS)
     expect(reasons(run.results[1])).toContain(LOOK_AROUND_REFUSAL)
     expect(reasons(run.results[4])).toContain('command guard (force-push)')
     expect(listCommandGuardAudit(1)[0]).toMatchObject({ rule: 'force-push' })
@@ -187,14 +191,14 @@ describe('read-only sessions with the command guards on (BAD-795)', () => {
 
   it('a normal chat has the guard alone, and its prompt waits for the owner', async () => {
     const run = await runChat(null, true)
-    expect(run.results.map(strictest)).toEqual([null, null, null, null, 'deny', null])
+    expect(run.results.map(strictest)).toEqual([null, null, null, null, 'deny', null, null])
     expect(run.hooks.PreToolUse).toHaveLength(1)
     expect(run.prompt).toBe('waiting')
   })
 
   it('with the guards off only the own hook of a look-around decides, and nothing in a normal chat', async () => {
     const look = await runChat('look-around', false)
-    expect(look.results.map(strictest)).toEqual(['deny', 'deny', 'deny', 'allow', 'deny', 'allow'])
+    expect(look.results.map(strictest)).toEqual(LOOK_AROUND_DECISIONS)
     await stopStructuredAgentSessionRuntime()
     const chat = await runChat(null, false)
     expect(chat.results.map(strictest)).toEqual(CASES.map(() => null))
@@ -213,7 +217,7 @@ it('keeps every event and matcher the options already have', () => {
   const guarded = forkChatGuardOptions({ hooks, model: 'haiku' }, 'sess-keeps', scratch)
   expect(guarded.hooks?.PreToolUse).toEqual([
     ...(hooks.PreToolUse ?? []),
-    expect.objectContaining({ matcher: 'Bash', onFailure: 'continue' })
+    expect.objectContaining({ matcher: 'Bash|Monitor|PowerShell', onFailure: 'continue' })
   ])
   expect(guarded.hooks?.Stop).toBe(hooks.Stop)
   expect(guarded.hooks?.PostToolUse).toBe(hooks.PostToolUse)

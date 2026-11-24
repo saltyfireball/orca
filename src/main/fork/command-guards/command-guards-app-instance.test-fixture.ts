@@ -24,7 +24,7 @@ import {
   guardHostDeps
 } from './command-guards-chat.test-fixture'
 import { installForkCommandGuards } from './command-guards-install'
-import { forkCommandGuardStatus } from './command-guards-live'
+import { forkCommandGuardStatus } from './command-guards-status'
 
 const config: {
   mode: 'first' | 'adopt'

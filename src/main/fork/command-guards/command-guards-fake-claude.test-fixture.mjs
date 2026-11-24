@@ -1,6 +1,6 @@
 // A stand-in Claude Code CLI for the command guard tests: it speaks the stream-json control protocol
-// and, on each user message, asks the SDK's PreToolUse hooks about the command in
-// `$GUARD_FAKE_ANSWER_FILE.command` (a force push by default). Each ask appends one line to
+// and, on each user message, asks the SDK's PreToolUse hooks that match about the tool call in
+// `$GUARD_FAKE_ANSWER_FILE.call` (a Bash force push by default). Each ask appends one line to
 // $GUARD_FAKE_ANSWER_FILE: the first denial, else the first answer, else null with no hook. As the
 // real CLI 2.1.330 does (command-guards-real-claude.test.ts), a later initialize that carries hooks
 // replaces the earlier ones and says so, and a callback that fails lets the call through.
@@ -11,11 +11,11 @@ import { createInterface } from 'node:readline'
 const answerFile = process.env.GUARD_FAKE_ANSWER_FILE
 const old = process.env.GUARD_FAKE_OLD_CLI === '1'
 const say = (frame) => process.stdout.write(`${JSON.stringify(frame)}\n`)
-const command = () =>
-  existsSync(`${answerFile}.command`)
-    ? readFileSync(`${answerFile}.command`, 'utf8')
-    : 'git push --force origin main'
-let hookIds = []
+const toolCall = () =>
+  existsSync(`${answerFile}.call`)
+    ? JSON.parse(readFileSync(`${answerFile}.call`, 'utf8'))
+    : { tool: 'Bash', input: { command: 'git push --force origin main' } }
+let matchers = []
 let initialized = false
 let turn = 0
 let waiting = new Map()
@@ -29,9 +29,7 @@ function initialize(hooks) {
   if (!hooks || (initialized && old)) {
     return {}
   }
-  hookIds = (hooks.PreToolUse ?? [])
-    .filter((entry) => !entry.matcher || entry.matcher === 'Bash')
-    .flatMap((entry) => entry.hookCallbackIds)
+  matchers = hooks.PreToolUse ?? []
   return old ? {} : { hooks_applied: true }
 }
 
@@ -112,7 +110,13 @@ createInterface({ input: process.stdin }).on('line', (line) => {
     say({ ...frame, session_id: sessionId, isReplay: true })
     turn += 1
     answers = []
-    waiting = new Map(hookIds.map((id, index) => [`guard-${turn}-${index}`, id]))
+    const { tool, input } = toolCall()
+    waiting = new Map(
+      matchers
+        .filter(({ matcher }) => !matcher || new RegExp(`^(?:${matcher})$`).test(tool))
+        .flatMap((entry) => entry.hookCallbackIds)
+        .map((id, index) => [`guard-${turn}-${index}`, id])
+    )
     if (waiting.size === 0) {
       finishTurn()
       return
@@ -130,8 +134,8 @@ createInterface({ input: process.stdin }).on('line', (line) => {
             session_id: sessionId,
             transcript_path: '',
             cwd: process.cwd(),
-            tool_name: 'Bash',
-            tool_input: { command: command() },
+            tool_name: tool,
+            tool_input: input,
             tool_use_id: `tool-${turn}`
           }
         }

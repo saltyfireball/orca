@@ -14,14 +14,17 @@ import {
   mintStructuredWorkerHandle,
   structuredWorkerIdentities
 } from '../../runtime/orchestration/terminal-authority/structured-sessions/structured-worker-identity'
+import { CLAUDE_SHELL_TOOLS } from '../../../shared/fork/command-guards-shell-tools'
 import { listCommandGuardAudit } from './command-guards-audit'
-import { askGuardChat, attachGuardChat, guardHostDeps } from './command-guards-chat.test-fixture'
-import { resetCommandGuardChats } from './command-guards-chat-registry'
 import {
-  forkCommandGuardStatus,
-  startForkCommandGuards,
-  stopForkCommandGuards
-} from './command-guards-live'
+  askGuardChat,
+  attachGuardChat,
+  guardHostDeps,
+  type GuardToolCall
+} from './command-guards-chat.test-fixture'
+import { resetCommandGuardChats } from './command-guards-chat-registry'
+import { startForkCommandGuards, stopForkCommandGuards } from './command-guards-live'
+import { forkCommandGuardStatus } from './command-guards-status'
 
 type Frame = Record<string, unknown>
 const asFrame = (value: unknown): Frame =>
@@ -56,11 +59,13 @@ afterEach(async () => {
 async function forceTheHook(
   session: string,
   workspaceId?: string,
-  command = 'git push --force origin main'
+  asked: string | GuardToolCall = 'git push --force origin main'
 ): Promise<unknown> {
   const host = await ensureStructuredAgentSessionHost(guardHostDeps({ state, scratch }))
-  await attachGuardChat(host, session, state, workspaceId)
-  return askGuardChat(host, session, command)
+  if (!host.loadedSessionIds().includes(session)) {
+    await attachGuardChat(host, session, state, workspaceId)
+  }
+  return askGuardChat(host, session, asked)
 }
 
 describe('command guard proof: native chat', () => {
@@ -105,6 +110,32 @@ describe('command guard proof: native chat', () => {
       (row) => row.surface === 'native-chat'
     )
     expect(surface).toMatchObject({ guarded: false, chats: { guarded: 0, unguarded: 1 } })
+  })
+})
+
+describe('shell commands of other Claude tools in a native chat', () => {
+  const force = 'git push --force origin main'
+
+  it.each(CLAUDE_SHELL_TOOLS)('reads the command of %s', async (tool) => {
+    const session = `chat-${randomUUID()}`
+    const reply = await forceTheHook(session, undefined, {
+      tool,
+      input: { command: force, description: 'push', timeout_ms: 1000 }
+    })
+    expect(child(reply, 'hookSpecificOutput').permissionDecision).toBe('deny')
+    expect(listCommandGuardAudit(1)[0]).toMatchObject({ rule: 'force-push', command: force })
+  })
+
+  it('lets an ordinary Monitor command, a WebSocket watch and another tool through', async () => {
+    for (const call of [
+      { tool: 'Monitor', input: { command: 'tail -f build.log', description: 'log' } },
+      { tool: 'Monitor', input: { ws: { url: 'wss://example.com' }, description: 'feed' } },
+      { tool: 'Write', input: { file_path: 'notes.md', content: force } }
+    ]) {
+      expect(await forceTheHook(`chat-${randomUUID()}`, undefined, call)).not.toMatchObject({
+        hookSpecificOutput: { permissionDecision: 'deny' }
+      })
+    }
   })
 })
 
@@ -153,6 +184,11 @@ describe('command guard proof: chat worker', () => {
       rule: 'force-push',
       workspaceId: 'folder:notes'
     })
+    const monitor = await forceTheHook(session, 'folder:notes', {
+      tool: 'Monitor',
+      input: { command: 'git push --force origin main' }
+    })
+    expect(child(monitor, 'hookSpecificOutput').permissionDecision).toBe('deny')
     expect(
       forkCommandGuardStatus([]).surfaces?.find((row) => row.surface === 'chat-worker')
     ).toMatchObject({

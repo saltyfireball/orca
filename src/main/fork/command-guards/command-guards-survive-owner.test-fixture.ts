@@ -20,7 +20,7 @@ import { setChatSurviveConfigReader } from '../chat-survive/chat-survive-spawn'
 import { listCommandGuardAudit } from './command-guards-audit'
 import { noteCommandGuardChatInitialized } from './command-guards-chat-registry'
 import { installForkCommandGuards } from './command-guards-install'
-import { forkCommandGuardStatus } from './command-guards-live'
+import { forkCommandGuardStatus } from './command-guards-status'
 import { forkChatGuardOptions } from './command-guards-native-chat'
 
 const config: {

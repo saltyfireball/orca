@@ -2142,6 +2142,25 @@ ones `SLRM-123 `).
       outranks the hook's allow, say) is refused at once with the run's own refusal text, as
       upstream already does for Codex, instead of leaving the run blocked. A tidy-up also takes no
       MCP profile: its `--mcp-config` would bring servers back into a run that has none.
+    - **Every tool that takes a shell command (BAD-764).** Both surfaces read one list,
+      `CLAUDE_SHELL_TOOLS` (`command-guards-shell-tools.ts`): Bash (also in the background), Monitor
+      and PowerShell, each with its command in `input.command`. Before, a terminal's Monitor call was
+      not read, so a force push given to it ran. In a chat Claude Code (2.1.330 and 2.1.323) also asks
+      a hook matched on Bash about a Monitor call, as tool Bash, so it was read there; the chat hook now
+      names the tools itself and does not depend on that. The list is the tools Claude Code 2.1.330 marks as running code
+      that take a shell command; its others take a prompt or a script (CronCreate, Workflow, REPL)
+      whose shell calls come back as calls of these, and the shell tool of an MCP server is not read.
+      The terminal's managed hook has always matched every tool (`*`) and posts each call, so
+      terminals that are already running are covered as soon as the app they post to is updated, with
+      no new settings. A PowerShell command is read with the same shell reader, so only what reads the
+      same there is caught. A look-around still decides Monitor by its own rule (it refuses it).
+    - **Unknown is not guarded (BAD-764).** A Claude chat that is not in the host's list (never noted,
+      or dropped from it), or a host that lists none, shows as unguarded ("not known to this app") in
+      the agent line, the surface row and `orca command-guards status`. The surface rows count live
+      chats only (`liveCommandGuardChats`, the chats whose provider runs), so an ended unguarded chat
+      does not keep a surface red and a live unknown one is counted. Over 500 chats the list drops the
+      oldest ended one, never a live one. A row in the app reads its host once more, 3 seconds later,
+      when the cached answer does not know its chat (it may have just started).
     - Every other hook agent is unguarded (their scripts discard the reply). Adding an agent means
       its hook contract allows a deny, a path that prints it, a proving test and a row in
       `commandGuardCoverage`.
@@ -3535,6 +3554,8 @@ Apply these in this order. Each one is a single commit.
 194. `BAD-795 One Needs you count per bot: a look-around or tidy-up never counts as needing the owner, a waiting chat is a line in the bot's panel, and the row's number is the panel's whether the bot is selected or not`
 195. `BAD-764 The command guard hook is attached to every native chat and chat worker whatever the state at launch, the guards start before any chat can, and a chat carried over an app restart is guarded by the app that takes it over or shows as unguarded`
 196. `BAD-764 Every flag of a fork command has its own help line, and orca guards automation-cap takes a unique id prefix of 4 or more characters and names orca automations list`
+197. `BAD-764 The flag help test finds the fork's spec files without import.meta`
+198. `BAD-764 Command guards read every Claude tool that takes a shell command (Monitor and PowerShell beside Bash) on both surfaces, and a chat not known to the app shows as unguarded, counted only while it runs`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

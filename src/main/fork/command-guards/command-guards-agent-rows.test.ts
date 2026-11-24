@@ -10,7 +10,10 @@ import {
   structuredAgentSessionPaneKey,
   structuredAgentSessionTabId
 } from '../../../shared/agent-session/view/structured-agent-session-projection'
+import { commandGuardAgentLine } from '../../../shared/fork/command-guards-agent-line'
 import { sleeperChatSessionId } from '../../../shared/fork/sleepers-ps-sources'
+import { setStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
+import type { StructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-host'
 import { installForkWorkspaceFolders } from '../workspace-folder/workspace-folder-path'
 import {
   noteCommandGuardChatAdopted,
@@ -18,12 +21,8 @@ import {
   resetCommandGuardChats
 } from './command-guards-chat-registry'
 import { forkChatGuardOptions } from './command-guards-native-chat'
-import {
-  forkCommandGuardStatus,
-  startForkCommandGuards,
-  stopForkCommandGuards,
-  type ForkCommandGuardLiveAgent
-} from './command-guards-live'
+import { startForkCommandGuards, stopForkCommandGuards } from './command-guards-live'
+import { forkCommandGuardStatus, type ForkCommandGuardLiveAgent } from './command-guards-status'
 import { forkAgentRowsWithCommandGuards } from './command-guards-agent-rows'
 
 const places = vi.hoisted(() => ({ rows: [] as AgentConversationRow[] }))
@@ -59,10 +58,21 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  setStructuredAgentSessionHost(null)
   installForkWorkspaceFolders(null)
   resetCommandGuardChats()
   rmSync(root, { recursive: true, force: true })
 })
+
+/** The chats the host says are running; command-guards-unknown-chat.test.ts has the real host. */
+function runChats(...sessionIds: string[]): void {
+  const host = {
+    loadedSessionIds: () => sessionIds,
+    deps: { store: { getRecord: () => ({ provider: 'claude' }) } }
+  }
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the guards read only these two.
+  setStructuredAgentSessionHost(host as unknown as StructuredAgentSessionHost)
+}
 
 function row(agent: string, paneKey: string, worktreeId = `repo1::${root}`): AgentConversationRow {
   return {
@@ -137,6 +147,22 @@ describe('agent guard line', () => {
     expect(lineOf(row('claude', chatPane('sess-bare')))?.guarded).toBe(true)
   })
 
+  it('a chat not known to this app, or of a host that does not say, is unguarded', () => {
+    expect(lineOf(row('claude', chatPane('sess-nobody')))).toEqual({
+      guarded: false,
+      note: 'unguarded: this chat is not known to this app: it has not started it, or lost track of it'
+    })
+    const { chats: _chats, ...older } = forkCommandGuardStatus([])
+    const { surfaces: _surfaces, ...oldest } = older
+    for (const status of [older, oldest]) {
+      expect(commandGuardAgentLine(status, row('claude', chatPane('sess-nobody')))).toEqual({
+        guarded: false,
+        note: 'unguarded: its host does not say which of its chats have the guard'
+      })
+    }
+    expect(commandGuardAgentLine(oldest, row('claude', 'tab-h:leaf-1'))?.guarded).toBe(true)
+  })
+
   it('a Claude terminal in a workspace with no folder on this host is unguarded until it is gone', () => {
     const stray = row('claude', 'tab-s:leaf-1', 'folder:gone')
     const here = row('claude', 'tab-h:leaf-1', 'folder:notes')
@@ -158,6 +184,7 @@ describe('agent guard line', () => {
   it('says unguarded wherever the status does, and guarded only where the status does', () => {
     forkChatGuardOptions({}, 'sess-bare', root)
     noteCommandGuardChatAdopted('sess-bare')
+    runChats('sess-bare')
     const rows = [
       row('codex', 'tab-c:leaf-1'),
       row('opencode', chatPane('sess-o')),

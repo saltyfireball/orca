@@ -8,8 +8,6 @@ import { homedir, tmpdir } from 'node:os'
 import { basename } from 'node:path'
 import {
   COMMAND_GUARD_RULES,
-  COMMAND_GUARD_RULE_TEXT,
-  commandGuardCoverage,
   commandGuardOffRules,
   isCommandGuardRule,
   parseCommandGuardRules,
@@ -19,11 +17,11 @@ import {
   type CommandGuardSurface,
   type ForkCommandGuardSettings
 } from '../../../shared/fork/command-guards'
+import { shellCommandOfToolCall } from '../../../shared/fork/command-guards-shell-tools'
 import { evaluateCommandGuard } from '../../../shared/fork/command-guards-rules'
 import type {
   ForkCommandGuardsAllowResult,
-  ForkCommandGuardsListResult,
-  ForkCommandGuardsStatusResult
+  ForkCommandGuardsListResult
 } from '../../../shared/fork/command-guards-wire'
 import type { AgentHookSource } from '../../../shared/agent-hook-listener/transport/agent-hook-relay'
 import type { Repo } from '../../../shared/repository/repo-types'
@@ -40,23 +38,12 @@ import {
 } from './command-guards-audit'
 import { readCommandGuardGit } from './command-guards-git-state'
 import {
-  forkCommandGuardChatList,
-  forkCommandGuardChatSurfaces
-} from './command-guards-chat-registry'
-import {
   resetCommandGuardStart,
   settleCommandGuardStart,
   waitForCommandGuardStart
 } from './command-guards-start-wait'
 import { forkLocalWorkspaceFolder } from '../workspace-folder/workspace-folder-path'
-import {
-  noteUnguardedTerminalWorkspace,
-  terminalGaps,
-  withTerminalGaps,
-  type ForkCommandGuardLiveAgent
-} from './command-guards-terminal-gaps'
-
-export type { ForkCommandGuardLiveAgent }
+import { noteUnguardedTerminalWorkspace } from './command-guards-terminal-gaps'
 
 export type ForkCommandGuardsStore = {
   getSettings: () => unknown
@@ -69,7 +56,6 @@ export type ForkCommandGuardsStore = {
 
 export type ForkCommandGuardsRuntime = { requireStore: () => ForkCommandGuardsStore }
 
-const SHELL_TOOLS = /^(bash|shell|run_shell_command|execute_bash|exec_command)$/i
 let runtime: ForkCommandGuardsRuntime | null = null
 
 function settings(): unknown {
@@ -80,7 +66,7 @@ function settings(): unknown {
   }
 }
 
-function config(): CommandGuardConfig {
+export function commandGuardConfig(): CommandGuardConfig {
   return readCommandGuardConfig(settings())
 }
 
@@ -139,7 +125,7 @@ type GuardedShellCall = {
  */
 export function guardShellCommand(call: GuardedShellCall): string | null {
   try {
-    const settled = config()
+    const settled = commandGuardConfig()
     if (!settled.enabled) {
       return null
     }
@@ -189,14 +175,11 @@ export function forkCommandGuardAnswer(
       return null
     }
     const call = readAgentToolCall(source, body, owner)
-    const input = call?.payload.input
     const command =
-      typeof input === 'object' && input !== null && 'command' in input ? input.command : null
-    if (
-      call?.phase !== 'before' ||
-      !SHELL_TOOLS.test(call.payload.tool) ||
-      typeof command !== 'string'
-    ) {
+      call?.phase === 'before'
+        ? shellCommandOfToolCall(call.payload.tool, call.payload.input)
+        : null
+    if (command === null) {
       return null
     }
     const root = forkLocalWorkspaceFolder(owner.worktreeId)
@@ -235,11 +218,11 @@ export function forkCommandGuardsReady(): Promise<boolean> {
 }
 
 export function forkCommandGuardList(): ForkCommandGuardsListResult {
-  const limit = config().auditLimit
+  const limit = commandGuardConfig().auditLimit
   return { entries: listCommandGuardAudit(limit), limit }
 }
 
-function repos(): Repo[] {
+export function commandGuardRepos(): Repo[] {
   try {
     return runtime?.requireStore().getRepos?.() ?? []
   } catch {
@@ -247,42 +230,14 @@ function repos(): Repo[] {
   }
 }
 
-const repoName = (repo: Repo): string => repo.displayName || repo.path
-
-/** `live` is this host's agent status rows (the hook server's snapshot). */
-export function forkCommandGuardStatus(
-  live: readonly ForkCommandGuardLiveAgent[],
-  platform: NodeJS.Platform = process.platform
-): ForkCommandGuardsStatusResult {
-  const settled = config()
-  const gaps = terminalGaps(live)
-  const names = new Map(repos().map((repo) => [repo.id, repoName(repo)]))
-  return {
-    enabled: settled.enabled,
-    rules: COMMAND_GUARD_RULES.map((rule) => ({
-      rule,
-      summary: COMMAND_GUARD_RULE_TEXT[rule],
-      offEverywhere: settled.disabled.has(rule),
-      allowedIn: Object.entries(settled.projectAllowed)
-        .filter(([, rules]) => rules.has(rule))
-        .map(([id]) => names.get(id) ?? id)
-    })),
-    agents: commandGuardCoverage(),
-    surfaces: withTerminalGaps(
-      forkCommandGuardChatSurfaces(forkCommandGuardsRunning()),
-      gaps.length,
-      platform
-    ),
-    unguardedWorkspaces: gaps,
-    chats: forkCommandGuardChatList(forkCommandGuardsRunning())
-  }
-}
+export const commandGuardRepoName = (repo: Repo): string => repo.displayName || repo.path
 
 function resolveProject(query: string): Repo {
   const lower = query.toLowerCase()
-  const all = repos()
+  const all = commandGuardRepos()
   const exact = all.filter(
-    (repo) => repo.id === query || repo.path === query || repoName(repo).toLowerCase() === lower
+    (repo) =>
+      repo.id === query || repo.path === query || commandGuardRepoName(repo).toLowerCase() === lower
   )
   const found =
     exact.length > 0 ? exact : all.filter((repo) => basename(repo.path).toLowerCase() === lower)
@@ -316,7 +271,7 @@ export function forkCommandGuardSetAllow(
   if (!store.updateSettings) {
     throw new Error('This host cannot change settings from here.')
   }
-  const current = config()
+  const current = commandGuardConfig()
   const toggle = (rules: ReadonlySet<CommandGuardRuleId>): string => {
     const next = new Set(rules)
     if (allowed) {
@@ -343,5 +298,5 @@ export function forkCommandGuardSetAllow(
     delete byProject[repo.id]
   }
   store.updateSettings({ forkCommandGuardProjectRules: byProject }, { notifyListeners: true })
-  return { rule, project: repoName(repo), allowed }
+  return { rule, project: commandGuardRepoName(repo), allowed }
 }

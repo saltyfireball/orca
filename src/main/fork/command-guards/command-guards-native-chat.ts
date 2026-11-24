@@ -5,24 +5,14 @@
 // own session id, needs no variable in the child, and still runs in Full access. Not a sandbox.
 // Keep electron out of this file.
 import type { HookCallback, HookCallbackMatcher, Options } from '@anthropic-ai/claude-agent-sdk'
-import { resolveStructuredWorkerIdentityForSession } from '../../runtime/orchestration/terminal-authority/structured-sessions/structured-worker-authority'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import {
-  noteCommandGuardChat,
-  noteCommandGuardChatAnswers,
-  type GuardedChatSurface
-} from './command-guards-chat-registry'
+  CLAUDE_SHELL_TOOLS,
+  shellCommandOfToolCall
+} from '../../../shared/fork/command-guards-shell-tools'
+import { noteCommandGuardChat, noteCommandGuardChatAnswers } from './command-guards-chat-registry'
+import { commandGuardChatSurface, liveCommandGuardChats } from './command-guards-live-chats'
 import { forkCommandGuardsReady, guardShellCommand } from './command-guards-live'
-
-function surfaceOf(sessionId: string): GuardedChatSurface {
-  try {
-    return resolveStructuredWorkerIdentityForSession(sessionId, null)
-      ? 'chat-worker'
-      : 'native-chat'
-  } catch {
-    return 'native-chat'
-  }
-}
 
 function workspaceOf(sessionId: string, cwd: string): string {
   try {
@@ -59,24 +49,21 @@ export function forkChatGuardOptions<T extends Pick<Options, 'hooks'>>(
   sessionId: string,
   cwd: string
 ): T {
-  noteCommandGuardChat(sessionId, surfaceOf(sessionId))
+  noteCommandGuardChat(sessionId, commandGuardChatSurface(sessionId), liveCommandGuardChats)
   const workspaceId = workspaceOf(sessionId, cwd)
   const guard: HookCallback = async (input) => {
     if (input.hook_event_name !== 'PreToolUse') {
       return {}
     }
-    noteCommandGuardChatAnswers(sessionId)
-    const tool_input: unknown = input.tool_input
-    const command =
-      typeof tool_input === 'object' && tool_input !== null && 'command' in tool_input
-        ? tool_input.command
-        : null
-    if (typeof command !== 'string' || !(await forkCommandGuardsReady())) {
+    const surface = commandGuardChatSurface(sessionId)
+    noteCommandGuardChatAnswers(sessionId, surface)
+    const command = shellCommandOfToolCall(input.tool_name, input.tool_input)
+    if (command === null || !(await forkCommandGuardsReady())) {
       return {}
     }
     const reason = guardShellCommand({
       agent: 'claude',
-      surface: surfaceOf(sessionId),
+      surface,
       command,
       workspaceId,
       root: cwd
@@ -84,7 +71,11 @@ export function forkChatGuardOptions<T extends Pick<Options, 'hooks'>>(
     return reason ? denial(reason) : {}
   }
   // A fault in the callback continues the call, as everywhere else in the guard.
-  const added: HookCallbackMatcher = { matcher: 'Bash', hooks: [guard], onFailure: 'continue' }
+  const added: HookCallbackMatcher = {
+    matcher: CLAUDE_SHELL_TOOLS.join('|'),
+    hooks: [guard],
+    onFailure: 'continue'
+  }
   const kept = options.hooks ?? {}
   return { ...options, hooks: { ...kept, PreToolUse: [...(kept.PreToolUse ?? []), added] } }
 }

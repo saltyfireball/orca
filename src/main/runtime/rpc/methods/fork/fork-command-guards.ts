@@ -9,9 +9,9 @@ import {
 } from '../../../../../shared/fork/command-guards-wire'
 import {
   forkCommandGuardList,
-  forkCommandGuardSetAllow,
-  forkCommandGuardStatus
+  forkCommandGuardSetAllow
 } from '../../../../fork/command-guards/command-guards-live'
+import { forkCommandGuardStatus } from '../../../../fork/command-guards/command-guards-status'
 import { agentHookServer } from '../../../../agent-hooks/server/agent-hook-server'
 
 export const FORK_COMMAND_GUARDS_METHODS = [

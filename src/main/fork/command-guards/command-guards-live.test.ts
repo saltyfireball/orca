@@ -7,11 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { FolderWorkspace } from '../../../shared/folder-workspaces/folder-workspace-types'
 import { installForkWorkspaceFolders } from '../workspace-folder/workspace-folder-path'
 import { listCommandGuardAudit } from './command-guards-audit'
-import {
-  forkCommandGuardAnswer,
-  forkCommandGuardStatus,
-  startForkCommandGuards
-} from './command-guards-live'
+import { forkCommandGuardAnswer, startForkCommandGuards } from './command-guards-live'
+import { forkCommandGuardStatus } from './command-guards-status'
 
 let root: string
 

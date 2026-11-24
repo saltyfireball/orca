@@ -24,7 +24,8 @@ import {
 } from './command-guards-chat.test-fixture'
 import { resetCommandGuardChats } from './command-guards-chat-registry'
 import { installForkCommandGuards } from './command-guards-install'
-import { forkCommandGuardStatus, stopForkCommandGuards } from './command-guards-live'
+import { stopForkCommandGuards } from './command-guards-live'
+import { forkCommandGuardStatus } from './command-guards-status'
 
 vi.mock('electron', () => ({
   app: {
