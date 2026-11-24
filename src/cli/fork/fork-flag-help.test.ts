@@ -1,6 +1,7 @@
 // BAD-764: every option line of a fork command is its own, not the stock text of a flag that shares
 // its name, and none is empty.
-import { describe, expect, it } from 'vitest'
+import { readdirSync } from 'node:fs'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { CLI_GLOBAL_FLAGS } from '../../shared/cli/cli-argument-boundary'
 import { findCommandSpec } from '../arguments/args'
 import type { CommandSpec } from '../discovery/command-spec'
@@ -36,14 +37,18 @@ const STOCK_WITH_ADDED = [
   'orchestration send'
 ]
 
-const modules = import.meta.glob<Record<string, unknown>>('./*-specs.ts', { eager: true })
-const forkPaths = new Set(
-  Object.values(modules)
-    .flatMap((exported) => Object.values(exported))
-    .filter((value): value is CommandSpec[] => Array.isArray(value))
-    .flat()
-    .map((spec) => spec.path.join(' '))
-)
+const forkPaths = new Set<string>()
+
+beforeAll(async () => {
+  const names = readdirSync(__dirname).filter((name) => name.endsWith('-specs.ts'))
+  const modules: object[] = await Promise.all(
+    names.map((name) => import(`./${name.slice(0, -'-specs.ts'.length)}-specs.ts`))
+  )
+  for (const list of modules.flatMap((exported): unknown[] => Object.values(exported))) {
+    const specs: CommandSpec[] = Array.isArray(list) ? list : []
+    specs.forEach((spec) => forkPaths.add(spec.path.join(' ')))
+  }
+})
 
 function optionLine(command: string, flag: string): string {
   const spec = findCommandSpec(COMMAND_SPECS, command.split(' '))
