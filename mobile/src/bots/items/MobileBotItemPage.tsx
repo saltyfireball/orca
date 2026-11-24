@@ -145,9 +145,6 @@ export function MobileBotItemPage({
     return (
       <View style={styles.page}>
         {back}
-        {stepsPlace === 'ask' && item.steps ? (
-          <MobileBotItemStepsLine view={item.steps} onPress={() => stepsScroll.reveal(true)} />
-        ) : null}
         {view.failed ? (
           <View style={styles.missing}>
             <Text style={styles.missingTitle}>
@@ -188,6 +185,9 @@ export function MobileBotItemPage({
   return (
     <View style={styles.page}>
       {back}
+      {stepsPlace === 'ask' && item.steps ? (
+        <MobileBotItemStepsLine view={item.steps} onPress={() => stepsScroll.reveal(true)} />
+      ) : null}
       <MobileNativeChatComposerMenuHost style={styles.scroll}>
         <View style={styles.scroll}>
           <ScrollView
