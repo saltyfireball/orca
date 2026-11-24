@@ -4,25 +4,18 @@
 // is audited. command-guards-real-claude.test.ts runs the same against the real CLI.
 import { randomUUID } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session/lifecycle/operations/agent-session-mutation-envelope'
-import {
-  HOST_TEST_LOCATION,
-  hostTestAttachParams,
-  hostTestMessage
-} from '../../native-chat/agent-session-wire/host/testing/structured-agent-session-host-test-data.test-fixture'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { ensureTestStructuredAgentSessionHost as ensureStructuredAgentSessionHost } from '../../runtime/agent-session/records/agent-session-record-store-test-harness'
 import { stopStructuredAgentSessionRuntime } from '../../runtime/agent-session/installation/structured-agent-session-runtime'
 import {
   mintStructuredWorkerHandle,
   structuredWorkerIdentities
 } from '../../runtime/orchestration/terminal-authority/structured-sessions/structured-worker-identity'
-const FAKE_CLAUDE = join(import.meta.dirname, 'command-guards-fake-claude.test-fixture.mjs')
-
 import { listCommandGuardAudit } from './command-guards-audit'
+import { askGuardChat, attachGuardChat, guardHostDeps } from './command-guards-chat.test-fixture'
 import { resetCommandGuardChats } from './command-guards-chat-registry'
 import {
   forkCommandGuardStatus,
@@ -65,55 +58,9 @@ async function forceTheHook(
   workspaceId?: string,
   command = 'git push --force origin main'
 ): Promise<unknown> {
-  writeFileSync(`${process.env.GUARD_FAKE_ANSWER_FILE}.command`, command)
-  const host = await ensureStructuredAgentSessionHost({
-    stateDirectory: state,
-    hostId: 'local',
-    claimKeyId: 'key-1',
-    logger: { warn: () => {}, error: () => {} },
-    resolveWorkspacePath: async () => scratch,
-    resolveClaudeCommand: () => ({ command: process.execPath, prefixArgs: [FAKE_CLAUDE] }),
-    resolveLaunchArgs: () => [],
-    resolveClaudeAuthPolicy: () => ({ account: 'system' })
-  })
-  const caller = { callerKey: 'command-guards-proof' }
-  const params = hostTestAttachParams(null, {
-    envelope: {
-      sessionId: session,
-      clientOperationId: `${Date.now()}-${'1'.padStart(32, '0')}`,
-      expectedRuntimeFence: null,
-      payloadFingerprint: ''
-    },
-    provider: 'claude',
-    agent: 'claude',
-    providerHandle: { kind: 'claude', sessionId: randomUUID(), leafUuid: null },
-    accountHome: { variable: 'CLAUDE_CONFIG_DIR', path: join(state, 'claude-home') },
-    ...(workspaceId
-      ? { location: { ...HOST_TEST_LOCATION, workspaceId, workspaceKind: 'folder' as const } }
-      : {})
-  })
-  expect(await host.attach(caller, params)).toMatchObject({ ok: true })
-  await vi.waitFor(
-    () => expect(host.readStatusSummary(session)?.hostExecutionPhase).toBe('ready'),
-    { timeout: 15000 }
-  )
-  const body = hostTestMessage('go')
-  await host.send(caller, {
-    body,
-    envelope: {
-      sessionId: session,
-      clientOperationId: `${Date.now()}-${'2'.padStart(32, '0')}`,
-      expectedRuntimeFence: host.deps.store.getRecord(session)!.lease.runtimeFence,
-      payloadFingerprint: computeAgentSessionPayloadFingerprint({
-        method: 'agentSession.send',
-        sessionId: session,
-        fields: { body }
-      })
-    }
-  })
-  const file = process.env.GUARD_FAKE_ANSWER_FILE!
-  await vi.waitFor(() => expect(existsSync(file)).toBe(true), { timeout: 15000 })
-  return JSON.parse(readFileSync(file, 'utf8').trim().split('\n')[0])
+  const host = await ensureStructuredAgentSessionHost(guardHostDeps({ state, scratch }))
+  await attachGuardChat(host, session, state, workspaceId)
+  return askGuardChat(host, session, command)
 }
 
 describe('command guard proof: native chat', () => {
@@ -148,11 +95,11 @@ describe('command guard proof: native chat', () => {
     })
   })
 
-  it('shows a chat started with no guard endpoint as unguarded', async () => {
-    stopForkCommandGuards()
+  it('lets the call of a host that never starts the guards through, and shows its chat as unguarded', async () => {
+    stopForkCommandGuards(200)
     const before = listCommandGuardAudit(500).length
     const reply = await forceTheHook(`chat-${randomUUID()}`)
-    expect(reply).toBeNull()
+    expect(JSON.stringify(reply)).not.toContain('deny')
     expect(listCommandGuardAudit(500)).toHaveLength(before)
     const surface = forkCommandGuardStatus([]).surfaces?.find(
       (row) => row.surface === 'native-chat'

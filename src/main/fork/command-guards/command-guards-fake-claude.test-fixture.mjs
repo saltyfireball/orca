@@ -1,29 +1,81 @@
-// A stand-in Claude Code CLI for command-guards-native-chat.test.ts: it speaks the stream-json
-// control protocol, and on the first user message asks the SDK's PreToolUse hook about a force
-// push, then writes the hook's answer to the file named by the first argument after `--`.
+// A stand-in Claude Code CLI for the command guard tests: it speaks the stream-json control protocol
+// and, on each user message, asks the SDK's PreToolUse hooks about the command in
+// `$GUARD_FAKE_ANSWER_FILE.command` (a force push by default). Each ask appends one line to
+// $GUARD_FAKE_ANSWER_FILE: the first denial, else the first answer, else null with no hook. As the
+// real CLI 2.1.330 does (command-guards-real-claude.test.ts), a later initialize that carries hooks
+// replaces the earlier ones and says so, and a callback that fails lets the call through.
+// GUARD_FAKE_OLD_CLI=1 is a CLI from before that: it ignores the hooks of a later initialize.
 import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 
 const answerFile = process.env.GUARD_FAKE_ANSWER_FILE
+const old = process.env.GUARD_FAKE_OLD_CLI === '1'
 const say = (frame) => process.stdout.write(`${JSON.stringify(frame)}\n`)
 const command = () =>
   existsSync(`${answerFile}.command`)
     ? readFileSync(`${answerFile}.command`, 'utf8')
     : 'git push --force origin main'
 let hookIds = []
-let asked = false
+let initialized = false
+let turn = 0
+let waiting = new Map()
+let answers = []
 const sessionId =
   process.argv
     .find((arg) => arg.startsWith('--session-id=') || arg.startsWith('--resume='))
     ?.split('=')[1] ?? 'fake-session'
 
+function initialize(hooks) {
+  if (!hooks || (initialized && old)) {
+    return {}
+  }
+  hookIds = (hooks.PreToolUse ?? [])
+    .filter((entry) => !entry.matcher || entry.matcher === 'Bash')
+    .flatMap((entry) => entry.hookCallbackIds)
+  return old ? {} : { hooks_applied: true }
+}
+
+function finishTurn() {
+  const denied = answers.find((answer) => answer?.hookSpecificOutput?.permissionDecision === 'deny')
+  appendFileSync(answerFile, `${JSON.stringify(denied ?? answers[0] ?? null)}\n`)
+  say({
+    type: 'assistant',
+    session_id: sessionId,
+    uuid: `reply-${turn}`,
+    parent_tool_use_id: null,
+    message: {
+      id: `reply-${turn}`,
+      role: 'assistant',
+      type: 'message',
+      model: 'claude-sonnet-5',
+      content: [{ type: 'text', text: 'done' }],
+      stop_reason: 'end_turn',
+      stop_sequence: null,
+      usage: { input_tokens: 1, output_tokens: 1 }
+    }
+  })
+  say({
+    type: 'result',
+    subtype: 'success',
+    session_id: sessionId,
+    uuid: `result-${turn}`,
+    is_error: false,
+    result: 'done',
+    duration_ms: 1,
+    duration_api_ms: 1,
+    num_turns: 1,
+    total_cost_usd: 0,
+    usage: { input_tokens: 1, output_tokens: 1 },
+    modelUsage: {},
+    permission_denials: []
+  })
+}
+
 createInterface({ input: process.stdin }).on('line', (line) => {
   const frame = JSON.parse(line)
   if (frame.type === 'control_request') {
     const subtype = frame.request.subtype
-    if (subtype === 'initialize') {
-      hookIds = frame.request.hooks?.PreToolUse?.[0]?.hookCallbackIds ?? []
-    }
+    const applied = subtype === 'initialize' ? initialize(frame.request.hooks) : {}
     say({
       type: 'control_response',
       response: {
@@ -32,10 +84,11 @@ createInterface({ input: process.stdin }).on('line', (line) => {
         response:
           subtype === 'get_settings'
             ? { model: 'claude-sonnet-5', permissionMode: 'default' }
-            : { commands: [], models: [], capabilities: ['msg_lifecycle_v1'] }
+            : { commands: [], models: [], capabilities: ['msg_lifecycle_v1'], ...applied }
       }
     })
     if (subtype === 'initialize') {
+      initialized = true
       say({
         type: 'system',
         subtype: 'init',
@@ -44,62 +97,45 @@ createInterface({ input: process.stdin }).on('line', (line) => {
         model: 'claude-sonnet-5'
       })
     }
-  } else if (frame.type === 'control_response' && frame.response?.request_id === 'guard-1') {
-    appendFileSync(answerFile, `${JSON.stringify(frame.response.response ?? null)}\n`)
-    say({
-      type: 'assistant',
-      session_id: sessionId,
-      uuid: 'reply',
-      parent_tool_use_id: null,
-      message: {
-        id: 'reply',
-        role: 'assistant',
-        type: 'message',
-        model: 'claude-sonnet-5',
-        content: [{ type: 'text', text: 'done' }],
-        stop_reason: 'end_turn',
-        stop_sequence: null,
-        usage: { input_tokens: 1, output_tokens: 1 }
-      }
-    })
-    say({
-      type: 'result',
-      subtype: 'success',
-      session_id: sessionId,
-      uuid: 'result',
-      is_error: false,
-      result: 'done',
-      duration_ms: 1,
-      duration_api_ms: 1,
-      num_turns: 1,
-      total_cost_usd: 0,
-      usage: { input_tokens: 1, output_tokens: 1 },
-      modelUsage: {},
-      permission_denials: []
-    })
-  } else if (frame.type === 'user' && !asked) {
-    asked = true
-    if (hookIds.length === 0) {
-      appendFileSync(answerFile, 'null\n')
+  } else if (frame.type === 'control_response' && waiting.has(frame.response?.request_id)) {
+    waiting.delete(frame.response.request_id)
+    answers.push(
+      frame.response.subtype === 'error'
+        ? { failed: frame.response.error }
+        : frame.response.response
+    )
+    if (waiting.size === 0) {
+      finishTurn()
+    }
+  } else if (frame.type === 'user') {
+    // As --replay-user-messages: the send is settled by its echo.
+    say({ ...frame, session_id: sessionId, isReplay: true })
+    turn += 1
+    answers = []
+    waiting = new Map(hookIds.map((id, index) => [`guard-${turn}-${index}`, id]))
+    if (waiting.size === 0) {
+      finishTurn()
       return
     }
-    say({
-      type: 'control_request',
-      request_id: 'guard-1',
-      request: {
-        subtype: 'hook_callback',
-        callback_id: hookIds[0],
-        tool_use_id: 'tool-1',
-        input: {
-          hook_event_name: 'PreToolUse',
-          session_id: sessionId,
-          transcript_path: '',
-          cwd: process.cwd(),
-          tool_name: 'Bash',
-          tool_input: { command: command() },
-          tool_use_id: 'tool-1'
+    for (const [requestId, id] of waiting) {
+      say({
+        type: 'control_request',
+        request_id: requestId,
+        request: {
+          subtype: 'hook_callback',
+          callback_id: id,
+          tool_use_id: `tool-${turn}`,
+          input: {
+            hook_event_name: 'PreToolUse',
+            session_id: sessionId,
+            transcript_path: '',
+            cwd: process.cwd(),
+            tool_name: 'Bash',
+            tool_input: { command: command() },
+            tool_use_id: `tool-${turn}`
+          }
         }
-      }
-    })
+      })
+    }
   }
 })

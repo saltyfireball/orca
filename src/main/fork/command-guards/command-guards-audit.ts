@@ -49,7 +49,11 @@ function readEntry(value: unknown): CommandGuardAuditEntry | null {
 
 /** Loads the saved list once the data folder is known; entries added before then are kept. */
 export function openCommandGuardAudit(dataDirectory: string): void {
-  path = join(dataDirectory, COMMAND_GUARD_AUDIT_FILE)
+  const next = join(dataDirectory, COMMAND_GUARD_AUDIT_FILE)
+  if (next === path) {
+    return
+  }
+  path = next
   try {
     const saved: unknown = JSON.parse(readFileSync(path, 'utf8'))
     const loaded = (Array.isArray(saved) ? saved : []).flatMap((value) => readEntry(value) ?? [])

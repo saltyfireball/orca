@@ -19,8 +19,12 @@ import { installForkWorktreeSnapshots } from './worktree-snapshots/worktree-snap
 import { installForkTurnCheckpoints } from './turn-checkpoints/turn-checkpoint-live'
 import { installForkPrBabysit } from './pr-babysit/pr-babysit-hooks'
 import { installForkPrNudge } from './pr-nudge/pr-nudge-hooks'
+import {
+  installForkCommandGuards,
+  type ForkCommandGuardsHostStore
+} from './command-guards/command-guards-install'
 
-export type ForkHeadlessHostStore = {
+export type ForkHeadlessHostStore = Omit<ForkCommandGuardsHostStore, 'getSettings'> & {
   getSettings: () => NonNullable<ReturnType<BoundaryCompactionSettingsReader>>
   onSettingsChanged: (listener: (updates: Partial<ForkGlobalSettings>) => void) => unknown
 }
@@ -34,12 +38,14 @@ export type ForkHeadlessHostStore = {
  * - Workspace port blocks follow this host's own settings (SLRM-2383).
  * - Worktrees are snapshotted before removal by this host's own settings (BAD-677).
  * - Workspace files are checkpointed at each agent turn by this host's own settings (BAD-678).
+ * - Command guards answer from here on, before a chat can start (BAD-764).
  * - The PR babysitter acts on CI lines of this host's chats (SLRM-2386).
  * - PR nudges send this host's chats their pull requests' new review comments and conflicts (BAD-680).
  * Returns what to run at shutdown.
  */
 export function installForkHeadlessHost(store: ForkHeadlessHostStore): () => void {
   forkMarkHeadlessSettingsHost()
+  installForkCommandGuards(store)
   startForkBoundaryCompactionService(() => store.getSettings(), {
     store: () => store,
     windowless: () => true

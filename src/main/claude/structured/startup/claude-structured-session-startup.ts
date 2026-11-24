@@ -37,6 +37,7 @@ import {
   claudeStartupAnswerAfterExit
 } from './claude-structured-session-startup-exit'
 import type { ClaudeSession } from '../claude-structured-session-state'
+import { noteCommandGuardChatInitialized } from '../../../fork/command-guards/command-guards-chat-registry'
 import {
   readClaudeSettingsAutoDisabled,
   readClaudeSettingsBypassDisabled
@@ -118,6 +119,8 @@ export async function readClaudeStartupFacts(input: {
       new Error('claude session closed before startup completed')
     )
   }
+  // Fork (BAD-764): whether Claude Code took the command guard's hook.
+  noteCommandGuardChatInitialized(input.sessionId, initialization)
   input.emit({
     type: 'options',
     sessionId: input.sessionId,

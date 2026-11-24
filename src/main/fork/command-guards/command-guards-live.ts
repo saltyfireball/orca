@@ -43,6 +43,11 @@ import {
   forkCommandGuardChatList,
   forkCommandGuardChatSurfaces
 } from './command-guards-chat-registry'
+import {
+  resetCommandGuardStart,
+  settleCommandGuardStart,
+  waitForCommandGuardStart
+} from './command-guards-start-wait'
 import { forkLocalWorkspaceFolder } from '../workspace-folder/workspace-folder-path'
 import {
   noteUnguardedTerminalWorkspace,
@@ -53,16 +58,16 @@ import {
 
 export type { ForkCommandGuardLiveAgent }
 
-export type ForkCommandGuardsRuntime = {
-  requireStore: () => {
-    getSettings: () => unknown
-    getRepos: () => Repo[]
-    updateSettings?: (
-      updates: Partial<ForkCommandGuardSettings>,
-      options?: { notifyListeners?: boolean }
-    ) => unknown
-  }
+export type ForkCommandGuardsStore = {
+  getSettings: () => unknown
+  getRepos?: () => Repo[]
+  updateSettings?: (
+    updates: Partial<ForkCommandGuardSettings>,
+    options?: { notifyListeners?: boolean }
+  ) => unknown
 }
+
+export type ForkCommandGuardsRuntime = { requireStore: () => ForkCommandGuardsStore }
 
 const SHELL_TOOLS = /^(bash|shell|run_shell_command|execute_bash|exec_command)$/i
 let runtime: ForkCommandGuardsRuntime | null = null
@@ -79,9 +84,13 @@ function config(): CommandGuardConfig {
   return readCommandGuardConfig(settings())
 }
 
-/** Called once the runtime settles, in the desktop app and the headless server alike. */
+/**
+ * Called with the profile store before any chat can start or be restored (`installForkReady`,
+ * `installForkHeadlessHost`), and again with the runtime once it settles.
+ */
 export function startForkCommandGuards(next: ForkCommandGuardsRuntime): void {
   runtime = next
+  settleCommandGuardStart()
   if (process.env.VITEST) {
     return
   }
@@ -209,14 +218,20 @@ export function forkCommandGuardAnswer(
   }
 }
 
-/** Stops the guards on this host (a chat started after this has none, and shows unguarded). */
-export function stopForkCommandGuards(): void {
+/** Stops the guards on this host (its chats' calls go through, and the chats show unguarded). */
+export function stopForkCommandGuards(waitMs?: number): void {
   runtime = null
+  resetCommandGuardStart(waitMs)
 }
 
-/** Whether the guards are running on this host (the runtime settled); a chat needs it. */
+/** Whether the guards are running on this host. */
 export function forkCommandGuardsRunning(): boolean {
   return runtime !== null
+}
+
+/** Whether the guards run here, for a call that is being made now; a starting host is waited for. */
+export function forkCommandGuardsReady(): Promise<boolean> {
+  return runtime ? Promise.resolve(true) : waitForCommandGuardStart()
 }
 
 export function forkCommandGuardList(): ForkCommandGuardsListResult {
@@ -226,7 +241,7 @@ export function forkCommandGuardList(): ForkCommandGuardsListResult {
 
 function repos(): Repo[] {
   try {
-    return runtime?.requireStore().getRepos() ?? []
+    return runtime?.requireStore().getRepos?.() ?? []
   } catch {
     return []
   }
@@ -253,9 +268,13 @@ export function forkCommandGuardStatus(
         .map(([id]) => names.get(id) ?? id)
     })),
     agents: commandGuardCoverage(),
-    surfaces: withTerminalGaps(forkCommandGuardChatSurfaces(), gaps.length, platform),
+    surfaces: withTerminalGaps(
+      forkCommandGuardChatSurfaces(forkCommandGuardsRunning()),
+      gaps.length,
+      platform
+    ),
     unguardedWorkspaces: gaps,
-    chats: forkCommandGuardChatList()
+    chats: forkCommandGuardChatList(forkCommandGuardsRunning())
   }
 }
 

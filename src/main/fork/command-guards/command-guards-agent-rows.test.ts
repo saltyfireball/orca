@@ -12,7 +12,11 @@ import {
 } from '../../../shared/agent-session/view/structured-agent-session-projection'
 import { sleeperChatSessionId } from '../../../shared/fork/sleepers-ps-sources'
 import { installForkWorkspaceFolders } from '../workspace-folder/workspace-folder-path'
-import { resetCommandGuardChats } from './command-guards-chat-registry'
+import {
+  noteCommandGuardChatAdopted,
+  noteCommandGuardChatInitialized,
+  resetCommandGuardChats
+} from './command-guards-chat-registry'
 import { forkChatGuardOptions } from './command-guards-native-chat'
 import {
   forkCommandGuardStatus,
@@ -100,21 +104,37 @@ describe('agent guard line', () => {
     })
   })
 
-  it('a native Claude chat started with no guard is unguarded; one started with it is guarded', () => {
+  it('a chat is unguarded while its host runs no guards, and guarded once they start', () => {
     stopForkCommandGuards()
-    forkChatGuardOptions({}, 'sess-bare', root)
+    forkChatGuardOptions({}, 'sess-early', root)
+    expect(lineOf(row('claude', chatPane('sess-early')))).toEqual({
+      guarded: false,
+      note: 'unguarded: the command guards are not running on its host'
+    })
     startForkCommandGuards({
       requireStore: () => ({ getSettings: () => settings, getRepos: () => [] })
     })
+    expect(lineOf(row('claude', chatPane('sess-early')))?.guarded).toBe(true)
+  })
+
+  it('a chat carried over a restart is unguarded until Claude Code confirms its hook', () => {
+    forkChatGuardOptions({}, 'sess-bare', root)
+    noteCommandGuardChatAdopted('sess-bare')
     forkChatGuardOptions({}, 'sess-held', root)
     expect(lineOf(row('claude', chatPane('sess-bare')))).toEqual({
       guarded: false,
-      note: 'unguarded: this chat started while the guards were not running on its host'
+      note: 'unguarded: this chat was carried over an app restart and Claude Code has not confirmed its guard hook yet'
     })
+    for (const reply of [{}, { hooks_applied: false }, null]) {
+      noteCommandGuardChatInitialized('sess-bare', reply)
+      expect(lineOf(row('claude', chatPane('sess-bare')))?.guarded).toBe(false)
+    }
     expect(lineOf(row('claude', chatPane('sess-held')))).toEqual({
       guarded: true,
       note: 'Claude native chat: PreToolUse hook answered inside Orca for each chat'
     })
+    noteCommandGuardChatInitialized('sess-bare', { hooks_applied: true })
+    expect(lineOf(row('claude', chatPane('sess-bare')))?.guarded).toBe(true)
   })
 
   it('a Claude terminal in a workspace with no folder on this host is unguarded until it is gone', () => {
@@ -136,11 +156,8 @@ describe('agent guard line', () => {
   })
 
   it('says unguarded wherever the status does, and guarded only where the status does', () => {
-    stopForkCommandGuards()
     forkChatGuardOptions({}, 'sess-bare', root)
-    startForkCommandGuards({
-      requireStore: () => ({ getSettings: () => settings, getRepos: () => [] })
-    })
+    noteCommandGuardChatAdopted('sess-bare')
     const rows = [
       row('codex', 'tab-c:leaf-1'),
       row('opencode', chatPane('sess-o')),
@@ -161,7 +178,8 @@ describe('agent guard line', () => {
         expect(status.chats).toContainEqual({
           sessionId: 'sess-bare',
           surface: 'native-chat',
-          guarded: false
+          guarded: false,
+          reason: expect.stringContaining('app restart')
         })
       } else if (worktreeId === 'folder:gone') {
         expect(commandGuard?.guarded).toBe(false)

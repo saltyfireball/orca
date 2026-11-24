@@ -44,8 +44,14 @@ export type ForkCommandGuardsStatusResult = {
   surfaces?: CommandGuardSurfaceCoverage[]
   /** Workspaces with a live agent and no folder on this host, so terminal shell calls there go through unchecked. */
   unguardedWorkspaces?: string[]
-  /** Native chats and chat workers started on this host, by whether a guard was attached. */
-  chats?: { sessionId: string; surface: CommandGuardSurface; guarded: boolean }[]
+  /** Native chats and chat workers started on this host, by whether their guard hook works. */
+  chats?: {
+    sessionId: string
+    surface: CommandGuardSurface
+    guarded: boolean
+    /** Why it is unguarded; an older host sends none. */
+    reason?: string
+  }[]
 }
 
 export type ForkCommandGuardsAllowResult = {

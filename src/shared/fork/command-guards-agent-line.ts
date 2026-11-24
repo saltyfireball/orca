@@ -45,8 +45,13 @@ function surfaceLine(
       'this workspace has no folder on its host (a folder workspace on an SSH host or in WSL, or one the host does not know), so its shell commands go through unchecked'
     )
   }
-  if (sessionId && status.chats?.some((chat) => chat.sessionId === sessionId && !chat.guarded)) {
-    return unguarded('this chat started while the guards were not running on its host')
+  const open = sessionId
+    ? status.chats?.find((chat) => chat.sessionId === sessionId && !chat.guarded)
+    : undefined
+  if (open) {
+    return unguarded(
+      open.reason ?? 'this chat started while the guards were not running on its host'
+    )
   }
   return { guarded: true, note: commandGuardSurfaceGuardedNote(surface) }
 }

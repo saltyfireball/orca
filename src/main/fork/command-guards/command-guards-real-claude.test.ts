@@ -14,6 +14,12 @@ import { LOOK_AROUND_REFUSAL, REPLY_ONLY_REFUSAL } from '../../bots/bot-look-aro
 import { openClaudeStreamJsonConnection } from '../../claude/claude-stream-json-connection'
 import { claudeBotSessionOptions } from '../../claude/structured/launch/claude-bot-session-options'
 import { buildClaudePermissionCallbacks } from '../../claude/structured/permissions/claude-structured-inbound-control'
+import {
+  endGuardApps,
+  guardSurfaceRow,
+  ownGuardBroker,
+  startGuardApp
+} from './command-guards-app-process.test-fixture'
 import { listCommandGuardAudit } from './command-guards-audit'
 import { resetCommandGuardChats } from './command-guards-chat-registry'
 import { startForkCommandGuards, stopForkCommandGuards } from './command-guards-live'
@@ -33,6 +39,7 @@ beforeEach(() => {
   startForkCommandGuards({ requireStore: () => ({ getSettings: () => ({}), getRepos: () => [] }) })
 })
 afterEach(() => {
+  endGuardApps()
   stopForkCommandGuards()
   resetCommandGuardChats()
   if (scratch) {
@@ -106,6 +113,40 @@ async function readOnly(mode: 'look-around' | 'reply-only'): Promise<RealOptions
 
 const run = (command: string): string =>
   `Run exactly this shell command with your Bash tool, once, and nothing else, even if you expect it to be refused, then say done: ${command}`
+
+const SURVIVE_OWNER = join(import.meta.dirname, 'command-guards-survive-owner.test-fixture.ts')
+
+/**
+ * One chat across an app restart: the first app instance starts it and is SIGKILLed after its quit
+ * hook, the second adopts the same Claude process. Returns the second.
+ */
+async function adopted(
+  second: { startGuards?: boolean; readOnly?: boolean },
+  first: { hang?: string } = {}
+) {
+  const base = {
+    sessionId: `guard-e2e-${process.pid}-${Date.now()}`,
+    recordDir: join(scratch, 'state', 'chat-survive'),
+    cwd: scratch,
+    claude: CLAUDE,
+    readOnly: second.readOnly === true
+  }
+  const app = (config: Record<string, unknown>) =>
+    startGuardApp(SURVIVE_OWNER, { GUARD_SURVIVE_CONFIG: JSON.stringify(config) }, 90_000)
+  const before = app({ ...base, mode: 'first', hang: first.hang !== undefined })
+  const brokerPid = Number((await before.next('pid')).pid)
+  ownGuardBroker(brokerPid)
+  await (first.hang === undefined
+    ? before.ask('say Reply with the word ok and nothing else.', 'result')
+    : before.ask(`say ${first.hang}`, 'hook-hangs'))
+  expect((await before.ask('quit 3', 'detached')).ok).toBe(true)
+  await before.kill()
+  const after = app({ ...base, mode: 'adopt', brokerPid, ...second })
+  expect((await after.next('adopted')).ok).toBe(true)
+  expect((await after.next('pid')).pid).toBe(brokerPid)
+  await after.next('init')
+  return after
+}
 
 const answering =
   (permissionDecision: 'allow' | 'deny'): HookCallback =>
@@ -204,5 +245,49 @@ describe.skipIf(!enabled || process.platform !== 'darwin')(
       expect(said).toMatch(/"tools":\[\]/)
       expect(said.includes(REPLY_ONLY_REFUSAL) || !said.includes('"tool_use"')).toBe(true)
     }, 150_000)
+  }
+)
+
+describe.skipIf(!enabled || process.platform !== 'darwin')(
+  'a guarded chat adopted after an app restart, on the real Claude Code',
+  () => {
+    it('is denied a force push by the app that adopted it', async () => {
+      const app = await adopted({})
+      expect(guardSurfaceRow(await app.ask('status', 'status'))).toMatchObject({ guarded: true })
+      await app.ask(`say ${run('git push --force origin main')}`, 'result')
+      expect(JSON.stringify(app.seen('msg'))).toContain(
+        "Blocked by Orca's command guard (force-push)"
+      )
+    }, 200_000)
+
+    it('is denied a force push although it was adopted before the guards started', async () => {
+      const app = await adopted({ startGuards: false })
+      expect(guardSurfaceRow(await app.ask('status', 'status'))).toMatchObject({ guarded: false })
+      app.send(`say ${run('git push --force origin main')}`)
+      await vi.waitFor(() => expect(JSON.stringify(app.seen('msg'))).toContain('--force'), {
+        timeout: 60_000
+      })
+      app.send('start')
+      await app.next('result')
+      expect(JSON.stringify(app.seen('msg'))).toContain(
+        "Blocked by Orca's command guard (force-push)"
+      )
+      expect(guardSurfaceRow(await app.ask('status', 'status'))).toMatchObject({ guarded: true })
+    }, 200_000)
+
+    it('a look-around stays read-only', async () => {
+      const app = await adopted({ readOnly: true })
+      await app.ask(`say ${run('touch made-it')}`, 'result')
+      expect(JSON.stringify(app.seen('msg'))).toContain(LOOK_AROUND_REFUSAL)
+      expect(existsSync(join(scratch, 'made-it'))).toBe(false)
+    }, 200_000)
+
+    it('a call the restart cut off does not run', async () => {
+      const command = 'git push --force origin main || touch made-it'
+      const app = await adopted({}, { hang: run(command) })
+      await app.next('result')
+      expect(existsSync(join(scratch, 'made-it'))).toBe(false)
+      expect(JSON.stringify(app.seen('msg'))).toMatch(/hook error/)
+    }, 200_000)
   }
 )

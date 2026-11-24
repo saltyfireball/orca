@@ -78,11 +78,9 @@ afterEach(async () => {
 })
 
 async function runChat(readOnly: ReadOnlySessionMode | null, guards: boolean): Promise<Run> {
-  if (guards) {
-    startForkCommandGuards({
-      requireStore: () => ({ getSettings: () => ({}), getRepos: () => [] })
-    })
-  }
+  startForkCommandGuards({
+    requireStore: () => ({ getSettings: () => ({ forkCommandGuards: guards }), getRepos: () => [] })
+  })
   const session = `chat-${randomUUID()}`
   // One path for every run: the host reads its environment once.
   const out = join(scratch, 'run.json')
@@ -194,10 +192,9 @@ describe('read-only sessions with the command guards on (BAD-795)', () => {
     expect(run.prompt).toBe('waiting')
   })
 
-  it('with the guards off a look-around has its own hook and a normal chat none', async () => {
+  it('with the guards off only the own hook of a look-around decides, and nothing in a normal chat', async () => {
     const look = await runChat('look-around', false)
     expect(look.results.map(strictest)).toEqual(['deny', 'deny', 'deny', 'allow', 'deny', 'allow'])
-    expect(look.hooks.PreToolUse).toHaveLength(1)
     await stopStructuredAgentSessionRuntime()
     const chat = await runChat(null, false)
     expect(chat.results.map(strictest)).toEqual(CASES.map(() => null))

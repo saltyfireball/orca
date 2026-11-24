@@ -29,9 +29,11 @@ tasks die. Chat history itself is not lost.
   Orca spawns the CLI itself through `spawnManagedProviderProcess`
   (`src/main/claude/child-process/claude-agent-sdk-process-spawn.ts`) and the SDK only sees a
   `PipedChildProcess`. Permission prompts (`canUseTool`) and user dialogs are SDK callbacks.
-  Hooks are command hooks from a settings file, not SDK callback ids. Codex chats speak JSON-RPC
-  to `codex app-server` (`src/main/codex/app-server/`). Grok and OpenCode use ACP
-  (`src/main/acp/`).
+  Hooks are command hooks from a settings file, plus the SDK callbacks Orca adds itself (the
+  command guard, a read-only run's limit). Those are callback ids of one SDK query, so they do not
+  outlive the app: the app that adopts a chat sends its own with `initialize`, and Claude Code
+  replaces the old ones only when some are sent (BAD-764). Codex chats speak JSON-RPC to
+  `codex app-server` (`src/main/codex/app-server/`). Grok and OpenCode use ACP (`src/main/acp/`).
 - **Host.** All of them sit behind the structured agent session host
   (`src/main/native-chat/agent-session-wire/host/structured-agent-session-host.ts`), which turns
   provider events into an append-only journal. The renderer never talks to a provider: it calls

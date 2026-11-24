@@ -21,6 +21,7 @@ import {
 } from './chat-survive-launch-hash'
 import { isProviderSupervisorSpawn, planChatSurviveBrokerSpawn } from './chat-survive-launch'
 import { chatSurviveReadySocketDir } from './chat-survive-launch-ready'
+import { noteCommandGuardChatAdopted } from '../command-guards/command-guards-chat-registry'
 import { markForkLegacyProviderLaunch } from './chat-survive-legacy-launch'
 import {
   dropChatSurviveBroker,
@@ -185,6 +186,8 @@ function adoptedChild(
     adopted: { tracker, fenceFloor: claim.fence }
   })
   saveRecord(child, claim.recordPath, claim.record, entry)
+  // BAD-764: its command guard hook was registered by the app that started it.
+  noteCommandGuardChatAdopted(sessionId)
   return child
 }
 

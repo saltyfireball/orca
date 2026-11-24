@@ -2108,8 +2108,7 @@ ones `SLRM-123 `).
       is added back), so the script never reaches Orca. Orca instead answers PreToolUse itself,
       as an in-process hook callback of the Claude Agent SDK passed in the chat's own query
       (`command-guards-native-chat.ts`). It runs in Full access too and needs no variable in the
-      child. A chat started while the guards are not running on its host shows as unguarded (the
-      surface row names how many), and a failing callback lets the call through. The root is the
+      child. A failing callback lets the call through. The root is the
       chat's launch folder, which the runtime resolves for folder workspaces too, so chats and
       chat workers in a folder workspace are guarded.
       The guard is added to whatever hooks the chat's options carry, every event and matcher kept
@@ -2117,6 +2116,27 @@ ones `SLRM-123 `).
       the first version replaced. Claude Code takes the strictest of several hooks' answers (deny,
       then ask, then allow; proved with the real CLI in both orders), so a read-only allow never
       lifts a guard denial and the guard's silence never lifts a read-only denial.
+    - **The hook is attached whatever the state at launch (BAD-764).** It used to be attached only
+      when the guards were already running, and they started with the runtime's settle services,
+      seconds after the window had loaded (later on a slow start). Chats restored, carried over or
+      started before that were unguarded for life. Now `installForkCommandGuards` starts the guards
+      from the profile store before any chat can start (`installForkReady` on the desktop,
+      `installForkHeadlessHost` on the headless server; the settle call still runs and hands over the
+      runtime), every chat carries the hook, and each call asks whether the guards run and reads the
+      settings then, so turning them on or off in Settings applies to chats that are already running.
+      A call made before the guards start waits for them, 10 seconds at most and once per host start
+      (`command-guards-start-wait.ts`), then goes through: a short wait is better than letting through
+      a command that may be refused, and a host that never starts them behaves as before (its chats
+      go through and show as unguarded).
+    - **A chat carried over an app restart (chat survive) is guarded by the app that takes it over.**
+      Its Claude Code process keeps the hooks the earlier app registered, and those callbacks answer
+      no more. The new app's initialize registers its own hooks in their place (Claude Code says
+      `hooks_applied`; proved with 2.1.330 and 2.1.323), but only when it sends some: a chat adopted
+      before the guards started sent none, its calls reached a dead callback, and Claude Code let
+      them through. Always attaching the hook closes that. Until Claude Code confirms the new hooks,
+      or calls the guard's, the chat shows as unguarded with that reason in the status, the surface
+      row and the agent's line. A read-only run's own hook is carried the same way. A call that was
+      waiting for a hook when the app went away does not run.
     - **Read-only runs never wait on a prompt (BAD-795).** Nobody sees a look-around's or a
       tidy-up's chat, so a permission prompt there (an ask rule in the owner's Claude settings
       outranks the hook's allow, say) is refused at once with the run's own refusal text, as
@@ -3512,6 +3532,7 @@ Apply these in this order. Each one is a single commit.
 192. `BAD-682 The goal loop sends to a terminal agent of a headless server whose status it never saw change live, which the mail gate refused as unverified so the text was never typed; tested with a real headless runtime and PTY`
 193. `BAD-795 Command guards keep the hooks a chat already has, so a bot's look-around and tidy-up stay read-only with the guards on; a permission prompt in a read-only run is refused at once, and a tidy-up takes no MCP profile`
 194. `BAD-795 One Needs you count per bot: a look-around or tidy-up never counts as needing the owner, a waiting chat is a line in the bot's panel, and the row's number is the panel's whether the bot is selected or not`
+195. `BAD-764 The command guard hook is attached to every native chat and chat worker whatever the state at launch, the guards start before any chat can, and a chat carried over an app restart is guarded by the app that takes it over or shows as unguarded`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4827,13 +4848,17 @@ Upstream files only get short hooks, which keeps merges small:
   `command-guards-agent-rows.test.ts` and `src/cli/fork/command-guards-row-line.test.ts`. The
   row shield is in the fork's `ForkAgentRowStatus.tsx`.
 
-- Command guards in native chats (BAD-764), one small edit in a stock file:
+- Command guards in native chats (BAD-764), small edits in stock files:
   `claude-structured-session-acquisition.ts` wraps `launch.options` in
   `forkChatGuardOptions(options, sessionId, cwd)`, which adds the SDK `hooks` (they reach `query`
   through the launch options, so `claude-stream-json-connection.ts` is untouched). The seal in
   `structured-session-child-env.ts` is untouched. Proof tests: `command-guards-native-chat.test.ts`
   (host, SDK and a stand-in CLI, always run) and `command-guards-real-claude.test.ts` (the real CLI,
-  `ORCA_COMMAND_GUARDS_E2E=1`).
+  `ORCA_COMMAND_GUARDS_E2E=1`). `claude-structured-session-startup.ts` (`readClaudeStartupFacts`)
+  hands the initialize reply to `noteCommandGuardChatInitialized` (one import, one line), which
+  tells whether a chat carried over an app restart took the new hook. Proof tests:
+  `command-guards-startup-order.test.ts` (the real start of both hosts) and
+  `command-guards-adopted-chat.test.ts` (two app processes and one chat, macOS).
 - Read-only runs under the command guards (BAD-795), small edits in stock files:
   `claude-structured-launch-resolution.ts` carries `basis.readOnly` on the launch (one type line, one
   field, one type import) and hands `basis` instead of its record to `forkMcpClaudeExtraArgs`;

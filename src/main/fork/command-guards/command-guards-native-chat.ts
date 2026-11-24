@@ -7,8 +7,12 @@
 import type { HookCallback, HookCallbackMatcher, Options } from '@anthropic-ai/claude-agent-sdk'
 import { resolveStructuredWorkerIdentityForSession } from '../../runtime/orchestration/terminal-authority/structured-sessions/structured-worker-authority'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
-import { noteCommandGuardChat, type GuardedChatSurface } from './command-guards-chat-registry'
-import { forkCommandGuardsRunning, guardShellCommand } from './command-guards-live'
+import {
+  noteCommandGuardChat,
+  noteCommandGuardChatAnswers,
+  type GuardedChatSurface
+} from './command-guards-chat-registry'
+import { forkCommandGuardsReady, guardShellCommand } from './command-guards-live'
 
 function surfaceOf(sessionId: string): GuardedChatSurface {
   try {
@@ -45,32 +49,30 @@ function denial(reason: string): Awaited<ReturnType<HookCallback>> {
  * through the launch options): a shell command that breaks a rule is denied and audited. The
  * options' own hooks stay first and whole: a read-only session's PreToolUse hook is its limit
  * (BAD-795), and Claude Code takes the strictest of several answers (deny over ask over allow).
- * Returns the options as they are, and the chat shows unguarded, when the guards are not running
- * on this host.
+ * The hook is attached whatever the state at launch: a launch may come before the guards start, and
+ * a chat taken over from an earlier app instance keeps that instance's dead hooks unless it is sent
+ * new ones, so Claude Code would let every call through. Whether the guards run here, and what the
+ * settings say, is read at each call.
  */
 export function forkChatGuardOptions<T extends Pick<Options, 'hooks'>>(
   options: T,
   sessionId: string,
   cwd: string
 ): T {
-  const surface = surfaceOf(sessionId)
-  if (!forkCommandGuardsRunning()) {
-    noteCommandGuardChat(sessionId, surface, false)
-    return options
-  }
-  noteCommandGuardChat(sessionId, surface, true)
+  noteCommandGuardChat(sessionId, surfaceOf(sessionId))
   const workspaceId = workspaceOf(sessionId, cwd)
-  const guard: HookCallback = (input) => {
+  const guard: HookCallback = async (input) => {
     if (input.hook_event_name !== 'PreToolUse') {
-      return Promise.resolve({})
+      return {}
     }
+    noteCommandGuardChatAnswers(sessionId)
     const tool_input: unknown = input.tool_input
     const command =
       typeof tool_input === 'object' && tool_input !== null && 'command' in tool_input
         ? tool_input.command
         : null
-    if (typeof command !== 'string') {
-      return Promise.resolve({})
+    if (typeof command !== 'string' || !(await forkCommandGuardsReady())) {
+      return {}
     }
     const reason = guardShellCommand({
       agent: 'claude',
@@ -79,7 +81,7 @@ export function forkChatGuardOptions<T extends Pick<Options, 'hooks'>>(
       workspaceId,
       root: cwd
     })
-    return Promise.resolve(reason ? denial(reason) : {})
+    return reason ? denial(reason) : {}
   }
   // A fault in the callback continues the call, as everywhere else in the guard.
   const added: HookCallbackMatcher = { matcher: 'Bash', hooks: [guard], onFailure: 'continue' }
