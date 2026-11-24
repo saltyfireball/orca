@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { MobileMarkdown } from '../../components/markdown/MobileMarkdown'
+import { INLINE_TEXT_SELECTION } from '../../platform/text-selection/inline-text-selection'
 import { useMobileTranslation } from '../../i18n/use-mobile-translation'
 import { colors, spacing } from '../../theme/mobile-theme'
 import { themedStyleSheet } from '../../theme/themed-styles'
@@ -17,7 +18,7 @@ export function ClampedDescription({ text }: { text: string }) {
     <View style={styles.description}>
       <View style={!open && clamps ? styles.clamped : undefined}>
         <View onLayout={(event) => setHeight(event.nativeEvent.layout.height)}>
-          <MobileMarkdown content={text} />
+          <MobileMarkdown content={text} rangeSelectable={INLINE_TEXT_SELECTION} />
         </View>
       </View>
       {clamps ? (

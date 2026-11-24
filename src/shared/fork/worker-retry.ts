@@ -148,6 +148,7 @@ export type WorkerRetryStop = {
     | 'start-unconfirmed'
     | 'start-blocked'
     | 'never-ready'
+    | 'start-failed'
     | 'background-wait'
   /** Why a worker went away, for an exit, in words for the coordinator. Never matched on. */
   cause?: string | undefined
@@ -211,6 +212,9 @@ export function workerRetryReason(stop: WorkerRetryStop): string {
     return `provider error${stop.requestErrorKind ? ` (${stop.requestErrorKind})` : ''}`
   }
   const cause = stop.cause ? ` (${stop.cause.slice(0, 120)})` : ''
+  if (stop.reason === 'start-failed') {
+    return `worker did not start${cause}`
+  }
   return stop.reason === 'lost' ? `worker lost${cause}` : `worker exited${cause}`
 }
 
@@ -230,7 +234,12 @@ export function decideWorkerRetry(input: WorkerRetryInput): WorkerRetryDecision 
   if (input.taskStatus === 'completed' || input.taskStatus === 'failed') {
     return hold('task-settled')
   }
-  if (stop.reason !== 'exited' && stop.reason !== 'lost' && stop.reason !== 'errored') {
+  if (
+    stop.reason !== 'exited' &&
+    stop.reason !== 'lost' &&
+    stop.reason !== 'errored' &&
+    stop.reason !== 'start-failed'
+  ) {
     return hold('not-a-failure')
   }
   if (stop.neverStarted || stop.settled === 'circuit_broken') {

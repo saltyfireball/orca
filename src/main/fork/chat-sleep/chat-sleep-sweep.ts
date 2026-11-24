@@ -5,6 +5,7 @@
 // The sweep's own owed-work check (a turn, queued or mid-delivery sends, open dispatches,
 // prompts, child work, a provider that is not confirmed idle) still runs first, so a busy chat is
 // never put to sleep.
+import { nativeChatIdleStopMs } from '../../../shared/native-chat/settings/native-chat-idle-stop'
 import type { ForkGlobalSettings } from '../../../shared/fork/fork-global-settings'
 import {
   forkChatSleepEnabled,
@@ -68,6 +69,16 @@ export type ForkChatSleepIdleSweep = ForkChatStallSweepHooks & {
   idleMs: () => number | null
   keepAwake: (sessionId: string) => boolean
   attach: (sweep: ForkSleepersSweep) => void
+}
+
+/** The same, read from the runtime's store, so the stock call site is one line. */
+export function forkChatSleepIdleSweepFor(
+  requireStore: () => { getSettings(): Parameters<typeof nativeChatIdleStopMs>[0] }
+): ForkChatSleepIdleSweep {
+  return forkChatSleepIdleSweep(
+    () => requireStore().getSettings(),
+    () => nativeChatIdleStopMs(requireStore().getSettings())
+  )
 }
 
 /**

@@ -44,7 +44,7 @@ export const MOBILE_WEB_APP_HOST_CATALOG_MAX_BYTES = 384 * 1024
 // budget holds only files outfitSheetsOnDemand proves are fetched when used, and any that the document
 // names count as eager. The phone shell still downloads each on-demand file to disk once per bundle
 // update (shellDownloadedAssets), so this budget also bounds that download.
-// Eager: main's own fence. 10.90625 MiB since a size pass took the page to 11,252,196 bytes (2026-11-22).
+// Eager: main's own fence is 10.9375 MiB (2026-11-23); the fork keeps its own larger fence below.
 // Fork (BAD-770): 11 MiB, the fork's own fence from before the v1.4.272 merge. The tag alone is 11,407,432
 // bytes; the fork's phone screens add about 53 KB (11,460,195). All code counts as eager, so loading it
 // on demand would not lower this number.

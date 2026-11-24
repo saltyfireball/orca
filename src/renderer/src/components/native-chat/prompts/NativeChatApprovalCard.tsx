@@ -1,6 +1,6 @@
 import { SecuritySurface } from '@/components/ui/security-surface'
 import { useId, useRef } from 'react'
-import { ChevronDown, ShieldQuestion, X } from 'lucide-react'
+import { ShieldQuestion, X } from 'lucide-react'
 import { NativeChatApprovalDetail } from './NativeChatApprovalDetail'
 import { NativeChatApprovalOption } from './NativeChatApprovalOption'
 import { cn } from '@/lib/class-names'
@@ -26,6 +26,7 @@ import { useNativeChatApprovalQuietDetail } from './use-native-chat-approval-qui
 import { approvalCardFrameClasses } from './native-chat-approval-card-frame'
 import { useNativeChatDockRefit } from '../pane/dock/use-native-chat-dock-fit'
 import { NativeChatUrlTarget, openUrlRequestPage } from './NativeChatUrlRequest'
+import { NativeChatApprovalDetailsToggle } from './NativeChatApprovalDetailsToggle'
 import { useForkApprovalCard, type ForkApprovalTriage } from '@/fork/approval-triage/card'
 
 export type NativeChatApprovalCardProps = {
@@ -56,6 +57,7 @@ export type NativeChatApprovalCardProps = {
   forkTriage?: ForkApprovalTriage
   /** Shown as the title, with mention pills; `approval.title` stays its name for assistive tech. */
   titleContent?: React.ReactNode
+  wrapOptions?: boolean
 }
 
 /** PTY options are literal replies; structured options are journal ids. The first option is primary unless the options are neutral. */
@@ -73,7 +75,8 @@ export function NativeChatApprovalCard({
   placement = 'composer',
   parsedFromTerminal = false,
   forkTriage,
-  titleContent
+  titleContent,
+  wrapOptions = false
 }: NativeChatApprovalCardProps): React.JSX.Element {
   const t = useTranslate()
   const cardRef = useRef<HTMLDivElement>(null)
@@ -364,7 +367,11 @@ export function NativeChatApprovalCard({
               <div
                 data-native-chat-approval-actions="true"
                 data-native-chat-dock-pinned={stacked ? undefined : ''}
-                className={cn('flex shrink-0 flex-wrap', quiet ? 'gap-1.5 pl-5' : 'gap-2')}
+                className={cn(
+                  'flex shrink-0 flex-wrap',
+                  quiet ? 'gap-1.5 pl-5' : 'gap-2',
+                  wrapOptions && '[&>button]:h-auto [&>button]:min-h-6 [&>button]:py-1'
+                )}
               >
                 {approval.options.map((opt, i) => {
                   const opensUrl = url !== null && opt.send === URL_APPROVAL_OPEN_OPTION_ID
@@ -403,18 +410,10 @@ export function NativeChatApprovalCard({
                   </button>
                 ) : null}
                 {showsQuietDetailToggle ? (
-                  <button
-                    type="button"
-                    aria-expanded={quietDetailOpen}
-                    onClick={() => setQuietDetailOpen(!quietDetailOpen)}
-                    className="inline-flex h-6 items-center gap-0.5 rounded-md px-1.5 text-xs font-medium text-chat-foreground-faint transition-colors hover:bg-chat-foreground/5 hover:text-chat-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {t('components.native-chat.notices.details', 'Details')}
-                    <ChevronDown
-                      className={cn('size-3.5', quietDetailOpen && 'rotate-180')}
-                      aria-hidden
-                    />
-                  </button>
+                  <NativeChatApprovalDetailsToggle
+                    open={quietDetailOpen}
+                    onToggle={() => setQuietDetailOpen(!quietDetailOpen)}
+                  />
                 ) : null}
               </div>
             </div>

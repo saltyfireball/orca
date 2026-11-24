@@ -81,7 +81,7 @@ function Avatar({
 
 type CommentEntry = Pick<
   Extract<BotItemActivityEntry, { kind: 'comment' }>,
-  'event' | 'replyTo' | 'answers' | 'byOrder'
+  'event' | 'replyTo' | 'answers' | 'byOrder' | 'ended'
 > & { waiting?: boolean }
 
 export function BotItemCommentCard({
@@ -89,6 +89,7 @@ export function BotItemCommentCard({
   item,
   entry,
   onJump,
+  liveAskId,
   failed,
   quickReplies,
   steps
@@ -98,6 +99,8 @@ export function BotItemCommentCard({
   entry: CommentEntry
   /** Scrolls to and focuses another comment, by its event id. */
   onJump?: (eventId: string) => void
+  /** The ask the item waits on now, which a replaced ask leads to. */
+  liveAskId?: string | null
   /** A comment sent from the box that the host refused. */
   failed?: { retry: () => void; discard: () => void }
   /** On the question the item waits on, until the owner replies. */
@@ -206,6 +209,10 @@ export function BotItemCommentCard({
               waiting={waiting}
               answers={entry.answers}
               byOrder={entry.byOrder}
+              ended={entry.ended}
+              onShowLive={
+                onJump && liveAskId && liveAskId !== event.id ? () => onJump(liveAskId) : undefined
+              }
               actions={quickReplies}
               // Ruled off only below something: a question with no body stays under the name.
               className={waiting && (shape.body.trim() || steps) ? QUESTION_RULE : undefined}

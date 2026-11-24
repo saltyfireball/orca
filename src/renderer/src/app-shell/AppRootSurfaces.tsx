@@ -21,7 +21,6 @@ import { TelemetryFirstLaunchSurface } from '../components/onboarding/telemetry/
 import { ZoomOverlay } from './chrome/ZoomOverlay'
 import { WslMoveDialogHost } from '../components/wsl-move/WslMoveDialog'
 import { AgentCliUpdateFailedDialogHost } from '../components/agent-cli-update/AgentCliUpdateFailedDialogHost'
-import { ForkMoveAccountDialogHost } from '../fork/claude-account-move/ForkMoveAccountDialog'
 import { ForkRootHosts } from '../fork/ForkRootHosts'
 import { MacosUpdateRequirementHost } from '../components/macos-update-requirement/MacosUpdateRequirementHost'
 import { shouldRenderPetOverlay } from '../components/pet/pet-overlay-visibility'
@@ -33,6 +32,7 @@ import {
   usePreloadWorktreeJumpPalette,
   WorktreeJumpPalette
 } from '../components/worktree-jump/worktree-jump-palette-preload'
+import { AiVaultSessionHistoryDialog } from '../components/right-sidebar/ai-vault/session-list/agent-session-history-dialog-preload'
 import { usePrefetchAvatarCapability } from '../components/bots/avatar-generation-capability-store'
 import { useLocalAgentCliUpdateCheck } from '../components/agent-cli-update/use-local-agent-cli-update-check'
 import {
@@ -68,9 +68,6 @@ const ProjectAddedDialog = lazy(
 )
 const NodeDistMirrorDialog = lazy(
   () => import('../components/ssh-host-recovery/NodeDistMirrorDialog')
-)
-const AiVaultSessionHistoryDialog = lazy(
-  () => import('../components/right-sidebar/ai-vault/session-list/AiVaultSessionHistoryDialog')
 )
 const NativeChatAccountUsageDialog = lazy(
   () => import('../components/native-chat/usage/NativeChatAccountUsageDialog')
@@ -225,8 +222,6 @@ export const AppRootSurfaces = memo(function AppRootSurfaces(props: {
         ) : null}
         {/* Own store, not activeModal: another modal must never evict a running move. */}
         <WslMoveDialogHost />
-        {/* SLRM-1503: the palette's move-to-account picker (FORK.md). */}
-        <ForkMoveAccountDialogHost />
         <ForkRootHosts />
         {/* Opened by toast, SSH host row and terminal pane. */}
         {activeModal === 'node-dist-mirror' ? (

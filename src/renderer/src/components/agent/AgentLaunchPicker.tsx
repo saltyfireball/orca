@@ -69,6 +69,7 @@ export const AgentLaunchPicker = memo(
     entries: suppliedEntries,
     triggerLabel,
     triggerDetail,
+    defaultModelLabel,
     inline,
     draftScope,
     worktreeId,
@@ -90,7 +91,6 @@ export const AgentLaunchPicker = memo(
     onSetDefault,
     launchDefaults,
     launchDefaultsContainer,
-    modelEffort,
     onPick
   }: {
     model: NewTabAgentMenuModel
@@ -98,6 +98,8 @@ export const AgentLaunchPicker = memo(
     triggerLabel?: string
     /** Muted after triggerLabel, as the launch summary follows an agent's name. */
     triggerDetail?: string
+    /** Model already resolved by the owning settings page, for the trigger summary only. */
+    defaultModelLabel?: string
     inline?: boolean
     draftScope?: object
     worktreeId?: string
@@ -127,8 +129,6 @@ export const AgentLaunchPicker = memo(
     launchDefaults?: boolean
     /** Renders those fields here instead, e.g. full width under a narrow picker column. */
     launchDefaultsContainer?: HTMLElement | null
-    /** With launchDefaults: Model and Effort rows too, for a form that saves them. */
-    modelEffort?: boolean
     onPick: (
       agent: AgentPickerEntry['agent'],
       draft?: AgentPickerDraft,
@@ -239,8 +239,8 @@ export const AgentLaunchPicker = memo(
         return ''
       }
       const [, parsed]: [unknown, AgentPickerDraft] = JSON.parse(summaryKey)
-      return agentLaunchSetupSummary(entry, parsed, pickedModel).join(' · ')
-    }, [entry, summaryKey, pickedModel])
+      return agentLaunchSetupSummary(entry, parsed, pickedModel, defaultModelLabel).join(' · ')
+    }, [entry, summaryKey, pickedModel, defaultModelLabel])
     const surface =
       entry && !setupDisabled && !selectAgentOnTab && !entry.textGeneration
         ? cli
@@ -409,7 +409,6 @@ export const AgentLaunchPicker = memo(
                 entry={entry}
                 draft={draft}
                 disabled={disabled}
-                modelEffort={modelEffort}
                 onCommit={(next, surface) => onPick(entry.agent, next, entry, surface)}
               />,
               launchDefaultsContainer

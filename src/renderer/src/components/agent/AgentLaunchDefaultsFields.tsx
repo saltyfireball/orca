@@ -1,6 +1,8 @@
+import { useContext } from 'react'
 import { translate } from '@/i18n/i18n'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { AgentLaunchModelEffortFields } from '@/fork/automation-model-effort/AgentLaunchModelEffortFields'
+import { ForkModelEffortContext } from '@/fork/automation-model-effort/model-effort-context'
 import { AgentDefaultArgsInput } from './launch-settings/AgentLaunchDefaultsEditor'
 import { AgentPermissionMenu } from './launch-settings/AgentPermissionMenu'
 import { agentModelChoiceChips } from './launch-settings/agent-model-choice-chips'
@@ -68,6 +70,7 @@ export function AgentLaunchDefaultsFields({
   onCommit: (draft: AgentPickerDraft, surface?: AgentPickerSurface) => void
 }) {
   const t = useTranslate()
+  const withModelEffort = useContext(ForkModelEffortContext) || modelEffort
   const argumentsKnown = agentPickerArgumentsKnown(entry, draft)
   const argumentsView = agentPickerPanelArguments(entry, draft)
   const { currentModel } = agentLaunchSetupState(entry, draft, disabled)
@@ -136,7 +139,7 @@ export function AgentLaunchDefaultsFields({
           }
         }}
       />
-      {modelEffort ? (
+      {withModelEffort ? (
         <AgentLaunchModelEffortFields
           entry={entry}
           draft={draft}

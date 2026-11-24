@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, type ComponentProps } from 'react'
+import { ForkModelEffortContext } from '@/fork/automation-model-effort/model-effort-context'
 import { useAppStoreWithHostStatuses } from '@/store/slices/runtime-status/views/use-runtime-status-view'
 import { AgentLaunchPicker } from '@/components/agent/AgentLaunchPicker'
 import { useAgentPickerDraftScope } from '@/components/agent/agent-launch-picker-drafts'
@@ -156,22 +157,23 @@ export function AutomationAgentLaunchPicker({
   )
   return (
     <>
-      <AgentLaunchPicker
-        model={model}
-        entries={entries}
-        agent={draft.agentId}
-        draftScope={scope}
-        triggerLabel={
-          visibleAgents.find((agent) => agent.id === draft.agentId)?.label ?? draft.agentId
-        }
-        setupDisabled={!modern}
-        launchDefaults={modern}
-        modelEffort={modern}
-        draftForEntry={draftForEntry}
-        onOpenChange={setMenuOpen}
-        onCatalogOpen={setCatalogAgent}
-        onPick={onPick}
-      />
+      <ForkModelEffortContext.Provider value={modern}>
+        <AgentLaunchPicker
+          model={model}
+          entries={entries}
+          agent={draft.agentId}
+          draftScope={scope}
+          triggerLabel={
+            visibleAgents.find((agent) => agent.id === draft.agentId)?.label ?? draft.agentId
+          }
+          setupDisabled={!modern}
+          launchDefaults={modern}
+          draftForEntry={draftForEntry}
+          onOpenChange={setMenuOpen}
+          onCatalogOpen={setCatalogAgent}
+          onPick={onPick}
+        />
+      </ForkModelEffortContext.Provider>
       {/* Fork (BAD-741): agent profiles (FORK.md). */}
       <ForkAgentProfileAutomationField
         settings={settings}

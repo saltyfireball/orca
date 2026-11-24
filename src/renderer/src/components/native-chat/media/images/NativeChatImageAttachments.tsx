@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { Image as ImageIcon } from 'lucide-react'
 import { cn } from '../../../../lib/class-names'
 import { useTranslate } from '../../../../i18n/use-translate'
@@ -15,6 +15,11 @@ import { isNativeChatPastedImagePath } from '../../../../../../shared/native-cha
 import { nativeChatImageLabel } from './native-chat-image-label'
 import { chatImageAccess } from '../../../../lib/files/access/local-file-access'
 import { observeTranscriptVisibility } from './native-chat-image-visibility'
+import {
+  NativeChatGalleryMessageContext,
+  useNativeChatGalleryRecord,
+  type NativeChatGalleryImage
+} from './gallery/native-chat-image-gallery-context'
 
 function renderableImageSource(source: string | undefined): boolean {
   return Boolean(source && /^(?:https?|data|blob):/i.test(source))
@@ -194,12 +199,51 @@ export function NativeChatImageViewer({
       showTitle
       onPrevious={step(-1)}
       onNext={step(1)}
-      position={index === null ? undefined : { index, total: blocks.length }}
+      // Fork (BAD-643): the viewer counts the image among its group, through upstream's stepStatus slot.
+      stepStatus={
+        index !== null && blocks.length > 1 ? (
+          <span
+            data-testid="pan-zoom-image-counter"
+            className="shrink-0 px-1.5 text-sm tabular-nums text-muted-foreground"
+          >
+            {index + 1} / {blocks.length}
+          </span>
+        ) : undefined
+      }
       onInteractOutside={keepPreviewOpenForChatMenu}
       data-native-chat-copy-image-src={copyableNativeChatImageSrc(displaySrc)}
       fallback={<ImageLabelChip label={label} />}
     />
   )
+}
+
+/** An attachment the gallery can show again later, read the same way its tile reads it. */
+function galleryAttachment(
+  block: ImageRef,
+  runtimeContext: RuntimeFileOperationArgs | null | undefined
+): NativeChatGalleryImage | null {
+  const source = block.url?.trim() || block.path
+  const label = nativeChatImageLabel(block)
+  if (!source) {
+    return null
+  }
+  if (renderableImageSource(source)) {
+    return { title: label, label, source: { kind: 'url', url: source } }
+  }
+  return runtimeContext
+    ? {
+        title: label,
+        label,
+        source: {
+          kind: 'local',
+          rawSrc: source,
+          filePath: block.path ?? source,
+          connectionId: runtimeContext.connectionId,
+          runtimeContext,
+          access: TRANSCRIPT_IMAGE_ACCESS
+        }
+      }
+    : null
 }
 
 export function NativeChatImageAttachments({
@@ -217,6 +261,26 @@ export function NativeChatImageAttachments({
   const t = useTranslate()
   const [viewing, setViewing] = useState<number | null>(null)
   const images = blocks.filter((block) => block.type === 'image-ref')
+  const group = useRef<HTMLDivElement>(null)
+  const galleryMessageId = useContext(NativeChatGalleryMessageContext)
+  // Only images a tile can show join, so a label chip never becomes a step.
+  const shown = enablePreview
+    ? images.flatMap((block) => {
+        const image = galleryAttachment(block, runtimeContext)
+        return image ? [{ block, image }] : []
+      })
+    : []
+  const gallery = useNativeChatGalleryRecord(
+    group,
+    galleryMessageId && shown.length > 0
+      ? {
+          kind: 'group',
+          messageId: galleryMessageId,
+          blocks: shown.map(({ block }) => block),
+          images: shown.map(({ image }) => image)
+        }
+      : null
+  )
   if (images.length === 0) {
     return null
   }
@@ -254,7 +318,11 @@ export function NativeChatImageAttachments({
     )
   }
   return (
-    <div className={cn('mb-2 flex flex-wrap gap-1.5', className)}>
+    <div
+      ref={group}
+      data-native-chat-gallery-item={gallery ? '' : undefined}
+      className={cn('mb-2 flex flex-wrap gap-1.5', className)}
+    >
       {images.map((image, index) => {
         const label =
           image.alt ??
@@ -270,7 +338,11 @@ export function NativeChatImageAttachments({
             key={`${imageKeyBase}-${identity}-${occurrence}`}
             block={image}
             runtimeContext={runtimeContext}
-            onOpen={() => setViewing(index)}
+            onOpen={() => {
+              if (!(group.current && gallery?.tryOpen(group.current, image))) {
+                setViewing(index)
+              }
+            }}
           />
         )
       })}

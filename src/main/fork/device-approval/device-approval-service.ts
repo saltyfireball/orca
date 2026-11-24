@@ -11,6 +11,8 @@ import {
 import { EXCHANGE_PAIRING_TICKET_METHOD } from '../../../shared/remote-runtime/pairing/ticket-exchange-capability'
 import { REGISTER_DEVICE_KEY_METHOD } from '../../../shared/remote-runtime/pairing/device-key-capability'
 import { DeviceApprovalStore } from './device-approval-store'
+import { errorResponse } from '../../runtime/rpc/responses/rpc-response'
+import { FORK_DEVICE_APPROVAL_PENDING_CODE } from '../../../shared/fork/device-approval'
 
 export type DeviceApprovalServer = {
   getDeviceRegistry(): DeviceRegistry | null
@@ -117,6 +119,21 @@ export function forkDeviceApprovalWait(
   }
   const pending = host.store.recordAttempt(root.deviceId, Date.now())
   return WAITING_DEVICE_METHODS.has(method) ? null : waitingMessage(pending.code)
+}
+
+/** The reply a waiting device is sent for its request, or null to let the request through. */
+export function forkDeviceApprovalRefusal(
+  server: WeakKey,
+  device: DeviceEntry,
+  request: { id: string; method: string },
+  runtimeId: string
+): string | null {
+  const wait = forkDeviceApprovalWait(server, device, request.method)
+  return wait
+    ? JSON.stringify(
+        errorResponse(request.id, { runtimeId }, FORK_DEVICE_APPROVAL_PENDING_CODE, wait)
+      )
+    : null
 }
 
 function requireHost(): { host: ApprovalHost; registry: DeviceRegistry } {

@@ -68,22 +68,22 @@ export function useStructuredNativeChatSubagents({
     /** The subagent whose view replaces the conversation and the composer; null for none. */
     openId,
     onKeyDown: (event: React.KeyboardEvent) => closeNativeChatSubagentOnEscape(event, paneKey),
-    /** Fork (SLRM-2098, MCP profiles): shown whether or not the chat has work, so outside the dock's strip. */
-    forkBanners: (
+    /** Fork (SLRM-2098, MCP profiles): the banners are shown whether or not the chat has work, so before the dock's strip. */
+    dock: (
       <>
         <ForkAgentQueueBanner sessionId={sessionId} />
         <ForkMcpProfileStrip sessionId={sessionId} agent={agent} />
+        {isVisible ? (
+          <NativeChatStructuredDock
+            hasWork={hasWork}
+            strip={strip}
+            target={target}
+            party={party}
+            isVisible={isVisible}
+          />
+        ) : null}
       </>
     ),
-    dock: isVisible ? (
-      <NativeChatStructuredDock
-        hasWork={hasWork}
-        strip={strip}
-        target={target}
-        party={party}
-        isVisible={isVisible}
-      />
-    ) : null,
     /** Agents in this paired server's chat asking agents on this computer: answered here. */
     pairedAsks: <NativeChatPairedServerAskStack target={target} party={party} />,
     statusBar:

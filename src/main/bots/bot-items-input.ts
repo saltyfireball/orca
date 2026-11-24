@@ -9,6 +9,7 @@ import {
 } from '../../shared/bots/bot-items'
 import { BotItemAskSchema, botItemAskText, type BotItemAsk } from '../../shared/bots/bot-item-ask'
 import type { BotItemStepInput } from '../../shared/bots/bot-item-steps'
+import type { BotRequestAsker } from '../../shared/bots/bot-acts-for'
 import { BotItemError } from './bot-item-error'
 import type { BotItemMadeBy, BotItemRecord, BotItemSource } from './bot-items-schema'
 
@@ -56,6 +57,9 @@ export type BotItemSetInput = {
   /** Set by the host, never a client: the chat whose conversation's turn asked `ask`, so the
    *  owner's answer goes back to that conversation. */
   askedInConversation?: string
+  /** Set by the host, never a client: whom the chat that closes the item acts for, kept on the
+   *  close so the journal says whose work it was. */
+  closedFor?: readonly BotRequestAsker[]
 }
 
 /** What a write did. */

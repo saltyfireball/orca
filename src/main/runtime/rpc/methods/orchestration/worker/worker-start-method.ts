@@ -28,6 +28,7 @@ import { checkedWorkerOrigin } from '../../bots-items-worker-origin'
 import { decideStartMode, noteTerminalFallbackOnItem } from './start/worker-chat-lineage'
 import { withKeepOpenDefault } from './start/worker-keep-open-default'
 import { forkTaskProfileStart } from '../../../../../fork/agent-profiles/agent-profile-task-launch'
+import { withTerminalUsage } from './start/worker-start-terminal-usage'
 import {
   linkWorkerToQuestion,
   openQuestionReminder,
@@ -137,9 +138,11 @@ export async function startWorker(
   })
   await stopHelperAfterStart(runtime, receipt, orchestrationMutation)
   const note = { itemUid: checked?.itemUid, chatLineage, terminal: params.terminal }
-  void noteTerminalFallbackOnItem(runtime, note, receipt).catch(warnItemNote)
+  void noteTerminalFallbackOnItem(runtime, note, receipt).catch((error: unknown) =>
+    console.warn('[orchestration] item fallback note failed', error)
+  )
   const next = withKeepOpenDefault(runtime, params.worktree, withWorkerStartNext(receipt))
-  const started = withLink(withRun(next))
+  const started = withTerminalUsage(runtime, withLink(withRun(next)))
   return checked && started && typeof started === 'object'
     ? { ...started, linkedItem: checked.linkedItem }
     : started
@@ -307,8 +310,4 @@ export async function prepareWorkerStart(
     existingTask,
     withRun
   }
-}
-
-function warnItemNote(error: unknown): void {
-  console.warn('[orchestration] item fallback note failed', error)
 }

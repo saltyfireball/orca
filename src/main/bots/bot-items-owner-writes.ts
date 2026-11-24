@@ -169,7 +169,8 @@ export class BotItemsOwnerWrites extends BotItemsWrites {
     answers?: string,
     plain = false,
     skills: readonly BotItemCommentSkill[] = [],
-    askedInConversation?: string
+    askedInConversation?: string,
+    skipped: readonly string[] = []
   ): number {
     const data = {
       text: commentText,
@@ -178,7 +179,8 @@ export class BotItemsOwnerWrites extends BotItemsWrites {
       ...(answers === undefined ? {} : { answers }),
       ...(plain ? { plain: true } : {}),
       ...(skills.length > 0 ? { skills } : {}),
-      ...(askedInConversation === undefined ? {} : { askedInConversation })
+      ...(askedInConversation === undefined ? {} : { askedInConversation }),
+      ...(skipped.length > 0 ? { skipped } : {})
     }
     return this.appendEvent(item.uid, 'commented', actor, data, true, now)
   }

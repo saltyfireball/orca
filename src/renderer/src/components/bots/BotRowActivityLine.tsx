@@ -26,14 +26,13 @@ import { botRowLineText, botRowReplyingAt } from '../../../../shared/bots/bot-ro
 import { countLiveBotWorkspaces } from '../../../../shared/bots/bot-sidebar-workspaces'
 import { useBotWorkerWorkspaces, useLiveWorkspaceStatuses } from './use-bot-worker-statuses'
 import { useBotOwnChats } from '@/lib/bot-own-chats'
-import type { NamedUsageLimitStop } from '../../../../shared/bots/bot-usage-limit-stop'
+import {
+  botRowLimit,
+  usageLimitStopText,
+  type BotRowLimit
+} from '../../../../shared/bots/bot-usage-limit-stop'
 import { useBotUsageLimitStops } from './use-bot-usage-limit-stops'
-import { usageLimitStopText } from './BotUsageLimitMark'
 import { forkBotRowCounts, type ForkBotRowCounts } from '../../../../shared/fork/bot-row-badges'
-
-/** A chat, worker or run stopped on its usage limit, said while nothing of the bot's works or
- *  waits on the owner; those still speak first. */
-export type BotRowLimit = { place: string | null; stop: NamedUsageLimitStop }
 
 const NO_LINKS: NonNullable<FolderWorkspace['externalConversations']> = []
 const NO_ENTRIES: AgentStatusEntry[] = []
@@ -154,14 +153,7 @@ export function useBotRowLine(
     },
     t
   )
-  const limit: BotRowLimit | null =
-    stop && !busy && !(line && LIVE_LINES.has(line.kind))
-      ? {
-          place:
-            stop.sessionId === bot.chatSessionId ? t('bots.chats.home', 'Home Chat') : stop.name,
-          stop
-        }
-      : null
+  const limit = botRowLimit(stop, line, busy, bot.chatSessionId, t)
   const counts = useMemo(() => {
     const live = bot.paused ? [] : rows.filter((row) => row.rowSource !== 'subagent')
     const asking = live.filter((row) => row.state === 'blocked' || row.state === 'waiting')
@@ -177,15 +169,6 @@ export function useBotRowLine(
   }, [bot.paused, rows, workers, published, listedItems, homeStatus])
   return { line, limit, now, needsYou: hasNeedsYou, counts }
 }
-
-/** Lines about live work or the owner, which a stop never covers; a past activity or a wait can be. */
-const LIVE_LINES: ReadonlySet<BotRowLine['kind']> = new Set([
-  'paused',
-  'reading',
-  'replying',
-  'needYouElsewhere',
-  'workingElsewhere'
-])
 
 /** How long ago the line's activity was, shown on the row's first line. */
 export function botRowLineAge(line: BotRowLine | null, now: number): string | null {

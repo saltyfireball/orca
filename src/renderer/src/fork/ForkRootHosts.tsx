@@ -1,3 +1,4 @@
+import { ForkMoveAccountDialogHost } from './claude-account-move/ForkMoveAccountDialog'
 import { ForkBoundaryCompactionReporter } from './boundary-compaction/ForkBoundaryCompaction'
 import { ForkChatSleepReporter } from './chat-sleep/ForkChatSleep'
 import { ForkDecisionInboxHost } from './decision-inbox/ForkDecisionInboxHost'
@@ -30,6 +31,8 @@ export function ForkRootHosts(): React.JSX.Element {
   return (
     <>
       <ForkChatSleepReporter />
+      {/* SLRM-1503: the palette's move-to-account picker (FORK.md). */}
+      <ForkMoveAccountDialogHost />
       <ForkBoundaryCompactionReporter />
       <ForkWorkerCleanupReporter />
       <ForkWorkerArchiveReporter />
