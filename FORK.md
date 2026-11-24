@@ -749,7 +749,7 @@ ones `SLRM-123 `).
   - **Skipped with a reason** (the chat runs with every server and says why): the chat runs inside
     WSL, the Claude launch arguments in Settings already set `mcp-config` or
     `strict-mcp-config`, or an enterprise `managed-mcp.json` is installed.
-  - **On the chat.** The chat's status area (`forkBanners`, above the worker dock) shows "MCP profile: X" with a picker and
+  - **On the chat.** The chat's status area (the banners at the top of the dock node) shows "MCP profile: X" with a picker and
     the servers the last start got (tooltip). A change to a live chat applies at its next start
     (sleep, restart or resume) and the strip says so. Per-chat state is
     `<userData>/fork-mcp-profiles/chats.json`.
@@ -3723,7 +3723,7 @@ Upstream files only get short hooks, which keeps merges small:
   Keep `openFd` when a merge brings the stock lines back; the test file checks that no command
   contains `command exec`, and its flock timeout tests clean up with `onTestFinished`.
 - Phone page size fence (BAD-770). `verify-mobile-web-app-bundle.mjs` holds
-  `MOBILE_WEB_APP_BUNDLE_MAX_EAGER_BYTES` at 11 MiB where upstream has 10.90625 MiB: the fork's phone
+  `MOBILE_WEB_APP_BUNDLE_MAX_EAGER_BYTES` at 11 MiB where upstream has 10.9375 MiB (v1.4.273): the fork's phone
   screens add about 53 KB over the tag, and every code chunk counts as eager. Take the larger number
   when a merge brings upstream's budget back.
 - One call in `configureDevUserDataPath` (`src/main/startup/configure-process.ts`) for the
@@ -3823,7 +3823,7 @@ Upstream files only get short hooks, which keeps merges small:
 - Chat sleep (SLRM-2093): `StructuredAgentSessionIdleSweepDeps` takes an optional `keepAwake`,
   and `tickUnderSerialize` renews and skips a kept-awake session right after its owed-work check
   (one field, four lines). `workspace-process-listing.ts` passes its `idleSweep` through
-  `forkChatSleepIdleSweep` (`src/main/fork/chat-sleep/chat-sleep-sweep.ts`), which keeps the
+  `forkChatSleepIdleSweepFor` (BAD-804; wraps `forkChatSleepIdleSweep` in `src/main/fork/chat-sleep/chat-sleep-sweep.ts`), which keeps the
   stock window while the setting is off. `src/main/index.ts` calls
   `installForkChatSleepBridge()` after `installForkRestartGuard()`. `src/preload/index.ts` adds
   `forkChatSleep` (`src/preload/fork/chat-sleep-bridge.ts`) and `api-types.ts` types it as
@@ -3870,7 +3870,7 @@ Upstream files only get short hooks, which keeps merges small:
     through `withForkClaudePaneAccount`, which adds the marker for a moved pane once.
   - `SortableTabContextMenu.tsx` renders `ForkMoveAccountTabMenuItems` for a native Claude chat,
     `quick-actions.ts` spreads `getForkClaudeMoveQuickActions()`, and `AppRootSurfaces.tsx`
-    mounts `ForkMoveAccountDialogHost`.
+    mounts `ForkMoveAccountDialogHost` (through `ForkRootHosts.tsx` since BAD-804).
 - Custom app themes (SLRM-2097): `useAppThemePaint`
   (`src/renderer/src/app-shell/appearance/use-app-theme-paint.ts`, so pop-out windows paint it
   too) calls `useForkCustomAppTheme`, which takes precedence over the plugin and Match Terminal
@@ -3919,7 +3919,8 @@ Upstream files only get short hooks, which keeps merges small:
 
 - Memory truth (SLRM-2099):
   - `src/main/memory/collector.ts` reads the process table through
-    `readForkUnixProcessTable()` (adds the process group) and returns
+    `forkEnumerateProcesses()` (`src/main/fork/memory-truth/process-source.ts`, which reads
+    `readForkUnixProcessTable()` and adds the process group; Windows keeps upstream's sweep) and returns
     `forkAugmentMemorySnapshot(...)`, which adds `forkTruth` and makes the stock rows and totals
     count whole trees. The collector stays electron-free: chat roots and settings are injected
     by `installForkMemoryWatch`, called in `src/main/index.ts` after `installForkRestartGuard()`
@@ -3963,9 +3964,9 @@ Upstream files only get short hooks, which keeps merges small:
     exit code (a queued worker exits 0) and prints `printForkQueuedLaunch` after the result.
   - `src/preload/index.ts` adds `forkAgentQueue` (`src/preload/fork/agent-queue-bridge.ts`) and
     `api-types.ts` types it as optional.
-  - `use-structured-native-chat-subagents.tsx` returns `forkBanners` (`ForkAgentQueueBanner`, then
-    `ForkMcpProfileStrip`) and `NativeChatStructuredSession.tsx` renders it right before the dock,
-    under the queued-message list. They sit outside the dock's strip because upstream's dock shows
+  - `use-structured-native-chat-subagents.tsx` puts the banners (`ForkAgentQueueBanner`, then
+    `ForkMcpProfileStrip`) first in its `dock` node (BAD-804 folded the separate `forkBanners` slot
+    into it, so `NativeChatStructuredSession.tsx` stays at its line limit), under the queued-message list. They sit outside the dock's strip because upstream's dock shows
     that strip only while the chat has work or a crew, and a queued chat has neither;
     `ForkTabTitle` renders `ForkAgentQueueTabBadge`; `AdvancedPane.tsx` renders
     `ForkAgentQueueSetting` after `ForkChildTallySetting`; the five settings are in
@@ -4158,8 +4159,10 @@ Upstream files only get short hooks, which keeps merges small:
   `src/renderer/src/fork/device-approval/`, `src/renderer/src/fork/webhooks/`:
   - The `OrcaRuntimeRpcServer` constructor (`runtime-rpc.ts`) calls
     `attachForkDeviceApproval(this, options)` and `attachForkWebhooks(options)`.
-  - `runtime-rpc-websocket-dispatch.ts` asks `forkDeviceApprovalWait(...)` once a request's
-    device is known and replies `device_approval_pending` when it returns a message.
+  - `runtime-rpc-websocket-dispatch.ts` asks `forkDeviceApprovalRefusal(...)` (wrapping
+    `forkDeviceApprovalWait`) once a request's device is known and replies `device_approval_pending`
+    when it returns a reply. BAD-804: `relayMobileRequest` there also uses one local `refuse(code,
+    message)` helper, which keeps the file at its line limit.
   - `automation-dispatch-request.ts` passes the automation through `withForkWebhookPayload`
     in upstream's `launchInMain`, so bot and repo targets both get it.
   - `webhooks list` is one command for both (SLRM-2445): `handler-group-manifest.ts` spreads
@@ -4229,7 +4232,7 @@ Upstream files only get short hooks, which keeps merges small:
   - `src/main/index.ts` calls `installForkMcpProfilesApp(...)` after the agent queue install.
   - `src/preload/index.ts` adds `forkMcpProfiles` (`src/preload/fork/mcp-profiles-bridge.ts`) and
     `api-types.ts` types it as optional.
-  - `forkBanners` (see Agent launch queue) renders `ForkMcpProfileStrip` after
+  - The banners in `dock` (see Agent launch queue) render `ForkMcpProfileStrip` after
     `ForkAgentQueueBanner`; `use-structured-native-chat-subagents.tsx` takes the pane's `agent` for
     it; `AdvancedPane.tsx` renders `ForkMcpProfileSetting` after
     `ForkAgentQueueSetting`; the five settings are in `fork-global-settings.ts`.
@@ -4335,7 +4338,8 @@ Upstream files only get short hooks, which keeps merges small:
   - `use-visible-worktrees.ts` reads `useForkSnoozedWorktreeKeys()` and passes its list through
     `forkWithoutSnoozedWorktrees`; `WorktreeCardAgents.tsx` passes its root keys through
     `useForkWithoutSnoozedPanes` and wraps each root row in `ForkSnoozeAgentRowMenu`.
-  - `sidebar/index.tsx` renders `ForkSnoozedSection` under the list;
+  - `sidebar/index.tsx` renders `ForkSidebarSections` (`ForkSnoozedSection`, then `ForkArchivedSection`)
+    under the list;
     `WorktreeContextMenuView.tsx` renders `ForkSnoozeWorktreeMenuItem` after the move item.
   - `ForkRootHosts.tsx` mounts `ForkSnoozeCustomDialogHost` and `ForkSnoozeWatcher`; the card is
     in the fork's Settings pane and `forkSnoozeSettleCommand` is a runs-command key in
@@ -4477,7 +4481,8 @@ Upstream files only get short hooks, which keeps merges small:
   `prompt-stash.ts`, `saved-prompts.ts` and `src/renderer/src/fork/{approval-triage,workspace-tags,prompt-stash,saved-prompts}/`:
   - `NativeChatApprovalCard.tsx` takes `forkTriage` and calls `useForkApprovalCard`
     (`src/renderer/src/fork/approval-triage/card.tsx`): `fork.line` renders `ForkApprovalRiskLine`
-    under the title and `fork.hold` disables an option `forkApprovalOptionHeld` names.
+    under the title and `fork.hold` disables an option `forkApprovalOptionHeld` names. BAD-804 moved
+    the card's Details toggle into `NativeChatApprovalDetailsToggle.tsx` to keep the card under its line limit.
     `NativeChatStructuredPromptCard.tsx` passes the chat's folder and session options;
     `use-structured-prompt-response-hold.ts` carries the folder (`NativeChatStructuredSession.tsx`
     passes `fileLinkContext` on its existing line, the file being at its line budget).
@@ -4486,7 +4491,8 @@ Upstream files only get short hooks, which keeps merges small:
   - `card-identity-parts.tsx` renders `ForkWorktreeTagChips` after the title;
     `WorktreeContextMenuView.tsx` renders `ForkTagsWorktreeMenuItem` after the snooze item;
     `use-visible-worktrees.ts` passes the list through `filterByTag`; `sidebar/index.tsx`
-    renders `ForkTagFilterBar` over the list and `ForkArchivedSection` under the Snoozed row.
+    renders `ForkTagFilterBar` over the list and `ForkArchivedSection` under the Snoozed row (both
+    through `src/renderer/src/fork/sidebar/ForkSidebarSections.tsx`).
   - `NativeChatComposerPane.tsx` wraps its key handler in `forkWithPromptStashKey`;
     `NativeChatComposerActions.tsx` adds `ForkSavedPromptsMenu` to the left controls.
   - `ForkRootHosts.tsx` mounts `ForkWorkspaceTagsDialogHost` and `ForkArchiveOnMergeWatcher`; the
@@ -4721,8 +4727,9 @@ Upstream files only get short hooks, which keeps merges small:
 
 - Model and effort per automation (BAD-704), from `src/renderer/src/fork/automation-model-effort/`:
   - `AgentLaunchDefaultsFields.tsx` renders `AgentLaunchModelEffortFields` after Permissions when
-    `modelEffort` is set, and `AgentLaunchPicker.tsx` passes that prop through;
-    `AutomationAgentLaunchPicker.tsx` sets it. `BotAgentLaunchPicker.tsx` renders the same fields
+    `modelEffort` is set or `ForkModelEffortContext` (`model-effort-context.ts`) is true;
+    `AutomationAgentLaunchPicker.tsx` provides it around `AgentLaunchPicker` (BAD-804: the picker
+    itself no longer has the prop, so it stays at its line limit). `BotAgentLaunchPicker.tsx` renders the same fields
     (and reads the agent list while they show) for `AutomationBotAgentField.tsx`.
   - `automation-launch-choices.ts` drops a model or effort flag from the Arguments when the
     automation also picks that choice (`automationArgumentsWithoutPickedChoices`).
@@ -5379,3 +5386,26 @@ disables fork-sync or cancels its runs. The job needs `actions: write` for it.
   `github-actions[bot]`.
 - Builds are self-signed, not notarized. On first launch, macOS Gatekeeper asks you to approve
   the app.
+
+## Merge notes: upstream v1.4.273 (BAD-804)
+
+Choices made where upstream now does the same thing the fork did, or both sides changed one place:
+
+- Worker start failures: upstream's `start-failed` stop reason replaces the fork's `lost` reason for
+  a start that never happened; the fork keeps its `start_failed` exit kind on the same stop, and
+  `decideWorkerRetry` (`src/shared/fork/worker-retry.ts`) treats `start-failed` as a failure that
+  holds as `never-started` (no retry), as the `lost` reason did.
+- Image viewer: upstream's gallery dialog (`stepStatus`, `gallery`) replaces the fork's `position`
+  prop on `PanZoomImageDialog`. The fork's "n / m" counter for `NativeChatImageViewer` now goes
+  through `stepStatus`; the arrow-key `stopPropagation` hook stays.
+- Memory collector: upstream's agent-process roots, chat series and paired-reply parts are kept;
+  `forkAugmentMemorySnapshot` still runs last and sets the totals, on every path.
+- App quit: upstream's `app:quit` handler sits beside the fork's guarded `app:restart`/`app:relaunch`
+  (the restart guard does not cover quit).
+- Bots: upstream's bot item wording replaces the fork's; the fork's "nothing waits on your owner"
+  and owner-steps text stay in the Needs you rule. The collapsed Bots preview keeps upstream's
+  scrolling face track with the fork's needs-you rollup after it.
+- Line limits: several upstream files grew to their `max-lines` budget, so the fork hooks in
+  `workspace-process-listing.ts`, `runtime-rpc-websocket-dispatch.ts`, `collector.ts`,
+  `AgentLaunchPicker.tsx`, `NativeChatApprovalCard.tsx`, `AppRootSurfaces.tsx`, `sidebar/index.tsx`
+  and `NativeChatStructuredSession.tsx` were folded into fork files (see their entries above).
