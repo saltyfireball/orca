@@ -1,5 +1,6 @@
 import type { RuntimeClient } from '../../runtime/client'
 import { RuntimeClientError } from '../../runtime/connection/types'
+import { forkRefuseEscalatedWorkerDone } from '../../fork/worker-done-escalated'
 
 export async function requireWorkerDoneSettlement(
   client: RuntimeClient,
@@ -10,6 +11,8 @@ export async function requireWorkerDoneSettlement(
   if (type !== 'worker_done' || hasLifecycleVerdict(result)) {
     return
   }
+  // Fork (BAD-816): a done escalated after its last round is a final answer, not an unknown.
+  forkRefuseEscalatedWorkerDone(type, result)
   const target = parseWorkerDoneTarget(payload)
   const receipt = parseWorkerDoneReceipt(result)
   if (target && receipt) {
