@@ -10,8 +10,7 @@ import {
   goalStopNote,
   goalStopTitle,
   type GoalLoopSettings,
-  type GoalRecord,
-  type GoalStopReason
+  type GoalRecord
 } from '../../../shared/fork/goal-loop'
 import type {
   ForkGoalClearResult,
@@ -23,7 +22,13 @@ import type {
 import type { IdleRecoveryTerminalRuntime } from '../idle-recovery/idle-recovery-ports'
 import type { IdleRecoveryCandidate } from '../idle-recovery/idle-recovery-types'
 import type { OrcaRuntimeService } from '../../runtime/orca-runtime'
-import { runGoalStep, type GoalCheckRun, type GoalEngineDeps } from './goal-engine'
+import {
+  GOAL_LOOP_WAIT_RECHECK_MS,
+  runGoalStep,
+  type GoalCheckRun,
+  type GoalEngineDeps
+} from './goal-engine'
+import { endMissingGoal } from './goal-ending'
 import { pruneGoals } from './goal-store'
 import { goalInboxItems } from './goal-inbox'
 
@@ -63,7 +68,7 @@ export type GoalServiceDeps = {
   send: (
     candidate: Pick<IdleRecoveryCandidate, 'chatId' | 'kind' | 'agent' | 'idleSince'>,
     text: string
-  ) => Promise<boolean>
+  ) => Promise<boolean | 'wait'>
   runCheck: (cwd: string, command: string, settings: GoalLoopSettings) => Promise<GoalCheckRun>
   judge: GoalEngineDeps['judge']
   /** Tells the notify targets of a stop. */
@@ -97,6 +102,8 @@ export function createGoalService(deps: GoalServiceDeps) {
   let saving: Promise<void> = Promise.resolve()
   let running = false
   let sweepCount = 0
+  /** BAD-833: when a goal that waits for its agent's state is looked at again. */
+  const waitUntil = new Map<string, number>()
 
   const loaded = async (): Promise<Map<string, GoalRecord>> => (goals ??= await deps.loadGoals())
   const save = (): Promise<void> => {
@@ -127,27 +134,6 @@ export function createGoalService(deps: GoalServiceDeps) {
     return matches[0]
   }
 
-  function finish(goal: GoalRecord, reason: GoalStopReason, text: string): void {
-    goal.status = 'stopped'
-    goal.stop = { reason, text, at: deps.now() }
-  }
-
-  /** Quiet only with a recorded cause: a person's close, or a worker that reported done. */
-  function endMissing(goal: GoalRecord): void {
-    if (goal.closedAt !== undefined) {
-      finish(goal, 'gone', 'The agent was closed.')
-    } else if (deps.workerFinished(goal.id)) {
-      finish(goal, 'gone', 'The worker reported done and its agent ended.')
-    } else {
-      finish(
-        goal,
-        'agent-lost',
-        'The agent stopped running and nobody closed it: it exited, crashed or was killed, or did not come back after a restart.'
-      )
-      deps.notifyStopped(goal)
-    }
-  }
-
   async function sweep(): Promise<boolean> {
     const settings = deps.settings()
     const all = await loaded()
@@ -169,6 +155,8 @@ export function createGoalService(deps: GoalServiceDeps) {
       for (const goal of active) {
         const candidate = idle.get(goal.id)
         if (!candidate) {
+          // Not at rest now: a later wait counts from its own start.
+          delete goal.waitingSince
           continue
         }
         goal.missing = 0
@@ -178,6 +166,10 @@ export function createGoalService(deps: GoalServiceDeps) {
         if (goal.handledIdleSince === candidate.idleSince || candidate.backgroundPending) {
           continue
         }
+        if (deps.now() < (waitUntil.get(goal.id) ?? 0)) {
+          continue
+        }
+        waitUntil.delete(goal.id)
         const result = await runGoalStep(goal, {
           now: deps.now,
           settings: () => settings,
@@ -189,6 +181,10 @@ export function createGoalService(deps: GoalServiceDeps) {
           send: (text) => deps.send(candidate, text)
         })
         changed = true
+        if (result.kind === 'wait') {
+          waitUntil.set(goal.id, deps.now() + GOAL_LOOP_WAIT_RECHECK_MS)
+          continue
+        }
         if (result.kind === 'retry') {
           // The agent could not take the message: look at this turn end again next sweep.
           continue
@@ -218,7 +214,7 @@ export function createGoalService(deps: GoalServiceDeps) {
           }
           goal.missing += 1
           if (goal.missing >= MISSING_SWEEPS) {
-            endMissing(goal)
+            endMissingGoal(goal, deps)
             changed = true
           }
         }

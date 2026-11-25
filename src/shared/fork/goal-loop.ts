@@ -105,6 +105,8 @@ export type GoalRecord = {
   /** The idle time of the turn end last looked at; null looks at the next one seen. */
   handledIdleSince: number | null
   sendFailures: number
+  /** BAD-833: since when the agent's state could not be told; not kept over a restart. */
+  waitingSince?: number
   /** Sweeps that did not find the agent. */
   missing: number
   /** BAD-822: when a person (or the CLI) closed the agent's chat or terminal; cleared when it is seen again. */

@@ -134,6 +134,47 @@ describe('goal loop with a fake terminal agent', () => {
     expect(agent.sent.length).toBeGreaterThan(0)
   })
 
+  it("waits while the agent's state cannot be told, checks once a minute, and stops after 15 minutes (BAD-833)", async () => {
+    const agent = fakeAgent({ work: () => undefined })
+    let now = 5_000_000
+    agent.deps.now = () => now
+    const runCheck = vi.spyOn(agent.deps, 'runCheck')
+    const send = vi.spyOn(agent.deps, 'send').mockResolvedValue('wait')
+    const service = createGoalService(agent.deps)
+    await service.set({ id: 'agent-1', untilCmd: 'exit 1' })
+    for (let sweep = 0; sweep < 12; sweep += 1) {
+      await service.sweep()
+      now += 10_000
+    }
+    expect((await service.list()).goals[0]).toMatchObject({ status: 'active' })
+    expect(runCheck).toHaveBeenCalledTimes(2)
+    for (let sweep = 0; sweep < 90; sweep += 1) {
+      await service.sweep()
+      now += 10_000
+    }
+    expect((await service.list()).goals[0]).toMatchObject({
+      status: 'stopped',
+      stop: { reason: 'unreachable' }
+    })
+    expect(agent.deps.notifyStopped).toHaveBeenCalledTimes(1)
+    expect(send).toHaveBeenCalled()
+  })
+
+  it('goes on once the state can be told (BAD-833)', async () => {
+    const agent = fakeAgent({ work: () => writeFile(join(dir, 'done.txt'), 'x') })
+    let now = 5_000_000
+    agent.deps.now = () => now
+    const take = agent.deps.send
+    agent.deps.send = vi.fn(async () => 'wait' as const)
+    const service = createGoalService(agent.deps)
+    await service.set({ id: 'agent-1', untilCmd: 'test -f done.txt' })
+    await service.sweep()
+    agent.deps.send = take
+    now += 61_000
+    expect((await sweepUntilStopped(service)).stop?.reason).toBe('met')
+    expect(agent.sent).toHaveLength(1)
+  })
+
   it('re-prompts after each turn until the file exists, then stops met', async () => {
     const agent = fakeAgent({
       work: async (round) => {

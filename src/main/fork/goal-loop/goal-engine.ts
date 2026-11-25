@@ -36,13 +36,19 @@ export type GoalEngineDeps = {
   readAgentOutput: () => Promise<string | null>
   /** Estimated USD the ledger holds for the agent, or null when it has none. */
   spentTotalUsd: () => number | null
-  /** True when the agent took the message. */
-  send: (text: string) => Promise<boolean>
+  /** True when the agent took the message; 'wait' when its state cannot be told yet. */
+  send: (text: string) => Promise<boolean | 'wait'>
 }
+
+/** BAD-833: how long a goal waits for an agent whose state cannot be told before it stops. */
+export const GOAL_LOOP_MAX_WAIT_MS = 15 * 60 * 1000
+/** While it waits its check runs at most this often. */
+export const GOAL_LOOP_WAIT_RECHECK_MS = 60 * 1000
 
 export type GoalStepResult =
   | { kind: 'sent' }
   | { kind: 'retry' }
+  | { kind: 'wait' }
   | { kind: 'stopped'; reason: GoalStopReason; text: string }
 
 function stop(goal: GoalRecord, reason: GoalStopReason, text: string, now: number): GoalStepResult {
@@ -99,6 +105,21 @@ export async function runGoalStep(goal: GoalRecord, deps: GoalEngineDeps): Promi
   }
   const limit = goal.maxRounds > 0 ? goal.maxRounds : settings.maxRounds
   const taken = await deps.send(goalContinueText({ goal, limit, output }))
+  if (taken === 'wait') {
+    // BAD-833: no verdict on the agent yet (after a restart): look again, it is not a refusal, but
+    // an unattended goal never waits unseen for good.
+    goal.waitingSince ??= now
+    if (now - goal.waitingSince >= GOAL_LOOP_MAX_WAIT_MS) {
+      return stop(
+        goal,
+        'unreachable',
+        'The agent looks at rest, but Orca could not tell whether it takes a message for 15 minutes.',
+        now
+      )
+    }
+    return { kind: 'wait' }
+  }
+  delete goal.waitingSince
   if (!taken) {
     goal.sendFailures += 1
     if (goal.sendFailures >= GOAL_LOOP_MAX_SEND_FAILURES) {
