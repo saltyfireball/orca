@@ -3063,7 +3063,8 @@ ones `SLRM-123 `).
     requested, and a requested review in a folder workspace (a folder has no commit). A Task with
     no contract, a review made only by `forkReviewerGateAllTasks`, and a worker that reported
     failed gain no text. The all-Tasks rows are marked `implicit` in `fork_review_gates` (a column
-    added on first use) and are never carried to a server or a retry.
+    added on first use) and are never carried to a server or a retry; a start on a paired server
+    sends the setting's own review instead (BAD-820, below).
   - **Retries and follow-ups.** A retry (BAD-681/BAD-765), a follow-up sent to a finished worker and
     `worker-start --retry-of` create a new Task. It takes the contract and the review request of the
     Task it continues, with the rounds at zero, unless its own request declares a contract or review
@@ -3100,6 +3101,20 @@ ones `SLRM-123 `).
     Codex, even for a Codex worker. The review is pinned to the other provider when the attach
     starts the agent. A worker on a server that owns its workers was never affected: that server's
     own Dispatch records the agent.
+  - **Review every Task, also on servers (BAD-820).** With `forkReviewerGateAllTasks` on, the home
+    asked for a review of every Task, but a start on a paired server sent only a review stored on
+    the Task, so a worker there settled unreviewed under the server's own setting, in silence. Now
+    a start on a paired server (both protocols, `--spec` or `--task`, `--retry-of`, and each
+    `orca best-of --on` attempt, which is an ordinary start) whose Task carries no review of its own
+    sends one as if the Task had asked: focus correctness, no named reviewer (the server picks the
+    other provider, and the attach path pins it as it pins a stored review), and the home's
+    `forkReviewerGateMaxRounds`. The review is stored on the home's Task as the Task's own request,
+    so a later retry sends it again and turning the setting off does not drop a review already
+    sent. A server without `orchestration.fork-contract-carry.v1` is refused before any effect,
+    with a message that names the setting and the ways on: update the server, start the worker
+    here, or turn the setting off to start it there unreviewed. Off (or `forkReviewerGate` off)
+    sends exactly what it sent before. There is no per-Task "no review" flag, so nothing overrides
+    the setting. Best of N takes no contract flags, so its attempts carry only the setting's review.
   - Code: `src/main/fork/completion-contract/contract-carry.ts` (what travels and the retry copy),
     `contract-carry-start.ts` (the capability refusal and the wire of both start paths),
     `gate-subject.ts` (a local Dispatch or a remote attachment as one shape for both gates),
@@ -3725,6 +3740,7 @@ Apply these in this order. Each one is a single commit.
 203. `BAD-800 An automation keeps its MCP profile on its own record, so a move to another host carries it or is refused, nothing can lose or evict it, and automations show and the card name it`
 204. `BAD-800 Launches over the paired WebSocket and the renderer's ipc subscribe run in the launch scope, so a profile's MCP limit, mode, account and preamble apply and refusals reach the caller; the CLI and the dialog's move refuse and remove an automation saved without its MCP profile; a Claude terminal's MCP config is one --mcp-config=<file> word, so the prompt after it is a prompt; a new workspace's startup agent gets the profile's mode and MCP profile`
 205. `BAD-817 Agent profile import keeps a definition's limits or names them: permissionMode maps to the profile mode (narrowest when unreadable), tools, disallowedTools, MCP servers, hooks and Codex sandbox, approval and tables are stored as not kept, shown by import, list and show, and held for orca profiles confirm; a definition that does not parse is refused`
+206. `BAD-820 With forkReviewerGateAllTasks on, a start on a paired server sends the setting's review as the Task's own (both protocols, retries, best-of attempts), a server that cannot take it is refused before any effect naming the setting, and with the setting off nothing changes`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4992,6 +5008,9 @@ Upstream files only get short hooks, which keeps merges small:
   without the capability) and `forkRemoteOwnedContractWire` once its placement is reserved, which
   stores the start's contract at home and returns the Task's stored one, spread into the start it
   sends. `federation.ts` also calls `forkPinAttachedReviewer` with the agent the attach starts.
+  BAD-820: both `remote-owned-start.ts` calls also pass `runtime` (the home's reviewer settings),
+  and `federated-worker-start.ts` calls `forkFederatedStartCarry(args, ...)`, which passes it to
+  `forkFederatedCarry`.
 - Reviewer gate (BAD-683), small edits in stock files and fork files: `completion-gate-live.ts`
   (`forkGateWorkerDone` runs the review after the contract passed; `forkStoreDoneContract` also
   saves the request); `orchestration-params.ts` (`TaskCreateParams`) and

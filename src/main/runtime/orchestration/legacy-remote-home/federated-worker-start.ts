@@ -12,7 +12,7 @@ import {
 } from '../../../../shared/orchestration/orchestration-runtime-capabilities'
 import { orchestrationMigrationData } from '../../../../shared/orchestration/orchestration-rpc-contract'
 import { OrchestrationError } from '../orchestration-error'
-import { forkFederatedCarry } from '../../../fork/completion-contract/contract-carry-start'
+import { forkFederatedStartCarry } from '../../../fork/completion-contract/contract-carry-start'
 import {
   assertWorkerLaunchPreferencesRuntimeSupported,
   assertWorkerLaunchPreferencesCreateTerminal,
@@ -98,7 +98,7 @@ export async function startFederatedWorker(args: FederatedWorkerStartRequest): P
       `Connected server ${server.name} does not support orchestration federation.`
     )
   }
-  const carryContract = forkFederatedCarry(db, params, task?.id, server.name, status.capabilities)
+  const carryContract = forkFederatedStartCarry(args, server.name, status.capabilities)
   assertWorkerLaunchPreferencesRuntimeSupported({
     model: params.model,
     effort: params.effort,

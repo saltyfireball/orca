@@ -42,7 +42,7 @@ export function forkPinAttachedReviewer(
   saveReviewGate(db, taskId, { ...found.gate, agent: reviewerAgentFor(workerAgent, null) })
 }
 
-function settingsOf(runtime: OrcaRuntimeService): ReviewerGateSettings {
+export function forkReviewerGateSettings(runtime: OrcaRuntimeService): ReviewerGateSettings {
   // Before the store attaches the defaults apply; a worker_done must not fail on it.
   let settings: unknown = null
   try {
@@ -78,7 +78,7 @@ function liveReviewDeps(
 ): ReviewGateDeps {
   return {
     db,
-    settings: () => settingsOf(runtime),
+    settings: () => forkReviewerGateSettings(runtime),
     workspace: async (worktreeId) => {
       const workspace = await workspaceOf(worktreeId)
       return workspace
@@ -122,7 +122,7 @@ export async function forkReviewWorkerDone<P extends SendShape>(
     return { kind: 'carry-on', params }
   }
   // Cheap read first: with no request and no all-Tasks setting nothing else loads.
-  if (!readReviewGate(db, subject.taskId) && !settingsOf(runtime).allTasks) {
+  if (!readReviewGate(db, subject.taskId) && !forkReviewerGateSettings(runtime).allTasks) {
     return { kind: 'carry-on', params }
   }
   const outcome = await runReviewGate(liveReviewDeps(runtime, db, workspaceOf, subject), {

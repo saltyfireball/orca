@@ -24,7 +24,7 @@ const BASE_CAPS = [
   ORCHESTRATION_FEDERATION_RUNTIME_CAPABILITY
 ]
 
-function home(capabilities: string[]) {
+function home(capabilities: string[], settings?: Record<string, unknown>) {
   const db = new OrchestrationDb(':memory:')
   const run = db.createRun({
     objective: 'carry',
@@ -62,7 +62,8 @@ function home(capabilities: string[]) {
     getTerminalOrchestrationCliCommand: () => 'orca',
     notifyMessageArrived: () => undefined,
     getTerminalPaneKey: () => 'tab-c::22222222-2222-4222-8222-222222222222',
-    getTerminalProcessIncarnation: () => 'pid-c'
+    getTerminalProcessIncarnation: () => 'pid-c',
+    ...(settings ? { requireStore: () => ({ getSettings: () => settings }) } : {})
   } as unknown as OrcaRuntimeService
   const start = (
     extra: Record<string, unknown>,
@@ -220,5 +221,38 @@ describe('a server without orchestration.fork-contract-carry.v1', () => {
     const h = home(BASE_CAPS)
     await h.start({})
     expect(h.calls).toContain('orchestration.federationAttachStart')
+  })
+
+  it('refuses a plain start while forkReviewerGateAllTasks is on here, naming the setting', async () => {
+    const h = home(BASE_CAPS, { forkReviewerGateAllTasks: true })
+    await refused(h, {})
+    await expect(h.start({})).rejects.toMatchObject({
+      message: expect.stringContaining('orca settings set forkReviewerGateAllTasks false')
+    })
+  })
+})
+
+describe('forkReviewerGateAllTasks on at home, a plain start on the attach path', () => {
+  it('sends the review, and the server stores it pinned to the other provider', async () => {
+    const h = home([...BASE_CAPS, ORCHESTRATION_FORK_CONTRACT_CARRY_RUNTIME_CAPABILITY], {
+      forkReviewerGateAllTasks: true
+    })
+    await h.start({})
+    expect(h.attachStarts[0]).toMatchObject({ forkReview: true, forkReviewMaxRounds: 2 })
+
+    const server = await attachOnServer(h.attachStarts[0]!)
+    const taskId = h.attachStarts[0]!.taskId as string
+    expect(readReviewGate(server, taskId)).toMatchObject({
+      implicit: false,
+      gate: { focus: 'correctness', agent: 'codex', maxRounds: 2 }
+    })
+  })
+
+  it('with the setting off sends no fork field', async () => {
+    const h = home([...BASE_CAPS, ORCHESTRATION_FORK_CONTRACT_CARRY_RUNTIME_CAPABILITY], {
+      forkReviewerGateAllTasks: false
+    })
+    await h.start({})
+    expect(Object.keys(h.attachStarts[0]!).filter((key) => key.startsWith('fork'))).toEqual([])
   })
 })

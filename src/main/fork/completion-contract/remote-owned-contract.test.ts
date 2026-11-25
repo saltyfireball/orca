@@ -65,6 +65,8 @@ type RigOptions = {
   /** A git checkout (the reviewer needs a commit) instead of a project group's folder workspace. */
   git?: boolean
   workerAgent?: string
+  /** The home's settings; the server keeps its own reviewer commands and has the all-Tasks setting off. */
+  homeSettings?: Record<string, unknown>
 }
 
 function rig(options: RigOptions = {}) {
@@ -167,6 +169,7 @@ function rig(options: RigOptions = {}) {
     return { dispatchId: started.dispatch.id, run: { id: peerRun.id }, state: 'ready' }
   }
 
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the home's start reads only these members.
   const homeRuntime = {
     getOrchestrationDb: () => homeDb,
     resolveOrchestrationWorkerServer: async () => server,
@@ -177,6 +180,9 @@ function rig(options: RigOptions = {}) {
     getTerminalPaneKey: (handle: string) => (handle === COORDINATOR ? COORDINATOR_PANE : null),
     getOrchestrationDispatchAuthority: () => null,
     bots: { list: () => [] },
+    ...(options.homeSettings
+      ? { requireStore: () => ({ getSettings: () => options.homeSettings }) }
+      : {}),
     callOrchestrationWorkerServer: async (_env: string, name: string, params: unknown) => {
       if (name === 'status.get') {
         return { runtimeId: 'runtime_server', capabilities }
@@ -267,6 +273,7 @@ function rig(options: RigOptions = {}) {
     )
   return {
     folder,
+    homeSettings: options.homeSettings,
     homeDb,
     serverDb,
     serverStarts,
@@ -446,5 +453,81 @@ describe('worker-start --spec --done-check on a server that owns its workers', (
     const text = formatForkContract(shown)
     expect(text).toContain('server build-server: cannot see its check evidence')
     expect(text).not.toContain('declares no done checks')
+  })
+})
+
+describe('forkReviewerGateAllTasks on at home, a plain worker-start --on a server that owns its workers', () => {
+  const ALL_TASKS = { forkReviewerGateAllTasks: true, forkReviewerGateMaxRounds: 4 }
+
+  it('is reviewed on the server before it settles, with the home rounds', async () => {
+    const r = rig({ git: true, homeSettings: ALL_TASKS })
+
+    const started = await r.startOnHome({ spec: 'do the work' })
+
+    expect(r.serverStarts[0]).toMatchObject({
+      forkReview: true,
+      forkReviewFocus: 'correctness',
+      forkReviewMaxRounds: 4
+    })
+    expect(readReviewGate(r.serverDb, started.taskId)).toMatchObject({ implicit: false })
+    expect(await r.workerDone(started.dispatchId)).toMatchObject({
+      kind: 'answer',
+      receipt: { lifecycle: { code: 'review_pending' } }
+    })
+    expect(listReviewRuns(r.serverDb, started.taskId).map((run) => run.reviewer)).toEqual(['codex'])
+    await expect.poll(() => listReviewRuns(r.serverDb, started.taskId)[0]?.status).toBe('clean')
+    expect(await r.workerDone(started.dispatchId)).toMatchObject({ kind: 'carry-on' })
+  })
+
+  it('sends the review again with --retry-of after the setting was turned off', async () => {
+    const r = rig({ homeSettings: { ...ALL_TASKS } })
+    const first = await r.startOnHome({ spec: 'do the work' })
+    r.homeSettings!.forkReviewerGateAllTasks = false
+    r.serverDb.db.prepare('DELETE FROM fork_review_gates').run()
+    r.serverDb.db
+      .prepare("UPDATE dispatch_contexts SET status = 'failed' WHERE id = ?")
+      .run(first.dispatchId)
+    r.serverDb.db
+      .prepare("UPDATE worker_dispatches SET state = 'failed' WHERE dispatch_id = ?")
+      .run(first.dispatchId)
+    for (const db of [r.serverDb, r.homeDb]) {
+      db.db.prepare("UPDATE tasks SET status = 'failed' WHERE id = ?").run(first.taskId)
+    }
+
+    await r.startOnHome({ task: first.taskId, retryOf: first.dispatchId })
+
+    expect(r.serverStarts[1]).toMatchObject({ retryOf: first.dispatchId, forkReview: true })
+  })
+
+  it('refuses a server without the capability before anything is placed, naming the setting', async () => {
+    const r = rig({
+      serverCapabilities: [ORCHESTRATION_REMOTE_OWNED_WORKERS_RUNTIME_CAPABILITY],
+      homeSettings: ALL_TASKS
+    })
+
+    const refusal = r.startOnHome({ spec: 'do the work' })
+
+    await expect(refusal).rejects.toMatchObject({
+      code: 'capability_unsupported',
+      message: expect.stringContaining('forkReviewerGateAllTasks')
+    })
+    await expect(refusal).rejects.toMatchObject({
+      message: expect.stringContaining('No effects were applied')
+    })
+    expect(r.serverStarts).toEqual([])
+    expect(r.homeDb.db.prepare('SELECT COUNT(*) AS n FROM remote_placements').get()).toEqual({
+      n: 0
+    })
+    expect(r.homeDb.db.prepare('SELECT COUNT(*) AS n FROM tasks').get()).toEqual({ n: 0 })
+  })
+
+  it('with the setting off sends the same start as with no settings', async () => {
+    const off = rig({ homeSettings: { forkReviewerGateAllTasks: false } })
+    const none = rig()
+    await off.startOnHome({ spec: 'do the work' })
+    await none.startOnHome({ spec: 'do the work' })
+
+    expect(Object.keys(off.serverStarts[0]!).filter((key) => key.startsWith('fork'))).toEqual([])
+    expect(JSON.stringify(off.serverStarts[0])).toBe(JSON.stringify(none.serverStarts[0]))
   })
 })

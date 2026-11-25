@@ -148,8 +148,13 @@ export async function startRemoteOwnedWorker(
   const db = runtime.getOrchestrationDb()
   const server = await runtime.resolveOrchestrationWorkerServer(params.on!)
   // Fork (BAD-798): a server that cannot gate the Task's checks or review is refused here.
-  await forkRemoteOwnedContractPreflight(db, params, existingTask?.id, server.name, (capability) =>
-    serverSupports(runtime, server, capability)
+  await forkRemoteOwnedContractPreflight(
+    runtime,
+    db,
+    params,
+    existingTask?.id,
+    server.name,
+    (capability) => serverSupports(runtime, server, capability)
   )
   // This caller's workspace is here, so a server's new-child nests under it across machines.
   const crossStoreParent =
@@ -189,7 +194,7 @@ export async function startRemoteOwnedWorker(
         }
   })
   // Fork (BAD-763, BAD-798, FORK.md "Completion contract"): the Task's checks and review, stored here for `orca contract show`, go to the server, which runs them.
-  const contractWire = forkRemoteOwnedContractWire(db, task.id, params)
+  const contractWire = forkRemoteOwnedContractWire(runtime, db, task.id, params)
   // Its queue has a reader from the start, so mail sent before the answer still comes home.
   runtime.ensureOrchestrationFederationRelay(run.id)
   const options = serverStartOptions(params)
