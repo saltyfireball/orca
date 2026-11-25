@@ -5,7 +5,11 @@ import {
 } from '../launch-defaults/launch-defaults-choices'
 import { importForkAgentDefinition } from './agent-profiles-import'
 import { normalizeForkAgentProfiles } from './agent-profiles-normalize'
-import { forkAgentProfileHash, resolveForkAgentProfile } from './agent-profiles-resolve'
+import {
+  forkAgentProfileConfirmHash,
+  forkAgentProfileHash,
+  resolveForkAgentProfile
+} from './agent-profiles-resolve'
 
 const claudeModels = forkLaunchModelChoices('claude')
 const model = claudeModels.find(
@@ -155,7 +159,7 @@ describe('importForkAgentDefinition', () => {
         model: 'sonnet',
         preamble: 'You review code.\nBe terse.',
         whenToUse: 'Reviews diffs for bugs',
-        imported: { path: '/p/.claude/agents/code-reviewer.md' }
+        imported: { path: '/p/.claude/agents/code-reviewer.md', notKept: ['tools: Read, Grep'] }
       }
     })
   })
@@ -187,5 +191,132 @@ describe('importForkAgentDefinition', () => {
         whenToUse: 'Writes tests'
       }
     })
+  })
+})
+
+// BAD-817: a definition's limits come along, or are named as not kept and held for a confirm.
+function claude(frontmatter: string) {
+  return importForkAgentDefinition({
+    file: '/p/.claude/agents/rev.md',
+    agent: 'claude',
+    source: `---\n${frontmatter}\n---\nReview only.\n`
+  })
+}
+function profileOf(result: ReturnType<typeof importForkAgentDefinition>) {
+  if (!result.ok) {
+    throw new Error(result.message)
+  }
+  return result.profile
+}
+
+describe('importForkAgentDefinition limits', () => {
+  it('maps permissionMode in each spelling, and an unreadable or narrower one to ask', () => {
+    const mode = (line: string) => profileOf(claude(line))
+    expect(mode('permissionMode: acceptEdits')).toMatchObject({ permissionMode: 'accept-edits' })
+    expect(mode('permission_mode: bypassPermissions').permissionMode).toBe('full-access')
+    expect(mode('permissionMode: default').permissionMode).toBe('ask')
+    expect(mode('permissionMode: auto').imported?.notKept).toBeUndefined()
+    for (const line of [
+      'permissionMode: plan',
+      'permissionMode: dontAsk',
+      'permissionMode: yolo',
+      'permissionMode: [acceptEdits]',
+      'permissionMode:',
+      'permissionMode: acceptEdits\npermission-mode: bypassPermissions'
+    ]) {
+      const profile = mode(line)
+      expect(profile.permissionMode, line).toBe('ask')
+      expect(profile.imported?.notKept?.[0], line).toMatch(
+        /^permission.?mode.*the profile uses ask/i
+      )
+    }
+  })
+
+  it('names tools, disallowedTools, mcpServers and hooks as not kept, as a string or a list', () => {
+    const notKept = (frontmatter: string) => profileOf(claude(frontmatter)).imported?.notKept
+    expect(notKept('tools: Read, Grep, Glob')).toEqual(['tools: Read, Grep, Glob'])
+    expect(notKept('tools: [Read, Grep]')).toEqual(['tools: Read, Grep'])
+    expect(notKept('disallowedTools:\n  - Write\n  - Edit')).toEqual([
+      'disallowedTools: Write, Edit'
+    ])
+    expect(notKept('disallowed_tools: Bash')).toEqual(['disallowed_tools: Bash'])
+    expect(notKept('tools:')).toEqual(['tools (value not readable)'])
+    expect(notKept('mcpServers:\n  - github\nhooks:\n  PreToolUse: []')).toEqual([
+      'mcpServers: github',
+      'hooks: PreToolUse'
+    ])
+    expect(notKept('skills: [a]\ncolor: blue')).toBeUndefined()
+  })
+
+  it('refuses a definition whose frontmatter cannot be parsed', () => {
+    for (const source of [
+      '---\nname: x\ntools: Read\nno closing line\n',
+      '---\nname: x\ntools: [Read\n---\nbody',
+      '---\ntools: Read\ntools: Write\n---\nbody',
+      '---\n- just a list\n---\nbody'
+    ]) {
+      const result = importForkAgentDefinition({ file: 'x.md', agent: 'claude', source })
+      expect(result.ok, source).toBe(false)
+    }
+  })
+
+  it('names a Codex definition sandbox, approval and tables as not kept and uses ask', () => {
+    const profile = profileOf(
+      importForkAgentDefinition({
+        file: '/p/.codex/agents/rev.toml',
+        agent: 'codex',
+        source:
+          'name = "rev"\nsandbox_mode = "read-only"\napproval_policy = "untrusted"\ndeveloper_instructions = "Review."\n[mcp_servers.docs]\ncommand = "docs"\n[features]\nx = true\n'
+      })
+    )
+    expect(profile.permissionMode).toBe('ask')
+    expect(profile.imported?.notKept).toEqual([
+      'sandbox_mode: read-only',
+      'approval_policy: untrusted',
+      'mcp_servers: docs',
+      '[features] settings',
+      'the sandbox and approval fields are not mapped; the profile uses ask'
+    ])
+    expect(
+      importForkAgentDefinition({
+        file: 'a.toml',
+        agent: 'codex',
+        source: 'name = "a\nsandbox_mode'
+      })
+    ).toMatchObject({ ok: false })
+  })
+
+  it('holds a read-only reviewer whose tools were not kept until confirmed, with no preamble too', () => {
+    const imported = profileOf(
+      importForkAgentDefinition({
+        file: '/p/.claude/agents/reviewer.md',
+        agent: 'claude',
+        source: '---\nname: reviewer\ntools: Read, Grep\npermissionMode: bypassPermissions\n---\n'
+      })
+    )
+    expect(imported.preamble).toBeUndefined()
+    // Saved and read back the way settings store it.
+    const stored = JSON.parse(JSON.stringify(imported))
+    const held = resolve(stored)
+    expect(held).toMatchObject({ ok: false, code: 'profile_unconfirmed' })
+    expect((held as { message: string }).message).toContain('tools: Read, Grep')
+    const confirmed = {
+      ...stored,
+      imported: { ...stored.imported, confirmedHash: forkAgentProfileConfirmHash(stored) }
+    }
+    expect(resolve(confirmed, undefined, { agentPermissionDefault: 'accept-edits' })).toMatchObject(
+      {
+        ok: true,
+        resolved: { permissionMode: 'accept-edits' }
+      }
+    )
+    // A hand-edited list that drops a line needs a new confirm.
+    expect(
+      resolve({ ...confirmed, imported: { ...confirmed.imported, notKept: ['tools: Read'] } })
+    ).toMatchObject({ ok: false, code: 'profile_unconfirmed' })
+    expect(
+      normalizeForkAgentProfiles([{ ...stored, imported: { path: 'p', notKept: 'tools' } }])[0]
+        ?.imported?.notKept
+    ).toEqual(['the list of limits not kept is not readable'])
   })
 })

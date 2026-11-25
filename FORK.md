@@ -3254,6 +3254,19 @@ ones `SLRM-123 `).
     becomes the preamble, the description the when-to-use note; a model of `inherit` is none. An
     existing profile name is skipped. `.claude/agents` and `.agents/agents` files import as
     Claude profiles, `.codex/agents` as Codex; `--agent` overrides.
+  - **Import limits (BAD-817).** The whole frontmatter is parsed as YAML and a Codex file as
+    TOML; a file that does not parse is skipped with the reason, never imported without its limits.
+    `permissionMode` maps to the profile mode (`default` ask, `acceptEdits` accept-edits, `auto`,
+    `bypassPermissions` full-access, then capped at launch as below); `plan`, `dontAsk`, an unknown,
+    unreadable or repeated value gives `ask`. A profile does not carry tool limits, so `tools`,
+    `disallowedTools`, `mcpServers`, `hooks`, `maxTurns`, a narrowed mode, and a Codex file's
+    `sandbox_mode`, `approval_policy`, `mcp_servers` and any other table (a Codex file with a
+    sandbox or approval field gets `ask`) are named in `imported.notKept`: import prints them,
+    `list` and `show` show them, and the profile needs `orca profiles confirm` while the list is
+    not empty, also with no preamble. The confirm hash covers the preamble and the list (a profile
+    without a list hashes as before), so an edited list asks again; a list the settings file holds
+    in an unreadable shape reads as one not-kept line. `set --preamble` keeps the list and keeps
+    the confirm only if it was confirmed.
   - **Security.** An imported preamble is not used until `orca profiles confirm <name>`, after
     `show` has printed it; changing the preamble asks again. A profile cannot widen permission:
     its mode is lowered to the agent's permission in Settings > Agents when that is set, else to
@@ -3711,6 +3724,7 @@ Apply these in this order. Each one is a single commit.
 202. `BAD-801 Bot room hop limit: chained bot hand-offs under one person post stop at forkBotRoomHopLimit (default 6, 0 none), counted by chain depth from the stored lines, with one Decision inbox entry holding the last exchange and a Continue that resumes the held hand-off once with a fresh count; a later person post makes it moot`
 203. `BAD-800 An automation keeps its MCP profile on its own record, so a move to another host carries it or is refused, nothing can lose or evict it, and automations show and the card name it`
 204. `BAD-800 Launches over the paired WebSocket and the renderer's ipc subscribe run in the launch scope, so a profile's MCP limit, mode, account and preamble apply and refusals reach the caller; the CLI and the dialog's move refuse and remove an automation saved without its MCP profile; a Claude terminal's MCP config is one --mcp-config=<file> word, so the prompt after it is a prompt; a new workspace's startup agent gets the profile's mode and MCP profile`
+205. `BAD-817 Agent profile import keeps a definition's limits or names them: permissionMode maps to the profile mode (narrowest when unreadable), tools, disallowedTools, MCP servers, hooks and Codex sandbox, approval and tables are stored as not kept, shown by import, list and show, and held for orca profiles confirm; a definition that does not parse is refused`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

@@ -15,8 +15,10 @@ export type ForkAgentProfilePermissionMode = (typeof FORK_AGENT_PROFILE_PERMISSI
 export type ForkAgentProfileImport = {
   /** The definition file it was read from, as given at import. */
   path: string
-  /** Hash of the preamble the user confirmed; unset means not confirmed yet. */
+  /** Hash of the preamble and not-kept list the user confirmed; unset means not confirmed yet. */
   confirmedHash?: string
+  /** BAD-817: the definition's limits the profile does not carry (tools, MCP servers, sandbox). */
+  notKept?: string[]
 }
 
 export type ForkAgentProfile = {

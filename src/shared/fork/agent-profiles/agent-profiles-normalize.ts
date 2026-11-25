@@ -13,6 +13,18 @@ function text(value: unknown, max = 200): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : undefined
 }
 
+/** A hand-edited list Orca cannot read still says something was not kept: fail closed. */
+function notKeptList(value: unknown): string[] {
+  if (value === undefined) {
+    return []
+  }
+  const lines = Array.isArray(value) ? value.map((entry) => text(entry, 300)) : []
+  if (!Array.isArray(value) || lines.some((entry) => !entry)) {
+    return ['the list of limits not kept is not readable']
+  }
+  return (lines as string[]).slice(0, 50)
+}
+
 export function normalizeForkAgentProfile(value: unknown): ForkAgentProfile | null {
   if (!value || typeof value !== 'object') {
     return null
@@ -30,6 +42,7 @@ export function normalizeForkAgentProfile(value: unknown): ForkAgentProfile | nu
       : undefined
   const importPath = text(imported?.path, 500)
   const confirmedHash = text(imported?.confirmedHash, 128)
+  const notKept = notKeptList(imported?.notKept)
   return {
     name,
     agent,
@@ -44,7 +57,8 @@ export function normalizeForkAgentProfile(value: unknown): ForkAgentProfile | nu
       ? {
           imported: {
             path: importPath,
-            ...(confirmedHash ? { confirmedHash } : {})
+            ...(confirmedHash ? { confirmedHash } : {}),
+            ...(notKept.length > 0 ? { notKept } : {})
           }
         }
       : {})

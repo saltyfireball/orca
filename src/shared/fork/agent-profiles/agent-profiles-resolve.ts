@@ -50,12 +50,24 @@ export function forkAgentProfileHash(text: string): string {
   return hash.toString(16).padStart(8, '0')
 }
 
-export function forkAgentProfileNeedsConfirm(profile: ForkAgentProfile): boolean {
-  return (
-    !!profile.imported &&
-    !!profile.preamble &&
-    profile.imported.confirmedHash !== forkAgentProfileHash(profile.preamble)
+/**
+ * What a confirm covers: the imported preamble and the limits not kept (BAD-817). Undefined when
+ * there is nothing to confirm. A profile with no not-kept list hashes as before BAD-817.
+ */
+export function forkAgentProfileConfirmHash(profile: ForkAgentProfile): string | undefined {
+  const notKept = profile.imported?.notKept ?? []
+  if (!profile.imported || (!profile.preamble && notKept.length === 0)) {
+    return undefined
+  }
+  const preamble = profile.preamble ?? ''
+  return forkAgentProfileHash(
+    notKept.length > 0 ? `${preamble}\n\u0000not kept:\n${notKept.join('\n')}` : preamble
   )
+}
+
+export function forkAgentProfileNeedsConfirm(profile: ForkAgentProfile): boolean {
+  const hash = forkAgentProfileConfirmHash(profile)
+  return hash !== undefined && profile.imported?.confirmedHash !== hash
 }
 
 export type ForkAgentProfilePolicySettings = {
@@ -101,10 +113,15 @@ export function resolveForkAgentProfile(args: {
     }
   }
   if (forkAgentProfileNeedsConfirm(profile)) {
+    const notKept = profile.imported?.notKept ?? []
+    const limits =
+      notKept.length > 0
+        ? `; it does not keep these limits of its definition: ${notKept.join('; ')}`
+        : ''
     return {
       ok: false,
       code: 'profile_unconfirmed',
-      message: `Profile "${profile.name}" was imported from ${profile.imported?.path} and its preamble has not been confirmed. Read it with \`orca profiles show ${profile.name}\`, then run \`orca profiles confirm ${profile.name}\`.`
+      message: `Profile "${profile.name}" was imported from ${profile.imported?.path} and has not been confirmed${limits}. Read it with \`orca profiles show ${profile.name}\`, then run \`orca profiles confirm ${profile.name}\`.`
     }
   }
   const explicit = args.explicit ?? {}

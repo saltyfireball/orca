@@ -1,6 +1,15 @@
 // Reads an agent definition file from .claude/agents, .codex/agents or .agents/agents into a
-// profile. Markdown files carry frontmatter (name, description, model) and the prompt as the body;
-// Codex files are TOML with `name`, `description`, `model` and `developer_instructions`.
+// profile. Markdown files carry YAML frontmatter (name, description, model, limits) and the prompt
+// as the body; Codex files are TOML with `name`, `description`, `model` and `developer_instructions`.
+// BAD-817: a file Orca cannot parse whole is refused, so no limit line is skipped unread.
+import { parse as parseTomlDocument } from 'smol-toml'
+import { parseDocument } from 'yaml'
+import {
+  forkAgentDefinitionKey,
+  forkClaudeDefinitionLimits,
+  forkCodexDefinitionLimits,
+  type ForkAgentDefinitionLimits
+} from './agent-profiles-import-limits'
 import { isForkAgentProfileName, type ForkAgentProfile } from './agent-profiles-types'
 
 export type ForkAgentDefinitionDir = '.claude/agents' | '.codex/agents' | '.agents/agents'
@@ -14,60 +23,50 @@ export const FORK_AGENT_DEFINITION_DIRS: readonly {
   { dir: '.agents/agents', agent: 'claude' }
 ]
 
-type Parsed = { fields: Record<string, string>; body: string }
+type Parsed =
+  | { ok: true; fields: Record<string, unknown>; body: string; limits: ForkAgentDefinitionLimits }
+  | { ok: false; message: string }
 
-function unquote(value: string): string {
-  const trimmed = value.trim()
-  const quote = trimmed[0]
-  if ((quote === '"' || quote === "'") && trimmed.endsWith(quote) && trimmed.length >= 2) {
-    return trimmed.slice(1, -1).replace(/\\n/g, '\n').replace(/\\"/g, '"')
-  }
-  return trimmed
+function firstLine(error: unknown): string {
+  return (error instanceof Error ? error.message : String(error)).split('\n')[0].slice(0, 200)
 }
 
 function parseMarkdown(source: string): Parsed {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)([\s\S]*)$/.exec(source)
-  if (!match) {
-    return { fields: {}, body: source }
+  if (!/^---[ \t]*\r?\n/.test(source)) {
+    return { ok: true, fields: {}, body: source, limits: { notKept: [] } }
   }
-  const fields: Record<string, string> = {}
-  for (const line of match[1].split(/\r?\n/)) {
-    const pair = /^([A-Za-z_][\w-]*)\s*:\s*(.*)$/.exec(line)
-    if (pair) {
-      fields[pair[1].toLowerCase()] = unquote(pair[2])
+  const match = /^---[ \t]*\r?\n(?:([\s\S]*?)\r?\n)?---[ \t]*(?:\r?\n|$)([\s\S]*)$/.exec(source)
+  if (!match) {
+    return { ok: false, message: 'its frontmatter has no closing --- line.' }
+  }
+  const doc = parseDocument(match[1] ?? '')
+  if (doc.errors.length > 0) {
+    return {
+      ok: false,
+      message: `its frontmatter is not valid YAML (${firstLine(doc.errors[0])}).`
     }
   }
-  return { fields, body: match[2] }
+  const value: unknown = doc.toJS()
+  if (value !== null && (typeof value !== 'object' || Array.isArray(value))) {
+    return { ok: false, message: 'its frontmatter is not a list of "key: value" fields.' }
+  }
+  const fields = (value ?? {}) as Record<string, unknown>
+  return { ok: true, fields, body: match[2], limits: forkClaudeDefinitionLimits(fields) }
 }
 
 function parseToml(source: string): Parsed {
-  const fields: Record<string, string> = {}
-  const lines = source.split(/\r?\n/)
-  for (let i = 0; i < lines.length; i += 1) {
-    const pair = /^([A-Za-z_][\w-]*)\s*=\s*(.*)$/.exec(lines[i])
-    if (!pair) {
-      continue
-    }
-    const key = pair[1].toLowerCase()
-    const value = pair[2]
-    const triple = /^("""|''')([\s\S]*)$/.exec(value)
-    if (triple) {
-      const parts: string[] = []
-      let rest = triple[2]
-      while (!rest.includes(triple[1]) && i + 1 < lines.length) {
-        parts.push(rest)
-        i += 1
-        rest = lines[i]
-      }
-      parts.push(rest.split(triple[1])[0])
-      fields[key] = parts.join('\n').replace(/^\n/, '').trim()
-    } else {
-      fields[key] = unquote(value.replace(/\s+#.*$/, ''))
-    }
+  let fields: Record<string, unknown>
+  try {
+    fields = parseTomlDocument(source) as Record<string, unknown>
+  } catch (error) {
+    return { ok: false, message: `it is not valid TOML (${firstLine(error)}).` }
   }
+  const text = (key: string) => (typeof fields[key] === 'string' ? (fields[key] as string) : '')
   return {
+    ok: true,
     fields,
-    body: fields.developer_instructions ?? fields.instructions ?? ''
+    body: text('developer_instructions') || text('instructions'),
+    limits: forkCodexDefinitionLimits(fields)
   }
 }
 
@@ -92,26 +91,42 @@ export function importForkAgentDefinition(args: {
   name?: string
 }): ForkAgentImportResult {
   const isToml = args.file.toLowerCase().endsWith('.toml')
-  const { fields, body } = isToml ? parseToml(args.source) : parseMarkdown(args.source)
+  const parsed = isToml ? parseToml(args.source) : parseMarkdown(args.source)
+  if (!parsed.ok) {
+    return { ok: false, message: `Not imported: ${parsed.message}` }
+  }
+  const { fields, body, limits } = parsed
+  const get = (name: string): string | undefined => {
+    const entry = Object.entries(fields).find(([key]) => forkAgentDefinitionKey(key) === name)
+    const value = entry?.[1]
+    return typeof value === 'string' || typeof value === 'number' ? String(value).trim() : undefined
+  }
   const base = (args.file.split(/[\\/]/).pop() ?? '').replace(/\.[^.]+$/, '')
-  const name = args.name ?? slug(fields.name ?? base)
+  const found = get('name')
+  const name = args.name ?? slug(found || base)
   if (!isForkAgentProfileName(name)) {
     return {
       ok: false,
-      message: `Cannot make a profile name from "${fields.name ?? base}".`
+      message: `Cannot make a profile name from "${found || base}".`
     }
   }
   const preamble = body.trim()
-  const model = fields.model && fields.model !== 'inherit' ? fields.model : undefined
+  const fileModel = get('model')
+  const model = fileModel && fileModel !== 'inherit' ? fileModel : undefined
+  const description = get('description')
   return {
     ok: true,
     profile: {
       name,
       agent: args.agent,
       ...(model ? { model } : {}),
+      ...(limits.permissionMode ? { permissionMode: limits.permissionMode } : {}),
       ...(preamble ? { preamble } : {}),
-      ...(fields.description ? { whenToUse: fields.description.slice(0, 1000) } : {}),
-      imported: { path: args.file }
+      ...(description ? { whenToUse: description.slice(0, 1000) } : {}),
+      imported: {
+        path: args.file,
+        ...(limits.notKept.length > 0 ? { notKept: limits.notKept } : {})
+      }
     }
   }
 }

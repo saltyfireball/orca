@@ -19,7 +19,10 @@ import {
   isForkAgentProfileName,
   type ForkAgentProfile
 } from '../../shared/fork/agent-profiles/agent-profiles-types'
-import { forkAgentProfileHash } from '../../shared/fork/agent-profiles/agent-profiles-resolve'
+import {
+  forkAgentProfileConfirmHash,
+  forkAgentProfileNeedsConfirm
+} from '../../shared/fork/agent-profiles/agent-profiles-resolve'
 import {
   FORK_AGENT_DEFINITION_DIRS,
   importForkAgentDefinition
@@ -28,6 +31,11 @@ import type {
   ForkAgentProfileRow,
   ForkAgentProfilesListResult
 } from '../../shared/fork/agent-profiles/agent-profiles-wire'
+import {
+  forkAgentProfileNotKept,
+  formatForkAgentProfile,
+  formatForkAgentProfiles
+} from './agent-profile-format'
 
 /** Output for a result the CLI built itself, in the shape `--json` prints for host results. */
 function printLocal<T>(ctx: HandlerContext, result: T, format: (value: T) => string): void {
@@ -77,51 +85,6 @@ function nameArg(ctx: HandlerContext): string {
     )
   }
   return name
-}
-
-function fields(row: ForkAgentProfileRow): string {
-  return [
-    `agent ${row.agent}`,
-    row.model ? `model ${row.model}` : null,
-    row.effort ? `effort ${row.effort}` : null,
-    row.permissionMode ? `permission ${row.permissionMode}` : null,
-    row.mcpProfile ? `mcp ${row.mcpProfile}` : null,
-    row.account ? `account ${row.account}` : null
-  ]
-    .filter(Boolean)
-    .join(', ')
-}
-
-export function formatForkAgentProfiles(result: ForkAgentProfilesListResult): string {
-  if (result.profiles.length === 0) {
-    return 'No agent profiles. Make one with `orca profiles set <name> --agent <agent> ...` or `orca profiles import`.'
-  }
-  return result.profiles
-    .map((row) =>
-      [
-        `${row.name}: ${fields(row)}${row.needsConfirm ? ' [imported: confirm before use]' : ''}`,
-        ...(row.whenToUse ? [`  when to use: ${row.whenToUse}`] : [])
-      ].join('\n')
-    )
-    .join('\n')
-}
-
-export function formatForkAgentProfile(row: ForkAgentProfileRow): string {
-  return [
-    `name: ${row.name}`,
-    ...fields(row)
-      .split(', ')
-      .map((part) => part.replace(' ', ': ')),
-    `max permission: ${row.maxPermission}`,
-    ...(row.whenToUse ? [`when to use: ${row.whenToUse}`] : []),
-    ...(row.imported
-      ? [
-          `imported from: ${row.imported.path}`,
-          `confirmed: ${row.needsConfirm ? `no (run \`orca profiles confirm ${row.name}\`)` : 'yes'}`
-        ]
-      : []),
-    ...(row.preamble ? ['preamble:', row.preamble] : [])
-  ].join('\n')
 }
 
 async function findRow(ctx: HandlerContext, name: string): Promise<ForkAgentProfileRow> {
@@ -174,8 +137,20 @@ async function setProfile(ctx: HandlerContext): Promise<void> {
     } else {
       delete next.preamble
     }
-    // Text the user typed is theirs; only the imported copy needs a confirm.
-    delete next.imported
+    // Text the user typed is theirs; only the imported copy needs a confirm. The limits the
+    // definition had are still not kept, so that list stays, confirmed only if it was before.
+    const notKept = current ? forkAgentProfileNotKept(current) : []
+    if (current?.imported && notKept.length > 0) {
+      const wasConfirmed = !forkAgentProfileNeedsConfirm(current)
+      const kept = {
+        ...(next as ForkAgentProfile),
+        imported: { path: current.imported.path, notKept }
+      }
+      const hash = forkAgentProfileConfirmHash(kept)
+      next.imported = { ...kept.imported, ...(wasConfirmed && hash ? { confirmedHash: hash } : {}) }
+    } else {
+      delete next.imported
+    }
   }
   if (!next.agent) {
     throw new RuntimeClientError('invalid_argument', 'A new profile needs --agent.')
@@ -231,6 +206,7 @@ async function importProfiles(ctx: HandlerContext): Promise<void> {
   const profiles = await saved(ctx)
   const taken = new Set(profiles.map((entry) => entry.name))
   const imported: string[] = []
+  const notKept: Record<string, string[]> = {}
   const skipped: string[] = []
   for (const target of targets) {
     const source = await readFile(target.file, 'utf8')
@@ -250,17 +226,24 @@ async function importProfiles(ctx: HandlerContext): Promise<void> {
       taken.add(result.profile.name)
       profiles.push(result.profile)
       imported.push(result.profile.name)
+      if (forkAgentProfileNotKept(result.profile).length > 0) {
+        notKept[result.profile.name] = forkAgentProfileNotKept(result.profile)
+      }
     }
   }
   if (imported.length > 0) {
     await save(ctx, profiles)
   }
-  const report = { imported, skipped }
+  const report = { imported, notKept, skipped }
   printLocal(ctx, report, (value) =>
     [
       imported.length
         ? `Imported ${imported.join(', ')}. Read each with \`orca profiles show <name>\`, then \`orca profiles confirm <name>\`.`
         : 'Nothing imported.',
+      ...Object.entries(value.notKept).map(
+        ([name, lines]) =>
+          `${name} does not keep these limits of its definition, so it needs a confirm before use: ${lines.join('; ')}`
+      ),
       ...value.skipped.map((line) => `skipped ${line}`)
     ].join('\n')
   )
@@ -295,23 +278,23 @@ export const FORK_AGENT_PROFILE_HANDLERS: Record<string, CommandHandler> = {
     if (!profile) {
       throw new RuntimeClientError('not_found', `No agent profile "${name}".`)
     }
-    if (!profile.imported || !profile.preamble) {
+    const hash = forkAgentProfileConfirmHash(profile)
+    if (!profile.imported || !hash) {
       throw new RuntimeClientError(
         'invalid_argument',
-        `Profile ${name} has no imported preamble to confirm.`
+        `Profile ${name} has no imported preamble or dropped limits to confirm.`
       )
     }
-    const confirmed = {
-      ...profile,
-      imported: {
-        ...profile.imported,
-        confirmedHash: forkAgentProfileHash(profile.preamble)
-      }
-    }
+    const confirmed = { ...profile, imported: { ...profile.imported, confirmedHash: hash } }
     await save(
       ctx,
       profiles.map((entry) => (entry.name === name ? confirmed : entry))
     )
-    printLocal(ctx, { confirmed: name }, () => `Confirmed ${name}.`)
+    const dropped = forkAgentProfileNotKept(profile)
+    printLocal(ctx, { confirmed: name, notKept: dropped }, () =>
+      dropped.length > 0
+        ? `Confirmed ${name}. It runs without these limits of its definition: ${dropped.join('; ')}`
+        : `Confirmed ${name}.`
+    )
   }
 }

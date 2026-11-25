@@ -71,13 +71,15 @@ export const FORK_AGENT_PROFILE_COMMAND_SPECS: CommandSpec[] = [
       'With no path it reads the three folders in the current directory and in your home directory. A path is one definition file or a folder of them.',
       "The file's prompt becomes the profile's preamble and its description the when-to-use note. Markdown files need frontmatter or a body; Codex files are TOML.",
       'An imported preamble is shown by `orca profiles show` and is not used until you run `orca profiles confirm <name>`. Editing it asks again.',
+      'permissionMode becomes the profile mode (ask when Orca cannot read it). Limits a profile cannot carry (tools, disallowedTools, mcpServers, hooks, a Codex sandbox or approval field) are listed as not kept, and the profile needs a confirm. A file that does not parse is skipped.',
       'Existing profiles with the same name are left alone.'
     ],
     examples: ['orca profiles import', 'orca profiles import .claude/agents/reviewer.md']
   },
   {
     path: ['profiles', 'confirm'],
-    summary: "Confirm an imported profile's preamble so launches may use it",
+    summary:
+      "Confirm an imported profile's preamble and the limits it did not keep, so launches may use it",
     usage: 'orca profiles confirm <name> [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'name'],
     positionalArgs: ['name'],
