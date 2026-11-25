@@ -909,6 +909,38 @@ ones `SLRM-123 `).
     retry or follow-up whose Task stored one, or a mode or account): that agent is already
     running, so nothing would apply; `all` is never refused. A launch that names none passes
     through unchanged.
+- **Bot tools off Claude's argv (BAD-821).** The Claude Agent SDK turns its `mcpServers` option
+  into one `--mcp-config <json>` argument, and `ps` shows every process's arguments to every
+  account on the host. A bot's command (stdio) tool carries its saved env values in that JSON, so
+  they were readable that way. Now every Claude launch through `openClaudeStreamJsonConnection`
+  (bot chats and the bot tool check) hands those servers over in a private launch file instead.
+  - **The file.** `forkClaudeMcpOffArgv` (`src/main/fork/mcp-profiles/mcp-bot-tools-launch.ts`)
+    writes the servers to `bot-<random>.json` in the MCP profiles' launch folder (0600, `wx`, in
+    a 0700 folder) and passes `--mcp-config <file>`. An in-process (`sdk`) server stays in
+    `mcpServers`: it has no values and the SDK serves it over its own channel.
+  - **One launch, both limits.** When the launch already names an `--mcp-config` (an MCP
+    profile's file, or the user's own in Settings, inline JSON or a path), its servers go into
+    the same file, so `--strict-mcp-config` from a profile still narrows to its kept servers plus
+    the bot's. A bot server wins a name both use.
+  - **Relayed tools** keep the `${ORCA_BOT_TOOLS_TOKEN}` form; Claude expands it from its env.
+  - **Removed and swept.** The file goes when that Claude process exits. A resume or restart is a
+    new launch and writes a new file. Bot files of any age are swept at start (the MCP profiles
+    install, also on orcad) and every file but a terminal's on quit, as before.
+  - **Fail closed.** A file that cannot be written (no launch folder on the host, a folder that
+    is not a plain folder, an `--mcp-config` that cannot be read) leaves the tools out of the
+    launch, never on argv, and the session's instructions say they are off. Managed settings
+    that refuse `--mcp-config` still start the bot without its tools and say so (unchanged).
+  - **Sign-in mirror.** Claude's sign-in folder mirrors only a tool that signs in (an HTTP tool
+    without saved values). A command tool was mirrored too, so `claude mcp add-json` had its env
+    values on argv and Claude's config kept them; the mirror cleanup now removes such an entry.
+  - **Other agents, checked (not changed).** Codex gets a bot's tools as thread config in the
+    app-server's `thread/start` over stdin; OpenCode (and every ACP agent) as `mcpServers` of
+    ACP `session/new` over stdin; Pi as the `ORCA_PI_BOT_TOOLS` env variable its extension reads
+    and deletes. None puts a value in argv. Pi's env is readable only by the same account (as the
+    0600 file is), so none needs a follow-up.
+  - **SDK.** The pinned SDK (0.3.319) has no `mcpServersDelivery` option; a newer SDK and Claude
+    Code would be needed, with this file as the fallback for older Claude anyway, so the file is
+    the one path.
 - **Agent lifecycle, joined up (SLRM-2136).** The fork's chat lifecycle features now work as one
   set.
   - Memory pause queues instead of refusing: with "Pause new agents while over" (Memory) and the
@@ -3895,6 +3927,7 @@ Apply these in this order. Each one is a single commit.
 210. `BAD-815 A profile's Claude account pins a new workspace's startup agent (worktree create, an automation run in a new workspace, a terminal worker in a new worktree), or the start is refused naming the account`
 211. `BAD-819 Own pull request loop limit through the real wiring: the inbox row registers when the connector is made, a worker on a paired server reads as cannot tell, and no event but an automation.* start brings a chain`
 212. `BAD-816 Result schema: task-create and worker-start take --result-schema (draft-07, local $ref only, capped, refused at parse when unsupported); the worker sends its JSON value with worker_done --result-file, the completion contract checks and stores it with its rounds, escalation and inbox row, worker-read and run-show return it as data, retries inherit the schema not the value, and a paired server without orchestration.fork-result-schema.v1 (or on the attach protocol) is refused before any effect`
+213. `BAD-821 A bot tool's saved env values stay off Claude's command line: every Claude launch's MCP servers go in a private launch file merged with the launch's own --mcp-config, removed when Claude exits, and the sign-in mirror holds only tools that sign in`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4139,6 +4172,13 @@ Upstream files only get short hooks, which keeps merges small:
   (`src/main/fork/chat-survive/chat-survive-registry.ts`). The file is at max-lines, so the hook
   replaces the `onMessage` line and its exit-error import comes through the same module
   (SLRM-2138).
+- Bot tools off argv hook (BAD-821): `openClaudeStreamJsonConnection` loads the SDK and
+  `forkClaudeMcpOffArgv` together, spreads its options instead of `launch.options`, and wraps its
+  `managed.onExit` handler with the delivery's `onExit`, which removes the launch file first
+  (`src/main/fork/mcp-profiles/mcp-bot-tools-launch.ts`, imported through
+  `src/main/fork/claude-stream-hooks.ts`). The import takes four more lines, so the file waives
+  max-lines. `claudeSignInFolder` (`bot-tools-host.ts`) mirrors only HTTP tools without saved
+  values, and `bot-tool-secret-scrub.ts` also removes a mirrored entry with env values.
 - Test runner PATH (SLRM-1394): `run-vitest.mjs` puts `node_modules/.bin` first on the Vitest
   PATH when it runs the pinned Bun. Under Bun the Claude SDK runs a script CLI with `bun`, and the
   pinned binary is `bun.exe`, so without the shim `claude-stop-ack-race.test.ts` and

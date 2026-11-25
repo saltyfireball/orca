@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Why: upstream keeps this file at the 300-line limit, and the fork's hook imports (FORK.md, SLRM-1394, BAD-821) need four more lines. */
 import { withOrcaClaudeChatEntrypoint } from '../../shared/agent-launch/startup/claude-chat-entrypoint'
 import { claudeStartupAnswerObservation } from './child-process/claude-startup-answer-observation'
 import type { ProviderProcessSpawner } from '../provider-process/provider-process-spawn'
@@ -22,8 +23,12 @@ import {
 } from './sdk-transport/claude-agent-sdk-user-message-queue'
 import type { ClaudeStructuredSdkOptions } from './structured/launch/claude-structured-launch-resolution'
 import { withProviderSpawnAbsence } from '../provider-process/provider-executable-missing'
-// Fork (SLRM-1394): the exit-error import comes through the fork hook module (max-lines).
-import { claudeStreamJsonExitError, forkConsumeClaudeMessage } from '../fork/claude-stream-hooks'
+// Fork (SLRM-1394, BAD-821): the exit-error import comes through the fork hook module (max-lines).
+import {
+  claudeStreamJsonExitError,
+  forkClaudeMcpOffArgv,
+  forkConsumeClaudeMessage
+} from '../fork/claude-stream-hooks'
 import { withObservedProviderExit } from '../native-chat/agent-session-wire/startup/structured-agent-session-failure-text'
 import type { ProviderProcessCloseOptions } from '../provider-process/provider-process-close'
 import { withLostProviderOutcome } from '../provider-process/provider-process-exit-status'
@@ -100,7 +105,7 @@ export async function openClaudeStreamJsonConnection(
   spawnImpl: ProviderProcessSpawner = spawnProcess,
   queryImpl?: typeof ClaudeAgentSdk.query
 ): Promise<ClaudeStreamJsonConnection> {
-  const { query } = await loadClaudeAgentSdk()
+  const [{ query }, mcp] = await Promise.all([loadClaudeAgentSdk(), forkClaudeMcpOffArgv(launch)])
   const startup = claudeStartupAnswerObservation(handlers.onStdout)
   const spawner = createClaudeCodeProcessSpawn(spawnImpl, process.platform, launch, startup.feed)
   // Always supply scrubbed env to prevent ambient auth leaks; only launch.env may pin CLAUDE_CONFIG_DIR.
@@ -114,7 +119,7 @@ export async function openClaudeStreamJsonConnection(
   const session = (queryImpl ?? query)({
     prompt: inbox.messages,
     options: {
-      ...launch.options,
+      ...mcp.options,
       cwd: launch.cwd,
       env: withOrcaClaudeChatEntrypoint(env, process.platform),
       pathToClaudeCodeExecutable: launch.pathToClaudeCodeExecutable,
@@ -239,7 +244,7 @@ export async function openClaudeStreamJsonConnection(
     }
   })()
 
-  managed.onExit(() => handleUnexpectedEnd())
+  managed.onExit(mcp.onExit(() => handleUnexpectedEnd()))
   child.on('error', (error) => {
     if (!closing && managed.rootVerdict !== 'exited') {
       void tree.reap()

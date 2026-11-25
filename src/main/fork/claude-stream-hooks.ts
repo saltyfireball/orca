@@ -1,10 +1,13 @@
-// Fork hooks for openClaudeStreamJsonConnection (FORK.md "Chat survive consumed hook"). That
+// Fork hooks for openClaudeStreamJsonConnection (FORK.md "Chat survive consumed hook", "Bot tools
+// off Claude's argv"). That
 // upstream file sits at max-lines, so its hook is one changed line and its exit-error import comes
 // through here with the hook: one import line, no added lines.
 import type { ProviderChild } from '../provider-process/provider-child'
 import { forkChatSurviveConsumed } from './chat-survive/chat-survive-registry'
 
 export { claudeStreamJsonExitError } from '../claude/sdk-transport/claude-stream-json-exit-error'
+// BAD-821: a launch's MCP servers go to Claude in a private file instead of its argv.
+export { forkClaudeMcpOffArgv } from './mcp-profiles/mcp-bot-tools-launch'
 
 /** Hands a message to the chat, then moves the chat-survive replay mark past it (SLRM-1394). */
 export function forkConsumeClaudeMessage(

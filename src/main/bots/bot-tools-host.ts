@@ -168,7 +168,8 @@ export async function claudeSignInFolder(
   allServers: readonly BotToolServer[]
 ): Promise<string> {
   // A tool with saved values goes through the relay and never signs in, so Claude's config never holds it.
-  const servers = allServers.filter((server) => !('url' in server && server.credential))
+  // Fork (BAD-821): nor does a command tool, whose env values `claude mcp add-json` would put on argv.
+  const servers = allServers.filter((server) => 'url' in server && !server.credential)
   const folder = cli.signInFolder
   await mkdir(folder, { recursive: true })
   if (!existsSync(join(folder, '.git'))) {

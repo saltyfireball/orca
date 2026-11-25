@@ -1,17 +1,18 @@
 // Copies of a tool's saved values an older Orca mirrored into the owner's Claude config, for signing
-// tools in; a relayed tool never signs in, so its mirror entry only holds a secret.
+// tools in; a relayed tool or a command tool never signs in, so its mirror entry only holds a secret.
 import { existsSync } from 'node:fs'
 import { claudeUnmirrorArgs, readClaudeMirror } from './bot-tools-claude'
 import { readBotToolServers } from './bot-tools-file'
 import { runBotToolsCli, type BotToolsCli } from './bot-tools-host'
 
+// Fork (BAD-821): a command tool's env values count too; an older Orca mirrored those as well.
 const carriesValues = (entry: unknown): boolean =>
   typeof entry === 'object' &&
   entry !== null &&
-  'headers' in entry &&
-  typeof entry.headers === 'object' &&
-  entry.headers !== null &&
-  Object.keys(entry.headers).length > 0
+  (['headers', 'env'] as const).some((key) => {
+    const values: unknown = key in entry ? Reflect.get(entry, key) : null
+    return typeof values === 'object' && values !== null && Object.keys(values).length > 0
+  })
 
 /** Removes the bot's mirrored servers that hold header values; throws when Claude can't remove one. */
 export async function scrubClaudeToolMirror(cli: BotToolsCli): Promise<void> {

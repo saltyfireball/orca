@@ -14,6 +14,9 @@ const STALE_MS = 24 * 60 * 60 * 1000
  *  month unused removes it; every launch rewrites it. */
 export const FORK_MCP_TERMINAL_FILE_PREFIX = 'terminal-'
 const TERMINAL_STALE_MS = 30 * STALE_MS
+/** BAD-821: a bot chat's tools for one Claude process, removed when it exits. Claude reads it at
+ *  start and a resume writes a new one, so the start sweep removes every one of any age. */
+export const FORK_MCP_BOT_FILE_PREFIX = 'bot-'
 
 export async function ensurePrivateFolder(folder: string): Promise<void> {
   await mkdir(folder, { recursive: true, mode: 0o700 })
@@ -56,7 +59,8 @@ export async function removeLaunchMcpConfig(folder: string, sessionId: string): 
   }
 }
 
-/** Removes files older than a day (or every file with `all`). Errors are ignored. */
+/** Removes files older than a day and every bot file (or every file but a terminal's with `all`).
+ *  Errors are ignored. */
 export async function sweepLaunchMcpConfigs(
   folder: string,
   options: { all?: boolean; now?: number } = {}
@@ -80,7 +84,8 @@ export async function sweepLaunchMcpConfigs(
         continue
       }
       const stale = terminal ? TERMINAL_STALE_MS : STALE_MS
-      if (!options.all && now - (await stat(path)).mtimeMs < stale) {
+      const bot = name.startsWith(FORK_MCP_BOT_FILE_PREFIX)
+      if (!options.all && !bot && now - (await stat(path)).mtimeMs < stale) {
         continue
       }
       await rm(path, { force: true })
