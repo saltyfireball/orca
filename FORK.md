@@ -5364,7 +5364,7 @@ Upstream files only get short hooks, which keeps merges small:
   `structured-agent-session-entry-delegates.ts` calls `forkPauseAllHeldLaunchHost(context)`, so
   resume-all can start a held launch (`src/main/fork/pause-all/pause-all-held-launches.ts`, its
   note in `pause-all-held-notes.ts`); `structured-agent-session-conversation-open.ts` passes
-  `forkKeepUnsent` in `recover` (type `JournalOpenRecover` in `journal-store-contracts.ts`, used by
+  `forkKeepUnsent` in `recover` (type `JournalOpenRecover` in `journal-store-contracts.ts`, through
   `journal-sql-database.ts` and `journal-writer-command.ts`) and `journal-sql-open-command.ts` then
   takes its opening point from `pause-all-open-before-unsent.ts`, which reads the now exported
   `recoverableSubmissions` (`journal-domain-input-recovery.ts`). The
