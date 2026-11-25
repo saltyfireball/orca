@@ -193,6 +193,7 @@ export function releaseForkPauseAllBotMail(runtime: PauseAllBotMailRuntime): num
 }
 
 const installed = new WeakSet<object>()
+const started = new WeakSet<object>()
 const uninstalls = new Set<() => void>()
 
 /** Releases held mail when a switch released meanwhile (the app down, or no chat host yet) left the
@@ -213,15 +214,20 @@ function releaseMarked(runtime: PauseAllBotMailRuntime): void {
 export function installForkPauseAllBotMail(runtime: PauseAllBotMailRuntime, atStart = false): void {
   if (atStart) {
     releaseMarked(runtime)
+    if (!started.has(runtime)) {
+      started.add(runtime)
+      uninstalls.add(
+        onStructuredAgentSessionHostChanged(() => {
+          // After the install that told us has finished.
+          setTimeout(() => releaseMarked(runtime), 0).unref?.()
+        })
+      )
+    }
   }
   if (installed.has(runtime)) {
     return
   }
   installed.add(runtime)
-  const stopHost = onStructuredAgentSessionHostChanged(() => {
-    // After the install that told us has finished.
-    setTimeout(() => releaseMarked(runtime), 0).unref?.()
-  })
   const stopSwitch = onForkPauseAllChanged((state) => {
     if (!state.engaged) {
       try {
@@ -231,7 +237,7 @@ export function installForkPauseAllBotMail(runtime: PauseAllBotMailRuntime, atSt
       }
     }
   })
-  uninstalls.add(stopHost).add(stopSwitch)
+  uninstalls.add(stopSwitch)
 }
 
 /** Tests. */
