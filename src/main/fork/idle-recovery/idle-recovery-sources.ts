@@ -12,7 +12,7 @@ import type {
  * idle recovery off too; answer and pause reach the source when the request names it.
  */
 export type ForkInboxSource = {
-  id: 'babysit' | 'contract' | 'nudge' | 'goal'
+  id: 'babysit' | 'contract' | 'nudge' | 'goal' | 'hops'
   items: () => Promise<ForkIdleRecoveryInboxItem[]>
   /** Null when the source has no row for the chat. */
   answer: (chatId: string, text: string) => Promise<ForkIdleRecoveryAnswerOutcome | null>

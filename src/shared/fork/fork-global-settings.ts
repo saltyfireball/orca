@@ -48,6 +48,7 @@ import type { ForkGoalLoopSettings } from './goal-loop'
 import type { ForkWorkerRetrySettings } from './worker-retry'
 import type { ForkPauseAllSettings } from './pause-all'
 import type { ForkAutomationChainSettings } from '../automation-chain-triggers'
+import type { ForkBotRoomHopSettings } from './bot-room-hops'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -129,6 +130,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkWorkerRetrySettings &
   /** Fork (BAD-685): pause all unattended work from one switch, here and on paired servers. */
   ForkPauseAllSettings &
+  /** Fork (BAD-801): the hop limit on chained bot hand-offs in group rooms. */
+  ForkBotRoomHopSettings &
   /** Fork (BAD-689): automations that start on another automation's run ending, and the chain depth limit. */
   ForkAutomationChainSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */

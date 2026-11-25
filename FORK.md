@@ -40,6 +40,49 @@ ones `SLRM-123 `).
 
 ## What the fork changes
 
+- **Bot room hop limit: chained bot hand-offs in a group room stop at a limit (BAD-801).** In a
+  group room, a member's reply that names another as @Name wakes it (`handOffGroupMentions`), so
+  two bots naming each other could go on until a person pressed Stop.
+  `forkBotRoomHopLimit` (Settings > Blackfish > Chats, "Bot room hop limit"; default 6, 0 is no
+  limit) caps the chain under one person's post:
+  - **The count.** A hop is one bot's reply waking another under the same post
+    (`rootRequestId`). It is read from the stored room lines, so a restart keeps it: a hand-off
+    line is one deeper than the line its speaker's turn served, a person's post (or any line that
+    starts a request) is 0, and a mail line (a peer reply, a worker report) adds no hop and carries
+    on from the latest hand-off under its post. A reply naming several members wakes them all at
+    the same depth: the count is the depth of the chain, not how many were woken.
+  - **At the limit.** The hand-off that would go past it wakes nobody: the reply stays in the
+    room, the turn is marked handed off to no one (a replayed end wakes nobody either), and the
+    hand-off is saved in `fork_bot_room_hop_holds` beside the room store. One Decision inbox entry
+    per post (`source: 'hops'`, a "Needs you" row) shows the last exchange (the reply that woke the
+    speaker and the speaker's own), however many members were named or held replies raced in.
+  - **Continue and Dismiss.** Continue (the entry's button, or any `orca inbox answer` to it) wakes
+    the members each held reply named, as the hand-off would have (a member Stopped since stays
+    held by Stop), once: the hold is claimed (`continuing`) before it runs, so a second or racing
+    Continue resumes nothing. The woken lines are hop 1 of a fresh count. Dismiss leaves the room
+    as it is. Both tell every open window's inbox to read again.
+  - **A quit in the middle of a Continue.** The next start settles a `continuing` hold by what the
+    room stored: when its woken lines are there it is continued (nobody is woken twice), and when
+    they are not the entry is back in the inbox, its turn marked handed off to no one, so the
+    owner can Continue again. A person's post in the room starts a new chain either way.
+  - **Moot.** A later person post in the room (which starts its own count), or a Stop of every
+    member the held replies named, takes the entry off; the room's change event settles it.
+    Removing a room drops its holds (on the removal and at each start).
+  - **Where it shows.** The Decision inbox is on while the limit is on and bots are on, so the
+    entry shows with idle recovery off (it is a "Needs you" row in the Needs you list too). Each
+    computer lists its own rooms: a room on a paired server is held there and listed by that
+    server's `orca inbox list`, where `orca inbox answer hops:<post> continue` continues it; the
+    desktop's inbox, like its other sources, lists this computer only. The phone has no Decision
+    inbox: the held reply shows in the room, and a post from the phone starts a new count.
+  - **Mail.** A bot that writes to another by mail (`orca orchestration send`) instead of @Name
+    adds no hop, so two bots mailing each other are not stopped by this limit (only by Stop).
+  - A room that never reaches the limit runs exactly as before.
+  - Code is in `src/main/fork/bot-room-hops/`, `src/shared/fork/bot-room-hops.ts` and
+    `src/renderer/src/fork/bot-room-hops/`; `decision-inbox-store.ts` turns the inbox on. The
+    tests drive two bots naming each other through the real room store, runtime, hand-off and
+    inbox registry, with replies brought in by `noteBotGroupMemberReply` from a chat journal, over
+    a database file closed and opened again.
+
 - **Needs you list: one list of who needs the owner, from anywhere (BAD-759).** The owner could
   reach the bots' Needs you items only through a bot's Home tab, and the Decision inbox was an
   unlabelled sidebar icon. `forkNeedsYou` (on; Settings > Blackfish, Idle recovery) adds one list
@@ -3620,6 +3663,7 @@ Apply these in this order. Each one is a single commit.
 199. `BAD-798 A Task made with task-create and started with worker-start --task --on a server that owns its workers carries its done checks and review there, a server that cannot take them is refused before any effect, a folder:<id> workspace runs its command checks in its folder, and an attached worker's review goes to the other provider`
 200. `BAD-800 Agent profiles keep their MCP limit: automations create --profile stores the MCP profile on the automation and every run applies it (refused when it cannot, or once it is deleted), the + menu and automation dialog refuse a profile whose MCP limit a UI start cannot carry, and a chat account pin that cannot be saved is a note in the chat`
 201. `BAD-799 Pause all holds the restart resume of terminal workers as offers that say why and that resume-all resumes once, and refuses a terminal worker-start with the pause reason`
+202. `BAD-801 Bot room hop limit: chained bot hand-offs under one person post stop at forkBotRoomHopLimit (default 6, 0 none), counted by chain depth from the stored lines, with one Decision inbox entry holding the last exchange and a Continue that resumes the held hand-off once with a fresh count; a later person post makes it moot`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5087,6 +5131,14 @@ Upstream files only get short hooks, which keeps merges small:
   `vitest-caller-identity-env-setup.ts` lists more session variables to clear. Stock tests edited:
   `filesystem-quick-open-options.integration.test.ts`. The reviewer gate change is in the fork file
   `reviewer-gate-live.ts`, so no upstream hook.
+- Bot room hop limit (BAD-801), small edits in stock files: `bot-group-mention-handoffs.ts` asks
+  `forkHoldsBotRoomHandOff` before it reserves the woken turns and, when held, marks the turn
+  handed off to no one (one `if`); `bot-group-runtime.ts` calls `installForkBotRoomHops` in the
+  `BotGroupRuntime` constructor and `forkBotRoomHopsChanged` in `changed()`. The Decision inbox
+  wire (`idle-recovery-wire.ts`, `idle-recovery-sources.ts`) takes the `hops` source,
+  `ForkDecisionInboxRow.tsx` gives it Continue and Dismiss, `decision-inbox-store.ts` keeps the
+  inbox on while the limit is, `inbox-format.ts` labels it, and `fork-global-settings.ts`
+  intersects the setting; the settings catalog is regenerated.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

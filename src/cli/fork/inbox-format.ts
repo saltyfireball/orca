@@ -38,6 +38,9 @@ function kindLabel(item: ForkIdleRecoveryInboxItem): string {
   if (item.source === 'goal') {
     return 'goal'
   }
+  if (item.source === 'hops') {
+    return 'bot-room-hops'
+  }
   if (item.verdict === 'guard') {
     return 'guard-paused'
   }

@@ -15,6 +15,7 @@ import { runKeyedSerializedOperation } from '../../shared/concurrency/keyed-seri
 import { deliverTurn } from './bot-group-delivery'
 import { reserveGroupTurns } from './bot-group-turn-reservation'
 import type { BotGroupRuntime } from './bot-group-runtime'
+import { forkHoldsBotRoomHandOff } from '../fork/bot-room-hops/bot-room-hop-hold'
 
 // GFM, as replies render: table cells end inline code at a pipe.
 const markdown = unified().use(remarkParse).use(remarkGfm)
@@ -104,6 +105,11 @@ export async function handOffGroupMentions(
     const targets = named.map(({ id }) => id)
     if (targets.length === 0) {
       // Saved empty too: a replay after a named member resumes or joins still wakes no one.
+      markHandedOff(groups, message.id, turn.operationId, [])
+      return []
+    }
+    // Fork (BAD-801): past the hop limit nobody is woken; the owner's Continue resumes it.
+    if (forkHoldsBotRoomHandOff(groups, message, turn, reply, targets)) {
       markHandedOff(groups, message.id, turn.operationId, [])
       return []
     }

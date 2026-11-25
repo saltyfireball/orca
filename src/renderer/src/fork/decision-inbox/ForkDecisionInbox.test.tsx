@@ -83,7 +83,7 @@ describe('with the Needs you list on (BAD-759)', () => {
 
 describe('with idle recovery off', () => {
   it('shows no button and no dialog, and never touches the bridge', () => {
-    state.current.settings = { forkNeedsYou: false }
+    state.current.settings = { forkNeedsYou: false, forkBotRoomHopLimit: 0 }
     const bridge = installFakeBridge([inboxItem({})])
     const view = render(<App />)
     act(() => openForkDecisionInbox())
@@ -94,7 +94,7 @@ describe('with idle recovery off', () => {
   })
 
   it('offers no palette entry', () => {
-    state.current.settings = { forkNeedsYou: false }
+    state.current.settings = { forkNeedsYou: false, forkBotRoomHopLimit: 0 }
     installFakeBridge()
     const actions = getForkDecisionInboxQuickActions()
     // The third is the letters history (SLRM-2389): this fake window has no letters bridge.
@@ -103,6 +103,59 @@ describe('with idle recovery off', () => {
       false,
       false
     ])
+  })
+})
+
+describe('a bot room chain held at the hop limit (BAD-801)', () => {
+  const held = inboxItem({
+    chatId: 'hops:post-1',
+    agent: 'Bo',
+    title: 'Harbor: bots stopped after 6 hand-offs',
+    workspace: '',
+    worktreeId: null,
+    question: 'Bo named Ada after 6 bot hand-offs under one post, so nobody was woken.',
+    source: 'hops'
+  })
+
+  it('shows with idle recovery off, with Continue and Dismiss and no text box', async () => {
+    state.current.settings = { forkNeedsYou: false }
+    const bridge = installFakeBridge([held])
+    const dialog = await openDialog()
+    expect(await screen.findByText(held.title)).toBeTruthy()
+    expect(dialog.querySelector('textarea')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Go to chat' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Send' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() =>
+      expect(bridge.answer).toHaveBeenCalledWith({
+        chatId: 'hops:post-1',
+        text: 'continue',
+        source: 'hops'
+      })
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }))
+    await waitFor(() =>
+      expect(bridge.pause).toHaveBeenCalledWith({
+        chatId: 'hops:post-1',
+        paused: true,
+        source: 'hops'
+      })
+    )
+  })
+
+  it('stays off with the hop limit off or bots off', () => {
+    for (const settings of [
+      { forkNeedsYou: false, forkBotRoomHopLimit: 0 },
+      { forkNeedsYou: false, botsEnabled: false }
+    ]) {
+      state.current.settings = settings
+      const bridge = installFakeBridge([held])
+      const view = render(<App />)
+      expect(view.container.textContent).toBe('')
+      expect(bridge.inbox).not.toHaveBeenCalled()
+      cleanup()
+    }
   })
 })
 

@@ -46,6 +46,10 @@ import { noteGroupTurnMailed } from './bot-group-mention-handoffs'
 import { botGroupRoomChat } from './bot-group-automation-run'
 import { nameBotGroupMemberChats } from './bot-group-member-chat-names'
 import type { BotChatLookup } from '../runtime/integrations/automations/runtime-automation-target'
+import {
+  forkBotRoomHopsChanged,
+  installForkBotRoomHops
+} from '../fork/bot-room-hops/bot-room-hop-inbox'
 
 const runtimes = new WeakMap<OrcaRuntimeService, BotGroupRuntime>()
 /** `homeChat`, also finding the group rooms a bot is a member of, where its automations may run. */
@@ -153,11 +157,13 @@ export class BotGroupRuntime {
 
   constructor(readonly runtime: OrcaRuntimeService) {
     this.store = new BotGroupStore(runtime.getOrchestrationDb().db)
+    installForkBotRoomHops(this)
   }
 
   /** Readers re-read; open rooms of `groupId` only, when it is given (a change inside one room). */
   changed(groupId?: string): void {
     this.runtime.notifyBotGroupsChanged(groupId === undefined ? undefined : [groupId])
+    forkBotRoomHopsChanged(this, groupId)
   }
 
   /** Names the members' chats after their rooms, once `group` is saved with new members or names. */

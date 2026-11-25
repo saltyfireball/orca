@@ -1,7 +1,7 @@
 // Decision inbox (FORK.md "Idle recovery"): the one live copy of the inbox the toolbar button and
 // the dialog share. It reads `window.api.forkIdleRecovery` when its first reader arrives and
 // again on each change event; nothing polls. With no reader it holds nothing and listens to
-// nothing, which is the case for as long as `forkIdleSweepMode` is 'off'.
+// nothing, which is the case for as long as the inbox is off (`forkDecisionInboxOn`).
 import { useSyncExternalStore } from 'react'
 import { useAppStore } from '@/store'
 import {
@@ -13,6 +13,8 @@ import {
   useForkAgentGuardPausedCount
 } from '../agent-guards/agent-guards-store'
 import { readPrBabysitSettings } from '../../../../shared/fork/pr-babysit'
+import { forkBotRoomHopLimit } from '../../../../shared/fork/bot-room-hops'
+import { isBotsEnabled } from '../../../../shared/bots-switch'
 import type {
   ForkIdleRecoveryApi,
   ForkIdleRecoveryInboxResult
@@ -57,13 +59,16 @@ export function useForkIdleRecoveryMode(): IdleRecoveryMode {
 }
 
 type InboxSettings = Parameters<typeof readIdleRecoverySettings>[0] &
-  Parameters<typeof readPrBabysitSettings>[0]
+  Parameters<typeof readPrBabysitSettings>[0] &
+  Parameters<typeof isBotsEnabled>[0] & { forkBotRoomHopLimit?: number }
 
-/** The inbox is on while idle recovery is, or while the PR babysitter has a repo (SLRM-2386). */
+/** The inbox is on while idle recovery is, while the PR babysitter has a repo (SLRM-2386), or while
+ *  a bot room's held chain can wait in it (BAD-801: bots on and a hop limit set). */
 export function forkDecisionInboxOn(settings: InboxSettings): boolean {
   return (
     readIdleRecoverySettings(settings).mode !== 'off' ||
-    readPrBabysitSettings(settings).repos.length > 0
+    readPrBabysitSettings(settings).repos.length > 0 ||
+    (isBotsEnabled(settings) && forkBotRoomHopLimit(settings) > 0)
   )
 }
 

@@ -32,6 +32,9 @@ function detailLine(item: ForkIdleRecoveryInboxItem, now: number, t: Translate):
   if (item.source === 'goal') {
     return t('fork.decisionInbox.goalDetail', 'Goal loop')
   }
+  if (item.source === 'hops') {
+    return t('fork.decisionInbox.hopsDetail', 'Bot room hop limit')
+  }
   const parts = [
     item.kind === 'chat'
       ? t('fork.decisionInbox.kind.chat', 'Chat')
@@ -108,6 +111,12 @@ export function ForkDecisionInboxRow({
   const answerLabel = t('fork.decisionInbox.answerLabel', 'Answer to {{title}}', {
     title: item.title
   })
+  // A held bot room chain (BAD-801) takes no words: Continue or Dismiss.
+  const hops = item.source === 'hops'
+  const continueChain = (): void => {
+    setSending(true)
+    void actions.answer(item, 'continue').finally(() => setSending(false))
+  }
 
   return (
     <li className="flex flex-col gap-2 border-b border-border/50 py-3 text-sm last:border-b-0">
@@ -133,38 +142,40 @@ export function ForkDecisionInboxRow({
           {body}
         </p>
       ) : null}
-      <Textarea
-        className="min-h-14"
-        rows={2}
-        aria-label={answerLabel}
-        aria-describedby={body ? questionId : undefined}
-        placeholder={
-          waiting
-            ? t(
-                'fork.decisionInbox.answerPlaceholder',
-                'Your answer. Enter sends, Shift+Enter adds a line.'
-              )
-            : guarded
+      {hops ? null : (
+        <Textarea
+          className="min-h-14"
+          rows={2}
+          aria-label={answerLabel}
+          aria-describedby={body ? questionId : undefined}
+          placeholder={
+            waiting
               ? t(
-                  'fork.decisionInbox.guardPlaceholder',
-                  'Tell the agent how to go on; sending lifts the pause. Enter sends, Shift+Enter adds a line.'
+                  'fork.decisionInbox.answerPlaceholder',
+                  'Your answer. Enter sends, Shift+Enter adds a line.'
                 )
-              : t(
-                  'fork.decisionInbox.stalledPlaceholder',
-                  'Tell the agent how to go on. Enter sends, Shift+Enter adds a line.'
-                )
-        }
-        maxLength={FORK_IDLE_RECOVERY_MAX_ANSWER_CHARS}
-        disabled={sending}
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-            event.preventDefault()
-            send()
+              : guarded
+                ? t(
+                    'fork.decisionInbox.guardPlaceholder',
+                    'Tell the agent how to go on; sending lifts the pause. Enter sends, Shift+Enter adds a line.'
+                  )
+                : t(
+                    'fork.decisionInbox.stalledPlaceholder',
+                    'Tell the agent how to go on. Enter sends, Shift+Enter adds a line.'
+                  )
           }
-        }}
-      />
+          maxLength={FORK_IDLE_RECOVERY_MAX_ANSWER_CHARS}
+          disabled={sending}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+              event.preventDefault()
+              send()
+            }
+          }}
+        />
+      )}
       <div className="flex flex-wrap justify-end gap-1">
         <Button size="sm" variant="ghost" disabled={pausing} onClick={togglePause}>
           {guarded
@@ -173,18 +184,26 @@ export function ForkDecisionInboxRow({
               ? t('fork.decisionInbox.stopBabysit', 'Stop babysitting')
               : item.source === 'nudge'
                 ? t('fork.decisionInbox.stopNudge', 'Stop nudging')
-                : item.source === 'contract' || item.source === 'goal'
+                : item.source === 'contract' || item.source === 'goal' || hops
                   ? t('fork.decisionInbox.dismissContract', 'Dismiss')
                   : item.paused
                     ? t('fork.decisionInbox.resume', 'Resume recovery')
                     : t('fork.decisionInbox.pause', 'Pause recovery')}
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => actions.jump(item)}>
-          {t('fork.decisionInbox.jump', 'Go to chat')}
-        </Button>
-        <Button size="sm" disabled={!text || sending} onClick={send}>
-          {t('fork.decisionInbox.send', 'Send')}
-        </Button>
+        {hops ? (
+          <Button size="sm" disabled={sending} onClick={continueChain}>
+            {t('fork.decisionInbox.continueHops', 'Continue')}
+          </Button>
+        ) : (
+          <>
+            <Button size="sm" variant="ghost" onClick={() => actions.jump(item)}>
+              {t('fork.decisionInbox.jump', 'Go to chat')}
+            </Button>
+            <Button size="sm" disabled={!text || sending} onClick={send}>
+              {t('fork.decisionInbox.send', 'Send')}
+            </Button>
+          </>
+        )}
       </div>
     </li>
   )
