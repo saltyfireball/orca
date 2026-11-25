@@ -119,7 +119,8 @@ type WorktreeStartup<S> = {
 /**
  * BAD-800: the hook in a new workspace's startup agent, which builds its own command instead of
  * the terminal plan. Returns the arguments and session options the stock builder takes, with a
- * `--profile`'s capped mode applied and a Claude terminal's MCP profile narrowed, as a terminal's.
+ * `--profile`'s capped mode applied and a Claude terminal's MCP profile narrowed, as a terminal's,
+ * and (BAD-815) the env that pins the profile's Claude account to that terminal, as a terminal's.
  */
 export async function forkWorktreeStartupProfileInputs<S>(
   environment: WorktreeStartup<S>,
@@ -129,14 +130,18 @@ export async function forkWorktreeStartupProfileInputs<S>(
     shell?: AgentStartupShell
     launchRuntime: { pty: { terminalWindowsWslDistro?: string | null } } | Error
   }
-): Promise<{ agentArgs?: string | null; sessionOptions: S | undefined }> {
+): Promise<{
+  inputs: { agentArgs?: string | null; sessionOptions: S | undefined }
+  env?: Record<string, string>
+}> {
   const stockOptions =
     environment.sessionOptions ?? environment.toSessionOptions(environment.launchPreferences)
+  const startup: Launch & { startupAgent: TuiAgent; launchPreferences?: AgentLaunchPreferences } = {
+    startupAgent: agent,
+    ...(environment.launchPreferences ? { launchPreferences: environment.launchPreferences } : {})
+  }
   const applied = forkAgentProfileTerminalLaunch(
-    {
-      startupAgent: agent,
-      ...(environment.launchPreferences ? { launchPreferences: environment.launchPreferences } : {})
-    },
+    startup,
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: session options are a string-keyed record; the hook only adds the permission entry.
     stockOptions as Readonly<Record<string, unknown>> | undefined
   )
@@ -144,37 +149,43 @@ export async function forkWorktreeStartupProfileInputs<S>(
   const sessionOptions = (applied.sessionOptions ??
     environment.toSessionOptions(applied.opts.launchPreferences)) as S | undefined
   const stock = environment.agentArgs !== undefined ? { agentArgs: environment.agentArgs } : {}
+  const connectionId = getRepoSshConnectionId(environment.repo)
+  const wslDistro =
+    host.launchRuntime instanceof Error ? null : host.launchRuntime.pty.terminalWindowsWslDistro
+  const accountEnv = applied.opts.accountEnv
+  if (accountEnv) {
+    assertStartupAccountApplies(connectionId, wslDistro)
+  }
+  const withAccount = accountEnv ? { env: accountEnv } : {}
   const profile = currentForkMcpLaunchScope()?.profile
   if (!profile || profile === FORK_MCP_PROFILE_ALL || agent !== 'claude') {
-    return { ...stock, sessionOptions }
+    return { inputs: { ...stock, sessionOptions }, ...withAccount }
   }
-  const pin = currentForkAgentProfileLaunch()?.account
   const narrowed = await forkMcpTerminalLaunch(
-    {
-      ...stock,
-      ...(pin?.kind === 'claude'
-        ? {
-            accountEnv: {
-              [FORK_CLAUDE_TERMINAL_ACCOUNT_ENV]: pin.pin ?? FORK_CLAUDE_SYSTEM_DEFAULT
-            }
-          }
-        : {})
-    },
+    { ...stock, ...(accountEnv ? { accountEnv } : {}) },
     agent,
     {
-      workspace: {
-        path: environment.repo.path,
-        connectionId: getRepoSshConnectionId(environment.repo)
-      },
-      wslDistro:
-        host.launchRuntime instanceof Error
-          ? null
-          : host.launchRuntime.pty.terminalWindowsWslDistro,
+      workspace: { path: environment.repo.path, connectionId },
+      wslDistro,
       shell: resolveStartupShell(host.platform, host.shell),
       settings: environment.settings,
       // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: a string-keyed session option record.
       sessionOptions: sessionOptions as Readonly<Record<string, unknown>> | undefined
     }
   )
-  return { agentArgs: narrowed.agentArgs, sessionOptions }
+  return { inputs: { agentArgs: narrowed.agentArgs, sessionOptions }, ...withAccount }
+}
+
+/** BAD-815: the account pin reaches only a local, non-WSL pane, so elsewhere the start is refused. */
+function assertStartupAccountApplies(
+  connectionId: string | null | undefined,
+  wslDistro: string | null | undefined
+): void {
+  const launch = currentForkAgentProfileLaunch()
+  const where = connectionId ? 'it runs on a remote host' : wslDistro ? 'it runs inside WSL' : null
+  if (where && launch?.account?.kind === 'claude') {
+    throw new InvalidArgumentError(
+      `Profile "${launch.name}" runs on Claude account ${launch.account.label}, which cannot apply to this new workspace's agent: ${where}. Use a profile without an account there. Nothing was created.`
+    )
+  }
 }

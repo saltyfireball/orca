@@ -17,6 +17,7 @@ import { query } from '@anthropic-ai/claude-agent-sdk'
 import { forkMcpClaudeLaunchArgs } from './mcp-claude-launch'
 import { runInForkMcpLaunchScope } from './mcp-launch-scope'
 import { runInForkAgentProfileLaunch } from '../agent-profiles/agent-profile-launch-scope'
+import { FORK_CLAUDE_TERMINAL_ACCOUNT_ENV } from '../../../shared/fork/claude-account-move'
 import { buildWorktreeStartupForAgent } from '../../runtime/workspaces/startup/runtime-worktree-agent-startup'
 import { installForkMcpProfiles, uninstallForkMcpProfilesForTests } from './mcp-profiles-service'
 
@@ -80,14 +81,19 @@ function launchWithProfile(): Promise<TerminalCreateOptions> {
   )
 }
 
-/** A new workspace's startup agent under a `--profile` (mode accept-edits, MCP review-tools),
- *  which builds its own command (`worktree create --agent`, an automation's new_per_run). */
-async function newWorkspaceStartup(): Promise<string> {
-  const profile = { name: 'nightly', agent: 'claude', permissionMode: 'accept-edits' as const }
+/** A new workspace's startup agent under a `--profile` (mode accept-edits, MCP review-tools, a
+ *  Claude account), which builds its own command (`worktree create --agent`, a new_per_run run). */
+async function newWorkspaceStartup(connectionId: string | null = null) {
+  const profile = {
+    name: 'nightly',
+    agent: 'claude',
+    permissionMode: 'accept-edits' as const,
+    account: { kind: 'claude' as const, pin: 'acct-1', label: 'Work', ref: 'acct-1' }
+  }
   const built = await runInForkMcpLaunchScope({ kind: 'background', profile: 'review-tools' }, () =>
     runInForkAgentProfileLaunch(profile, () =>
       buildWorktreeStartupForAgent({
-        repo: { path: dir, connectionId: null, executionHostId: undefined },
+        repo: { path: dir, connectionId, executionHostId: undefined },
         agent: 'claude',
         prompt: PROMPT,
         // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the startup plan reads these settings fields only.
@@ -104,7 +110,7 @@ async function newWorkspaceStartup(): Promise<string> {
       })
     )
   )
-  return built.startup.command
+  return built.startup
 }
 
 /** The words after `claude` in a built command. */
@@ -247,7 +253,13 @@ describe('a Claude terminal with an MCP profile and a prompt (BAD-800)', () => {
   })
 
   it("applies the profile to a new workspace's startup agent, prompt kept", async () => {
-    const parsed = standInClaudeParse(claudeArgs(await newWorkspaceStartup()))
+    const startup = await newWorkspaceStartup()
+    // BAD-815: the pane account marker the spawn turns into that account's Claude folder.
+    expect(startup.env?.[FORK_CLAUDE_TERMINAL_ACCOUNT_ENV]).toBe('acct-1')
+    await expect(newWorkspaceStartup('ssh-1')).rejects.toThrow(
+      'Profile "nightly" runs on Claude account Work, which cannot apply to this new workspace\'s agent: it runs on a remote host.'
+    )
+    const parsed = standInClaudeParse(claudeArgs(startup.command))
     expect(parsed.prompt).toEqual([PROMPT])
     // Settings allow full access; the profile's capped mode wins, never wider.
     expect(parsed.values['--permission-mode']).toEqual(['acceptEdits'])
@@ -276,7 +288,7 @@ describe('a Claude terminal with an MCP profile and a prompt (BAD-800)', () => {
       const args = claudeArgs((await launchWithProfile()).command ?? '')
       for (const reading of [
         realClaudeReading('claude', args),
-        realClaudeReading('claude', claudeArgs(await newWorkspaceStartup())),
+        realClaudeReading('claude', claudeArgs((await newWorkspaceStartup()).command)),
         realClaudeReading('claude', [...(await chatArgv()), '--print'])
       ]) {
         expect(reading).not.toMatch(/MCP config file not found|read as a value of --mcp-config/)

@@ -194,18 +194,19 @@ export async function buildWorktreeStartupForAgent(
     throw new Error('Selected agent is disabled. Choose an enabled agent before creating.')
   }
   const { platform, shell, launchRuntime } = environment.getLaunchRuntime(agent)
+  // Fork (BAD-800, BAD-815): a --profile's mode, MCP profile and account apply as on a terminal.
+  const forkProfile = await forkWorktreeStartupProfileInputs(environment, agent, {
+    platform,
+    shell,
+    launchRuntime
+  })
   const resolvedInputs = resolveAgentStartupPlanInputs({
     agent,
     settings,
     platform,
     shell,
     isRemote: repoIsRemote(repo),
-    // Fork (BAD-800): a --profile's mode and MCP profile apply as on a terminal (FORK.md).
-    ...(await forkWorktreeStartupProfileInputs(environment, agent, {
-      platform,
-      shell,
-      launchRuntime
-    })),
+    ...forkProfile.inputs,
     ...(environment.extraAgentArgs ? { extraAgentArgs: environment.extraAgentArgs } : {}),
     ...(environment.suppressStartupUpdatePrompt ? { suppressStartupUpdatePrompt: true } : {})
   })
@@ -248,7 +249,9 @@ export async function buildWorktreeStartupForAgent(
       ...(startupPlan.startupCommandDelivery
         ? { startupCommandDelivery: startupPlan.startupCommandDelivery }
         : {}),
-      ...(startupPlan.env ? { env: startupPlan.env } : {}),
+      ...(startupPlan.env || forkProfile.env
+        ? { env: { ...startupPlan.env, ...forkProfile.env } }
+        : {}),
       telemetry: agentStartedTelemetry(agent, environment.launchSource)
     },
     launchRuntime,

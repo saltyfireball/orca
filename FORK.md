@@ -853,8 +853,13 @@ ones `SLRM-123 `).
     dropped: Claude loaded every server, and with Settings allowing full access it started with
     `--dangerously-skip-permissions` although the CLI printed the profile's mode. That builder now
     gets the same mode and MCP arguments as a terminal (`forkWorktreeStartupProfileInputs`). A
-    profile's Claude account there picks the Claude folder the MCP file is read from; the
-    account's own pin on that path is as before. The file
+    profile's Claude account there picks the Claude folder the MCP file is read from and
+    (BAD-815) pins that agent to the account as a terminal's: the startup terminal gets the pane
+    account marker, so it runs on the profile's account while other panes follow the selected
+    one. This covers `worktree create --profile --agent`, an automation run in a new workspace
+    and a terminal worker started in a new worktree. Where the pin cannot reach (a workspace on a
+    remote host, or inside WSL) the start is refused naming the account, before the workspace is
+    made. The file
     holds only the kept servers' definitions (0600, never in argv), from the Claude folder of
     the terminal's pinned account or the default one. A resume replays its arguments, so the
     file is `launch/terminal-<hash of profile, Claude folder and folder>.json`, rewritten on each
@@ -3459,7 +3464,7 @@ ones `SLRM-123 `).
     through login(1) in the account's own home and profile), pairs the built CLI over the
     WebSocket and reads the arguments a stand-in `claude` got: automations create and its run,
     agent launch, worktree create and worker-start with a limited profile, a deleted profile, and a
-    run whose MCP profile is gone. With the install line taken out, every case fails but the deleted profile (the CLI's own resolve refuses that one either way).
+    run whose MCP profile is gone, and (BAD-815) the account pointer of a new workspace's agent. With the install line taken out, every case fails but the deleted profile (the CLI's own resolve refuses that one either way).
   - **MCP profile on every surface.** A start that names one (`--mcp-profile`, or a profile's)
     applies it to a Claude chat and a Claude terminal (see "MCP profiles", Terminals) and, with
     `--on`, on the server (see "MCP profiles", Paired servers). Where it cannot apply it is refused
@@ -3833,6 +3838,7 @@ Apply these in this order. Each one is a single commit.
 207. `BAD-822 A goal whose agent died says so: it ends as agent-lost with a Decision inbox row and the notify targets, once; only a chat or terminal a person closed, or a worker that reported done, ends quietly, and after a restart the missing window starts once the restore has finished`
 208. `BAD-819 Own pull request loop limit: a from=me pr_opened run started by a pull request another run of the same automation opened is one hop deeper and stops past forkAutomationChainMaxDepth, at most 5 own pull request starts per automation in 15 minutes, each stop a skipped run with the reason and one Decision inbox row`
 209. `BAD-800 orcad loads agent and MCP profiles from its own settings and user data folder, so --profile and --mcp-profile apply on a server, and a host that has not loaded them says so instead of calling a profile unknown`
+210. `BAD-815 A profile's Claude account pins a new workspace's startup agent (worktree create, an automation run in a new workspace, a terminal worker in a new worktree), or the start is refused naming the account`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5174,7 +5180,8 @@ Upstream files only get short hooks, which keeps merges small:
   after the create (`forkProjectLaunch`, `src/cli/fork/automation-mcp-profile-created.ts`); and
   `automation-scoped-list-client.ts` calls `assertForkAutomationMcpProfileCreated` after the
   create; `runtime-worktree-agent-startup.ts` (`buildWorktreeStartupForAgent`) takes its agent
-  arguments and session options from `forkWorktreeStartupProfileInputs` in place of its own two.
+  arguments and session options from `forkWorktreeStartupProfileInputs` in place of its own two,
+  and (BAD-815, 210) merges that hook's account env into the startup terminal's env.
   Proof: `mcp-launch-network-transport.test.ts` (real CLI client, E2EE WebSocket pairing,
   RPC server, automation methods and store, and the ipc subscribe handler) and
   `mcp-terminal-prompt-argv.test.ts` (the real terminal plan, fresh and resumed, a new

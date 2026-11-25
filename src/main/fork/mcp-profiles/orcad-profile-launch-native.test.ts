@@ -219,6 +219,7 @@ describe.skipIf(!enabled)('orcad loads agent and MCP profiles (release build)', 
       '--permission-mode',
       'accept-edits'
     ])
+    result(['profiles', 'set', 'own-account', '--agent', 'claude', '--account', 'system'])
     result(['repo', 'add', '--path', repo])
   }, 180_000)
 
@@ -303,6 +304,24 @@ describe.skipIf(!enabled)('orcad loads agent and MCP profiles (release build)', 
     expect(run.argv.join(' ')).toContain('--permission-mode acceptEdits')
     expect(run.argv).not.toContain('--dangerously-skip-permissions')
     expect(run.argv).not.toContain('--strict-mcp-config')
+  }, 120_000)
+
+  it("BAD-815: worktree create --profile pins the new workspace agent to the profile's account", async () => {
+    result([
+      'worktree',
+      'create',
+      '--repo',
+      `path:${repo}`,
+      '--name',
+      'try-account',
+      '--profile',
+      'own-account',
+      '--agent',
+      'claude'
+    ])
+    const pinned = await startIn('try-account')
+    expect(pinned.pointer).toContain(join('claude-profiles', 'fork-pane-pins'))
+    expect((await startIn('try-mode')).pointer).not.toContain('fork-pane-pins')
   }, 120_000)
 
   it('orchestration worker-start --profile narrows the worker and applies the mode', async () => {
