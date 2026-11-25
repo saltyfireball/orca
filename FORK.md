@@ -893,6 +893,12 @@ ones `SLRM-123 `).
     host's instance lock holds, so two hosts never share one. The same folder rules hold there:
     files 0600 in a 0700 folder, old ones swept at start, chat files swept and the chat state
     written in orcad's shutdown cleanup, terminal files kept for a resume.
+    A default-run test (`src/main/fork/agent-profiles/profiles-host-load.test.ts`) covers it
+    without a build: the launch scope refuses a `--profile` start and a Task retry as "not
+    loaded" on a host without the install, `installForkHeadlessHost` loads both, and the real
+    `activateBackendRuntime`, every main-process module it imports a stand-in but the fork's
+    headless install, has them loaded when its RPC server starts. Taking out the install, its
+    activation call or either `assertLoaded` call fails it.
   - **Start-up order (BAD-800).** Profiles count as loaded from the install call on; the load
     (chat state read, old files swept) settles after. A chat or terminal start that arrives in
     between waits for it instead of running with every server, and a choice noted then is kept
