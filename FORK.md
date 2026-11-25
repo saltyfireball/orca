@@ -3295,6 +3295,26 @@ ones `SLRM-123 `).
     scheduled and is looked at again every 30 seconds; worker launches wait in the agent launch
     queue even when the queue is off ("paused by pause-all" shows as the held reason); a card
     routed to a bot (`fork.cardRoute.start`) is refused.
+  - **Terminal workers (BAD-799).** A restart's resume of a terminal worker (upstream's, under
+    Resume work on restart) sends no continue prompt: the worker becomes a restart offer whose line
+    says "Paused by pause-all at restart: `orca resume-all` resumes it", and the held Dispatch ids
+    are noted in `fork-pause-all-restart-holds.json` (mode 0600). Resuming resumes exactly those,
+    once: the note is cleared first and the Dispatch's own offered-to-resumed claim refuses a second
+    resume, also after more restarts while paused. Nothing is released before a start has placed
+    its restored terminals (upstream's `settleStartup`), so a held worker is never reopened beside a
+    pane that restores it; a switch released while the app was down, or by `resume-all` relayed
+    from another machine, releases them then. A released worker whose resume fails goes back to
+    being an offer a person can resume, instead of failing its Dispatch. A worker already offered
+    for another reason (the setting was off) stays the person's, and with the setting turned off
+    meanwhile the note is dropped and the offers stay. A damaged note releases nothing. A terminal worker-start (one that
+    would launch a terminal agent; `--terminal` reusing a running one is a message, not a launch)
+    is refused with the pause reason and `orca resume-all` before any Task or Dispatch is written,
+    code `paused_by_pause_all`: a terminal agent has no provider start for the launch queue to
+    hold, so holding it would need a second queue. A chat start that falls back to a terminal after
+    its Dispatch exists fails with the same reason (in a new worktree, the created workspace stays
+    with a recovery shell, as for any start that fails after creating it; a start paused after its
+    early check but before its worktree exists creates none). A start on a paired server runs there and
+    obeys that server's own switch.
   - **What it never stops.** A person's own chats, sends and launches, "Run now" on an automation,
     `orca limits resume-now`, answering the Decision inbox, and a message an agent sends to a chat
     that already exists. A bot request that opens a new conversation for another bot is not gated.
@@ -3599,6 +3619,7 @@ Apply these in this order. Each one is a single commit.
 198. `BAD-764 Command guards read every Claude tool that takes a shell command (Monitor and PowerShell beside Bash) on both surfaces, and a chat not known to the app shows as unguarded, counted only while it runs`
 199. `BAD-798 A Task made with task-create and started with worker-start --task --on a server that owns its workers carries its done checks and review there, a server that cannot take them is refused before any effect, a folder:<id> workspace runs its command checks in its folder, and an attached worker's review goes to the other provider`
 200. `BAD-800 Agent profiles keep their MCP limit: automations create --profile stores the MCP profile on the automation and every run applies it (refused when it cannot, or once it is deleted), the + menu and automation dialog refuse a profile whose MCP limit a UI start cannot carry, and a chat account pin that cannot be saved is a note in the chat`
+201. `BAD-799 Pause all holds the restart resume of terminal workers as offers that say why and that resume-all resumes once, and refuses a terminal worker-start with the pause reason`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4887,6 +4908,18 @@ Upstream files only get short hooks, which keeps merges small:
   `fork.pauseAll.set` and `.status` are spread into `FORK_BRANCH_CLASHES_METHODS`, so
   `rpc-method-registry.ts` is untouched; `rpc-params-catalog.generated.ts` is regenerated. The one
   setting is intersected in `fork-global-settings.ts`; the settings catalog is regenerated.
+- Pause all over terminal workers (BAD-799), small edits in stock files: `restart-resume-holds.ts`
+  makes `resumeWorkOnRestart` take the Dispatch id and `terminal-worker-restart-resume.ts` passes
+  it (two calls), and `settleStartup` calls the optional `startupSettled` dep;
+  `orca-runtime-terminal-worker-restart-resume.ts` builds `ForkPauseAllRestartHolds` and answers
+  `resumeWorkOnRestart` and `startupSettled` through it; `terminal-worker-restart-offers.ts` takes an
+  optional `heldReasons` and sets `heldReason` on a row; `heldReason` is an optional field of
+  `StructuredAgentSessionResumeCandidate` and the renderer's `ResumeCandidate`, and
+  `NativeChatResumeToastRow.tsx` shows it as the row's reason. `local-worker-start.ts` calls
+  `assertForkPauseAllAllowsTerminalWorkerStart` after the mode is decided;
+  `worker-start-agent-placement.ts` calls `forkRefuseTerminalWorkerWhilePaused` in
+  `createTerminalAgent` and before a worktree with a startup agent is created. Code is in
+  `src/main/fork/pause-all/pause-all-restart-holds.ts` and `pause-all-terminal-worker-start.ts`.
 - Agent profiles (BAD-687), small edits in stock files: `dispatch.ts` calls
   `applyForkAgentProfile` before each handler (it acts only on the four launch commands when
   `--profile` is given); `withForkMcpProfileFlag` also calls `withForkAgentProfileFlag`, so

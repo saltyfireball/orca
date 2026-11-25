@@ -105,7 +105,7 @@ export function NativeChatResumeToastRow({
     : row.failure
       ? resumeFailureGuidance(row.failure, t).text
       : row.state === 'needs-you' || row.state === 'stopped'
-        ? resumeActivityLabel(row.candidate.activity, t)?.summary
+        ? (row.candidate.heldReason ?? resumeActivityLabel(row.candidate.activity, t)?.summary)
         : undefined
   return (
     <li className="flex min-w-0 items-start gap-2 rounded-md px-2 py-1.5 hover:bg-accent/40">

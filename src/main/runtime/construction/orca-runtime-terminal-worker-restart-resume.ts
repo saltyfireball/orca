@@ -13,6 +13,7 @@ import {
 } from '../orchestration/workers/restart-resume/pane-runs-conversation'
 import { reopenWorkerTerminal } from '../rpc/methods/orchestration/worker/follow-up/worker-follow-up-placement'
 import { OrcaRuntimeWithWindowlessTerminalActivity } from '../sidebar-inputs/temporal/orca-runtime-windowless-terminal-activity'
+import { ForkPauseAllRestartHolds } from '../../fork/pause-all/pause-all-restart-holds'
 
 type RestartResumeRuntime = Pick<
   OrcaRuntimeService,
@@ -68,6 +69,7 @@ function createTerminalWorkerRestartResume(
   owners: Pick<
     TerminalWorkerRestartResumeDeps,
     | 'resumeWorkOnRestart'
+    | 'startupSettled'
     | 'reportResting'
     | 'reportContinueWithheld'
     | 'decideHeldRest'
@@ -118,8 +120,17 @@ function createTerminalWorkerRestartResume(
 /** Holds the terminal-worker restart resume, built once every terminal and launch method it uses exists. */
 export abstract class OrcaRuntimeWithTerminalWorkerRestartResume extends OrcaRuntimeWithWindowlessTerminalActivity {
   private offersNoticeQueued = false
-  protected readonly terminalWorkerRestartResume = createTerminalWorkerRestartResume(this, {
+  // Fork (BAD-799): Pause all holds the restart resume as an offer and releases it on resume-all.
+  private readonly forkPauseAllRestartHolds = new ForkPauseAllRestartHolds({
+    getDb: () => this.getExistingOrchestrationDb(),
     resumeWorkOnRestart: () => this.store?.getSettings?.()?.nativeChatResumeWorkOnRestart === true,
+    resumeOffered: (dispatchId, fail) =>
+      this.terminalWorkerRestartResume.resumeOffered(dispatchId, fail),
+    offersChanged: () => this.notifier?.restartOffersChanged?.()
+  })
+  protected readonly terminalWorkerRestartResume = createTerminalWorkerRestartResume(this, {
+    resumeWorkOnRestart: (dispatchId) => this.forkPauseAllRestartHolds.resumes(dispatchId),
+    startupSettled: () => this.forkPauseAllRestartHolds.startupSettled(),
     reportResting: (paneKey) => this.terminalWorkerTurnStops.reportRestingPane(paneKey),
     reportContinueWithheld: (dispatchId, handle, hold) =>
       this.reportWithheldRestartContinue(dispatchId, handle, hold),
@@ -144,6 +155,7 @@ export abstract class OrcaRuntimeWithTerminalWorkerRestartResume extends OrcaRun
   readonly terminalWorkerRestartOffers = new TerminalWorkerRestartOffers({
     getDb: () => this.getExistingOrchestrationDb(),
     resume: this.terminalWorkerRestartResume,
-    failLost: (dispatchId) => this.failLostRestartWorker(dispatchId)
+    failLost: (dispatchId) => this.failLostRestartWorker(dispatchId),
+    heldReasons: () => this.forkPauseAllRestartHolds.heldReasons()
   })
 }

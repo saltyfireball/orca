@@ -45,7 +45,7 @@ export class TerminalWorkerRestartResume extends RestartResumeHolds {
       return true
     }
     // Offered already, maybe before the setting was turned on: only the person's Resume takes it.
-    if (!this.deps.resumeWorkOnRestart() || this.isOffered(dispatchId)) {
+    if (!this.deps.resumeWorkOnRestart(dispatchId) || this.isOffered(dispatchId)) {
       return this.offer(dispatchId)
     }
     if (!this.hold(dispatchId, fail)) {
@@ -74,7 +74,7 @@ export class TerminalWorkerRestartResume extends RestartResumeHolds {
     if (this.held.has(dispatchId)) {
       return true
     }
-    const offered = !this.deps.resumeWorkOnRestart() || this.isOffered(dispatchId)
+    const offered = !this.deps.resumeWorkOnRestart(dispatchId) || this.isOffered(dispatchId)
     if (!this.hold(dispatchId, fail, offered)) {
       return false
     }
@@ -143,6 +143,7 @@ export class TerminalWorkerRestartResume extends RestartResumeHolds {
         void this.reopen(dispatchId)
       }
     }
+    this.deps.startupSettled?.()
   }
 
   /** A pane's process changed: an agent that reported its conversation before then is bound now,

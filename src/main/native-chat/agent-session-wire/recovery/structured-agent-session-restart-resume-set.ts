@@ -34,6 +34,8 @@ export type StructuredAgentSessionResumeCandidate = {
   activity?: AgentSessionRestartActivity
   /** A terminal worker offered beside the chats: its id names a Dispatch, not a chat to open. */
   surface?: 'terminal'
+  /** Fork (Pause all): why this offer did not resume by itself. */
+  heldReason?: string
 }
 
 export type StructuredAgentSessionResumeFailure = StructuredAgentSessionResumeCandidate & {

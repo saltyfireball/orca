@@ -17,6 +17,8 @@ export type TerminalWorkerRestartOffersDeps = {
   resume: Pick<TerminalWorkerRestartResume, 'resumeOffered' | 'forget'>
   /** Today's outcome for a lost worker: its Dispatch fails and its coordinator hears it was lost. */
   failLost: (dispatchId: string) => void
+  /** Fork (Pause all): why a held worker waits, by Dispatch. */
+  heldReasons?: () => ReadonlyMap<string, string>
 }
 
 export class TerminalWorkerRestartOffers {
@@ -25,7 +27,10 @@ export class TerminalWorkerRestartOffers {
   /** Offered workers as restart offer rows, so the chats' own toast and status bar show them. */
   list(): StructuredAgentSessionResumeCandidate[] {
     const db = this.deps.getDb()
-    return (db ? listWorkerRestartOffers(db) : []).map((offer) => ({
+    const offers = db ? listWorkerRestartOffers(db) : []
+    const reasons = offers.length > 0 ? this.deps.heldReasons?.() : undefined
+    return offers.map((offer) => ({
+      ...(reasons?.has(offer.dispatchId) ? { heldReason: reasons.get(offer.dispatchId) } : {}),
       sessionId: offer.dispatchId,
       workspaceId: offer.worktreeId,
       agent: offer.session.agent,
