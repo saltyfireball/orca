@@ -11,6 +11,6 @@ export function forkNewBotInput(input: BotCreateParams, name: string, settings: 
 }
 
 /** The SOUL.md a seeded bot starts with, with the owner's starting rules in place of the read-only block. */
-export function forkSeedSoul(name: string, seed: string | undefined, settings: unknown) {
+export function forkSeedSoul(name: string, seed: BotCreateParams['seed'], settings: unknown) {
   return seed ? forkBotStartingSoul(proposalSoul(name, seed), settings) : undefined
 }

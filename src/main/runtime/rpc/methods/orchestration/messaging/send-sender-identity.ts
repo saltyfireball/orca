@@ -1,12 +1,14 @@
 import type { OrcaRuntimeService } from '../../../../orca-runtime'
-import type { RpcContext } from '../../core'
+import type { RpcContext } from '../../../core'
 import { orchestrationCallerIdentity } from '../runs/run-scope'
 
 /** Who an `orchestration.send` is from: the hook's attested caller, and the identity its mail leaves under. */
 export function sendSenderIdentity(
   runtime: OrcaRuntimeService,
   from: string,
-  context: Pick<RpcContext, 'orchestrationCompatibilityCallerAuthority' | 'orchestrationCaller'>
+  context: Partial<
+    Pick<RpcContext, 'orchestrationCompatibilityCallerAuthority' | 'orchestrationCaller'>
+  >
 ) {
   const { orchestrationCompatibilityCallerAuthority: authority, orchestrationCaller } = context
   const attestedCaller = authority?.terminalHandle === from ? authority : undefined

@@ -53,6 +53,7 @@ describe('BotController (fork)', () => {
       deleteBotAutomations: vi.fn(async () => ({ removed: 0 })) as never,
       leaveBotGroups: vi.fn(async () => {}),
       botsRoot: () => botsRootFolder(),
+      slackIconsRoot: () => join(botsRootFolder(), '..', 'bot-slack-icons'),
       filesystem: localBotHomeFilesystem,
       forgetBot: vi.fn()
     })
