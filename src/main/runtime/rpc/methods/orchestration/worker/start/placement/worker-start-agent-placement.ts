@@ -26,6 +26,7 @@ import {
   type OrchestrationWorkerLaunchReceipt
 } from '../launch/worker-launch-preferences'
 import { recordWorkerLaunchObservation } from '../../../../../../orchestration/workers/launch/worker-launch-observation'
+import { forkRefuseTerminalWorkerWhilePaused } from '../../../../../../../fork/pause-all/pause-all-terminal-worker-start'
 
 /** Name only the two required fields so untyped worktree accessors cannot introduce any into unions. */
 type PlacedWorktree = { id: string; repoId: string }
@@ -168,6 +169,10 @@ async function launchWorkerAgent(
           })
         },
         createWorktree: async ({ startupAgent, promisedAgentChat, onWorkspaceCreated }) => {
+          // Fork (BAD-799): a startup agent is a terminal worker, refused while paused.
+          if (startupAgent !== undefined) {
+            forkRefuseTerminalWorkerWhilePaused()
+          }
           created = await createWorkerWorktree({
             runtime: args.runtime,
             db: args.db,
@@ -273,6 +278,7 @@ function workerSurfaceFactory(
       }
     },
     createTerminalAgent: async ({ worktreeId }) => {
+      forkRefuseTerminalWorkerWhilePaused() // Fork (BAD-799): a late fallback to a terminal
       recordSurfaceStage(worktreeId)
       const terminal = await createExistingWorktreeWorkerTerminal({
         runtime: args.runtime,

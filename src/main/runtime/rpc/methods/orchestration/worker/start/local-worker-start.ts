@@ -50,6 +50,7 @@ import {
 } from '../../../../../orchestration/workers/launch/worker-start-card'
 import { rebindReusedStructuredWorker } from '../../structured-workers/orchestration-structured-worker-session'
 import { placedWorkerParty, type WorkerFollowUp } from '../follow-up/worker-follow-up-placement'
+import { assertForkPauseAllAllowsTerminalWorkerStart } from '../../../../../../fork/pause-all/pause-all-terminal-worker-start'
 
 export async function startLocalWorker(args: {
   params: WorkerStartInput
@@ -135,6 +136,7 @@ export async function startLocalWorker(args: {
   const decided = lineageModeForResolvedAgent(runtime, args.mode, { ...args, params, agent })
   const hostMode = resolveWorkerStartModeOnHost(runtime, decided, resolvedWorktree?.id, agent)
   let mode = chatWorkerMode(await hostMode, chat)
+  assertForkPauseAllAllowsTerminalWorkerStart({ mode, terminal: params.terminal }) // Fork (BAD-799)
 
   // Synchronous through the Dispatch insert, so nothing else claims the terminal in between.
   refuseClaimedWorkerTerminal(db, params.terminal, runtime, args.followUp?.of)

@@ -18,7 +18,10 @@ const RESTART_RESUME_REOPEN_CONCURRENCY = 3
 
 export type TerminalWorkerRestartResumeDeps = {
   getDb: () => OrchestrationDb | null
-  resumeWorkOnRestart: () => boolean
+  /** Asked per lost worker, so Pause all (fork) can hold that one. */
+  resumeWorkOnRestart: (dispatchId: string) => boolean
+  /** Fork (Pause all): restored terminals are placed, so workers held while paused may resume. */
+  startupSettled?: () => void
   /** Resumes the conversation in a new terminal of the workspace; null when it cannot. */
   reopen: (
     worktreeId: string,

@@ -28,6 +28,8 @@ export type ResumeCandidate = {
   activity?: AgentSessionRestartActivity
   /** A terminal worker offered beside the chats: there is no chat to open. */
   surface?: 'terminal'
+  /** Fork (Pause all): why the host held this offer, in its words. */
+  heldReason?: string
 }
 
 /** Keep refused/unconfirmed offers until manual continuation, successful retry, dismissal or chat closure. */
