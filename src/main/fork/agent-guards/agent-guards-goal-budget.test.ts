@@ -111,6 +111,8 @@ async function boot() {
     liveAgents: async () => [
       { id: PANE, kind: 'terminal', agent: 'claude', title: 'agent', worktreeId: null }
     ],
+    restored: () => true,
+    workerFinished: () => false,
     fingerprint: async () => 'same',
     agentOutput: async () => '',
     spentTotalUsd: (id) => scopes.agentGuardSpendOf(id).totalUsd,

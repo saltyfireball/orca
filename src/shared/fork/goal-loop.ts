@@ -79,6 +79,7 @@ export type GoalStopReason =
   | 'unreachable'
   | 'cleared'
   | 'gone'
+  | 'agent-lost'
 
 export type GoalRecord = {
   /** A native chat session id or a terminal agent pane key. */
@@ -106,6 +107,8 @@ export type GoalRecord = {
   sendFailures: number
   /** Sweeps that did not find the agent. */
   missing: number
+  /** BAD-822: when a person (or the CLI) closed the agent's chat or terminal; cleared when it is seen again. */
+  closedAt?: number
   lastFailure: string
   stop?: { reason: GoalStopReason; text: string; at: number }
 }
@@ -115,7 +118,7 @@ export type GoalDecision =
   | { action: 'continue'; repeats: number }
   | {
       action: 'stop'
-      reason: Exclude<GoalStopReason, 'met' | 'cleared' | 'gone'>
+      reason: Exclude<GoalStopReason, 'met' | 'cleared' | 'gone' | 'agent-lost'>
       text: string
     }
 
@@ -250,6 +253,8 @@ export function goalStopTitle(reason: GoalStopReason): string {
       return 'Goal cleared'
     case 'gone':
       return 'Goal ended: agent closed'
+    case 'agent-lost':
+      return 'Goal stopped: agent lost'
   }
 }
 

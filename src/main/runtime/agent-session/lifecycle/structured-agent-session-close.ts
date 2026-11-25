@@ -3,6 +3,7 @@ import type { StructuredAgentSessionHost } from '../../../native-chat/agent-sess
 import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import type { OrcaRuntimeService } from '../../orca-runtime'
 import { runsForBot } from '../../../bots/bot-session-tabs'
+import { noteForkGoalAgentsClosed } from '../../../fork/goal-loop/goal-close-notes'
 import type { StructuredAgentSessionCloseCause } from '../../../native-chat/agent-session-wire/termination/structured-agent-session-host-lifetime'
 import {
   observeStructuredSession,
@@ -293,6 +294,10 @@ export async function closeCapturedStructuredSession(
     return false
   }
   if (!keepRunning) {
+    // Fork (BAD-822): a person's close ends the chat's goal quietly.
+    if (cause === 'user-close') {
+      noteForkGoalAgentsClosed([sessionId])
+    }
     await host.close(sessionId, cause)
   }
   return result.committed

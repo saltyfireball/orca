@@ -35,7 +35,11 @@ const MISSING_SWEEPS = 3
 export type GoalLoopRuntime = IdleRecoveryTerminalRuntime &
   Pick<
     OrcaRuntimeService,
-    'getWorktreePs' | 'requireStore' | 'getExistingOrchestrationDb' | 'getAgentStatusSnapshotFn'
+    | 'getWorktreePs'
+    | 'requireStore'
+    | 'getExistingOrchestrationDb'
+    | 'getAgentStatusSnapshotFn'
+    | 'startupWorkerAuthority'
   >
 
 /** Everything the service reads of this process, so tests pass a fake agent. */
@@ -48,6 +52,10 @@ export type GoalServiceDeps = {
   candidates: (idleSeconds: number) => Promise<IdleRecoveryCandidate[]>
   /** The agents running on this host: id, kind, agent, title, worktree. */
   liveAgents: () => Promise<Pick<GoalRecord, 'id' | 'kind' | 'agent' | 'title' | 'worktreeId'>[]>
+  /** False until this start's restored terminals and chats are placed: nobody is missing before then. */
+  restored: () => boolean
+  /** BAD-822: the agent is an orchestration worker that reported worker_done. */
+  workerFinished: (id: string) => boolean
   /** A fingerprint of the workspace the agent works in; empty when it cannot be read. */
   fingerprint: (cwd: string) => Promise<string>
   agentOutput: (candidate: IdleRecoveryCandidate) => Promise<string | null>
@@ -124,6 +132,22 @@ export function createGoalService(deps: GoalServiceDeps) {
     goal.stop = { reason, text, at: deps.now() }
   }
 
+  /** Quiet only with a recorded cause: a person's close, or a worker that reported done. */
+  function endMissing(goal: GoalRecord): void {
+    if (goal.closedAt !== undefined) {
+      finish(goal, 'gone', 'The agent was closed.')
+    } else if (deps.workerFinished(goal.id)) {
+      finish(goal, 'gone', 'The worker reported done and its agent ended.')
+    } else {
+      finish(
+        goal,
+        'agent-lost',
+        'The agent stopped running and nobody closed it: it exited, crashed or was killed, or did not come back after a restart.'
+      )
+      deps.notifyStopped(goal)
+    }
+  }
+
   async function sweep(): Promise<boolean> {
     const settings = deps.settings()
     const all = await loaded()
@@ -148,6 +172,8 @@ export function createGoalService(deps: GoalServiceDeps) {
           continue
         }
         goal.missing = 0
+        changed ||= goal.closedAt !== undefined
+        delete goal.closedAt
         // A turn end is looked at once; a goal set on an idle agent looks at that ending.
         if (goal.handledIdleSince === candidate.idleSince || candidate.backgroundPending) {
           continue
@@ -176,14 +202,23 @@ export function createGoalService(deps: GoalServiceDeps) {
           }
         }
       }
-      // Goals whose agent is not running any more end quietly; checked every few sweeps.
+      // Goals whose agent is not running any more end; checked every few sweeps (BAD-822).
       const notIdle = active.filter((goal) => goal.status === 'active' && !idle.has(goal.id))
-      if (notIdle.length > 0 && sweepCount % 4 === 0) {
+      if (notIdle.length > 0 && !deps.restored()) {
+        // A restart's agents may not be back yet: the missing window starts once they are.
+        notIdle.forEach((goal) => (goal.missing = 0))
+      } else if (notIdle.length > 0 && sweepCount % 4 === 0) {
         const live = new Set((await deps.liveAgents()).map((agent) => agent.id))
         for (const goal of notIdle) {
-          goal.missing = live.has(goal.id) ? 0 : goal.missing + 1
+          if (live.has(goal.id)) {
+            goal.missing = 0
+            changed ||= goal.closedAt !== undefined
+            delete goal.closedAt
+            continue
+          }
+          goal.missing += 1
           if (goal.missing >= MISSING_SWEEPS) {
-            finish(goal, 'gone', 'The agent was closed.')
+            endMissing(goal)
             changed = true
           }
         }
@@ -207,6 +242,17 @@ export function createGoalService(deps: GoalServiceDeps) {
     /** BAD-766: true while an active goal has a budget, so spend is read for it; no I/O. */
     watchesSpend: (): boolean =>
       [...(goals?.values() ?? [])].some((goal) => goal.status === 'active' && goal.budgetUsd > 0),
+
+    /** BAD-822: a person (or the CLI) closed these agents' chats or terminals; kept on disk. */
+    async noteClosed(ids: readonly string[]): Promise<void> {
+      const noted = [...(await loaded()).values()].filter(
+        (goal) => goal.status === 'active' && ids.includes(goal.id)
+      )
+      if (noted.length > 0) {
+        noted.forEach((goal) => (goal.closedAt = deps.now()))
+        await save()
+      }
+    },
 
     /** Loads the saved goals, so `watchesSpend` knows them from start-up. */
     async warm(): Promise<void> {

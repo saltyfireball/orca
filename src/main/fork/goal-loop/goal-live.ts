@@ -35,6 +35,8 @@ import { runGoalJudge } from './goal-judge'
 import { sendGoalText } from './goal-send'
 import { setForkGoalBudgetWatch } from './goal-budget-watch'
 import { goalLoopPath, readGoals, writeGoals } from './goal-store'
+import { setForkGoalCloseListener } from './goal-close-notes'
+import { goalWorkerFinished } from './goal-worker-finished'
 
 const FINGERPRINT_COMMAND =
   'git status --porcelain=v1 -uall 2>/dev/null; git diff HEAD 2>/dev/null; git rev-parse HEAD 2>/dev/null || ls -lAR 2>/dev/null'
@@ -99,6 +101,9 @@ function liveDeps(runtime: GoalLoopRuntime): GoalServiceDeps {
         }))
       ]
     },
+    // Desktop and `orca serve` finish it once restored terminals are placed; orcad starts this loop after.
+    restored: () => !runtime.startupWorkerAuthority.isPending(),
+    workerFinished: (id) => goalWorkerFinished(runtime.getExistingOrchestrationDb(), id),
     fingerprint: workspaceFingerprint,
     agentOutput: async (candidate) =>
       (await readIdleRecoveryEndingWith(liveIdleRecoveryHost(), candidate))?.lastAssistantMessage ??
@@ -179,6 +184,11 @@ export function startForkGoalLoop(runtime: GoalLoopRuntime): void {
   const live = goalLoopService(runtime)
   setForkGoalBudgetWatch(() => live.watchesSpend())
   void live.warm().catch((error: unknown) => console.warn('[fork goal loop] could not load', error))
+  setForkGoalCloseListener((ids) => {
+    void live.noteClosed(ids).catch((error: unknown) => {
+      console.warn('[fork goal loop] could not note a close', error)
+    })
+  })
   setIdleRecoveryTerminalRuntime(() => liveRuntime)
   registerForkInboxSource({
     id: 'goal',

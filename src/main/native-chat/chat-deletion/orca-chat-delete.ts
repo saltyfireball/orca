@@ -12,6 +12,7 @@ import { dropUnreadBotRequests } from '../../runtime/rpc/methods/orchestration/m
 import { structuredAgentRuntimeMetadata } from '../../runtime/agent-session/installation/structured-agent-runtime-metadata'
 import { closeStructuredAgentSessionChild } from '../../runtime/agent-session/lifecycle/structured-agent-session-close'
 import { botOfSession } from '../../bots/bot-session-tabs'
+import { noteForkGoalAgentsClosed } from '../../fork/goal-loop/goal-close-notes'
 import type { OrcaRuntimeService } from '../../runtime/orca-runtime'
 import type { DeletedChatConversation } from './deleted-chats'
 import { getStructuredAgentSessionHost } from '../agent-session-wire/host/structured-agent-session-registry'
@@ -103,6 +104,8 @@ async function stopChat(
   host: ChatHost,
   records: readonly AgentSessionRecord[]
 ): Promise<boolean> {
+  // Fork (BAD-822): a deleted chat's goal ends quietly.
+  noteForkGoalAgentsClosed(records.map((record) => record.sessionId))
   for (const { sessionId } of records) {
     if (host.hasSession(sessionId) || host.isSessionTabVisible(sessionId)) {
       const closed = await closeStructuredAgentSessionChild(sessionId, { runtime })

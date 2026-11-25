@@ -3153,12 +3153,28 @@ ones `SLRM-123 `).
     the same failure comes back `forkGoalLoopStallLimit` times in a row (2). A failure is the
     check's output with digits, ids and times taken out, plus a fingerprint of the workspace (its
     uncommitted changes and head commit): the same output with the workspace changed is progress,
-    not a stall. Also `unreachable` (a judge is missing, or the agent refused five sends) and
-    `gone` (the agent closed, which ends the goal quietly).
-  - **Where a stop is told.** Every stop but success and gone is a row in the Decision inbox
+    not a stall. Also `unreachable` (a judge is missing, or the agent refused five sends).
+  - **An agent that leaves (BAD-822).** A goal whose agent is missing from the live list for three
+    looks in a row (every fourth sweep, about two minutes) ends. It ends quietly as `gone` only
+    with a recorded cause: a person (or the CLI) closed its chat or terminal, or it is an
+    orchestration worker that reported worker_done ("The worker reported done and its agent
+    ended."; that ending is what it was before, and it stays quiet because the coordinator has
+    the report). The close is recorded where it happens: a terminal that ends as `operator_close`
+    (a close, `orca terminal close`, a workspace removal; not a sleep, a restart in place or a lost
+    host), the chat close request (the window and the phone), Delete chat, and the removal of a
+    chat's workspace. The note is kept on the goal in `fork-goal-loop.json`, so a restart before
+    the window ends still reads it, and is dropped when the agent is seen again (a reopened chat).
+    Every other disappearance (the agent exited, crashed or was killed, or it did not come back
+    after a restart) ends as `agent-lost`, once, with a row
+    and the notify targets like the other unmet stops. After a restart nobody is counted missing
+    until this start's restored terminals are placed (`startupWorkerAuthority`, at most 2 min on
+    the desktop; orcad starts the loop after its restore), and the three looks start from there.
+    A goal file written before this change loads as it was.
+  - **Where a stop is told.** Every stop but success and `gone` is a row in the Decision inbox
     ("Goal loop", `orca inbox list` shows `goal`; Dismiss removes it), goes to the inbox's notify
     targets, and, with `forkGoalLoopPostToChat` on, is told to the agent in its chat in one line
-    (the agent answers it, which costs one short turn). A passing goal needs none of these.
+    (the agent answers it, which costs one short turn; a lost agent is not told). A passing goal
+    needs none of these.
   - **Budget.** Counted from the usage ledger BAD-679 feeds (Claude and Codex chats, and Claude
     Code and Codex terminals). An agent the ledger knows nothing of counts as $0, so its goal is
     stopped by rounds and stalls only.
@@ -3741,6 +3757,7 @@ Apply these in this order. Each one is a single commit.
 204. `BAD-800 Launches over the paired WebSocket and the renderer's ipc subscribe run in the launch scope, so a profile's MCP limit, mode, account and preamble apply and refusals reach the caller; the CLI and the dialog's move refuse and remove an automation saved without its MCP profile; a Claude terminal's MCP config is one --mcp-config=<file> word, so the prompt after it is a prompt; a new workspace's startup agent gets the profile's mode and MCP profile`
 205. `BAD-817 Agent profile import keeps a definition's limits or names them: permissionMode maps to the profile mode (narrowest when unreadable), tools, disallowedTools, MCP servers, hooks and Codex sandbox, approval and tables are stored as not kept, shown by import, list and show, and held for orca profiles confirm; a definition that does not parse is refused`
 206. `BAD-820 With forkReviewerGateAllTasks on, a start on a paired server sends the setting's review as the Task's own (both protocols, retries, best-of attempts), a server that cannot take it is refused before any effect naming the setting, and with the setting off nothing changes`
+207. `BAD-822 A goal whose agent died says so: it ends as agent-lost with a Decision inbox row and the notify targets, once; only a chat or terminal a person closed, or a worker that reported done, ends quietly, and after a restart the missing window starts once the restore has finished`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4962,6 +4979,10 @@ Upstream files only get short hooks, which keeps merges small:
   `FORK_BRANCH_CLASHES_METHODS`, so `rpc-method-registry.ts` is untouched;
   `rpc-params-catalog.generated.ts` is regenerated. The eight settings are intersected in
   `fork-global-settings.ts`; `settings-rows-fork.generated.ts` is regenerated.
+  BAD-822 adds one-line `noteForkGoalAgentsClosed` calls (`goal-close-notes.ts`, which imports
+  nothing) in `pty-exit-lifecycle.ts` (an `operator_close` exit beside the coordinator Run
+  retirement), `structured-agent-session-close-method.ts` and `structured-agent-session-close.ts`
+  (a `user-close`), `orca-chat-delete.ts` and `structured-session-worktree-teardown.ts`.
 - Mobile page imports of zod (BAD-681): the mobile web bundle fails ("63 zod locale tables reached the
   page") when a file the page reaches has `import { z } from 'zod'`; fork files it reaches use
   `import * as z from 'zod'`. `src/shared/fork/zod-page-imports.test.ts` follows the imports from

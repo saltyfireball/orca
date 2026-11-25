@@ -16,7 +16,8 @@ const REASONS: readonly GoalStopReason[] = [
   'no-progress',
   'unreachable',
   'cleared',
-  'gone'
+  'gone',
+  'agent-lost'
 ]
 
 export function goalLoopPath(stateDirectory: string): string {
@@ -76,6 +77,7 @@ function readGoal(value: unknown): GoalRecord | null {
     handledIdleSince: typeof raw.handledIdleSince === 'number' ? raw.handledIdleSince : null,
     sendFailures: num(raw.sendFailures),
     missing: 0,
+    ...(typeof raw.closedAt === 'number' ? { closedAt: raw.closedAt } : {}),
     lastFailure: str(raw.lastFailure, 4000),
     ...(reason ? { stop: { reason, text: str(stop?.text, 2000), at: num(stop?.at) } } : {})
   }

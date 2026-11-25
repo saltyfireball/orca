@@ -20,6 +20,7 @@ import {
   type StructuredSessionSurfaceRuntime
 } from '../../agent-session/lifecycle/structured-agent-session-close'
 import type { WorktreePtyHostFence } from './worktree-pty-host-fence'
+import { noteForkGoalAgentsClosed } from '../../../fork/goal-loop/goal-close-notes'
 import { getRepoIdFromWorktreeId } from '../../../../shared/worktree/id'
 import type { StructuredAgentId } from '../../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle'
 
@@ -173,6 +174,8 @@ export async function closeStructuredSessionsForWorktree(
     }
     const host = getStructuredAgentSessionHost()
     const surface = host ? captureStructuredSessionSurface(host, session.sessionId, runtime) : null
+    // Fork (BAD-822): removing its workspace ends the chat's goal quietly, as its terminals' goals.
+    noteForkGoalAgentsClosed([session.sessionId])
     const outcome = await closeStructuredAgentSessionChild(session.sessionId, {
       ...(runtime ? { runtime } : {}),
       surface

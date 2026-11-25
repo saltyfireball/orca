@@ -21,7 +21,8 @@ export type WorkerCleanupCandidate = {
 }
 
 // A worker_done names its dispatch by sender or by payload; a bad payload must not fail the query.
-const REPORT_OF = (alias: string): string => `${alias}.type = 'worker_done' AND (
+// Needs the resource as `r`; the goal loop (BAD-822) reads it too.
+export const REPORT_OF = (alias: string): string => `${alias}.type = 'worker_done' AND (
   ${alias}.from_handle = 'dispatch:' || r.owner_dispatch_id
   OR (CASE WHEN json_valid(${alias}.payload)
       THEN json_extract(${alias}.payload, '$.dispatchId') END) = r.owner_dispatch_id

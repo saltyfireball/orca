@@ -81,6 +81,8 @@ function fakeAgent(options: {
         worktreeId: null
       }
     ],
+    restored: () => true,
+    workerFinished: () => false,
     fingerprint: async () => readFile(join(dir, 'p.txt'), 'utf8').catch(() => ''),
     agentOutput: async () => 'I think I am done',
     spentTotalUsd: options.spend ?? (() => 0),

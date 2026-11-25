@@ -1,5 +1,6 @@
 // Goal loop (BAD-682, FORK.md): goals that stopped without being met, as Decision inbox rows. A
-// goal that was met, cleared or whose agent closed needs nobody. A row leaves when it is dismissed
+// goal that was met, cleared or `gone` (a person closed its agent, or its worker reported done)
+// needs nobody; a lost agent (BAD-822) has a row. A row leaves when it is dismissed
 // (Stop in the inbox) or a day after the goal stopped.
 import { describeGoalUntil, goalStopTitle, type GoalRecord } from '../../../shared/fork/goal-loop'
 import type { ForkIdleRecoveryInboxItem } from '../../../shared/fork/idle-recovery-wire'

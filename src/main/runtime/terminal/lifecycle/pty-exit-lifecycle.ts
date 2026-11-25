@@ -5,9 +5,11 @@ import type { PtyIncarnationId } from '../../../../shared/terminal/pty/lifecycle
 import {
   type TerminalExitCause,
   OPERATOR_CLOSE_EXIT_CAUSE,
+  isDeliberateTerminalExit,
   isUnobservedTerminalExit,
   resolveUnreportedExitCause
 } from '../../../../shared/terminal/pty/lifecycle/terminal-exit-cause'
+import { noteForkGoalAgentsClosed } from '../../../fork/goal-loop/goal-close-notes'
 import { SSH_EXIT_UNCONFIRMED_REASON } from '../../../../shared/terminal/pty/lifecycle/pty-liveness-verdict'
 import type { PtyLivenessVerdict } from '../../../../shared/terminal/pty/lifecycle/pty-liveness-verdict'
 import type { RetiredTerminalSurface } from '../surface/mobile-session-terminal-retirement'
@@ -323,6 +325,10 @@ export abstract class OrcaRuntimeWithOnPtyExit extends RuntimeTerminalWorkerMode
       // already dropped, leaves no exited surface.
       const exitedPanes = new Set([...exitPaneKeys, ...exitedSurfaces.map((s) => s.paneKey)])
       this.retireExitedCoordinatorRuns(exitedPanes, ptyId, exitIncarnationId)
+      // Fork (BAD-822): a close through Orca ends the pane's goal quietly; any other end is a lost agent.
+      if (isDeliberateTerminalExit(exitCause)) {
+        noteForkGoalAgentsClosed(exitedPanes)
+      }
     }
     this.pruneDisconnectedPtyRecords()
     if (pty && endedOnItsOwn && !preservesIntentionallyStoppedSurface) {

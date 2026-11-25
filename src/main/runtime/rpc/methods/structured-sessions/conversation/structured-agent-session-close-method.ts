@@ -11,6 +11,7 @@ import { ORCA_LAYOUT_OWNER_IS_MAIN } from '../../../../../../shared/workspace-la
 import { runsForBot } from '../../../../../bots/bot-session-tabs'
 import { getStructuredAgentSessionHost } from '../../../../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { noteStructuredAgentSessionClose } from '../creation/structured-agent-session-close-before-create'
+import { noteForkGoalAgentsClosed } from '../../../../../fork/goal-loop/goal-close-notes'
 import {
   captureStructuredSessionSurface,
   retireCapturedStructuredSessionSurface
@@ -48,6 +49,8 @@ export const STRUCTURED_AGENT_SESSION_CLOSE_METHOD = defineMethod({
       }
     } finally {
       if (!keepRunning) {
+        // Fork (BAD-822): a person's close ends the chat's goal quietly.
+        noteForkGoalAgentsClosed([params.sessionId])
         await host.close(params.sessionId, 'user-close')
       }
     }
