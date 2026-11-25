@@ -6,7 +6,6 @@ import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { LOOK_AROUND_REFUSAL } from '../../bots/bot-look-around-policy'
 import { AgentHookServer } from '../../agent-hooks/server/agent-hook-server'
 import { CLAUDE_EVENTS } from '../../claude/hooks/claude-managed-hook-events'
 import { getManagedScript } from '../../claude/hooks/hook-script'
@@ -71,7 +70,7 @@ describe.skipIf(!REAL_CLAUDE_ENABLED || process.platform !== 'darwin')(
       const options = guarded({ ...BYPASS, ...claudeReadOnlyOptions() })
       const said = await ask(options, askForTool('Monitor', 'orca bot list'))
       expect(said).toContain('"name":"Monitor"')
-      expect(said).toContain(LOOK_AROUND_REFUSAL)
+      expect(said).toMatch(/Looking around can only read.*Suggest this as a next step instead\./)
     }, 150_000)
   }
 )

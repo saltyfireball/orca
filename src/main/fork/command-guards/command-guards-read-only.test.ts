@@ -143,7 +143,9 @@ describe('read-only sessions with the command guards on (BAD-795)', () => {
   it('a look-around keeps its limit and gets the guard', async () => {
     const run = await runChat('look-around', true)
     expect(run.results.map(strictest)).toEqual(LOOK_AROUND_DECISIONS)
-    expect(reasons(run.results[1])).toContain(LOOK_AROUND_REFUSAL)
+    expect(reasons(run.results[1])).toMatch(
+      /Looking around can only read.*Suggest this as a next step instead\./
+    )
     expect(reasons(run.results[4])).toContain('command guard (force-push)')
     expect(listCommandGuardAudit(1)[0]).toMatchObject({ rule: 'force-push' })
   })

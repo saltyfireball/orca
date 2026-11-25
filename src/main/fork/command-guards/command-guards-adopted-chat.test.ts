@@ -13,7 +13,6 @@ import {
   journalSqlReaderPath,
   journalSqlWorkerPath
 } from '../../native-chat/agent-session-journal/journal-sql-worker-bundle.test-fixture'
-import { LOOK_AROUND_REFUSAL } from '../../bots/bot-look-around-policy'
 import {
   endGuardApps,
   guardSurfaceRow as row,
@@ -119,7 +118,9 @@ describe.runIf(process.platform === 'darwin')('a guarded chat across an app rest
     })
     expect(await second.run('touch made-it')).toMatchObject({
       decision: 'deny',
-      reason: LOOK_AROUND_REFUSAL
+      reason: expect.stringMatching(
+        /Looking around can only read.*Suggest this as a next step instead\./
+      )
     })
   }, 90_000)
 

@@ -10,7 +10,7 @@ import { join } from 'node:path'
 import type { CanUseTool, HookCallback } from '@anthropic-ai/claude-agent-sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BotLaunchTools } from '../../bots/bot-launch-tools'
-import { LOOK_AROUND_REFUSAL, REPLY_ONLY_REFUSAL } from '../../bots/bot-look-around-policy'
+import { REPLY_ONLY_REFUSAL } from '../../bots/bot-look-around-policy'
 import { claudeBotSessionOptions } from '../../claude/structured/launch/claude-bot-session-options'
 import { buildClaudePermissionCallbacks } from '../../claude/structured/permissions/claude-structured-inbound-control'
 import {
@@ -150,7 +150,9 @@ describe.skipIf(!enabled || process.platform !== 'darwin')(
     it('a look-around reads, and stays denied, even in Full access', async () => {
       const options = guarded({ ...BYPASS, ...(await readOnly('look-around')) })
       expect(await runReal(options, run('orca bot list'))).toContain('orca ran: bot list')
-      expect(await runReal(options, run('touch made-it'))).toContain(LOOK_AROUND_REFUSAL)
+      expect(await runReal(options, run('touch made-it'))).toMatch(
+        /Looking around can only read.*Suggest this as a next step instead\./
+      )
       expect(existsSync(join(scratch, 'made-it'))).toBe(false)
       const pushed = await runReal(options, run('git push --force origin main'))
       expect(pushed).toContain("Blocked by Orca's command guard (force-push)")
@@ -185,7 +187,7 @@ describe.skipIf(!enabled || process.platform !== 'darwin')(
         settings: { permissions: { ask: ['Bash(orca bot list)'] } }
       })
       const said = await runReal(options, run('orca bot list'), canUseTool)
-      expect(said).toContain(LOOK_AROUND_REFUSAL)
+      expect(said).toMatch(/Looking around can only read.*Suggest this as a next step instead\./)
       expect(said).not.toContain('orca ran: bot list')
       expect(emit).not.toHaveBeenCalled()
     }, 150_000)
@@ -230,7 +232,9 @@ describe.skipIf(!enabled || process.platform !== 'darwin')(
     it('a look-around stays read-only', async () => {
       const app = await adopted({ readOnly: true })
       await app.ask(`say ${run('touch made-it')}`, 'result')
-      expect(JSON.stringify(app.seen('msg'))).toContain(LOOK_AROUND_REFUSAL)
+      expect(JSON.stringify(app.seen('msg'))).toMatch(
+        /Looking around can only read.*Suggest this as a next step instead\./
+      )
       expect(existsSync(join(scratch, 'made-it'))).toBe(false)
     }, 200_000)
 
