@@ -60,6 +60,8 @@ describe('automation model and effort', () => {
       platform: 'darwin',
       ...inputs
     })
-    expect(plan?.launchCommand).toBe("claude '--model' 'claude-opus-5-5' '--effort' 'xhigh' 'go'")
+    expect(plan?.launchCommand).toBe(
+      "claude '--model' 'claude-opus-5-5' '--effort' 'xhigh' '--' 'go'"
+    )
   })
 })
