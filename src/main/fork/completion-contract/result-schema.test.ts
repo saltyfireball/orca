@@ -3,10 +3,11 @@
 // the contract's rounds and escalation. On a server that owns its workers the schema goes with the
 // start and the value comes home in the done's queue item (the BAD-798 rig: real methods, gate,
 // start, queue triggers and import; only the socket and the terminal launch are replaced).
+// The worker's dispatch preamble shows the schema, also from a new runtime on the same database.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import Database from '../../sqlite/sync-database'
 import {
   ORCHESTRATION_FORK_CONTRACT_CARRY_RUNTIME_CAPABILITY,
@@ -16,6 +17,10 @@ import {
 import { ORCHESTRATION_RUN_METHODS } from '../../runtime/rpc/methods/orchestration/runs/runs'
 import { readContract, readResultValue, saveResultSchema, storeResultValue } from './contract-store'
 import { checkResultSchema } from './result-schema-check'
+import { forkResultSchemaUseDb, forkStoreResultSchema } from './result-schema-live'
+import { buildDispatchPreamble } from '../../runtime/orchestration/workers/launch/worker-dispatch-preamble'
+import { OrchestrationDb } from '../../runtime/orchestration/db/orchestration-db'
+import { OrcaRuntimeService } from '../../runtime/orca-runtime'
 import { forkStoreDoneContract, type forkGateWorkerDone } from './completion-gate-live'
 import { createRootDispatch } from '../../runtime/orchestration/db/root-dispatch-test-fixture'
 import { removeRigFolders, rig } from './remote-owned-contract-rig.test-fixture'
@@ -250,5 +255,64 @@ describe('the stored schema and value', () => {
 
     expect(readContract(db, to.id)?.resultSchema).toBe(CLOSED)
     expect(readResultValue(db, to.id)).toBeNull()
+  })
+})
+
+describe("the worker's preamble", () => {
+  /** The preamble a worker of `taskId` reads, built as a dispatch builds it. */
+  const preambleOf = (taskId: string): string =>
+    buildDispatchPreamble({
+      taskId,
+      dispatchId: 'ctx_worker',
+      taskSpec: 'do the work',
+      coordinatorHandle: 'term_coordinator',
+      workerHandle: 'term_worker'
+    })
+  const SCHEMA_PART = `This Task needs a JSON result matching this schema.`
+
+  it('shows the Task its result schema', async () => {
+    const r = rig()
+    const taskId = await r.taskCreate({ forkResultSchema: CLOSED })
+    const plain = await r.taskCreate({})
+
+    expect(preambleOf(taskId)).toContain(SCHEMA_PART)
+    expect(preambleOf(taskId)).toContain(CLOSED)
+    expect(preambleOf(plain)).not.toContain(SCHEMA_PART)
+  })
+
+  it('still shows it after a restart: a new runtime on the same database', () => {
+    // The runtimes' own timers (maintenance, the later-push watch) never fire on the closed files.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'] })
+    const dir = mkdtempSync(join(tmpdir(), 'result-schema-preamble-'))
+    dirs.push(dir)
+    const path = join(dir, 'orchestration.db')
+    // Each "process" is a real runtime that opens the database file the way the app does.
+    const boot = (): OrchestrationDb => {
+      const runtime = new OrcaRuntimeService(null)
+      vi.spyOn(
+        runtime as unknown as { orchestrationDbPath: () => string },
+        'orchestrationDbPath'
+      ).mockReturnValue(path)
+      return runtime.getOrchestrationDb()
+    }
+    const first = boot()
+    const run = first.createRun({
+      objective: 'result schema',
+      coordinatorHandle: 'term_coordinator',
+      coordinatorPaneKey: 'tab-c::22222222-2222-4222-8222-222222222222' as never
+    })
+    const task = first.createTask({ spec: 'do the work', runId: run.id })
+    forkStoreResultSchema(first, task.id, { forkResultSchema: CLOSED })
+    first.close()
+    // A new process: nothing has pointed the preamble at a database yet.
+    const fresh = new OrchestrationDb(':memory:')
+    forkResultSchemaUseDb(fresh)
+
+    const second = boot()
+
+    expect(preambleOf(task.id)).toContain(CLOSED)
+    second.close()
+    fresh.close()
+    vi.useRealTimers()
   })
 })
