@@ -15,8 +15,9 @@ function failureStreak(
   let failed = 0
   let alerted = false
   for (const run of runs.slice(0, end).toReversed()) {
-    // A run the host's sleep or a usage limit cut short is neither a failure nor a success.
-    if (run.endedAt === undefined || run.asleep === true || run.usageLimited) {
+    // A run the host's sleep or a usage limit cut short, or Pause all skipped, is neither a
+    // failure nor a success.
+    if (run.endedAt === undefined || run.asleep === true || run.usageLimited || run.paused) {
       continue
     }
     if (run.error === undefined) {
@@ -55,7 +56,10 @@ export function limitedLookContinuesInItsChat(chat: {
 
 /** A usage limit is news once: a look it ends right after another it ended stays quiet. */
 export function usageLimitAlreadyNoted(runs: readonly LookAroundRun[]): boolean {
-  return runs.findLast((run) => run.endedAt !== undefined)?.usageLimited !== undefined
+  return (
+    runs.findLast((run) => run.endedAt !== undefined && run.paused !== true)?.usageLimited !==
+    undefined
+  )
 }
 
 /** Whether a usage limit ending this run follows one that ended the run before it. */

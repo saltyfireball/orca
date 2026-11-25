@@ -278,14 +278,18 @@ export function upNextItems(state: BotLookState, now: number): Suggestion[] {
 export function upNextState(state: BotLookState, nextAt: number | undefined): UpNextState {
   const current = state.runs.find((run) => run.endedAt === undefined)
   const last = state.runs.toReversed().find((run) => run.endedAt !== undefined)
+  // A slot Pause all skipped says why, but was no look (fork BAD-818).
+  const looked = last?.paused
+    ? state.runs.toReversed().find((run) => run.endedAt !== undefined && !run.paused)
+    : last
   return {
     running: current !== undefined,
     ...(current ? { runSessionId: current.sessionId } : {}),
     seenAt: state.seenAt ?? 0,
-    ...(last?.endedAt !== undefined
-      ? { lastLookedAt: last.endedAt, tookMs: last.endedAt - last.startedAt }
+    ...(looked?.endedAt !== undefined
+      ? { lastLookedAt: looked.endedAt, tookMs: looked.endedAt - looked.startedAt }
       : {}),
-    ...(last ? { lastSessionId: last.sessionId } : {}),
+    ...(looked ? { lastSessionId: looked.sessionId } : {}),
     ...(last?.error ? { error: last.error, failure: botRunFailure(last.error) } : {}),
     ...(nextAt !== undefined ? { nextAt } : {})
   }

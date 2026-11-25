@@ -50,6 +50,11 @@ import {
   forkBotRoomHopsChanged,
   installForkBotRoomHops
 } from '../fork/bot-room-hops/bot-room-hop-inbox'
+import {
+  installForkPauseAllRoomHolds,
+  releaseForkPauseAllRoomHolds
+} from '../fork/pause-all/pause-all-room-release'
+import { installForkPauseAllBotMail } from '../fork/pause-all/pause-all-bot-mail'
 
 const runtimes = new WeakMap<OrcaRuntimeService, BotGroupRuntime>()
 /** `homeChat`, also finding the group rooms a bot is a member of, where its automations may run. */
@@ -99,6 +104,8 @@ export function markBotGroupRoomUnread(runtime: OrcaRuntimeService, sessionId: s
 /** Bot rules for a chat's mail: group rules for group members, and a paused bot's chats hold
  *  theirs; other sessions pass through. */
 export function botMailOwner(runtime: OrcaRuntimeService): StructuredMailOwner {
+  // Fork (BAD-818): resume-all delivers what Pause all held.
+  installForkPauseAllBotMail(runtime)
   return {
     mailHeld: (sessionId) => pausedBotChatHoldsMail(runtime, sessionId),
     beforeSend: (input) =>
@@ -132,6 +139,11 @@ export function startBotGroupsSoon(runtime: OrcaRuntimeService, isCurrent: () =>
           .catch(warn)
           .then(() => groups.resumePending())
           .catch(warn)
+          // Fork (BAD-818): mail and hand-offs held by a switch released while the app was down
+          // go on now.
+          .then(() => installForkPauseAllBotMail(runtime, true))
+          .then(() => releaseForkPauseAllRoomHolds(groups))
+          .catch(warn)
           // Chats made before member chats were named after their room.
           .then(() => nameBotGroupMemberChats(groups, undefined, { kept: true }))
           .catch(warn)
@@ -158,6 +170,7 @@ export class BotGroupRuntime {
   constructor(readonly runtime: OrcaRuntimeService) {
     this.store = new BotGroupStore(runtime.getOrchestrationDb().db)
     installForkBotRoomHops(this)
+    installForkPauseAllRoomHolds(this)
   }
 
   /** Readers re-read; open rooms of `groupId` only, when it is given (a change inside one room). */

@@ -16,6 +16,7 @@ import { deliverTurn } from './bot-group-delivery'
 import { reserveGroupTurns } from './bot-group-turn-reservation'
 import type { BotGroupRuntime } from './bot-group-runtime'
 import { forkHoldsBotRoomHandOff } from '../fork/bot-room-hops/bot-room-hop-hold'
+import { forkPauseAllHoldsRoomHandOff } from '../fork/pause-all/pause-all-room-hold-store'
 
 // GFM, as replies render: table cells end inline code at a pipe.
 const markdown = unified().use(remarkParse).use(remarkGfm)
@@ -108,8 +109,12 @@ export async function handOffGroupMentions(
       markHandedOff(groups, message.id, turn.operationId, [])
       return []
     }
-    // Fork (BAD-801): past the hop limit nobody is woken; the owner's Continue resumes it.
-    if (forkHoldsBotRoomHandOff(groups, message, turn, reply, targets)) {
+    // Fork (BAD-818): while paused nobody is woken; resume-all lets it go on once. Fork (BAD-801):
+    // past the hop limit nobody is woken; the owner's Continue resumes it.
+    if (
+      forkPauseAllHoldsRoomHandOff(groups, message, turn, reply, targets) ||
+      forkHoldsBotRoomHandOff(groups, message, turn, reply, targets)
+    ) {
       markHandedOff(groups, message.id, turn.operationId, [])
       return []
     }

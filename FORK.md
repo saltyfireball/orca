@@ -3620,9 +3620,46 @@ ones `SLRM-123 `).
     with a recovery shell, as for any start that fails after creating it; a start paused after its
     early check but before its worktree exists creates none). A start on a paired server runs there and
     obeys that server's own switch.
+  - **Bots and connectors (BAD-818).** A bot's scheduled Look around and its nightly Tidy-up start
+    no chat: the due slot is written into that run history as a run that ended at once, "The
+    scheduled look was skipped. Paused by pause-all: ...", which uses the slot up. Up next shows the
+    reason without claiming a look happened, the skip never counts toward turning the feature off,
+    and the bot runs at its next slot, not all at once on resume. Look now and Tidy now still run. A
+    room member's reply that names another member wakes nobody: the hand-off is saved in
+    `fork_pause_all_room_holds` beside the room store, with a line in the speaker's chat, and
+    resume-all lets each go on once, oldest first (the hop limit still counts it); a hold is claimed
+    before its wake, so a second release or a restart in between wakes nobody twice, and a switch
+    released while the app was down releases them at start. An owner's Continue of a hop-limit
+    hold is a person's and passes. Orchestration mail to a bot's own chats and its room member
+    chats waits unread, as a paused bot's does (workers in a bot's home keep theirs); it is never
+    expired, and resume-all redrives those chats once, in order, also at the next start when the
+    switch was released while the app was down (`fork-pause-all-held-mail.json` marks that mail was
+    held). A request one bot sends another is such mail, so it waits too (with `--chat new` its
+    chat is opened and the request waits in it). The hold is per chat, not per sender: an owner's item comment or ask answer reaches the
+    bot as item mail and waits too, and its chat gets a line saying it reaches the bot at
+    resume-all. `orca pause-status` prints the held mail and hand-off counts. A connector message to
+    a bot (a mention, a DM, a comment addressed to it) is refused as `bot_paused`, which the cloud
+    tells the asker: the cloud cannot hold a delivery past its deadline and its refusal carries no
+    free text, so it cannot be held; its receipt keeps the refusal, so a resend never runs it. A
+    Stop or an answer to a running turn's prompt still goes through, and an event that only starts
+    an automation is skipped as automations are. The automatic chat handoff on a usage limit
+    (`forkChatHandoffOnLimit` 'auto') is held, not marked answered, and resume-all hands off the
+    stops still parked then. A terminal worker start on the legacy attach path
+    (`orchestration.federationAttachStart`) is refused with the pause reason before the attachment
+    is written.
+  - **The starter table.** `src/main/fork/pause-all/pause-all-starters.ts` lists every starter
+    with its answer (held, refused, skipped or allowed) and the reason, and
+    `pause-all-start-sites.ts` each call of a start primitive (`startConversation`, `executeAgentLaunch`, `deliverTurn`, `runForEvent`,
+    `handOffGroupMentions`, `seam.start`, `seam.send`, `forkChatHandoffService`,
+    `launchFederatedWorkerAgent`) with the starter it belongs to. Its test reads `src/main` and
+    fails when a gate the table names is removed, when a gate call appears in a file it does not
+    name, and when a primitive is called somewhere it does not list. It cannot see a starter that
+    starts work through a call outside that list, or a gate left on a dead branch.
   - **What it never stops.** A person's own chats, sends and launches, "Run now" on an automation,
     `orca limits resume-now`, answering the Decision inbox, and a message an agent sends to a chat
-    that already exists. A bot request that opens a new conversation for another bot is not gated.
+    that already exists and is not a bot's. Reviewer-gate reviews started by a running worker's
+    report run: the work is already running and holding the review would strand the report. Room
+    turns a restart left between reservation and admission replay as the same operation.
   - **Fails closed.** The switch is `fork-pause-all.json` in the app's data folder (mode 0600,
     written atomically). A missing file is "not paused"; a file that exists but cannot be read or
     parsed counts as paused, and `orca resume-all` clears it. A process with no app data folder
@@ -3937,6 +3974,7 @@ Apply these in this order. Each one is a single commit.
 211. `BAD-819 Own pull request loop limit through the real wiring: the inbox row registers when the connector is made, a worker on a paired server reads as cannot tell, and no event but an automation.* start brings a chain`
 212. `BAD-816 Result schema: task-create and worker-start take --result-schema (draft-07, local $ref only, capped, refused at parse when unsupported); the worker sends its JSON value with worker_done --result-file, the completion contract checks and stores it with its rounds, escalation and inbox row, worker-read and run-show return it as data, retries inherit the schema not the value, and a paired server without orchestration.fork-result-schema.v1 (or on the attach protocol) is refused before any effect`
 213. `BAD-821 A bot tool's saved env values stay off Claude's command line: every Claude launch's MCP servers go in a private launch file merged with the launch's own --mcp-config, removed when Claude exits, and the sign-in mirror holds only tools that sign in`
+214. `BAD-818 Pause all reaches bots and connectors: scheduled Look around and Tidy-up are skipped with the reason in their history and run at the next slot, bot room hand-offs and bot mail are held and go on once at resume-all (also after a restart), connector messages to a bot are refused as bot_paused, the automatic limit handoff is held, the legacy attach start is refused; one starter table and a test that reads the code against it`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5262,6 +5300,24 @@ Upstream files only get short hooks, which keeps merges small:
   `worker-start-agent-placement.ts` calls `forkRefuseTerminalWorkerWhilePaused` in
   `createTerminalAgent` and before a worktree with a startup agent is created. Code is in
   `src/main/fork/pause-all/pause-all-restart-holds.ts` and `pause-all-terminal-worker-start.ts`.
+- Pause all over bots and connectors (BAD-818), small edits in stock files:
+  `bot-look-around-runner.ts` and `bot-memory-tidy-up-runner.ts` ask
+  `forkPauseAllSkipsScheduledRun` in `tick` (recording the skip) and in the scheduled run's
+  `mayStart`; `bot-background-run-history.ts` gains the optional `paused` mark, which
+  `lastRunStartedAt`, `failureStreak` and `usageLimitAlreadyNoted` (`bot-look-around-failures.ts`)
+  pass over, `bot-look-around-store.ts` keeps and `upNextState` reads; `bot-group-mention-handoffs.ts`
+  asks `forkPauseAllHoldsRoomHandOff` before the hop limit; `bot-group-runtime.ts` installs the
+  room hold release and the bot mail release (`botMailOwner`, and `startBotGroupsSoon` at start);
+  `bot-paused-mail.ts` (`pausedBotChatHoldsMail`) asks `forkPauseAllHoldsBotMail`;
+  `bots-items-mail.ts` notes an owner's held item change in its chat;
+  `external-conversation-bots.ts` (`botChatFor`) asks `forkPauseAllRefusesConnectorTurn`;
+  `federation.ts` calls `forkRefuseTerminalWorkerWhilePaused` before the attachment;
+  `chat-handoff-on-limit.ts` moves its loop into `limitHandoffHandler`;
+  `fork-pause-all.ts` adds `held` to the status and `formatPauseAll` prints it. Code is in
+  `src/main/fork/pause-all/` (`pause-all-starters.ts` the table and `pause-all-start-sites.ts` its
+  call sites, `pause-all-background-runs.ts`,
+  `pause-all-room-hold-store.ts`, `pause-all-room-release.ts`, `pause-all-bot-mail.ts`,
+  `pause-all-connector-turns.ts`, `pause-all-limit-handoff.ts`, `pause-all-held-counts.ts`).
 - Agent profiles (BAD-687), small edits in stock files: `dispatch.ts` calls
   `applyForkAgentProfile` before each handler (it acts only on the four launch commands when
   `--profile` is given); `withForkMcpProfileFlag` also calls `withForkAgentProfileFlag`, so

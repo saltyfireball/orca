@@ -10,6 +10,8 @@ import {
 } from '../../../shared/fork/chat-handoff'
 import type { LimitResumeEntry } from '../../../shared/fork/limit-resume'
 import { onForkLimitResumeChanged } from '../limit-resume/limit-resume-service'
+import { forkPauseAllHoldsLimitHandoff } from '../pause-all/pause-all-limit-handoff'
+import { onForkPauseAllChanged } from '../pause-all/pause-all-state'
 import {
   chatHandoffSettingsOf,
   forkChatHandoffService,
@@ -49,13 +51,9 @@ export function startForkChatHandoffOnLimit(runtime: ChatHandoffRuntime): void {
     return
   }
   started = true
-  const seen = new Set<string>()
-  onForkLimitResumeChanged((entries) => {
-    for (const due of limitHandoffsDue(entries, seen, chatHandoffSettingsOf(runtime))) {
-      seen.add(due.key)
-      if (seen.size > MAX_SEEN) {
-        seen.delete(seen.values().next().value ?? '')
-      }
+  const handler = limitHandoffHandler({
+    settings: () => chatHandoffSettingsOf(runtime),
+    start: (due) =>
       void forkChatHandoffService(runtime)
         .then((service) => service.start({ sessionId: due.sessionId, to: due.to }))
         .then((result) => {
@@ -66,6 +64,36 @@ export function startForkChatHandoffOnLimit(runtime: ChatHandoffRuntime): void {
         .catch((error: unknown) => {
           console.warn('[fork-chat-handoff] limit handoff failed', error)
         })
+  })
+  onForkLimitResumeChanged(handler.entriesChanged)
+  onForkPauseAllChanged((state) => {
+    if (!state.engaged) {
+      handler.resumed()
     }
   })
+}
+
+/** Hands off each stop once. While Pause all is engaged (or unreadable) a due handoff is held, not
+ *  marked answered, so resume-all hands off the stops still parked then (fork BAD-818). */
+export function limitHandoffHandler(deps: {
+  settings: () => Pick<ChatHandoffSettings, 'enabled' | 'onLimit'>
+  start: (due: LimitHandoff) => void
+}): { entriesChanged: (entries: readonly LimitResumeEntry[]) => void; resumed: () => void } {
+  const seen = new Set<string>()
+  let latest: readonly LimitResumeEntry[] = []
+  const entriesChanged = (entries: readonly LimitResumeEntry[]) => {
+    latest = entries
+    const due = limitHandoffsDue(entries, seen, deps.settings())
+    if (due.length === 0 || forkPauseAllHoldsLimitHandoff(due.length)) {
+      return
+    }
+    for (const next of due) {
+      seen.add(next.key)
+      if (seen.size > MAX_SEEN) {
+        seen.delete(seen.values().next().value ?? '')
+      }
+      deps.start(next)
+    }
+  }
+  return { entriesChanged, resumed: () => entriesChanged(latest) }
 }

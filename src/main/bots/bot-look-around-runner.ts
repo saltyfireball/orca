@@ -36,6 +36,10 @@ import {
   turnFailed,
   watchBackgroundRun
 } from './bot-background-run'
+import {
+  forkPauseAllSkipsScheduledRun,
+  withPauseAllSkippedRun
+} from '../fork/pause-all/pause-all-background-runs'
 
 /** A look still going after this long awake is stopped on its host and recorded as stopped. */
 export const LOOK_RUN_LIMIT_MS = 10 * 60 * 1000
@@ -143,6 +147,16 @@ export class BotLookAroundRunner {
           due.push({ bot, slot })
         }
       }
+      // Fork (BAD-818): while paused each due slot is skipped with the reason, never caught up.
+      const paused = due.length > 0 ? forkPauseAllSkipsScheduledRun() : null
+      if (paused !== null) {
+        for (const { bot } of due) {
+          this.change(bot.id, (state) =>
+            withPauseAllSkippedRun(state, beginRun, { now, what: 'look', reason: paused })
+          )
+        }
+        return
+      }
       // Never in a dark wake, where the host sleeps again within seconds and the look is cut off.
       // On a Mac the full-wake check asks the system, so it runs only when a look is due.
       if (settled && due.length > 0 && (await this.deps.power.checkFullWake())) {
@@ -201,7 +215,13 @@ export class BotLookAroundRunner {
    *  slot, judged without the look being admitted. */
   private mayStart(botId: string, sessionId: string, slot: number): boolean {
     const bot = this.deps.bots().find((entry) => entry.id === botId)
-    if (!bot || !botLookAround(bot).on || bot.paused || !lookAroundSupported(bot.agent)) {
+    if (
+      !bot ||
+      !botLookAround(bot).on ||
+      bot.paused ||
+      !lookAroundSupported(bot.agent) ||
+      forkPauseAllSkipsScheduledRun() !== null
+    ) {
       return false
     }
     const state = withoutBackgroundRun(this.deps.store.get(botId), sessionId)

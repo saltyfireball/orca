@@ -14,6 +14,7 @@ import {
   type Delivery,
   type ReplyTarget
 } from './external-conversation-types'
+import { forkPauseAllRefusesConnectorTurn } from '../fork/pause-all/pause-all-connector-turns'
 
 export type ConversationBots = {
   /** Why the bot takes no conversation now; null when it does. */
@@ -40,6 +41,10 @@ export async function botChatFor(
   const refusal = bots.refusal(bot.botId)
   if (refusal) {
     return refused(refusal)
+  }
+  // Fork (BAD-818): Pause all refuses it as a paused bot, the reason the cloud tells the asker.
+  if (forkPauseAllRefusesConnectorTurn(key, bot.botId)) {
+    return refused('bot_paused')
   }
   // A DM that ran in the bot's Chat, then given its own chat, opens one rather than keep the Chat.
   const linked = findLink(store, key)

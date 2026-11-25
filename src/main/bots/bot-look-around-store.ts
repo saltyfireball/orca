@@ -34,7 +34,9 @@ const RunSchema = z.object({
   error: z.string().optional(),
   alerted: z.literal(true).optional(),
   asleep: z.literal(true).optional(),
-  usageLimited: z.object({ resetsAt: z.number().optional() }).optional()
+  usageLimited: z.object({ resetsAt: z.number().optional() }).optional(),
+  // Fork (BAD-818): a slot Pause all skipped.
+  paused: z.literal(true).optional()
 })
 
 const BotLookSchema = z.object({

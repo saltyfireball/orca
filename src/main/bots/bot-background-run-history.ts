@@ -13,6 +13,9 @@ export type LookAroundRun = {
   /** The agent's usage limit ended it: never a failure toward turning it off, and no scheduled
    *  run starts before `resetsAt`, when known. */
   usageLimited?: LookUsageLimit
+  /** Fork (BAD-818): Pause all skipped its scheduled slot. The slot is used up, so the next run
+   *  waits for the next slot, but it never ran: neither a failure nor a stand-in for a later slot. */
+  paused?: true
 }
 
 export type LookUsageLimit = { resetsAt?: number }
@@ -66,7 +69,7 @@ export function slotTaken(runs: readonly LookAroundRun[], slot: number, now: num
 
 /** When the last run that was not cut short by sleep or a usage limit started; 0 when none was. */
 export function lastRunStartedAt(runs: readonly LookAroundRun[]): number {
-  return runs.findLast((run) => !missedRun(run))?.startedAt ?? 0
+  return runs.findLast((run) => !missedRun(run) && run.paused !== true)?.startedAt ?? 0
 }
 
 /** Takes back a run that never sent its opening message, so its slot stays open; its session

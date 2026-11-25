@@ -7,6 +7,7 @@ import type { OrchestrationDb } from '../runtime/orchestration/db/orchestration-
 import type { BotController } from './bot-controller'
 import { isBotOwnChat } from './bot-own-chat'
 import { botOfSession } from './bot-session-tabs'
+import { forkPauseAllHoldsBotMail } from '../fork/pause-all/pause-all-bot-mail'
 
 type BotMailRuntime = {
   bots: Pick<BotController, 'list'>
@@ -16,6 +17,10 @@ type BotMailRuntime = {
 /** Whether `sessionId` is one of a paused bot's own chats: its mail waits unread until the bot is
  *  resumed. Workers running in the bot's home keep taking theirs. */
 export function pausedBotChatHoldsMail(runtime: BotMailRuntime, sessionId: string): boolean {
+  // Fork (BAD-818): Pause all holds every bot chat's mail, and room member chats', until resume-all.
+  if (forkPauseAllHoldsBotMail(runtime, sessionId)) {
+    return true
+  }
   if (!botOfSession(runtime.bots, sessionId)?.paused) {
     return false
   }

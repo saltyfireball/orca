@@ -18,6 +18,7 @@ import {
   type ForkPauseAllFleetDeps
 } from '../../../../fork/pause-all/pause-all-fleet'
 import { readForkPauseAll, writeForkPauseAll } from '../../../../fork/pause-all/pause-all-state'
+import { forkPauseAllHeldCounts } from '../../../../fork/pause-all/pause-all-held-counts'
 
 type Runtime = {
   requireStore: () => { getSettings: () => unknown }
@@ -54,8 +55,14 @@ export const FORK_PAUSE_ALL_METHODS = [
     name: 'fork.pauseAll.status',
     permission: 'workspace',
     params: ForkPauseAllStatusParams,
-    handler: (params, ctx): Promise<ForkPauseAllResult> =>
-      readPauseAllEverywhere(fleetDeps(ctx.runtime, 'cli'), params.fleet === true)
+    handler: async (params, ctx): Promise<ForkPauseAllResult> => {
+      const result = await readPauseAllEverywhere(
+        fleetDeps(ctx.runtime, 'cli'),
+        params.fleet === true
+      )
+      const held = forkPauseAllHeldCounts(ctx.runtime)
+      return held ? { ...result, held } : result
+    }
   }),
   defineMethod({
     name: 'fork.pauseAll.set',

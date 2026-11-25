@@ -39,6 +39,10 @@ import { memoryFitsOps, TIDY_UP_OPS_PILOT_FILE } from './bot-memory-ops-pilot'
 import { tidyUpFormat } from './bot-memory-tidy-up-format'
 import type { BotTidyUpRunnerDeps } from './bot-memory-tidy-up-runner-deps'
 import { salvageCandidateTest } from './bot-memory-salvage'
+import {
+  forkPauseAllSkipsScheduledRun,
+  withPauseAllSkippedRun
+} from '../fork/pause-all/pause-all-background-runs'
 
 type Failed = { error: string; alerted: boolean; asleep?: boolean }
 type Ended = Failed | { through: number }
@@ -95,6 +99,16 @@ export class BotTidyUpRunner {
       // a bot tidies, so the awake clock keeps sampling and sees a sleep without power events.
       const settled = bots.some((bot) => botTidyUp(bot).on) && this.deps.power.settled()
       const due = () => bots.filter((bot) => this.scheduledMayStart(bot, now))
+      // Fork (BAD-818): while paused the night's run is skipped with the reason, never caught up.
+      const paused = forkPauseAllSkipsScheduledRun()
+      if (paused !== null) {
+        for (const bot of due()) {
+          this.change(bot.id, (state) =>
+            withPauseAllSkippedRun(state, beginTidyUp, { now, what: 'tidy-up', reason: paused })
+          )
+        }
+        return
+      }
       // Read only when a run is due: on a Mac it asks the system whether this is a full wake.
       if (settled && due().length > 0 && (await this.deps.power.checkFullWake())) {
         due().forEach((bot) => void this.run(bot, 'scheduled'))
@@ -147,6 +161,7 @@ export class BotTidyUpRunner {
       scheduled: by === 'scheduled',
       // At its opening message and delivery, the bot as it is now still owes the run.
       mayStart: () =>
+        forkPauseAllSkipsScheduledRun() === null &&
         this.deps
           .bots()
           .some(

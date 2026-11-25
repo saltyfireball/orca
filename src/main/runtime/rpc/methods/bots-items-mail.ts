@@ -13,6 +13,7 @@ import { appendBotItemNote, botItemNote } from '../../../bots/bot-item-chat-note
 import { botItemChangeMail, botItemMailImages } from '../../../bots/bot-items-mail-text'
 import type { BotItemMail } from '../../../bots/bot-items-schema'
 import type { OrcaRuntimeService } from '../../orca-runtime'
+import { noteForkPauseAllHeldItemMail } from '../../../fork/pause-all/pause-all-bot-mail'
 
 /** A message id from the first item event it carries. */
 export function botItemMailId(eventId: number): string {
@@ -99,6 +100,10 @@ export async function sendBotItemMail(
     orcaAuthored: 'item-mail'
   })
   runtime.notifyMessageArrived(to, 'status')
+  // Fork (BAD-818): the owner's own change that Pause all holds says so in its chat.
+  if (owed.changes.some(({ event }) => event.actor.kind === 'owner')) {
+    noteForkPauseAllHeldItemMail(runtime, sessionId)
+  }
   // The chat shows the change itself, naming who made it; the mail row stays hidden there. A change
   // made in the chat the mail lands in (Home, when the item's chat takes no mail) has its own row there.
   const by = noteBy(runtime, bot, owed.changes[0]?.event.actor)
