@@ -69,4 +69,21 @@ describe('agent queue launch note', () => {
       ].join('\n')
     )
   })
+
+  it('says what holds a launch when the agent limit is off', () => {
+    expect(
+      formatQueue({
+        enabled: false,
+        live: { interactive: 0, worker: 0 },
+        limits: { separate: false, maxLive: 8, maxWorkers: 8 },
+        entries: [{ ...entry, kind: 'worker', heldReason: 'paused by pause-all' }]
+      })
+    ).toBe(
+      [
+        'The agent limit is off; these launches are held.',
+        '  #  ID        KIND    CHAT',
+        '  3  abc123  worker  fix the tests  (paused by pause-all)'
+      ].join('\n')
+    )
+  })
 })

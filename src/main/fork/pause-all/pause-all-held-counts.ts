@@ -5,7 +5,7 @@ import type { Bot } from '../../../shared/bot-types'
 import type { OrchestrationDb } from '../../runtime/orchestration/db/orchestration-db'
 import { PAUSED_REASON } from '../agent-queue/agent-launch-gate'
 import { agentQueueGate } from '../agent-queue/agent-queue-service'
-import { forkPauseAllHeldLaunchSessions } from './pause-all-held-launches'
+import { forkPauseAllHeldLaunchSessions } from './pause-all-held-notes'
 import { countForkPauseAllHeldMail } from './pause-all-bot-mail'
 import { countPauseAllRoomHolds } from './pause-all-room-hold-store'
 

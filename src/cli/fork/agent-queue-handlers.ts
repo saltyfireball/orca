@@ -34,7 +34,7 @@ function requiredId(ctx: HandlerContext): string {
 
 function entryLine(entry: ForkAgentQueueEntry): string {
   const kind = entry.kind === 'worker' ? 'worker' : 'chat'
-  return `${String(entry.position).padStart(3)}  ${entry.id}  ${kind.padEnd(6)}  ${entry.label}`
+  return `${String(entry.position).padStart(3)}  ${entry.id}  ${kind.padEnd(6)}  ${entry.label}${entry.heldReason ? `  (${entry.heldReason})` : ''}`
 }
 
 export function formatQueue(snapshot: ForkAgentQueueSnapshot): string {
@@ -42,7 +42,11 @@ export function formatQueue(snapshot: ForkAgentQueueSnapshot): string {
   const running = limits.separate
     ? `${live.interactive}/${limits.maxLive} user-started, ${live.worker}/${limits.maxWorkers} workers running`
     : `${live.interactive + live.worker}/${limits.maxLive} agents running`
-  const head = snapshot.enabled ? running : 'The agent limit is off; nothing waits.'
+  const head = snapshot.enabled
+    ? running
+    : snapshot.entries.length === 0
+      ? 'The agent limit is off; nothing waits.'
+      : 'The agent limit is off; these launches are held.'
   const held = snapshot.heldReason ? [`New launches are held: ${snapshot.heldReason}`] : []
   if (snapshot.entries.length === 0) {
     return [head, ...held, 'No launches waiting.'].join('\n')

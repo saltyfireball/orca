@@ -1,3 +1,4 @@
+import { forkOpenBeforeUnsent } from '../../fork/pause-all/pause-all-open-before-unsent'
 import type Database from '../../sqlite/sync-database'
 import type { AgentJournalCursor } from '../../../shared/agent-session/journal/agent-session-journal-identity'
 import type { JournalWriterCommand } from './journal-writer-command'
@@ -38,7 +39,11 @@ export function applyJournalSqlOpenCommand(
   const { recover } = command.operation
   const { target } = command
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: open returns its physical pre-recovery cursor.
-  const openedThrough = opened.value as AgentJournalCursor
+  const physicalOpen = opened.value as AgentJournalCursor
+  // Fork (BAD-818): a worker launch held by pause-all opens before the Task text it never sent.
+  const openedThrough = recover?.forkKeepUnsent
+    ? forkOpenBeforeUnsent(db, target, physicalOpen)
+    : physicalOpen
   const fence =
     recover?.fence ??
     Number(

@@ -3682,7 +3682,13 @@ ones `SLRM-123 `).
     `fork-pause-all-held-launches.json` (mode 0600, at most 500): after a restart the replayed
     start of a recorded worker (identified from its stored row and its active Dispatch) is held
     again, and at resume-all each noted chat whose worker is still active is started once through
-    the structured chat host; one whose Dispatch is gone is dropped.
+    the structured chat host; one whose Dispatch is gone is dropped. Upstream fails an unsent
+    message of an earlier process when its chat is next opened (unless a person wrote it), which
+    would drop the worker's Task text and leave the started agent idle. So a held chat, and the
+    opening its released start makes, opens just before its first unsent message: that message
+    stays queued and the start hands it over once. A chat with a message already handed over and
+    unanswered, or a cancelled launch, opens as upstream does. With the agent limit off,
+    `orca agent queue list` says the launches are held and why.
   - **What it never stops.** A person's own chats, sends and launches, "Run now" on an automation,
     `orca limits resume-now`, answering the Decision inbox, and a message an agent sends to a chat
     that already exists and is not a bot's. Reviewer-gate reviews started by a running worker's
@@ -4006,6 +4012,7 @@ Apply these in this order. Each one is a single commit.
 215. `BAD-818 Pause all on a server: orcad installs the agent launch queue with its own settings, so a chat worker started while paused waits there with the reason, is shown by agent queue list and pause-status, is held again after a restart and starts once at resume-all; each starter row says where orcad reaches it and a test follows orcad's imports to check it`
 216. `BAD-816 A worker_done past its last allowed round is told it was escalated to the coordinator, that the Task stays open and to stop and wait, and exits not accepted, the same on --retry-request, locally and on a paired server`
 217. `BAD-833 A goal on a terminal agent waits after a restart until the agent is seen at rest, instead of counting the gate's cannot-tell answers as refused sends and stopping as not reachable`
+218. `BAD-818 A worker launch pause-all held over a restart starts with its Task: a held chat opens before the message it never sent, so upstream does not fail it; agent queue list says a held launch is held, and why`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5355,7 +5362,12 @@ Upstream files only get short hooks, which keeps merges small:
   passes `runtime` as the third argument of `installForkHeadlessHost`, which installs the launch
   queue (`forkAgentQueueRuntimeTerminals`, `src/main/fork/agent-queue/agent-queue-runtime.ts`);
   `structured-agent-session-entry-delegates.ts` calls `forkPauseAllHeldLaunchHost(context)`, so
-  resume-all can start a held launch (`src/main/fork/pause-all/pause-all-held-launches.ts`). The
+  resume-all can start a held launch (`src/main/fork/pause-all/pause-all-held-launches.ts`, its
+  note in `pause-all-held-notes.ts`); `structured-agent-session-conversation-open.ts` passes
+  `forkKeepUnsent` in `recover` (type `JournalOpenRecover` in `journal-store-contracts.ts`, used by
+  `journal-sql-database.ts` and `journal-writer-command.ts`) and `journal-sql-open-command.ts` then
+  takes its opening point from `pause-all-open-before-unsent.ts`, which reads the now exported
+  `recoverableSubmissions` (`journal-domain-input-recovery.ts`). The
   fork's `agent-queue-ipc.ts` passes the same runtime terminals on the desktop.
 - Worker done escalated (BAD-816), one hook in a stock file: `orchestration-worker-settlement.ts`
   (`requireWorkerDoneSettlement`) calls `forkRefuseEscalatedWorkerDone` before its

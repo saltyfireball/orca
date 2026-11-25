@@ -67,12 +67,15 @@ export type JournalPromptMutationInput = {
   options: JournalItemAppendOptions
 }
 
+/** Fork (BAD-818): forkKeepUnsent opens before the messages an earlier process never sent. */
+export type JournalOpenRecover = { fence: number; forkKeepUnsent?: true }
+
 export type AgentSessionJournalOptions = {
   identity: AgentSessionJournalIdentity
   database: JournalSqlDatabase
   now?: () => number
   mintEpoch?: () => string
-  recover?: { fence: number }
+  recover?: JournalOpenRecover
   onRecoveryFailure?: (failure: JournalOpenRecoveryResult['failures'][number]) => void
   /** Saves a person's Stop of limited work in the same commit as the rows that reveal it. */
   withdrawStoppedCut?: (cut: UsageLimitContinueIdentity) => JournalOperationReceipt | undefined

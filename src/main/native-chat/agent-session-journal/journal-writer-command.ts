@@ -30,6 +30,7 @@ import type {
   JournalStartFailureSettlementInput,
   JournalItemAppendInput,
   JournalLifecycleBatchInput,
+  JournalOpenRecover,
   ResolveDispatchInput
 } from './journal-store-contracts'
 import type {
@@ -144,7 +145,7 @@ export type JournalWriterInputOperation =
       body: AgentJournalMessageItem
       options: JournalItemAppendOptions
     }
-  | { kind: 'open'; recover?: { fence: number } }
+  | { kind: 'open'; recover?: JournalOpenRecover }
   | JournalWriterContextOperation
   | JournalWriterSettlementOperation
 

@@ -20,11 +20,19 @@ vi.mock(
 
 import { structuredAgentSessionEntryDelegates } from '../../native-chat/agent-session-wire/acquisition/structured-agent-session-entry-delegates'
 import { setStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
-import { forkAgentQueueStart, installForkAgentQueue } from '../agent-queue/agent-queue-service'
 import {
-  PAUSE_ALL_HELD_LAUNCHES_FILE_NAME,
-  resetForkPauseAllHeldLaunchesForTests
-} from './pause-all-held-launches'
+  agentQueueGate,
+  forkAgentQueueCancel,
+  forkAgentQueueStart,
+  installForkAgentQueue
+} from '../agent-queue/agent-queue-service'
+import { resetForkPauseAllHeldLaunchesForTests } from './pause-all-held-launches'
+import {
+  forgetForkPauseAllHeldLaunch,
+  forkPauseAllKeepsHeldText,
+  noteForkPauseAllHeldLaunch,
+  PAUSE_ALL_HELD_LAUNCHES_FILE_NAME
+} from './pause-all-held-notes'
 import {
   PAUSE_ALL_STATE_FILE_NAME,
   resetForkPauseAllCacheForTests,
@@ -113,5 +121,41 @@ describe('a chat worker launch while paused', () => {
     writeForkPauseAll(true, { by: 'cli' })
     expect(await launch('s3').settled).toBe('started')
     expect(existsSync(note())).toBe(false)
+  })
+})
+
+describe('the text a held chat never sent', () => {
+  it('is kept by each opening while held, by the one its start makes, and by none after', () => {
+    expect(forkPauseAllKeepsHeldText('s1')).toBe(false)
+    noteForkPauseAllHeldLaunch('s1')
+    resetForkPauseAllHeldLaunchesForTests()
+    expect(forkPauseAllKeepsHeldText('s1')).toBe(true)
+    expect(forkPauseAllKeepsHeldText('s1')).toBe(true)
+    forgetForkPauseAllHeldLaunch('s1')
+    expect(forkPauseAllKeepsHeldText('s1')).toBe(true)
+    expect(forkPauseAllKeepsHeldText('s1')).toBe(false)
+  })
+
+  it('is not kept once the launch is cancelled', async () => {
+    install()
+    chatHost()
+    writeForkPauseAll(true, { by: 'cli' })
+    // As the chat host claims a start: what the gate decided is read on the second claim.
+    const claim = (): Promise<string> =>
+      forkAgentQueueStart({
+        sessionId: 's4',
+        resume: () => false,
+        start: async (refused) => refused ?? 'started',
+        reclaim: claim,
+        cancelled: () => 'cancelled'
+      })
+    const settled = claim()
+    expect(forkPauseAllKeepsHeldText('s4')).toBe(true)
+    const entry = agentQueueGate()
+      .entries()
+      .find((queued) => queued.sessionId === 's4')
+    expect(forkAgentQueueCancel(entry!.id)).toBe(true)
+    expect(await settled).toBe('cancelled')
+    expect(forkPauseAllKeepsHeldText('s4')).toBe(false)
   })
 })

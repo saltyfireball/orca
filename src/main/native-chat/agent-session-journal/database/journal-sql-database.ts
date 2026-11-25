@@ -214,7 +214,7 @@ export class JournalSqlDatabase {
   openSession(
     identity: AgentSessionJournalIdentity,
     savedAt = Date.now(),
-    recover?: { fence: number }
+    recover?: { fence: number; forkKeepUnsent?: true }
   ) {
     return this.serialize(identity.sessionId, async () => {
       assertJournalChatReadable(this.readOnly)

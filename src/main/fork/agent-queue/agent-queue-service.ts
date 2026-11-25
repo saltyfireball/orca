@@ -5,7 +5,6 @@ import { randomUUID } from 'node:crypto'
 import {
   forkAgentQueueConfigOf,
   type ForkAgentQueueConfig,
-  type ForkAgentQueueKind,
   type ForkAgentQueueSnapshot,
   type ForkAgentQueueStatus
 } from '../../../shared/fork/agent-queue'
@@ -15,6 +14,7 @@ import { structuredAgentSessionIdFromTabId } from '../../../shared/agent-session
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { AgentLaunchGate } from './agent-launch-gate'
 import * as heldLaunches from '../pause-all/pause-all-held-launches'
+import * as heldNotes from '../pause-all/pause-all-held-notes'
 import type { ForkAgentQueueTerminals } from './agent-queue-runtime'
 import { recordedWorkerOf, recordedWorkerState } from './agent-queue-runtime'
 import { claimThroughGate, type QueueClaimInput } from './agent-queue-claim'
@@ -46,7 +46,7 @@ const MAX_TERMINAL_WORKERS = 2000
 const passed = new Map<string, number>()
 const PASSED_TTL_MS = 60_000
 
-function notePassed(sessionId: string): void {
+function notePassed(sessionId: string, cancelled: boolean): void {
   const now = Date.now()
   for (const [key, at] of passed) {
     if (now - at > PASSED_TTL_MS) {
@@ -54,7 +54,7 @@ function notePassed(sessionId: string): void {
     }
   }
   passed.set(sessionId, now)
-  heldLaunches.forgetForkPauseAllHeldLaunch(sessionId)
+  heldNotes.forgetForkPauseAllHeldLaunch(sessionId, cancelled)
 }
 
 function config(): ForkAgentQueueConfig {
@@ -220,7 +220,7 @@ export function forkAgentQueueStart<O>(input: {
 }): Promise<O> {
   // Off and nothing waiting: the start runs exactly as upstream's.
   if (!config().enabled && (gate?.entries().length ?? 0) === 0 && !isForkPauseAllEngaged()) {
-    heldLaunches.forgetForkPauseAllHeldLaunch(input.sessionId)
+    heldNotes.forgetForkPauseAllHeldLaunch(input.sessionId)
     return input.start()
   }
   const { sessionId } = input
@@ -228,13 +228,12 @@ export function forkAgentQueueStart<O>(input: {
     key: sessionId,
     request: () => {
       const worker = workers.get(sessionId) ?? recordedWorkerOf(terminals, sessionId)
-      const kind: ForkAgentQueueKind = worker ? 'worker' : 'interactive'
       if (worker && isForkPauseAllEngaged()) {
-        heldLaunches.noteForkPauseAllHeldLaunch(sessionId)
+        heldNotes.noteForkPauseAllHeldLaunch(sessionId)
       }
       return {
         key: sessionId,
-        kind,
+        kind: worker ? 'worker' : 'interactive',
         label: labelOf(sessionId),
         resume: input.resume(),
         ...(worker?.parentKey ? { parentKey: worker.parentKey } : {}),
@@ -242,7 +241,7 @@ export function forkAgentQueueStart<O>(input: {
       }
     },
     start: (refused) => {
-      notePassed(sessionId)
+      notePassed(sessionId, refused !== undefined)
       return input.start(refused)
     },
     reclaim: input.reclaim,

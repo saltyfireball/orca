@@ -3,94 +3,20 @@
 // brief queued. Each held chat is noted in `fork-pause-all-held-launches.json` (mode 0600) until its
 // launch starts, so a start of the app or server wakes those chats again through the queue once the
 // chat host is installed: while paused each waits again with the reason, and after a release it
-// starts once. A chat whose Dispatch is no longer active is dropped, never woken.
-import { randomUUID } from 'node:crypto'
-import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { getAppEnvironment, hasAppEnvironment } from '../../../shared/app-lifecycle/app-environment'
+// starts once with the text it kept (pause-all-held-notes.ts). A chat whose Dispatch is no longer
+// active is dropped, never woken.
 import {
   getStructuredAgentSessionHost,
   onStructuredAgentSessionHostChanged
 } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import type { StructuredAgentSessionAttachContext } from '../../native-chat/agent-session-wire/acquisition/structured-agent-session-attach-context'
 import { startStructuredAgentSessionAgentForOperation } from '../../native-chat/agent-session-wire/startup/structured-agent-session-agent-start'
+import {
+  readForkPauseAllHeldNotes,
+  resetForkPauseAllHeldNotesForTests,
+  writeForkPauseAllHeldNotes
+} from './pause-all-held-notes'
 import { onForkPauseAllChanged } from './pause-all-state'
-
-export const PAUSE_ALL_HELD_LAUNCHES_FILE_NAME = 'fork-pause-all-held-launches.json'
-const MAX_HELD = 500
-
-function notePath(): string | null {
-  return hasAppEnvironment()
-    ? join(getAppEnvironment().getPath('userData'), PAUSE_ALL_HELD_LAUNCHES_FILE_NAME)
-    : null
-}
-
-let cache: Set<string> | null = null
-
-function readHeld(): Set<string> {
-  if (cache) {
-    return cache
-  }
-  const path = notePath()
-  cache = new Set()
-  if (!path) {
-    return cache
-  }
-  try {
-    const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'))
-    const sessions = (parsed as { sessions?: unknown })?.sessions
-    if (Array.isArray(sessions)) {
-      for (const id of sessions.slice(0, MAX_HELD)) {
-        if (typeof id === 'string' && id.length > 0) {
-          cache.add(id)
-        }
-      }
-    }
-  } catch {
-    // No note, or a damaged one: nothing was held that a restart must wake.
-  }
-  return cache
-}
-
-function writeHeld(held: Set<string>): void {
-  const path = notePath()
-  if (!path) {
-    return
-  }
-  try {
-    if (held.size === 0) {
-      rmSync(path, { force: true })
-      return
-    }
-    const temp = `${path}.${randomUUID()}.tmp`
-    writeFileSync(temp, JSON.stringify({ version: 1, sessions: [...held] }), { mode: 0o600 })
-    renameSync(temp, path)
-  } catch (error) {
-    console.warn('[fork-pause-all] noting a held worker launch failed', error)
-  }
-}
-
-/** The queue held this chat worker's launch for the switch. */
-export function noteForkPauseAllHeldLaunch(sessionId: string): void {
-  const held = readHeld()
-  if (!held.has(sessionId) && held.size < MAX_HELD) {
-    held.add(sessionId)
-    writeHeld(held)
-  }
-}
-
-/** This chat's launch started (or went away): a restart no longer wakes it. */
-export function forgetForkPauseAllHeldLaunch(sessionId: string): void {
-  const held = readHeld()
-  if (held.delete(sessionId)) {
-    writeHeld(held)
-  }
-}
-
-/** Held launches not yet started, for `orca pause-status`. */
-export function forkPauseAllHeldLaunchSessions(): readonly string[] {
-  return [...readHeld()]
-}
 
 export type ForkPauseAllHeldLaunchDeps = {
   /** Whether the chat is still a worker whose Dispatch is active; unknown keeps it for later. */
@@ -113,7 +39,7 @@ export function wakeForkPauseAllHeldLaunches(deps: ForkPauseAllHeldLaunchDeps): 
   if (!getStructuredAgentSessionHost() || !start) {
     return 0
   }
-  const held = readHeld()
+  const held = readForkPauseAllHeldNotes()
   let woken = 0
   for (const sessionId of held) {
     const state = deps.workerState(sessionId)
@@ -128,7 +54,7 @@ export function wakeForkPauseAllHeldLaunches(deps: ForkPauseAllHeldLaunchDeps): 
       console.warn('[fork-pause-all] starting a held worker launch failed', sessionId, error)
     )
   }
-  writeHeld(held)
+  writeForkPauseAllHeldNotes(held)
   return woken
 }
 
@@ -161,14 +87,14 @@ export function installForkPauseAllHeldLaunches(
       }
     })
   )
-  if (readHeld().size > 0) {
+  if (readForkPauseAllHeldNotes().size > 0) {
     soon()
   }
 }
 
 /** Tests. */
 export function resetForkPauseAllHeldLaunchesForTests(): void {
-  cache = null
+  resetForkPauseAllHeldNotesForTests()
   for (const stop of uninstalls) {
     stop()
   }

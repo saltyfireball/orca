@@ -43,7 +43,7 @@ export type JournalDomainInputRecoveryFacts = {
 type Recoverable = { submission: AgentJournalSubmission; attemptSequence: number }
 
 /** Pages only actual current recovery obligations, never settled attempts or chat history. */
-function recoverableSubmissions(
+export function recoverableSubmissions(
   db: Database.Database,
   target: JournalDomainSubmissionTarget
 ): Recoverable[] {

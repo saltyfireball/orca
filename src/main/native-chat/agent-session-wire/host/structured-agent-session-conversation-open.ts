@@ -1,3 +1,4 @@
+import { forkPauseAllKeepsHeldText } from '../../../fork/pause-all/pause-all-held-notes'
 import { prWatchStorage } from '../../../github/pr-watch/pr-watch-storage'
 // Open and settle the crash boundary before any reader, command or child: damaged journals fail;
 // handed-over sends remain permanently unknown. Unhanded personal text becomes a paused card,
@@ -100,7 +101,8 @@ export async function openStructuredAgentSessionConversationJournal(
   const journal = await openAgentSessionJournal({
     identity,
     database: deps.journalDatabase,
-    recover: { fence },
+    // Fork (BAD-818): a worker launch held by pause-all keeps its Task text across a restart.
+    recover: { fence, ...(forkPauseAllKeepsHeldText(sessionId) ? { forkKeepUnsent: true } : {}) },
     onRecoveryFailure: ({ step, failure }) => {
       const messages = {
         'pending-unknown': 'marking pending sends unknown on open failed',
