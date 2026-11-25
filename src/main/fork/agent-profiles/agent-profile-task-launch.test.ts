@@ -312,10 +312,10 @@ describe('an automatic retry of a worker started with --profile', () => {
     // The terminal loads only the profile's servers, from a private file named on its command.
     expect(seen.command).toContain("'--permission-mode' 'acceptEdits'")
     expect(seen.command).toMatch(
-      /'--strict-mcp-config' '--mcp-config' '[^']+terminal-[0-9a-f]+\.json'/
+      /'--strict-mcp-config' '--mcp-config=[^']+terminal-[0-9a-f]+\.json'/
     )
     expect(seen.command).not.toContain('not-a-real-token')
-    const file = /'--mcp-config' '([^']+)'/.exec(seen.command ?? '')![1]!
+    const file = /'--mcp-config=([^']+)'/.exec(seen.command ?? '')![1]!
     expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({
       mcpServers: { lint: { command: 'lint-mcp', env: { LINT_TOKEN: 'not-a-real-token' } } }
     })

@@ -29,6 +29,7 @@ import { detectAgentsOnHost } from '../../../preflight/workspace-agent-detection
 import { agentCommandOverrideDetectionOptions } from '../../../preflight/installed-agent-detection'
 import type { RuntimeStore } from '../../construction/runtime-store-contract'
 import type { RuntimeManagedWorktreeCreateArgs } from '../creation/runtime-managed-worktree-create-types'
+import { forkWorktreeStartupProfileInputs } from '../../../fork/mcp-profiles/mcp-terminal-launch'
 
 export type WorktreeStartupDraftPaste = { agent: TuiAgent; content: string }
 export type WorktreeStartupFollowup = { agent: TuiAgent; prompt: string }
@@ -199,11 +200,14 @@ export async function buildWorktreeStartupForAgent(
     platform,
     shell,
     isRemote: repoIsRemote(repo),
-    ...(environment.agentArgs !== undefined ? { agentArgs: environment.agentArgs } : {}),
+    // Fork (BAD-800): a --profile's mode and MCP profile apply as on a terminal (FORK.md).
+    ...(await forkWorktreeStartupProfileInputs(environment, agent, {
+      platform,
+      shell,
+      launchRuntime
+    })),
     ...(environment.extraAgentArgs ? { extraAgentArgs: environment.extraAgentArgs } : {}),
-    ...(environment.suppressStartupUpdatePrompt ? { suppressStartupUpdatePrompt: true } : {}),
-    sessionOptions:
-      environment.sessionOptions ?? environment.toSessionOptions(environment.launchPreferences)
+    ...(environment.suppressStartupUpdatePrompt ? { suppressStartupUpdatePrompt: true } : {})
   })
   const prepared = await prepareWorktreeModelStartupInputs({
     inputs: resolvedInputs,

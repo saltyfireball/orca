@@ -153,7 +153,7 @@ describe('worker-start --profile reviewer (BAD-687 criterion 1)', () => {
     expect(command).toMatch(/^claude /)
     expect(command).toContain("'--model' 'sonnet' '--effort' 'high'")
     expect(command).toContain("'--permission-mode' 'acceptEdits'")
-    const file = /'--strict-mcp-config' '--mcp-config' '([^']+)'/.exec(command)?.[1]
+    const file = /'--strict-mcp-config' '--mcp-config=([^']+)'/.exec(command)?.[1]
     expect(JSON.parse(readFileSync(file!, 'utf8'))).toEqual({
       mcpServers: { lint: { command: 'lint-mcp' } }
     })

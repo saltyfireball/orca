@@ -30,3 +30,28 @@ export async function assertForkAutomationMcpProfileSupported(
     `This automation keeps MCP profile "${input.forkMcpProfile}", and that host's Orca cannot keep it, so its runs would load every server. Update Orca on that host. Nothing was moved.`
   )
 }
+
+/**
+ * Fails closed after the create: a host that saved the copy without the MCP profile would run it
+ * with every server, so the copy is removed and the move refused (the original stays).
+ */
+export async function assertForkAutomationMcpProfileCreated(
+  input: Pick<AutomationCreateInput, 'forkMcpProfile'>,
+  created: Pick<Automation, 'id' | 'forkMcpProfile'>,
+  remove: (id: string) => Promise<unknown>
+): Promise<void> {
+  if (!input.forkMcpProfile || created.forkMcpProfile === input.forkMcpProfile) {
+    return
+  }
+  const lost = `That host saved the copy without MCP profile "${input.forkMcpProfile}", so its runs would load every server.`
+  try {
+    await remove(created.id)
+  } catch {
+    throw new Error(
+      `${lost} Removing the copy failed: delete automation ${created.id} on that host before it runs. The original was not moved.`
+    )
+  }
+  throw new Error(
+    `${lost} The copy was removed and the original was not moved. Update Orca on that host.`
+  )
+}

@@ -11,6 +11,8 @@ import { FORK_MCP_PROFILE_FLAG } from '../fork/mcp-profile-specs'
 import type { RuntimeClient } from '../runtime/client'
 import { FORK_AGENT_PROFILE_PERMISSION_MODES } from '../../shared/fork/agent-profiles/agent-profiles-types'
 import { FORK_AGENT_PROFILE_PERMISSION_FLAG } from '../fork/agent-profile-flag'
+import { assertForkAutomationMcpProfileCreated } from '../fork/automation-mcp-profile-created'
+import type { Automation } from '../../shared/automations/automation-definition'
 
 function forkProfilePermissionChoice(flags: Map<string, string | boolean>) {
   const value = flags.get(FORK_AGENT_PROFILE_PERMISSION_FLAG)
@@ -93,6 +95,8 @@ export function forkProjectLaunch(flags: Map<string, string | boolean>): {
     [FORK_MCP_PROFILE_PARAM]?: string
   }
   assertSupported: (client: RuntimeClient) => Promise<void>
+  /** After the create: refuses, and removes it, when the host dropped the MCP profile (BAD-800). */
+  assertCreated: (writer: RuntimeClient, automation: Automation | undefined) => Promise<void>
   /** For an edit, once the automation is read: a bot's automation keeps its own agent setup, so it
    *  takes no launch choices; a project's takes them and no --agent. */
   forEdit: (
@@ -108,6 +112,8 @@ export function forkProjectLaunch(flags: Map<string, string | boolean>): {
     params,
     assertSupported: (client) =>
       assertLaunchChoicesSupported(client, patch, mcp[FORK_MCP_PROFILE_PARAM]),
+    assertCreated: (writer, automation) =>
+      assertForkAutomationMcpProfileCreated(writer, mcp[FORK_MCP_PROFILE_PARAM], automation),
     forEdit: async (client, editFlags, isBotAutomation) => {
       if (isBotAutomation) {
         return {}

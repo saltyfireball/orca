@@ -151,8 +151,9 @@ export class RpcDispatcher {
 
     if (!isStreamingMethod(method)) {
       try {
-        const result = await this.invokeUnary({ method, request, params, caller }, options)
-        reply(successResponse(request.id, meta, result))
+        // Fork (FORK.md "MCP profiles"): a launch over the WebSocket or ipc runs in its scope too.
+        const invoke = () => this.invokeUnary({ method, request, params, caller }, options)
+        reply(successResponse(request.id, meta, await withForkMcpLaunchScope(admission, invoke)))
       } catch (error) {
         reply(mapDispatcherError(request, meta, error))
       }

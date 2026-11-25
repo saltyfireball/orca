@@ -175,6 +175,7 @@ export const AUTOMATION_HANDLERS: Record<string, CommandHandler> = {
       ...params,
       ...(writer === client ? callerChat() : {})
     })
+    await launch.assertCreated(writer, result.result.automation)
     printAutomationResult(result, json, formatAutomationShow)
   },
   // The same create, with the rules and deadline a pull request watch stands for.

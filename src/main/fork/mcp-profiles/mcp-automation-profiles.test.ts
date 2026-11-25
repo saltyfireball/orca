@@ -275,7 +275,7 @@ describe('automations create --profile with an MCP profile (BAD-800)', () => {
     const argv = captureTerminalArgv(target)
     await startService(target).runNow(automation.id)
     const command = await argv
-    const file = /'--strict-mcp-config' '--mcp-config' '([^']+)'/.exec(command)?.[1]
+    const file = /'--strict-mcp-config' '--mcp-config=([^']+)'/.exec(command)?.[1]
     expect(keptServers(file)).toEqual({ mcpServers: { lint: { command: 'lint-mcp' } } })
   })
 
@@ -324,6 +324,45 @@ describe('automations create --profile with an MCP profile (BAD-800)', () => {
       /MCP profiles are not loaded/
     )
     expect(target.store.listAutomations()).toHaveLength(0)
+  })
+})
+
+/** A host path that saves a create without its MCP profile, as the WebSocket entry did once. */
+function droppingCreates<P>(method: string, params: P): P {
+  if (method !== 'automation.create' || !params || typeof params !== 'object') {
+    return params
+  }
+  const { forkMcpProfile: _dropped, ...kept } = params as Record<string, unknown>
+  return kept as P
+}
+
+describe('a create the host saved without its MCP profile (BAD-800)', () => {
+  it('the CLI removes it and refuses loudly', async () => {
+    const target = await host()
+    const call = target.client.call
+    target.client.call = (method, params) => call(method, droppingCreates(method, params))
+    await expect(createWithProfile(target, 'terminal')).rejects.toThrow(
+      /without MCP profile "review-tools", so its runs would load every server\. It was removed/
+    )
+    expect(target.store.listAutomations()).toEqual([])
+  })
+
+  it("the dialog's move removes the copy, and the original stays", async () => {
+    const target = await host()
+    const source = await createWithProfile(target, 'terminal')
+    const dispatch = transport.dispatch!
+    transport.dispatch = (method, params) => dispatch(method, droppingCreates(method, params))
+    const moved = await move(source, { kind: 'desktop' })
+    expect(moved).toMatchObject({
+      saved: {
+        ok: false,
+        notice: {
+          message: expect.stringMatching(/without MCP profile "review-tools".*copy was removed/)
+        }
+      },
+      originalRemoved: false
+    })
+    expect(target.store.listAutomations().map((a) => a.id)).toEqual([source.id])
   })
 })
 

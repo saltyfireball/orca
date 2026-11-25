@@ -38,7 +38,10 @@ import {
   AutomationHostScopeUnsupportedError,
   REQUEST_TIMEOUT_MS
 } from './automation-capability-probe'
-import { assertForkAutomationMcpProfileSupported } from '@/fork/agent-profiles/automation-mcp-profile-move'
+import {
+  assertForkAutomationMcpProfileCreated,
+  assertForkAutomationMcpProfileSupported
+} from '@/fork/agent-profiles/automation-mcp-profile-move'
 import {
   AUTOMATION_LIST_HOST_SCOPE_RUNTIME_CAPABILITY,
   AUTOMATION_LIST_HOST_SCOPE_UPDATE_REQUIRED_MESSAGE
@@ -325,5 +328,8 @@ export async function createAutomationForDestination(
     ...toRuntimeAutomationCreateInput(prepared),
     destination
   })
+  await assertForkAutomationMcpProfileCreated(input, result.automation, (id) =>
+    callAuthority(authority, 'automation.delete', { id })
+  )
   return result.automation
 }

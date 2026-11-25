@@ -803,7 +803,20 @@ ones `SLRM-123 `).
     (`fork.mcpProfiles.list`, `.chat`, `.set`).
   - **Terminals (BAD-741).** A Claude terminal launched with a named profile (not one chosen
     by default, so a terminal without one is byte for byte stock) gets `--strict-mcp-config`
-    and, unless the profile is "none", `--mcp-config <file>` after its own arguments. The file
+    and, unless the profile is "none", `--mcp-config=<file>` after its own arguments. It is one
+    word (BAD-800): Claude's `--mcp-config` takes several values, so a spaced file read the prompt
+    after it as a second config file and Claude exited ("MCP config file not found"). A resume
+    replays the same word, and a word added after it (the prompt, a later Settings argument) is
+    still read as itself. A chat passes `mcp-config` through the SDK, which puts it last and sends
+    the prompt on stdin, so it is unchanged.
+  - **A new workspace's startup agent (BAD-800).** `worktree create --agent claude` (and an
+    automation run on `new_per_run`, which makes one) builds its first terminal's command itself,
+    not through the terminal plan, so the MCP profile and a `--profile`'s capped mode were both
+    dropped: Claude loaded every server, and with Settings allowing full access it started with
+    `--dangerously-skip-permissions` although the CLI printed the profile's mode. That builder now
+    gets the same mode and MCP arguments as a terminal (`forkWorktreeStartupProfileInputs`). A
+    profile's Claude account there picks the Claude folder the MCP file is read from; the
+    account's own pin on that path is as before. The file
     holds only the kept servers' definitions (0600, never in argv), from the Claude folder of
     the terminal's pinned account or the default one. A resume replays its arguments, so the
     file is `launch/terminal-<hash of profile, Claude folder and folder>.json`, rewritten on each
@@ -3279,7 +3292,8 @@ ones `SLRM-123 `).
     anything is created: a bot automation (`--bot`, which refuses `--profile` anyway), another
     agent, a profile the host lacks, a host without MCP profiles, or an older host (no
     `automations.fork-mcp-profile.v2`, checked by the CLI) is refused with nothing created. The
-    dispatcher hook runs the create in a scope the store's write reads, so the record is written
+    dispatcher hook runs the create, on every transport (the local socket, the paired WebSocket,
+    the renderer's ipc call and subscribe; see "Launch scope on every transport" below), in a scope the store's write reads, so the record is written
     with it in one step, and checks the saved record has it (a retried creation key that found an
     automation saved without it is refused). Nothing links it by a key, so nothing can lose or
     evict it, and a deleted automation takes it along. An edit cannot set or clear it (the update
@@ -3288,6 +3302,22 @@ ones `SLRM-123 `).
     the run with the reason (the run shows as failed). Changing or deleting the agent profile
     afterwards does not change the automation, as with its mode. `orca automations show` prints
     `mcp profile: NAME` and the automation's card has an MCP profile row.
+  - **Fail closed at the caller (BAD-800).** After `automation.create` with an MCP profile, the
+    CLI (`automations create`) and the dialog's move check that the saved automation has it. When
+    it does not (a host path that dropped it), the CLI removes the automation and refuses ("... It
+    was removed"); if the removal fails it says to run `orca automations remove --id ID` before
+    it runs. The move removes the copy, leaves the original and refuses the move.
+  - **Launch scope on every transport (BAD-800).** The dispatcher has two entries: `dispatch`
+    (the local CLI socket, the renderer's ipc call) and `dispatchStreamingObjects` (the paired
+    WebSocket: a CLI's `--environment` or `--pairing-code`, a home's `worker-start --on` to a
+    server, the desktop app driving a server, the phone; and the renderer's ipc subscribe). The
+    second ran unary methods with no launch scope, so a launch over it lost the MCP profile, the
+    `--profile` mode, account and preamble, and the refusals: `automations create --profile`
+    printed the MCP line, stored nothing and its runs loaded every server; `agent launch`,
+    `worktree create` and `worker-start` there started with every server and the profile
+    unapplied, and a `worker-start --on` server never applied the home's carried profile. Both
+    entries now run a unary method in the same scope, once, and a refusal is the same error
+    reply on both.
   - **Moving an automation keeps it (BAD-800).** The automation dialog's move to another host is a
     create there and a delete here; the create carries the original's MCP profile, so the
     destination refuses a profile it lacks or an Orca without `automations.fork-mcp-profile.v2`,
@@ -3680,6 +3710,7 @@ Apply these in this order. Each one is a single commit.
 201. `BAD-799 Pause all holds the restart resume of terminal workers as offers that say why and that resume-all resumes once, and refuses a terminal worker-start with the pause reason`
 202. `BAD-801 Bot room hop limit: chained bot hand-offs under one person post stop at forkBotRoomHopLimit (default 6, 0 none), counted by chain depth from the stored lines, with one Decision inbox entry holding the last exchange and a Continue that resumes the held hand-off once with a fresh count; a later person post makes it moot`
 203. `BAD-800 An automation keeps its MCP profile on its own record, so a move to another host carries it or is refused, nothing can lose or evict it, and automations show and the card name it`
+204. `BAD-800 Launches over the paired WebSocket and the renderer's ipc subscribe run in the launch scope, so a profile's MCP limit, mode, account and preamble apply and refusals reach the caller; the CLI and the dialog's move refuse and remove an automation saved without its MCP profile; a Claude terminal's MCP config is one --mcp-config=<file> word, so the prompt after it is a prompt; a new workspace's startup agent gets the profile's mode and MCP profile`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5007,6 +5038,18 @@ Upstream files only get short hooks, which keeps merges small:
   passes the plan's options through `forkMcpTerminalLaunch` before the startup inputs are built,
   and `orchestration-runtime-capabilities.ts` lists `orchestration.fork-mcp-profile-launch.v1`;
   the name rides the existing `forkAgentProfileRemoteOwnedCarry` spread in `remote-owned-start.ts`.
+  BAD-800 (204): `dispatcher.ts` now wraps the unary branch of `dispatchStreamingObjects` in
+  `withForkMcpLaunchScope` too, the same hook `dispatch` already had (two lines; a method in one
+  place would pass the file's 300-line limit); `automations.ts` calls `launch.assertCreated`
+  after the create (`forkProjectLaunch`, `src/cli/fork/automation-mcp-profile-created.ts`); and
+  `automation-scoped-list-client.ts` calls `assertForkAutomationMcpProfileCreated` after the
+  create; `runtime-worktree-agent-startup.ts` (`buildWorktreeStartupForAgent`) takes its agent
+  arguments and session options from `forkWorktreeStartupProfileInputs` in place of its own two.
+  Proof: `mcp-launch-network-transport.test.ts` (real CLI client, E2EE WebSocket pairing,
+  RPC server, automation methods and store, and the ipc subscribe handler) and
+  `mcp-terminal-prompt-argv.test.ts` (the real terminal plan, fresh and resumed, a new
+  workspace's startup agent, and a chat's SDK argv, parsed by a stand-in for Claude's variadic options and, with
+  `ORCA_REAL_CLAUDE_CLI_TEST=1`, by the installed claude).
   BAD-800: `withForkMcpLaunchScope` (the dispatcher's existing hook) also passes
   `automation.create` through `withForkAutomationMcpProfile`, so `dispatcher.ts` is untouched;
   `automation-create-identity.ts` spreads `forkAutomationCreateMcpProfile()` into the new record

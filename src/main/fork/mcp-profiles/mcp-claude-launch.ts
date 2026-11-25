@@ -200,7 +200,8 @@ export async function forkMcpClaudeTerminalArgs(
       configDirSet: input.configDirSet,
       fileId
     })
-    return { args: [`--${STRICT}`, `--${CONFIG}`, file] }
+    // One token: Claude's --mcp-config takes several values, so a spaced file would swallow the prompt.
+    return { args: [`--${STRICT}`, `--${CONFIG}=${file}`] }
   } catch (error) {
     // The message only: server definitions never reach a log.
     console.warn('[fork-mcp-profiles] could not build the MCP config', (error as Error).message)

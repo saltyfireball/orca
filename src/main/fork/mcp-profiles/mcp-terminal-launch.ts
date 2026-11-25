@@ -1,6 +1,6 @@
 // FORK.md "MCP profiles" (BAD-741): the one hook in the terminal agent plan. A Claude terminal
 // started with an MCP profile (`--mcp-profile`, a profile's, or a retry's stored one) gets
-// `--strict-mcp-config` and `--mcp-config <file>` after its own arguments, the file holding only
+// `--strict-mcp-config` and `--mcp-config=<file>` after its own arguments, the file holding only
 // the kept servers' definitions (0600, never in argv). Where that cannot work it refuses, naming
 // why. Without a profile the launch is untouched, byte for byte.
 import type { TuiAgent } from '../../../shared/agent-launch/catalog/tui-agent'
@@ -11,6 +11,7 @@ import {
 import { readLaunchPermissionChoice } from '../../../shared/agent-launch/permissions/tui-agent-permission-choice'
 import {
   quoteStartupArg,
+  resolveStartupShell,
   type AgentStartupShell
 } from '../../../shared/agent-launch/startup/tui-agent-startup-shell'
 import { FORK_MCP_PROFILE_ALL } from '../../../shared/fork/mcp-profiles'
@@ -21,10 +22,15 @@ import {
 import { resolveTerminalStartupCwd } from '../../../shared/shell/launch/terminal-startup-cwd'
 import { getClaudeProfileRouter } from '../../claude-accounts/profiles/routing/claude-profile-installed-router'
 import { InvalidArgumentError } from '../../runtime/rpc/core'
+import type { Repo } from '../../../shared/repository/repo-types'
+import { getRepoSshConnectionId } from '../../../shared/execution-host/execution-host'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { forkMcpClaudeTerminalArgs } from './mcp-claude-launch'
 import { currentForkMcpLaunchScope } from './mcp-launch-scope'
+import { currentForkAgentProfileLaunch } from '../agent-profiles/agent-profile-launch-scope'
+import { forkAgentProfileTerminalLaunch } from '../agent-profiles/agent-profile-launch-apply'
+import type { AgentLaunchPreferences } from '../../../shared/agent-session/lifecycle/operations/agent-session-host-authority'
 
 type Launch = {
   agentArgs?: string | null
@@ -99,4 +105,76 @@ export async function forkMcpTerminalLaunch<O extends Launch>(
   }
   const extra = narrowed.args.map((arg) => quoteStartupArg(arg, where.shell)).join(' ')
   return { ...opts, agentArgs: raw.trim() ? `${raw} ${extra}` : extra }
+}
+
+type WorktreeStartup<S> = {
+  repo: Pick<Repo, 'path' | 'connectionId' | 'executionHostId'>
+  settings: Where['settings']
+  agentArgs?: string | null
+  sessionOptions?: Readonly<Record<string, unknown>>
+  launchPreferences?: AgentLaunchPreferences
+  toSessionOptions: (preferences?: AgentLaunchPreferences) => S | undefined
+}
+
+/**
+ * BAD-800: the hook in a new workspace's startup agent, which builds its own command instead of
+ * the terminal plan. Returns the arguments and session options the stock builder takes, with a
+ * `--profile`'s capped mode applied and a Claude terminal's MCP profile narrowed, as a terminal's.
+ */
+export async function forkWorktreeStartupProfileInputs<S>(
+  environment: WorktreeStartup<S>,
+  agent: TuiAgent,
+  host: {
+    platform: NodeJS.Platform
+    shell?: AgentStartupShell
+    launchRuntime: { pty: { terminalWindowsWslDistro?: string | null } } | Error
+  }
+): Promise<{ agentArgs?: string | null; sessionOptions: S | undefined }> {
+  const stockOptions =
+    environment.sessionOptions ?? environment.toSessionOptions(environment.launchPreferences)
+  const applied = forkAgentProfileTerminalLaunch(
+    {
+      startupAgent: agent,
+      ...(environment.launchPreferences ? { launchPreferences: environment.launchPreferences } : {})
+    },
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: session options are a string-keyed record; the hook only adds the permission entry.
+    stockOptions as Readonly<Record<string, unknown>> | undefined
+  )
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the same record with at most the permission entry added.
+  const sessionOptions = (applied.sessionOptions ??
+    environment.toSessionOptions(applied.opts.launchPreferences)) as S | undefined
+  const stock = environment.agentArgs !== undefined ? { agentArgs: environment.agentArgs } : {}
+  const profile = currentForkMcpLaunchScope()?.profile
+  if (!profile || profile === FORK_MCP_PROFILE_ALL || agent !== 'claude') {
+    return { ...stock, sessionOptions }
+  }
+  const pin = currentForkAgentProfileLaunch()?.account
+  const narrowed = await forkMcpTerminalLaunch(
+    {
+      ...stock,
+      ...(pin?.kind === 'claude'
+        ? {
+            accountEnv: {
+              [FORK_CLAUDE_TERMINAL_ACCOUNT_ENV]: pin.pin ?? FORK_CLAUDE_SYSTEM_DEFAULT
+            }
+          }
+        : {})
+    },
+    agent,
+    {
+      workspace: {
+        path: environment.repo.path,
+        connectionId: getRepoSshConnectionId(environment.repo)
+      },
+      wslDistro:
+        host.launchRuntime instanceof Error
+          ? null
+          : host.launchRuntime.pty.terminalWindowsWslDistro,
+      shell: resolveStartupShell(host.platform, host.shell),
+      settings: environment.settings,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: a string-keyed session option record.
+      sessionOptions: sessionOptions as Readonly<Record<string, unknown>> | undefined
+    }
+  )
+  return { agentArgs: narrowed.agentArgs, sessionOptions }
 }
