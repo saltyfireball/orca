@@ -10,7 +10,7 @@ import { botItemHeldAnswersText } from '../../../../../shared/bots/bot-item-answ
 import { botItemQuestionShape } from '../../../../../shared/bots/bot-item-ask'
 import { writeNativeChatDraftCache } from '../../native-chat/drafts/native-chat-draft-views'
 import { BotItemActivityList } from './BotItemActivityList'
-import { botItemHeldAnswersScope } from './use-bot-item-question-steps'
+import { botItemHeldAnswersScope } from './bot-item-held-answers'
 
 // A body's height follows its text: a question's long context overflows its 8-line cut, a reply does not.
 const sizes = ['scrollHeight', 'clientHeight'] as const

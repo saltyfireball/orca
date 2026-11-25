@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { MobileMarkdown } from '../../components/markdown/MobileMarkdown'
-import { INLINE_TEXT_SELECTION } from '../../platform/text-selection/inline-text-selection'
 import { useMobileTranslation } from '../../i18n/use-mobile-translation'
+import { INLINE_TEXT_SELECTION } from '../../platform/text-selection/inline-text-selection'
 import { colors, spacing } from '../../theme/mobile-theme'
 import { themedStyleSheet } from '../../theme/themed-styles'
 
 const DESCRIPTION_LINES_HEIGHT = 3 * 20
 
 /** The description's first three lines, then Show more; Markdown, as the desktop draws it. */
-export function ClampedDescription({ text }: { text: string }) {
+export function MobileBotItemDescription({ text }: { text: string }) {
   const t = useMobileTranslation()
   const [open, setOpen] = useState(false)
   const [height, setHeight] = useState(0)

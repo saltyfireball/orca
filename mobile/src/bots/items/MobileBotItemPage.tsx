@@ -1,9 +1,9 @@
-// One item's page inside the bot panel, in the desktop's order: title, "Item · chat · when", description
-// (three lines, Show more), the close note, Status (and Snoozed while it is) and Chat, Done means, Links, Activity, and the comment
-// box docked at the bottom. The agent's question is answered in its comment, as on the desktop: quick
-// replies there, your own words in the box. Back returns to the list; up and down step through it, "4 of 6".
+// One item's page inside the bot panel, in the desktop's order: title, description (three lines, Show
+// more), the close note, Status (what it waits on under it) and Snoozed while it is, Chat, Done means,
+// Links, Activity, and the comment box docked at the bottom. The agent's question docks chat's answer
+// card in the box's place. Back returns to the list; up and down step through it, "4 of 6".
 import { useRef } from 'react'
-import { ScrollView, Text, View } from 'react-native'
+import { ScrollView, Text, View, type TextInputInstance } from 'react-native'
 import { House, MessageSquare } from 'lucide-react-native'
 import { BOTS_ITEM_COMMENT_ATTACHMENTS_RUNTIME_CAPABILITY } from '../../../../src/shared/bot-runtime-capabilities'
 import {
@@ -13,6 +13,7 @@ import {
   type BotItem
 } from '../../../../src/shared/bots/bot-items'
 import { botItemStatusName } from '../../../../src/shared/bots/bot-item-status-name'
+import { isBotItemReplyingTo } from '../../../../src/shared/bots/bot-item-replying'
 import type { BotChatTreeWorker } from '../../../../src/shared/bots/bot-chat-tree'
 import { ListGroup, ListRow, SectionHeader } from '../../components/list/ListGroup'
 import { MobileEdgeFade } from '../../components/list/MobileEdgeFade'
@@ -26,13 +27,11 @@ import { MobileNativeChatFloatingControls } from '../../session/native-chat/lowe
 import { MobileBotTextButton } from '../MobileBotTextButton'
 import type { BotItemQuestionStepsSend } from '../../../../src/shared/bots/use-bot-item-question-steps'
 import { MobileBotItemActivity } from './MobileBotItemActivity'
-import { MobileBotItemCommentBox, type BotItemCommentBoxHandle } from './MobileBotItemCommentBox'
-import { ClampedDescription } from './MobileBotItemDescription'
+import { MobileBotItemCommentBox } from './MobileBotItemCommentBox'
+import { botItemOpenAsk, useMobileBotItemAskSlot } from './MobileBotItemAskCard'
+import { MobileNativeChatPromptStrip } from '../../session/native-chat/input/prompts/MobileNativeChatPromptStrip'
 import { MobileBotItemLinks } from './MobileBotItemLinks'
-import { MobileBotItemStepsPanel } from './MobileBotItemSteps'
-import { MobileBotItemStepsLine } from './MobileBotItemStepsLine'
-import { useMobileBotItemStepsScroll } from './use-mobile-bot-item-steps-scroll'
-import { botItemStepsPlace } from '../../../../src/shared/bots/bot-item-steps'
+import { useMobileBotItemOwnerSteps } from './use-mobile-bot-item-owner-steps'
 import { botItemChatName, type BotItemSheet } from './MobileBotItemSheets'
 import { MobileBotItemStatusIcon } from './MobileBotItemStatusIcon'
 import { formatPhoneSnoozeTime } from './bot-item-snooze-time'
@@ -41,9 +40,9 @@ import { useBotItemActivityFollow } from './use-bot-item-activity-follow'
 import { usePhoneBotItemView } from './use-phone-bot-item-view'
 import type { PhoneBotItemStepper } from './use-phone-bot-item-walk'
 import { MobileBotItemPageHeader } from './MobileBotItemPageHeader'
-import { MobileBotItemSubtitle } from './MobileBotItemSubtitle'
+import { MobileBotItemDescription } from './MobileBotItemDescription'
 import { usePhoneBotItemPendingComments } from './use-phone-bot-item-pending-comments'
-import { botItemCommentDraftKey, returnBotItemCommentDraft } from './bot-item-comment-drafts'
+import { botItemCommentDraftKey, quoteIntoBotItemCommentDraft } from './bot-item-comment-drafts'
 import { useBotItemQuestionSteps } from './use-phone-bot-item-question-steps'
 import { MobileNativeChatComposerMenuHost } from '../../session/native-chat/composer/menus/MobileNativeChatComposerMenuHost'
 
@@ -90,7 +89,6 @@ export function MobileBotItemPage({
   const t = useMobileTranslation()
   const view = usePhoneBotItemView({ client, uid, reads })
   const now = useNow(60_000)
-  const comment = useRef<BotItemCommentBoxHandle>(null)
   const lastEventId = view.events.at(-1)?.id ?? ''
   const takesImages = useRouteCapability(BOTS_ITEM_COMMENT_ATTACHMENTS_RUNTIME_CAPABILITY)
   // One item on one host: its pending comments and its asks' held answers.
@@ -102,42 +100,57 @@ export function MobileBotItemPage({
     events: view.events,
     hostName,
     showToast,
-    returnText: (text) => returnBotItemCommentDraft(botItemCommentDraftKey(hostId, uid), text)
+    draftKey: botItemCommentDraftKey(hostId, uid),
+    refresh: view.retry
   })
-  // From the comment box or a quick reply: shown at once, then sent to the host.
+  // From the comment box or the answer card: shown at once, then sent to the host.
   const jump = useBotItemActivityFollow({
     scopeKey: itemKey,
     hasItems: view.events.length + pending.shown.length > 0
   })
-  // The open steps sit in the ask's card; with no loaded ask they stay above the Activity.
-  const stepsPlace =
-    view.item && view.item.status !== 'done' && view.item.status !== 'canceled'
-      ? botItemStepsPlace(view.item, view.events)
-      : 'none'
-  const stepsScroll = useMobileBotItemStepsScroll({
-    center: jump.center,
-    inAskSet: stepsPlace === 'ask' ? (view.item?.steps?.eventId ?? null) : null,
-    ready: view.events.length > 0
+  const ownerSteps = useMobileBotItemOwnerSteps({
+    client,
+    item: view.item,
+    events: view.events,
+    online: online && !view.failed,
+    hostName,
+    showToast,
+    center: jump.center
   })
   const sendComment: BotItemQuestionStepsSend = (text, paths = [], ...rest) => {
     pending.send(text, paths, lastEventId || null, ...rest)
     jump.jumpToTail()
   }
   // `waitingLine`: the question the comment box names, until a reply is on its way.
-  const { steps, sent, quick, fromBox, waitingLine } = useBotItemQuestionSteps(
+  const { sent, quick, fromBox, waitingLine } = useBotItemQuestionSteps(
     itemKey,
     view.item,
     view.events,
     sendComment,
     pending.shown
   )
-  const quickReplies = {
-    send: quick,
-    edit: (text: string) => comment.current?.fill(text),
-    recover: (text: string) => comment.current?.fill(text, true),
-    type: () => comment.current?.answer(),
-    steps,
-    sent
+  const openAsk = view.item ? botItemOpenAsk(view.item, view.events) : null
+  // A reply already on its way answers its question, before the host's read says so.
+  const replying = pending.shown.some((entry) => isBotItemReplyingTo(entry, openAsk?.askId ?? null))
+  const { askOpen, askShown, ...ask } = useMobileBotItemAskSlot({
+    itemKey,
+    ask: openAsk,
+    online: online && !view.failed,
+    replying,
+    loaded: view.item !== null,
+    host: view.item ? { item: view.item, events: view.events } : null,
+    onOpenWithCard: jump.top,
+    send: quick
+  })
+  const commentField = useRef<TextInputInstance>(null)
+  // Quoting starts a comment, so the answer card folds to its strip and the box shows.
+  const quoteComment = (text: string): void => {
+    if (askShown) {
+      ask.fold()
+    }
+    quoteIntoBotItemCommentDraft(botItemCommentDraftKey(hostId, uid), text)
+    // In the tap itself: iOS opens the keyboard only for a focus the gesture made.
+    commentField.current?.focus()
   }
   const back = <MobileBotItemPageHeader stepper={stepper} online={online} onBack={onBack} />
   const item = view.item
@@ -157,9 +170,7 @@ export function MobileBotItemPage({
                     '{{host}} didn’t find it. It may belong to a bot on another computer.',
                     { host: hostName }
                   )
-                : t('bots.items.open.noAnswer', '{{host}} didn’t answer.', {
-                    host: hostName
-                  })}
+                : t('bots.items.open.noAnswer', '{{host}} didn’t answer.', { host: hostName })}
             </Text>
             <MobileBotTextButton label={t('bots.items.retry', 'Retry')} onPress={view.retry} />
           </View>
@@ -171,23 +182,11 @@ export function MobileBotItemPage({
   }
   const chatTitle = botItemChatName(item, t)
   const ChatIcon = item.chat.kind === 'home' ? House : MessageSquare
-  const stepsPanel = (
-    <MobileBotItemStepsPanel
-      client={client}
-      item={item}
-      online={online && !view.failed}
-      hostName={hostName}
-      showToast={showToast}
-      currentRef={stepsScroll.currentStep}
-    />
-  )
   const closed = item.status === 'done' || item.status === 'canceled'
   return (
     <View style={styles.page}>
       {back}
-      {stepsPlace === 'ask' && item.steps ? (
-        <MobileBotItemStepsLine view={item.steps} onPress={() => stepsScroll.reveal(true)} />
-      ) : null}
+      {ownerSteps.line}
       <MobileNativeChatComposerMenuHost style={styles.scroll}>
         <View style={styles.scroll}>
           <ScrollView
@@ -211,8 +210,7 @@ export function MobileBotItemPage({
                 <Text style={styles.number}>{formatBotItemNumber(item.number)} </Text>
                 {item.title}
               </Text>
-              <MobileBotItemSubtitle item={item} chatTitle={chatTitle} />
-              {item.description ? <ClampedDescription text={item.description} /> : null}
+              {item.description ? <MobileBotItemDescription text={item.description} /> : null}
             </View>
             {view.failed ? (
               <ListGroup>
@@ -241,6 +239,9 @@ export function MobileBotItemPage({
             <ListGroup>
               <ListRow
                 title={t('bots.items.field.status', 'Status')}
+                {...(item.status === 'waiting' && item.wait
+                  ? { subtitle: item.wait.text, subtitleLines: 0 }
+                  : {})}
                 accessory={
                   <View style={styles.value}>
                     <MobileBotItemStatusIcon status={item.status} live={isBotItemLive(item)} />
@@ -288,7 +289,7 @@ export function MobileBotItemPage({
                 <Text style={styles.doneMeansText}>{item.doneMeans}</Text>
               </View>
             ) : null}
-            {stepsPlace === 'above' ? stepsPanel : null}
+            {ownerSteps.above}
             {item.links.length > 0 ? (
               <>
                 <SectionHeader
@@ -315,10 +316,10 @@ export function MobileBotItemPage({
               attachments={{ client, onOpenFile }}
               pending={pending}
               onReveal={jump.center}
-              itemScope={itemKey}
-              quickReplies={quickReplies}
-              repliesDisabled={!online || view.failed}
-              steps={stepsPlace === 'ask' ? stepsPanel : null}
+              sent={sent}
+              asking={askOpen}
+              onQuote={quoteComment}
+              steps={ownerSteps.inAsk}
             />
           </ScrollView>
           {/* A soft edge over the comment box: activity scrolling under it reads as more below. */}
@@ -328,24 +329,33 @@ export function MobileBotItemPage({
             onJumpToTail={jump.jumpToTail}
           />
         </View>
-        <View onLayout={(event) => onCommentBoxHeight(event.nativeEvent.layout.height)}>
-          <MobileBotItemCommentBox
-            ref={comment}
-            client={client}
-            item={item}
-            online={online && !view.failed}
-            hostName={hostName}
-            question={
-              waitingLine && !pending.shown.some(({ failed }) => !failed)
-                ? { ...waitingLine, asker: item.owner.name ?? bot.name }
-                : null
-            }
-            attachTo={takesImages && !item.chat.gone ? item.chat.id : null}
-            hostId={hostId}
-            bot={bot}
-            onSend={fromBox}
-            showToast={showToast}
-          />
+        <View
+          style={askShown ? styles.askDock : undefined}
+          onLayout={(event) => onCommentBoxHeight(event.nativeEvent.layout.height)}
+        >
+          <View style={askShown ? styles.askSlot : styles.hidden}>{ask.card}</View>
+          <MobileNativeChatPromptStrip prompt={ask.strip} />
+          {/* Kept mounted under the card, so its draft and photos stay put. */}
+          <View style={askShown ? styles.hidden : undefined}>
+            <MobileBotItemCommentBox
+              client={client}
+              item={item}
+              online={online && !view.failed}
+              hostName={hostName}
+              // While the card holds the answer, the box is a plain comment: one place to type the answer.
+              question={
+                waitingLine && !replying && !askOpen
+                  ? { ...waitingLine, asker: item.owner.name ?? bot.name }
+                  : null
+              }
+              attachTo={takesImages && !item.chat.gone ? item.chat.id : null}
+              hostId={hostId}
+              bot={bot}
+              fieldRef={commentField}
+              onSend={fromBox}
+              showToast={showToast}
+            />
+          </View>
         </View>
       </MobileNativeChatComposerMenuHost>
     </View>
@@ -354,19 +364,16 @@ export function MobileBotItemPage({
 
 const styles = themedStyleSheet(() => ({
   page: { flex: 1, backgroundColor: colors.sheetSurface },
+  hidden: { display: 'none' },
+  // As chat caps its card: the activity stays in view and a tall card scrolls inside.
+  askDock: { flexShrink: 1, minHeight: 0, maxHeight: '60%' },
+  // The card's own inset is the chat's screen edge; here the page already has one, so its edge meets the groups'.
+  askSlot: { flexShrink: 1, minHeight: 0, marginHorizontal: -spacing.sm },
   scroll: { flex: 1 },
   content: { gap: spacing.sm, paddingBottom: spacing.lg },
   head: { paddingHorizontal: spacing.xs, gap: spacing.xs },
-  title: {
-    fontSize: typography.titleSize,
-    fontWeight: '600',
-    color: colors.textPrimary
-  },
-  number: {
-    fontWeight: '400',
-    color: colors.textMuted,
-    fontVariant: ['tabular-nums']
-  },
+  title: { fontSize: typography.titleSize, fontWeight: '600', color: colors.textPrimary },
+  number: { fontWeight: '400', color: colors.textMuted, fontVariant: ['tabular-nums'] },
   note: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
@@ -386,16 +393,8 @@ const styles = themedStyleSheet(() => ({
   },
   doneMeansLabel: { fontSize: 13, color: colors.textMuted },
   doneMeansText: { fontSize: 15, lineHeight: 20, color: colors.textPrimary },
-  missing: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl,
-    gap: spacing.sm
-  },
-  missingTitle: {
-    fontSize: typography.bodySize,
-    fontWeight: '600',
-    color: colors.textPrimary
-  },
+  missing: { alignItems: 'center', paddingVertical: spacing.xl, gap: spacing.sm },
+  missingTitle: { fontSize: typography.bodySize, fontWeight: '600', color: colors.textPrimary },
   missingBody: {
     fontSize: 13,
     color: colors.textMuted,

@@ -1,7 +1,8 @@
 import { useTranslate } from '@/i18n/use-translate'
 import type { BotItem } from '../../../../../shared/bots/bot-items'
 
-export function CloseNote({ item }: { item: BotItem }): React.JSX.Element | null {
+/** A done or canceled item's closing note, above its fields. */
+export function BotItemCloseNote({ item }: { item: BotItem }): React.JSX.Element | null {
   const t = useTranslate()
   if (!item.closeNote) {
     return null

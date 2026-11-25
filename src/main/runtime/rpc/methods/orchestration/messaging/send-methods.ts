@@ -25,9 +25,14 @@ import { withDispatchPrefixHint } from './dispatch-prefix-hint'
 import { sendPointToPointMessage } from './send-point-to-point'
 import { sendGroupMessage } from './send-group'
 import { sendFederatedControlMail } from '../../../../orchestration/legacy-remote-home/send-control-mail'
-import { orchestrationCallerIdentity } from '../runs/run-scope'
+import { sendSenderIdentity } from './send-sender-identity'
 import { assertLifecycleCallerIsNotAnotherParty } from './lifecycle-caller-fence'
-import { planWorkerFollowUp, startWorkerFollowUp } from './worker-follow-up'
+import {
+  assertFollowUpForItem,
+  planWorkerFollowUp,
+  splitForItem,
+  startWorkerFollowUp
+} from './worker-follow-up'
 import { finishedWorkerSend, refuseFinishedRemoteWorker } from './finished-worker-mail'
 import { relayedDeliveryUnknownWarning, withDeliveryHoldWarning } from './send-delivery-hold'
 import { forkGateWorkerDone } from '../../../../../fork/completion-contract/completion-gate-live'
@@ -56,7 +61,6 @@ export const ORCHESTRATION_SEND_METHODS = [
         runtime,
         legacyCoordinatorRunId,
         revalidateLegacyCoordinator,
-        orchestrationCompatibilityCallerAuthority,
         recordMutationReceipt,
         markWorkerDoneMutationEffectFree,
         orchestrationCaller,
@@ -66,16 +70,7 @@ export const ORCHESTRATION_SEND_METHODS = [
       } = context
       const db = runtime.getOrchestrationDb()
       const from = params.from ?? 'unknown'
-      const attestedCaller =
-        orchestrationCompatibilityCallerAuthority?.terminalHandle === from
-          ? orchestrationCompatibilityCallerAuthority
-          : undefined
-      // Why: attested hook identity survives graph remount; caller params never supply lifecycle authority.
-      const sender = orchestrationCallerIdentity(runtime, {
-        handle: from,
-        session: orchestrationCaller,
-        paneKey: attestedCaller?.paneKey ?? runtime.getTerminalPaneKey(from)
-      })
+      const { attestedCaller, sender } = sendSenderIdentity(runtime, from, context)
       const senderPaneKey = sender.paneKey ?? undefined
       // Why: a session caller was already bound to its own identity at the dispatch entry.
       if (isDispatchMutationMessageType(params.type) && !orchestrationCaller) {
@@ -151,6 +146,9 @@ export const ORCHESTRATION_SEND_METHODS = [
         )
       }
 
+      // `--to dispatch:<id> --item <n>`: new work for that item, which only a follow-up can take.
+      const { forItem, params: forParams } = splitForItem(to, params)
+      params = forParams
       const botRoute = await routeBotMail(context, { params, from, to, sender, routing })
       if ('receipt' in botRoute) {
         return botRoute.receipt
@@ -205,9 +203,11 @@ export const ORCHESTRATION_SEND_METHODS = [
           addressedDispatchId && to === `dispatch:${addressedDispatchId}`
             ? db.getFederatedDispatch(addressedDispatchId)
             : undefined
+        assertFollowUpForItem(forItem, !federatedTarget)
         // Federated targets perform their own liveness check before relaying.
         if (addressedDispatchId && !federatedTarget) {
           const plan = planWorkerFollowUp(db, addressedDispatchId, params.type ?? 'status')
+          assertFollowUpForItem(forItem, plan?.kind === 'start')
           // Only a settled worker awaits; mail to a working one stays synchronous until it is inserted.
           const followUp =
             plan?.kind === 'start'
@@ -221,9 +221,11 @@ export const ORCHESTRATION_SEND_METHODS = [
                   db,
                   plan,
                   from,
-                  message: params
+                  message: params,
+                  forItem
                 })
               : plan
+          assertFollowUpForItem(forItem, followUp?.kind === 'started')
           // The mail started the worker's next turn itself, so nothing holds it; `next` stays last.
           if (followUp?.kind === 'started') {
             if (typeof followUp.receipt.dispatchId === 'string') {

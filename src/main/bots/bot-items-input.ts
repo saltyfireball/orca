@@ -35,6 +35,8 @@ export type BotItemAddInput = {
   links: BotItemLinkInput[]
   /** Fork BAD-747: steps for the owner, checked by the caller. */
   steps?: BotItemStepInput[]
+  /** The thread, issue or pull request the adding turn's work started in, kept on its `made` event. */
+  startedIn?: string
 }
 
 export type BotItemSetInput = {
