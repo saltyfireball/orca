@@ -13,6 +13,7 @@ vi.mock('../../../shared/app-lifecycle/app-environment', () => ({
   hasAppEnvironment: () => true
 }))
 
+import { startBotGroupsSoon } from '../../bots/bot-group-runtime'
 import { room } from '../bot-room-hops/bot-room-hops-test-room'
 import { countPauseAllRoomHolds } from './pause-all-room-hold-store'
 import { releaseForkPauseAllRoomHolds } from './pause-all-room-release'
@@ -67,6 +68,21 @@ describe('pause all over bot room hand-offs', () => {
     expect(again.wokenBy(again.turnOn('post-1').operationId).map((l) => l.turns[0]!.botId)).toEqual(
       ['bot-c']
     )
+  })
+
+  it('releases a kept hold through the real start', async () => {
+    const first = room({})
+    first.post('post-1', ['bot-a'])
+    writeForkPauseAll(true, { by: 'cli' })
+    expect(await first.reply('post-1', 'bot-a', '@Bo have a look.')).toEqual([])
+    rmSync(join(paths.userData, PAUSE_ALL_STATE_FILE_NAME))
+    resetForkPauseAllCacheForTests()
+    const again = room({}, first.db)
+    startBotGroupsSoon(again.runtime, () => true)
+    await vi.waitFor(() =>
+      expect(again.wokenBy(again.turnOn('post-1').operationId)).toHaveLength(1)
+    )
+    expect(countPauseAllRoomHolds(again.db)).toBe(0)
   })
 
   it('wakes as usual when not paused, and a person post still starts its turn while paused', async () => {

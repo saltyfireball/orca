@@ -1,8 +1,9 @@
 // Pause all over bot mail (BAD-818): the bot mail owner's real hold, the real orchestration database
 // and mail selection, with the real switch in a temporary data folder. Mail to a room member chat
 // waits unread while paused (also with an unreadable switch), is counted, and resume-all redrives the
-// chat once, in order; a restart after a release while the app was down redrives it then. Faked: the
-// agent-session host (its record list and queue wake) and the redrive the runtime does.
+// chat once, in order; a restart after a release while the app was down redrives it then, through the
+// real start and also when the chat host is installed after it. Faked: the agent-session host (its
+// record list, queue wake and chat lines), the redrive the runtime does, and the chat item mail picks.
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -14,10 +15,22 @@ vi.mock('../../../shared/app-lifecycle/app-environment', () => ({
   hasAppEnvironment: () => true
 }))
 
-import { botMailOwner } from '../../bots/bot-group-runtime'
+vi.mock('../../bots/bot-mail-chat', () => ({ botMailSession: async () => MEMBER }))
+vi.mock('../../bots/bot-items-mail-text', () => ({
+  botItemChangeMail: () => ({ subject: 'Item 1', body: 'A comment' }),
+  botItemMailImages: () => []
+}))
+vi.mock('../../bots/bot-item-chat-notes', () => ({
+  appendBotItemNote: () => {},
+  botItemNote: () => null
+}))
+
+import { botMailOwner, startBotGroupsSoon } from '../../bots/bot-group-runtime'
 import { setStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { OrchestrationDb } from '../../runtime/orchestration/db/orchestration-db'
 import type { OrcaRuntimeService } from '../../runtime/orca-runtime'
+import { sendBotItemMail } from '../../runtime/rpc/methods/bots-items-mail'
+import { FORK_PAUSE_ALL_METHODS } from '../../runtime/rpc/methods/fork/fork-pause-all'
 import { selectOwnedMail } from '../../runtime/orchestration/structured-mail-owner-narrowing'
 import {
   countForkPauseAllHeldMail,
@@ -37,6 +50,25 @@ const MAILBOX = `orca_session_id:${MEMBER}`
 let db: OrchestrationDb
 let runId: string
 const wakeQueuedMessages = vi.fn()
+const chatLine = vi.fn()
+
+function installHost(): void {
+  const records = [{ sessionId: MEMBER, location: { workspaceId: 'folder:room' } }]
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the hold reads only the record list, the queue wake and a chat line's write.
+  setStructuredAgentSessionHost({
+    deps: {
+      store: {
+        getConversation: (id: string) => records.find((record) => record.sessionId === id),
+        listConversations: () => records,
+        getVisibleSessionTabIndex: () => null
+      }
+    },
+    captureAgentStartDestination: async () => ({}),
+    appendAgentStart: async (_to: unknown, line: { body: { text: string } }) =>
+      chatLine(line.body.text),
+    wakeQueuedMessages
+  } as never)
+}
 
 beforeEach(() => {
   paths.userData = mkdtempSync(join(tmpdir(), 'pause-all-mail-'))
@@ -49,23 +81,14 @@ beforeEach(() => {
     coordinatorPaneKey: null,
     coordinatorOrcaSessionId: null
   }).id
-  const records = [{ sessionId: MEMBER, location: { workspaceId: 'folder:room' } }]
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the hold reads only the record list and the queue wake.
-  setStructuredAgentSessionHost({
-    deps: {
-      store: {
-        getConversation: (id: string) => records.find((record) => record.sessionId === id),
-        listConversations: () => records,
-        getVisibleSessionTabIndex: () => null
-      }
-    },
-    wakeQueuedMessages
-  } as never)
+  installHost()
 })
 afterEach(() => {
+  resetForkPauseAllBotMailForTests()
   setStructuredAgentSessionHost(null)
   db.close()
   wakeQueuedMessages.mockReset()
+  chatLine.mockReset()
   rmSync(paths.userData, { recursive: true, force: true })
 })
 
@@ -73,7 +96,11 @@ function runtime() {
   const redrive = vi.fn()
   const service = {
     getOrchestrationDb: () => db,
-    bots: { list: () => [] },
+    bots: { list: () => [{ id: 'bot-a', name: 'Ada' }] },
+    requireStore: () => ({ getSettings: () => ({}) }),
+    notifyBotGroupsChanged: () => {},
+    notifyMessageArrived: () => {},
+    ensureStructuredAgentSessionHost: async () => undefined,
     redriveStructuredSessionMail: redrive
   }
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the mail owner's hold reads only these.
@@ -151,5 +178,74 @@ describe('pause all over bot mail', () => {
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the fake runtime carries every member the mail owner reads.
     installForkPauseAllBotMail(later.service as never, true)
     expect(later.redrive).not.toHaveBeenCalled()
+  })
+
+  it('redrives through the real start, and waits for a chat host installed after it', async () => {
+    writeForkPauseAll(true, { by: 'cli' })
+    mail('kept')
+    expect(selected(runtime().service)).toEqual([])
+    rmSync(join(paths.userData, PAUSE_ALL_STATE_FILE_NAME))
+    resetForkPauseAllCacheForTests()
+    resetForkPauseAllBotMailForTests()
+
+    // A start runs before the chat host is installed: nothing is redriven, and nothing is forgotten.
+    setStructuredAgentSessionHost(null)
+    const after = runtime()
+    startBotGroupsSoon(after.service, () => true)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(after.redrive).not.toHaveBeenCalled()
+    expect(existsSync(join(paths.userData, PAUSE_ALL_HELD_MAIL_FILE_NAME))).toBe(true)
+
+    installHost()
+    await vi.waitFor(() => expect(after.redrive).toHaveBeenCalledWith(MEMBER))
+    expect(after.redrive).toHaveBeenCalledTimes(1)
+    expect(existsSync(join(paths.userData, PAUSE_ALL_HELD_MAIL_FILE_NAME))).toBe(false)
+  })
+
+  it('redrives through the real start where the chat host is there already', async () => {
+    writeForkPauseAll(true, { by: 'cli' })
+    mail('kept')
+    expect(selected(runtime().service)).toEqual([])
+    rmSync(join(paths.userData, PAUSE_ALL_STATE_FILE_NAME))
+    resetForkPauseAllCacheForTests()
+    resetForkPauseAllBotMailForTests()
+    const after = runtime()
+    startBotGroupsSoon(after.service, () => true)
+    await vi.waitFor(() => expect(after.redrive).toHaveBeenCalledWith(MEMBER))
+  })
+
+  it('counts held mail in pause-status', async () => {
+    const { service } = runtime()
+    writeForkPauseAll(true, { by: 'cli' })
+    mail('first')
+    const status = FORK_PAUSE_ALL_METHODS.find((method) => method.name === 'fork.pauseAll.status')!
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the status reads only the runtime here.
+    const result = await status.handler({ fleet: false } as never, { runtime: service } as never)
+    expect(result).toMatchObject({ state: { engaged: true }, held: { mail: 1, handOffs: 0 } })
+  })
+
+  it("says in the chat that the owner's item comment waits, and not when running", async () => {
+    const { service } = runtime()
+    const owed = (id: number) =>
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: item mail reads only these parts of a change.
+      ({
+        id,
+        ownerBotId: 'bot-a',
+        chatId: null,
+        changes: [
+          {
+            event: { id, kind: 'commented', actor: { kind: 'owner' }, data: {} },
+            item: { uid: 'u1', number: 1 }
+          }
+        ]
+      }) as never
+    expect(await sendBotItemMail(service, owed(1))).toBe(true)
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    expect(chatLine).not.toHaveBeenCalled()
+    writeForkPauseAll(true, { by: 'cli' })
+    expect(await sendBotItemMail(service, owed(2))).toBe(true)
+    await vi.waitFor(() =>
+      expect(chatLine).toHaveBeenCalledWith(expect.stringContaining('once at resume-all'))
+    )
   })
 })

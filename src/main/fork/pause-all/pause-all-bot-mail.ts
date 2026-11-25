@@ -15,7 +15,10 @@ import { botOfHomeWorkspace } from '../../../shared/bots/bot-homes'
 import type { Bot } from '../../../shared/bot-types'
 import { writeInChat } from '../../bots/bot-chat-status-line'
 import { isBotOwnChat } from '../../bots/bot-own-chat'
-import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
+import {
+  getStructuredAgentSessionHost,
+  onStructuredAgentSessionHostChanged
+} from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { readAgentSessionRecordStore } from '../../runtime/orchestration/addressing/session-lineage/structured-session-lineage'
 import type { OrchestrationDb } from '../../runtime/orchestration/db/orchestration-db'
 import {
@@ -170,9 +173,10 @@ export function countForkPauseAllHeldMail(
   return count
 }
 
-/** Redrives each held chat once, as a bot's resume does; nothing while engaged. */
+/** Redrives each held chat once, as a bot's resume does; nothing while engaged, or before the
+ *  chat host is installed (the marker stays, and its install releases). */
 export function releaseForkPauseAllBotMail(runtime: PauseAllBotMailRuntime): number {
-  if (isForkPauseAllEngaged()) {
+  if (isForkPauseAllEngaged() || !readAgentSessionRecordStore()) {
     return 0
   }
   const path = markerPath()
@@ -189,22 +193,36 @@ export function releaseForkPauseAllBotMail(runtime: PauseAllBotMailRuntime): num
 }
 
 const installed = new WeakSet<object>()
+const uninstalls = new Set<() => void>()
 
-/** Releases held mail whenever the switch is released; `atStart` also when a switch released while
- *  the app was down left the marker behind. */
+/** Releases held mail when a switch released meanwhile (the app down, or no chat host yet) left the
+ *  marker behind. */
+function releaseMarked(runtime: PauseAllBotMailRuntime): void {
+  if (isForkPauseAllEngaged() || !heldMarked()) {
+    return
+  }
+  try {
+    releaseForkPauseAllBotMail(runtime)
+  } catch (error) {
+    console.warn('[fork-pause-all] releasing held bot mail at start failed', error)
+  }
+}
+
+/** Releases held mail whenever the switch is released; `atStart` also what a release while the app
+ *  was down left held. A start runs before the chat host is installed, so its install does it. */
 export function installForkPauseAllBotMail(runtime: PauseAllBotMailRuntime, atStart = false): void {
-  if (atStart && !isForkPauseAllEngaged() && heldMarked()) {
-    try {
-      releaseForkPauseAllBotMail(runtime)
-    } catch (error) {
-      console.warn('[fork-pause-all] releasing held bot mail at start failed', error)
-    }
+  if (atStart) {
+    releaseMarked(runtime)
   }
   if (installed.has(runtime)) {
     return
   }
   installed.add(runtime)
-  onForkPauseAllChanged((state) => {
+  const stopHost = onStructuredAgentSessionHostChanged(() => {
+    // After the install that told us has finished.
+    setTimeout(() => releaseMarked(runtime), 0).unref?.()
+  })
+  const stopSwitch = onForkPauseAllChanged((state) => {
     if (!state.engaged) {
       try {
         releaseForkPauseAllBotMail(runtime)
@@ -213,9 +231,14 @@ export function installForkPauseAllBotMail(runtime: PauseAllBotMailRuntime, atSt
       }
     }
   })
+  uninstalls.add(stopHost).add(stopSwitch)
 }
 
 /** Tests. */
 export function resetForkPauseAllBotMailForTests(): void {
   marked = false
+  for (const stop of uninstalls) {
+    stop()
+  }
+  uninstalls.clear()
 }
