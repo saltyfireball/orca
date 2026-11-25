@@ -5978,7 +5978,8 @@ Choices made where upstream now does the same thing the fork did, or both sides 
 
 ## Merge notes: upstream v1.4.275 (BAD-834)
 
-Upstream has no v1.4.274 tag; the merge takes v1.4.275 (06832a81b7a) as it is. Git's own merge base
+Upstream's v1.4.274 (48fcb4dfa59) sits on the v1.4.273 release branch and is not an ancestor of
+v1.4.275, so it is not merged; the merge takes v1.4.275 (06832a81b7a) as it is. Git's own merge base
 for it is a main commit that the v1.4.273 release branch lacks features of, so a plain `git merge`
 showed 13 untouched upstream files (paired port forwards, workspace ports, item reply jump) as
 deleted by the fork and rewrote files the fork never changed. The merge was made with v1.4.273 as
