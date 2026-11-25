@@ -2,6 +2,7 @@
 // it may switch the mode on, but it must never be the way a classifier or notify command, or a
 // webhook address, comes to exist. With the mode switched on from the CLI and none of those set
 // in the Settings screen, a sweep starts no process and calls no address.
+import type * as ChildProcess from 'node:child_process'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getDefaultSettings } from '../../../shared/orca-profiles/constants'
 import { updateForkSettings, type ForkSettingsCliDeps } from '../settings-cli/settings-cli-apply'
@@ -13,7 +14,14 @@ import { runIdleRecoverySweep } from './idle-recovery-sweep'
 import { NOW, agentRow, fakeHost, psWorktree } from './idle-recovery-test-fixtures'
 
 const spawn = vi.hoisted(() => vi.fn())
-vi.mock('node:child_process', () => ({ spawn }))
+// Every way to start a process is the same spy, so one started by another call is seen too.
+vi.mock('node:child_process', async (original) => ({
+  ...(await original<typeof ChildProcess>()),
+  spawn,
+  exec: spawn,
+  execFile: spawn,
+  fork: spawn
+}))
 
 const defaults: Record<string, unknown> = { ...getDefaultSettings('/home/someone') }
 const RUNS_COMMAND = [
