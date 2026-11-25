@@ -34,7 +34,7 @@ describe('profile pickers', () => {
 
   it('start a new chat with the profile model, effort, capped mode and preamble', () => {
     const [pick] = forkAgentProfilePicks(settings)
-    const draft = forkAgentProfileLaunchDraft(pick!, 'chat')
+    const draft = forkAgentProfileLaunchDraft(pick!, 'chat')!
     expect(draft.prompt).toBe('You review code.')
     const inputs = agentPickerFreshLaunchInputs(draft, {
       surface: 'chat',
@@ -43,6 +43,23 @@ describe('profile pickers', () => {
     expect(inputs).toEqual({
       sessionOptions: { model: 'claude-sonnet-5-5', effort: 'high', permissionMode: 'accept-edits' }
     })
+  })
+
+  // BAD-800: a UI start cannot carry an MCP limit, so the pick starts nothing instead of a chat
+  // with every server; "all" is no limit.
+  it('refuse to start a profile whose MCP limit a UI start cannot apply', () => {
+    const limited = (mcpProfile: string) =>
+      forkAgentProfilePicks({
+        forkAgentProfiles: [{ name: 'narrow', agent: 'claude', mcpProfile }]
+      })[0]!
+    const pick = limited('review-tools')
+    expect(pick.mcpLimit).toBe('review-tools')
+    expect(forkAgentProfileLaunchDraft(pick, 'chat')).toBeNull()
+    expect(forkAgentProfileLaunchDraft(pick, 'terminal')).toBeNull()
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: only the fields a launch pick reads or writes.
+    const current = { agentId: 'codex', prompt: 'Triage.' } as AutomationDraft
+    expect(forkAgentProfileAutomationDraft(current, pick, true, 'chat')).toBe(current)
+    expect(forkAgentProfileLaunchDraft(limited('all'), 'chat')).not.toBeNull()
   })
 
   it('fill the automation draft and put the preamble in front of the prompt once', () => {

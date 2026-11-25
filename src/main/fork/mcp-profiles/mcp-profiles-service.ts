@@ -18,6 +18,7 @@ import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-w
 import { InvalidArgumentError } from '../../runtime/rpc/core'
 import { discoverClaudeMcpServers, forkMcpServerViews } from './claude-mcp-discovery'
 import { ForkMcpChatStore } from './mcp-chat-state'
+import { ForkMcpAutomationProfiles, setForkMcpAutomationProfiles } from './mcp-automation-profiles'
 import { claudeConfigPaths, sweepLaunchMcpConfigs } from './mcp-launch-files'
 import { currentForkMcpLaunchScope, setForkMcpProfileCheck } from './mcp-launch-scope'
 
@@ -44,6 +45,10 @@ export async function installForkMcpProfiles(input: {
     input.chatStateFile === undefined ? join(input.dataFolder, 'chats.json') : input.chatStateFile
   )
   await store.load()
+  // BAD-800: the MCP profile each `--profile` automation was created with.
+  const automations = new ForkMcpAutomationProfiles(join(input.dataFolder, 'automations.json'))
+  await automations.load()
+  setForkMcpAutomationProfiles(automations)
   state = {
     readSettings: input.readSettings,
     store,
@@ -65,6 +70,7 @@ export async function shutdownForkMcpProfiles(): Promise<void> {
 export function uninstallForkMcpProfilesForTests(): void {
   state = null
   setForkMcpProfileCheck(null)
+  setForkMcpAutomationProfiles(null)
 }
 
 export function forkMcpConfig(): ForkMcpProfileConfig {

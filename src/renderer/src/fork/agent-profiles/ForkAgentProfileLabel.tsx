@@ -1,5 +1,6 @@
 // FORK.md "Agent profiles" (BAD-741): one profile in a menu: its name, its note, and what will not
-// apply as asked (an unconfirmed preamble, a capped mode, an account a UI start does not choose).
+// apply as asked (an unconfirmed preamble, a capped mode, an account a UI start does not choose,
+// an MCP limit a UI start cannot carry).
 import React from 'react'
 import { useTranslate } from '@/i18n/use-translate'
 import type { ForkAgentProfilePick } from './agent-profile-picks'
@@ -23,18 +24,24 @@ export function ForkAgentProfileLabel({
       )
     : unavailable
       ? t('fork.agentProfiles.unavailable', '{{agent}} cannot start here', { agent: profile.agent })
-      : [
-          pick.capped
-            ? t('fork.agentProfiles.capped', 'Permission lowered to {{mode}} by Settings', {
-                mode: pick.permissionMode
-              })
-            : null,
-          profile.account
-            ? t('fork.agentProfiles.accountNotUsed', 'Runs on the selected account')
-            : null
-        ]
-          .filter(Boolean)
-          .join(', ')
+      : pick.mcpLimit
+        ? t(
+            'fork.agentProfiles.mcpLimitCli',
+            'MCP profile {{mcp}} applies only from the CLI: orca agent launch --profile {{name}}',
+            { mcp: pick.mcpLimit, name: profile.name }
+          )
+        : [
+            pick.capped
+              ? t('fork.agentProfiles.capped', 'Permission lowered to {{mode}} by Settings', {
+                  mode: pick.permissionMode
+                })
+              : null,
+            profile.account
+              ? t('fork.agentProfiles.accountNotUsed', 'Runs on the selected account')
+              : null
+          ]
+            .filter(Boolean)
+            .join(', ')
   return (
     <span className="flex min-w-0 flex-1 flex-col">
       <span className="flex min-w-0 items-baseline gap-2">

@@ -20,6 +20,8 @@ import {
   currentForkMcpLaunchScope
 } from '../mcp-profiles/mcp-launch-scope'
 import { forkTaskProfilePreamble } from './agent-profile-task-store'
+import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
+import { writeStructuredAgentSessionOrcaNote } from '../../native-chat/agent-session-wire/structured-agent-session-orca-note'
 
 type TerminalLaunch = {
   startupAgent?: string
@@ -72,12 +74,16 @@ type ChatCreate = {
 }
 
 /** The chat creation hook: the profile's mode seeds the chat's permission, and a Claude chat is
- *  pinned to the profile's account before its first start. */
-export function forkAgentProfileChatCreate<P extends ChatCreate>(params: P): P {
+ *  pinned to the profile's account before its first start. A pin that cannot be saved is a note
+ *  in the chat (BAD-800), not only a log line. */
+export async function forkAgentProfileChatCreate<P extends ChatCreate, R>(
+  params: P,
+  create: (params: P) => Promise<R>
+): Promise<R> {
   assertForkMcpProfileApplies(currentForkMcpLaunchScope()?.profile, { agent: params.provider })
   const launch = currentForkAgentProfileLaunch()
   if (!launch || params.agent !== launch.agent) {
-    return params
+    return create(params)
   }
   let next = params
   const mode = launch.permissionMode
@@ -85,17 +91,44 @@ export function forkAgentProfileChatCreate<P extends ChatCreate>(params: P): P {
     next = { ...next, options: { ...next.options, [AGENT_CHAT_PERMISSION_MODE_OPTION_ID]: mode } }
   }
   if (
-    launch.account?.kind === 'claude' &&
-    params.provider === 'claude' &&
-    !params.location.wslDistro
+    launch.account?.kind !== 'claude' ||
+    params.provider !== 'claude' ||
+    params.location.wslDistro
   ) {
-    claudeSessionAccountPins()
-      .set(params.envelope.sessionId, launch.account.pin)
-      .catch((error: unknown) =>
-        console.warn('[fork-agent-profiles] Could not save the chat account pin:', error)
-      )
+    return create(next)
   }
-  return next
+  const pinned = claudeSessionAccountPins()
+    .set(params.envelope.sessionId, launch.account.pin)
+    .then(
+      () => null,
+      (error: unknown) => (error instanceof Error ? error.message : String(error))
+    )
+  const created = await create(next)
+  // The note waits for the chat to exist; the create does not wait for the pin file.
+  void pinned.then((failure) => {
+    if (failure) {
+      console.warn('[fork-agent-profiles] Could not save the chat account pin:', failure)
+      return noteFailedAccountPin(params.envelope.sessionId, launch.name, failure)
+    }
+    return undefined
+  })
+  return created
+}
+
+export const FORK_ACCOUNT_PIN_NOTE_ID = 'fork-agent-profile-account-pin'
+
+async function noteFailedAccountPin(sessionId: string, profile: string, why: string) {
+  const host = getStructuredAgentSessionHost()
+  if (!host) {
+    return
+  }
+  await writeStructuredAgentSessionOrcaNote(host, sessionId, FORK_ACCOUNT_PIN_NOTE_ID, {
+    kind: 'status',
+    tone: 'warning',
+    text: `Profile ${profile}: Orca could not save this chat's Claude account (${why}). It runs on that account now, but after Orca restarts it follows the selected account; use Move to account on this chat to keep it there.`
+  }).catch((error: unknown) =>
+    console.warn('[fork-agent-profiles] Could not note the failed account pin:', error)
+  )
 }
 
 /** The worker preamble hook: the profile's preamble in front of the task, once. */

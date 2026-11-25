@@ -3212,7 +3212,9 @@ ones `SLRM-123 `).
     account rides the account-move pins (terminal env marker, chat session pin); Codex applies
     only when it is the selected account, other agents get a note. A missing or signed-out
     account is refused before anything is created; no credential is read. Automations store the
-    capped mode; they run on the selected account (a note says so).
+    capped mode; they run on the selected account (a note says so). A chat whose account pin
+    cannot be saved gets a warning note in the chat (BAD-800): it runs on the account until Orca
+    restarts, then follows the selected one.
   - **Preamble.** Prepended by the CLI to `--spec`/`--prompt` text; with none (`--task`,
     spec file, retry) the host puts it in the dispatch preamble, once (a spec that holds it is
     left as is). It is kept per task in `fork_task_agent_profiles`, so retries and follow-ups
@@ -3224,6 +3226,23 @@ ones `SLRM-123 `).
   - **Pickers.** A Profiles section in the + menu (after the agents) and a Profile field under
     the automation dialog's agent; both show only when a profile exists, apply the cap and hold
     back an unconfirmed import. The orchestration guide and bot preamble name `profiles list`.
+    A profile with an MCP profile other than `all` is shown but cannot be picked in either
+    (BAD-800): a UI start has no way to carry it, so its row says "MCP profile X applies only
+    from the CLI: orca agent launch --profile NAME" instead of starting with every server.
+  - **Automations keep the MCP profile (BAD-800).** `orca automations create --profile` with a
+    profile that names an MCP profile stores that name on the automation, and every run (chat or
+    terminal, a reused chat too) launches in the background scope with it, so Claude loads only
+    its servers. The host checks it before anything is created: a bot automation (`--bot`, which
+    refuses `--profile` anyway), another agent, a profile the host lacks, a host without MCP
+    profiles, or an older host (no `automations.fork-mcp-profile.v1`, checked by the CLI) is
+    refused with nothing created. It is saved before the automation is written, under the
+    automation's creation key (`fork-mcp:<uuid>`, made when the create names none), in
+    `<userData>/fork-mcp-profiles/automations.json` (0600). Each run checks the name again as it
+    is then: an MCP profile changed since applies as it is now; one deleted refuses the run with
+    the reason (the run shows as failed). A run whose key was made for a profile but has no saved
+    entry (the file lost or unreadable) is refused too, never run with every server. Changing or
+    deleting the agent profile afterwards does not change the automation, as with its mode. The
+    automation dialog does not carry it (see Pickers).
   - **Retries and follow-ups (BAD-741).** A worker-start stores what it applied with its Task
     (`fork_task_agent_profiles`: profile name, preamble, agent, the capped mode, the account's id
     or the profile's own name for it, never a credential, and the MCP profile name, also for a
@@ -3242,7 +3261,8 @@ ones `SLRM-123 `).
     with the reason, never run with every server: another agent (at the call, and again at its
     chat or terminal), a remote or WSL terminal, and an older server or one without that profile.
     The built-in `all` is never refused.
-  - **Not covered yet.** A UI start does not switch accounts.
+  - **Not covered yet.** A UI start does not switch accounts or apply an MCP profile (it refuses
+    the pick instead), and the automation dialog cannot store one.
   - Code is in `src/shared/fork/agent-profiles/`, `src/main/fork/agent-profiles/` and
     `src/cli/fork/agent-profile-*`.
 
@@ -3578,6 +3598,7 @@ Apply these in this order. Each one is a single commit.
 197. `BAD-764 The flag help test finds the fork's spec files without import.meta`
 198. `BAD-764 Command guards read every Claude tool that takes a shell command (Monitor and PowerShell beside Bash) on both surfaces, and a chat not known to the app shows as unguarded, counted only while it runs`
 199. `BAD-798 A Task made with task-create and started with worker-start --task --on a server that owns its workers carries its done checks and review there, a server that cannot take them is refused before any effect, a folder:<id> workspace runs its command checks in its folder, and an attached worker's review goes to the other provider`
+200. `BAD-800 Agent profiles keep their MCP limit: automations create --profile stores the MCP profile on the automation and every run applies it (refused when it cannot, or once it is deleted), the + menu and automation dialog refuse a profile whose MCP limit a UI start cannot carry, and a chat account pin that cannot be saved is a note in the chat`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4893,6 +4914,13 @@ Upstream files only get short hooks, which keeps merges small:
   passes the plan's options through `forkMcpTerminalLaunch` before the startup inputs are built,
   and `orchestration-runtime-capabilities.ts` lists `orchestration.fork-mcp-profile-launch.v1`;
   the name rides the existing `forkAgentProfileRemoteOwnedCarry` spread in `remote-owned-start.ts`.
+  BAD-800: `withForkMcpLaunchScope` (the dispatcher's existing hook) also passes
+  `automation.create` through `withForkAutomationMcpProfile`, so `dispatcher.ts` is untouched;
+  both launchers in `runtime-automation-service.ts` are wrapped in `forkMcpLaunched` (aliased
+  `mcp`, the file is at max-lines); `automation-runtime-capabilities.ts` lists
+  `automations.fork-mcp-profile.v1`; `structured-agent-session-entry-delegates.ts` hands its
+  `createStructuredAgentSession` call to `forkAgentProfileChatCreate`, which writes the failed-pin
+  note after the chat exists.
 
 - Services mail a bot (BAD-742), two small edits in stock files, `message-send-handler.ts`
   calls `assertServiceSend` when `--as-service` is given and then sends with no `from`, and

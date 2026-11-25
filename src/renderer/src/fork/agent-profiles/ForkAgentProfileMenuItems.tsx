@@ -1,6 +1,7 @@
 // FORK.md "Agent profiles" (BAD-741): the + menu's profiles, after the agents. Picking one starts
 // its agent with the profile's model, effort and capped permission mode, its preamble as the first
-// prompt. Nothing shows until a profile exists.
+// prompt. One with an MCP limit is shown but cannot start here (BAD-800). Nothing shows until a
+// profile exists.
 import React from 'react'
 import {
   DropdownMenuItem,
@@ -54,20 +55,21 @@ export function ForkAgentProfileMenuItems({
       <DropdownMenuLabel>{t('fork.agentProfiles.menuLabel', 'Profiles')}</DropdownMenuLabel>
       {picks.map((pick) => {
         const row = forkAgentProfileRow(model, pick)
-        const surface = row?.kind === 'chat' ? 'chat' : 'terminal'
+        const setup = forkAgentProfileLaunchDraft(pick, row?.kind === 'chat' ? 'chat' : 'terminal')
         return (
           <DropdownMenuItem
             key={pick.profile.name}
             variant="create"
-            disabled={!row || pick.needsConfirm}
+            disabled={!row || !setup || pick.needsConfirm}
             onSelect={() =>
               row &&
+              setup &&
               onLaunch({
                 agent: pick.profile.agent,
                 aliases: [],
                 label: pick.profile.name,
                 row,
-                setup: forkAgentProfileLaunchDraft(pick, surface)
+                setup
               })
             }
           >

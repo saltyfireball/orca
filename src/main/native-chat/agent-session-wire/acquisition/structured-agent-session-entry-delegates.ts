@@ -26,11 +26,8 @@ export function structuredAgentSessionEntryDelegates(
       // Fork (FORK.md "MCP profiles"): the launch kind and profile, before the first start.
       noteForkMcpNewChat(params.envelope.sessionId, params.agent)
       // Fork (BAD-741): a --profile launch's permission mode and Claude account pin.
-      return createStructuredAgentSession(
-        context(),
-        caller,
-        forkAgentProfileChatCreate(params),
-        options
+      return forkAgentProfileChatCreate(params, (next) =>
+        createStructuredAgentSession(context(), caller, next, options)
       )
     }
   }

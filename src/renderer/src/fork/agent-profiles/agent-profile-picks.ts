@@ -15,6 +15,7 @@ import type {
   ForkAgentProfilePermissionMode
 } from '../../../../shared/fork/agent-profiles/agent-profiles-types'
 import { withForkProfilePreamble } from '../../../../shared/fork/agent-profiles/agent-profile-launch'
+import { FORK_MCP_PROFILE_ALL } from '../../../../shared/fork/mcp-profiles'
 
 export type ForkAgentProfilePick = {
   profile: ForkAgentProfile & { agent: TuiAgent }
@@ -23,6 +24,8 @@ export type ForkAgentProfilePick = {
   /** An imported preamble not yet confirmed with `orca profiles confirm`. */
   needsConfirm: boolean
   capped: boolean
+  /** BAD-800: an MCP profile a UI start cannot apply, so the pick refuses to start. */
+  mcpLimit?: string
 }
 
 export type ForkAgentProfilePickSettings = ForkAgentProfilePolicySettings & {
@@ -45,18 +48,25 @@ export function forkAgentProfilePicks(
         profile: { ...profile, agent: profile.agent },
         ...(wanted ? { permissionMode: capped ? max : wanted } : {}),
         needsConfirm: forkAgentProfileNeedsConfirm(profile),
-        capped
+        capped,
+        ...(profile.mcpProfile && profile.mcpProfile !== FORK_MCP_PROFILE_ALL
+          ? { mcpLimit: profile.mcpProfile }
+          : {})
       }
     ]
   })
 }
 
 /** The picker draft a new chat or terminal launches with: the profile's choices, and its
- *  preamble as the first prompt. */
+ *  preamble as the first prompt. Null for a profile with an MCP limit: a UI start has no way to
+ *  carry it, and starting without it would load every server (BAD-800). */
 export function forkAgentProfileLaunchDraft(
   pick: ForkAgentProfilePick,
   surface: 'chat' | 'terminal'
-): AgentPickerDraft {
+): AgentPickerDraft | null {
+  if (pick.mcpLimit) {
+    return null
+  }
   const { model, effort, preamble } = pick.profile
   const choices = {
     ...(model ? { model } : {}),

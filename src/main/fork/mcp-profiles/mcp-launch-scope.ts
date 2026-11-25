@@ -10,6 +10,7 @@ import {
   type ForkMcpLaunchKind
 } from '../../../shared/fork/mcp-profiles'
 import { withForkAgentProfileLaunchScope } from '../agent-profiles/agent-profile-launch-scope'
+import { forkMcpAutomationProfiles, withForkAutomationMcpProfile } from './mcp-automation-profiles'
 
 export type ForkMcpLaunchScope = { kind: ForkMcpLaunchKind; profile?: string }
 
@@ -121,9 +122,14 @@ export function assertForkMcpProfileKnown(profile: string, refusedBecause = ''):
  * refuses the launch before anything starts. Other methods run untouched.
  */
 export function withForkMcpLaunchScope<T>(
-  call: { request: { method: string; params?: unknown } },
+  call: { request: { method: string; params?: unknown }; params?: unknown },
   run: () => T
 ): T {
+  if (call.request.method === 'automation.create') {
+    // BAD-800: an automation keeps a --profile's MCP profile for every run. Its result is the
+    // handler's promise either way, which the dispatcher awaits.
+    return withForkAutomationMcpProfile(forkMcpAutomationProfiles(), call, run) as T
+  }
   // BAD-741: a --profile launch's own scope (FORK.md "Agent profiles") rides the same hook.
   return withForkAgentProfileLaunchScope(call, () => mcpLaunchScope(call, run))
 }

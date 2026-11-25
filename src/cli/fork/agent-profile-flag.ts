@@ -9,6 +9,7 @@ import { RuntimeClientError } from '../runtime/connection/types'
 import { isForkAgentProfileName } from '../../shared/fork/agent-profiles/agent-profiles-types'
 import type { ForkAgentProfileResolveResult } from '../../shared/fork/agent-profiles/agent-profiles-wire'
 import { FORK_AGENT_PROFILE_FLAG } from './agent-profile-specs'
+import { FORK_MCP_PROFILE_ALL } from '../../shared/fork/mcp-profiles'
 
 /** Set for `automations create`: the profile's capped mode, read by its launch choices. */
 export const FORK_AGENT_PROFILE_PERMISSION_FLAG = 'fork-profile-permission'
@@ -120,7 +121,8 @@ export async function applyForkAgentProfile(key: string, ctx: HandlerContext): P
   process.stderr.write(`${lines.join('\n')}\n`)
 }
 
-/** An automation keeps the mode as its own launch choice; its runs use the selected account. */
+/** An automation keeps the mode as its own launch choice and the MCP profile for every run
+ *  (BAD-800); its runs use the selected account. */
 function noteAutomationProfile(
   flags: Map<string, string | boolean>,
   resolved: ForkAgentProfileResolveResult['resolved'],
@@ -128,6 +130,11 @@ function noteAutomationProfile(
 ): void {
   if (resolved.permissionMode) {
     flags.set(FORK_AGENT_PROFILE_PERMISSION_FLAG, resolved.permissionMode)
+  }
+  if (resolved.mcpProfile && resolved.mcpProfile !== FORK_MCP_PROFILE_ALL && launch) {
+    launch.lines.push(
+      `profile mcp: ${resolved.mcpProfile} (kept on the automation for every run; a run is refused if it is gone)`
+    )
   }
   if (resolved.account && launch) {
     launch.lines = launch.lines.filter((line) => !line.startsWith('profile account:'))

@@ -30,6 +30,7 @@ import {
 import { automationRunSetupSkip } from './launch/automation-run-setup-skip'
 import { automationSystemSettled } from './dispatch/automation-wake-settle'
 import { withForkAutomationLaunchDefault } from '../fork/launch-defaults/launch-defaults-apply'
+import { forkMcpLaunched as mcp } from '../fork/mcp-profiles/mcp-automation-profiles'
 
 const MAX_REMEMBERED_LAUNCHES = 256
 
@@ -166,7 +167,7 @@ export function createRuntimeAutomationService(input: {
     allowRemoteHostScheduling: input.allowRemoteHostScheduling,
     ...botAutomationServiceOptions(runtime),
     chatDispatcher: async (request) => {
-      const { terminalHandle, ...launched } = await launchAutomationChatAgent(runtime, {
+      const { terminalHandle, ...launched } = await mcp(launchAutomationChatAgent)(runtime, {
         ...request,
         runs: store.listAutomationRuns(request.automation.id),
         automation: withForkAutomationLaunchDefault(runtime, request.automation)
@@ -190,7 +191,7 @@ export function createRuntimeAutomationService(input: {
     },
     terminalLauncher: {
       launch: async (request) => {
-        const { terminalHandle, ...launched } = await launchAutomationTerminalAgent(runtime, {
+        const { terminalHandle, ...launched } = await mcp(launchAutomationTerminalAgent)(runtime, {
           ...request,
           runs: store.listAutomationRuns(request.automation.id),
           automation: withForkAutomationLaunchDefault(runtime, request.automation)

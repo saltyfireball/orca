@@ -1,6 +1,8 @@
 // FORK.md "Agent profiles" (BAD-741): a profile picker under the automation dialog's agent. A pick
 // sets the agent, model, effort and capped permission mode the way the agent picker does, and puts
-// the preamble in front of the prompt. Nothing shows until a profile exists.
+// the preamble in front of the prompt. One with an MCP limit cannot be picked: the dialog has no
+// way to keep it (BAD-800; `orca automations create --profile` does). Nothing shows until a
+// profile exists.
 import React, { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -30,6 +32,9 @@ export function forkAgentProfileAutomationDraft(
   surface: 'chat' | 'terminal'
 ): AutomationDraft {
   const setup = forkAgentProfileLaunchDraft(pick, surface)
+  if (!setup) {
+    return current
+  }
   return {
     ...pickAutomationLaunch(current, pick.profile.agent, setup, undefined, modern, surface),
     prompt: forkAgentProfileAutomationPrompt(current.prompt, pick)
@@ -76,7 +81,7 @@ export function ForkAgentProfileAutomationField({
           {picks.map((pick) => (
             <DropdownMenuItem
               key={pick.profile.name}
-              disabled={pick.needsConfirm}
+              disabled={pick.needsConfirm || pick.mcpLimit !== undefined}
               onSelect={() => {
                 setPicked(pick.profile.name)
                 onDraftChange((current) =>
