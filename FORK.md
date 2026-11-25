@@ -54,8 +54,9 @@ ones `SLRM-123 `).
     pull request no run can be told to have opened is depth 0). `chainDepthOfRun` reads that depth,
     so it also counts toward `automation.*` chains. Past `forkAutomationChainMaxDepth` (default 3)
     the start is skipped: four runs, then the fifth pull request of a loop starts nothing.
-  - **The cap.** However the opener is missed (a worker on a paired server, a workspace gone, a
-    read slower than 3 seconds), at most 5 own pull request starts per automation in 15 minutes.
+  - **The cap.** However the opener is missed (a worker on a paired server, whose worktree id is
+    that server's and is never looked up here, a workspace gone, a read slower than 3 seconds), at
+    most 5 own pull request starts per automation in 15 minutes.
     The count is read from the run history in the store, so a restart does not reset it.
   - **A stop.** The automation gets a skipped run (`skipped_unavailable`) saying "Own pull request
     loop limit: ..." or "Own pull request cap: ...", the same pull request delivered again finds it
@@ -66,17 +67,23 @@ ones `SLRM-123 `).
   - **Unchanged.** Someone else's pull requests, every other event, and the owner's own pull
     requests below the limits start as upstream has them.
   - **Untrusted.** The head branch is only compared as text, never checked out or run; a delivery
-    cannot name a depth (the contract strips unknown fields and the guard drops `chain`).
-  - **Limits.** The inbox row is registered when this host's connector handles its first trigger
-    delivery after a start, so a stop from before a restart shows again from then on. The desktop
+    cannot name a depth. The contract strips unknown fields, and `runForEvent`
+    (`automation-trigger-runs.ts`) drops `chain` from any event whose source is not `automation`,
+    so a webhook, Google, in-turn or connector start never brings one; only the guard's own gate
+    stamps it.
+  - **Limits.** The inbox row is registered when the connector is made (`createConnectorCloud`, on
+    the desktop and a headless host alike), so a stop from before a restart is listed at once. The desktop
     shows the Decision inbox while it is on (bots on with the bot room hop limit set, as by default,
     idle recovery, or the PR babysitter); `orca inbox list` always lists it. The phone has no
     Decision inbox. Only `github.pr_opened` takes from=me, so no other event loops this way (see the
     card for the analysis).
-  - Tests: `own-pr-loop.test.ts` delivers pull requests through `runTriggerDelivery` and
-    `forkOwnPrLoopRun` into a real store, `AutomationService` and bot dispatcher: a loop of five
-    stops at the limit with one skipped run and one inbox row, six by hand skip the sixth across a
-    store reopened between them, and someone else's seven all start.
+  - Tests: `own-pr-loop.test.ts` hands raw deliveries to the machine `createConnectorCloud` makes
+    (through `dispatchDelivery`, as the poll client does) into a real store, `AutomationService`,
+    bot dispatcher and orchestration database with real Dispatches: a loop of five stops at the
+    limit with one skipped run and one inbox row, six by hand skip the sixth across a store reopened
+    between them and the row is listed after a restart before any delivery, someone else's seven all
+    start, a worker on a paired server reads as cannot tell, and a forged `chain` in a delivery or a
+    non-automation event never reaches a run.
 
 - **Bot room hop limit: chained bot hand-offs in a group room stop at a limit (BAD-801).** In a
   group room, a member's reply that names another as @Name wakes it (`handOffGroupMentions`), so
@@ -3839,6 +3846,7 @@ Apply these in this order. Each one is a single commit.
 208. `BAD-819 Own pull request loop limit: a from=me pr_opened run started by a pull request another run of the same automation opened is one hop deeper and stops past forkAutomationChainMaxDepth, at most 5 own pull request starts per automation in 15 minutes, each stop a skipped run with the reason and one Decision inbox row`
 209. `BAD-800 orcad loads agent and MCP profiles from its own settings and user data folder, so --profile and --mcp-profile apply on a server, and a host that has not loaded them says so instead of calling a profile unknown`
 210. `BAD-815 A profile's Claude account pins a new workspace's startup agent (worktree create, an automation run in a new workspace, a terminal worker in a new worktree), or the start is refused naming the account`
+211. `BAD-819 Own pull request loop limit through the real wiring: the inbox row registers when the connector is made, a worker on a paired server reads as cannot tell, and no event but an automation.* start brings a chain`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5337,9 +5345,11 @@ Upstream files only get short hooks, which keeps merges small:
   `filesystem-quick-open-options.integration.test.ts`. The reviewer gate change is in the fork file
   `reviewer-gate-live.ts`, so no upstream hook.
 - Own pull request loop limit (BAD-819), small edits in stock files: `connector-cloud-install.ts`
-  imports `forkOwnPrLoopRun` and passes it as `runTriggerDelivery`'s `run`;
+  imports `forkOwnPrLoopRun` and passes it as `runTriggerDelivery`'s `run`, and calls
+  `installOwnPrLoopInbox` first thing in `createConnectorCloud`;
   `automation-trigger-runs.ts` lets an `EventStartGate` refusal carry `skipped` (its reason), which
-  `admitEvent` records as a skipped run through `recordSkippedEventRun`. The Decision inbox wire
+  `admitEvent` records as a skipped run through `recordSkippedEventRun`, and `runForEvent` drops
+  `chain` from an event whose source is not `automation`. The Decision inbox wire
   (`idle-recovery-wire.ts`, `idle-recovery-sources.ts`) takes the `pr-loop` source,
   `ForkDecisionInboxRow.tsx` gives it Dismiss only and `inbox-format.ts` labels it. The fork files
   `automation-chain-runs.ts` (`chainDepthOfRun` reads a depth on any event) and

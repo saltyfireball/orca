@@ -105,9 +105,12 @@ type EventAdmission = {
 export async function runForEvent(
   ctx: AutomationTriggerRunContext,
   automationId: string,
-  event: AutomationRunEvent,
+  received: AutomationRunEvent,
   gate?: EventRunOptions
 ): Promise<AutomationRun | null> {
+  // Fork (BAD-819): only an automation.* start brings a chain; any other event's depth is its gate's own.
+  const { chain, ...unchained } = received
+  const event = received.source === 'automation' || !chain ? received : unchained
   if (gate && 'inTurn' in gate) {
     return await recordRunInTurn(ctx, automationId, event, gate.inTurn)
   }

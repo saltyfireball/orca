@@ -4,46 +4,47 @@ import type { AutomationRunEvent } from '../../../shared/automation-event-trigge
 import type { AutomationRun } from '../../../shared/automations/history/automation-run'
 import type { ConnectorDelivery } from '../../../shared/connectors/connector-cloud-contract'
 import { splitWorktreeId } from '../../../shared/worktree/id'
+import type { OrchestrationDb } from '../../runtime/orchestration/db/orchestration-db'
 import type { OrcaRuntimeService } from '../../runtime/orca-runtime'
 import { notifyForkInboxSourceChanged } from '../idle-recovery/idle-recovery-sources'
 import { runOwnPrLoopGuarded, type OwnPrLoopDeps } from './own-pr-loop-guard'
-import { installOwnPrLoopInbox, type OwnPrLoopInboxStore } from './own-pr-loop-inbox'
+import type { OwnPrLoopInboxStore } from './own-pr-loop-inbox'
 
 type TriggerDelivery = Extract<ConnectorDelivery, { kind: 'trigger' }>
 // A run's newest workers; the one that opened the pull request is among them.
 const RUN_WORKERS_READ = 20
 
 export type OwnPrLoopHost = {
-  runtime: Pick<OrcaRuntimeService, 'runAutomationForEvent'> & {
-    getOrchestrationDb(): {
-      listDispatchIdsCreatedBySession(orcaSessionId: string, limit: number): string[]
-      listWorkerTerminalResources(params: {
-        dispatchIds: string[]
-      }): readonly { worktreeId: string | null }[]
-    }
+  runtime: Pick<OrcaRuntimeService, 'runAutomationForEvent' | 'getOrchestrationDb'> & {
     showManagedTerminalWorkspace(worktreeSelector: string): Promise<{ branch?: string | null }>
   }
   store: OwnPrLoopInboxStore & OwnPrLoopDeps['store']
   userDataPath: string
 }
 
-/** The worktrees a run's work is in: its own workspace when that is a worktree, and those of the
- *  workers its chat started. */
-function runWorktrees(runtime: OwnPrLoopHost['runtime'], run: AutomationRun): Set<string> {
+/** The worktrees on this host a run's work is in: its own workspace when that is a worktree, and
+ *  those of the workers its chat started. `unknown` when a worker is on a paired server, whose
+ *  worktree id names that server's worktree, not one here. */
+export function runWorktrees(
+  db: OrchestrationDb,
+  run: Pick<AutomationRun, 'workspaceId' | 'chatSessionId'>
+): { worktrees: Set<string>; unknown: boolean } {
   const worktrees = new Set<string>()
+  let unknown = false
   if (run.workspaceId && splitWorktreeId(run.workspaceId)) {
     worktrees.add(run.workspaceId)
   }
   if (run.chatSessionId) {
-    const db = runtime.getOrchestrationDb()
     const ids = db.listDispatchIdsCreatedBySession(run.chatSessionId, RUN_WORKERS_READ)
     for (const row of ids.length > 0 ? db.listWorkerTerminalResources({ dispatchIds: ids }) : []) {
-      if (row.worktreeId) {
+      if (db.getFederatedDispatch(row.dispatchId)) {
+        unknown = true
+      } else if (row.worktreeId) {
         worktrees.add(row.worktreeId)
       }
     }
   }
-  return worktrees
+  return { worktrees, unknown }
 }
 
 function hostDeps(host: OwnPrLoopHost): OwnPrLoopDeps {
@@ -51,16 +52,21 @@ function hostDeps(host: OwnPrLoopHost): OwnPrLoopDeps {
   return {
     store,
     runBranches: async (run) => {
+      const { worktrees, unknown } = runWorktrees(runtime.getOrchestrationDb(), run)
+      let unread = unknown
       const branches: string[] = []
-      for (const worktreeId of runWorktrees(runtime, run)) {
+      for (const worktreeId of worktrees) {
         const workspace = await runtime
           .showManagedTerminalWorkspace(`id:${worktreeId}`)
           .catch(() => null)
         if (workspace?.branch) {
           branches.push(workspace.branch)
+        } else if (!workspace) {
+          unread = true
         }
       }
-      return branches
+      // Cannot tell which run opened it: only the window cap holds.
+      return branches.length === 0 && unread ? null : branches
     },
     runForEvent: (id, event, gate) => runtime.runAutomationForEvent(id, event, gate),
     stopped: notifyForkInboxSourceChanged
@@ -72,7 +78,6 @@ export function forkOwnPrLoopRun(
   host: OwnPrLoopHost,
   delivery: TriggerDelivery
 ): (automationId: string, event: AutomationRunEvent) => Promise<AutomationRun | null> {
-  installOwnPrLoopInbox(host.store, host.userDataPath)
   const deps = hostDeps(host)
   return (automationId, event) => runOwnPrLoopGuarded(deps, automationId, event, delivery)
 }
