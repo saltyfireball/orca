@@ -68,7 +68,7 @@ export function startForkChatHandoffOnLimit(runtime: ChatHandoffRuntime): void {
   onForkLimitResumeChanged(handler.entriesChanged)
   onForkPauseAllChanged((state) => {
     if (!state.engaged) {
-      void 0
+      handler.resumed()
     }
   })
 }
