@@ -10,6 +10,7 @@ import {
   getLifecycleGroupRecipientError,
   isDispatchMutationMessageType
 } from '../../../../../../shared/rpc-contract/orchestration/orchestration-params'
+import { ForkResultSendShape } from '../../../../../../shared/fork/result-schema'
 
 const SEND_MESSAGE_TYPE_ERROR = [
   `Invalid --type. Expected one of: ${MESSAGE_TYPES.join(', ')}.`,
@@ -46,7 +47,9 @@ export const SendParams = z
     // Supplied but empty is refused, never read as a local send.
     onClient: z.string().trim().min(1, 'Missing --on-client computer').optional(),
     waitForLifecycleSettlement: OptionalBoolean,
-    devMode: OptionalBoolean
+    devMode: OptionalBoolean,
+    // Fork (BAD-816): the worker's JSON result on a worker_done.
+    ...ForkResultSendShape
   })
   .superRefine((params, ctx) => {
     if (!isDispatchMutationMessageType(params.type) || !params.to || !isGroupAddress(params.to)) {

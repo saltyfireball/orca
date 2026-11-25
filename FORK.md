@@ -3188,6 +3188,53 @@ ones `SLRM-123 `).
     `contract-carry-start.ts` (the capability refusal and the wire of both start paths),
     `gate-subject.ts` (a local Dispatch or a remote attachment as one shape for both gates),
     `gate-workspace.ts` (folder workspaces) and `contract-show.ts` (the home's read-through).
+- **Result schema: a Task can ask for a checked JSON result (BAD-816).** A worker's done carried an
+  outcome, files and free text, so a coordinator read prose to act on a result. A Task can now
+  declare a JSON Schema; its worker's done carries a JSON value, Orca checks it and stores it on the
+  Task, and the coordinator (or a script) reads it back as data. A Task with no schema is unchanged,
+  byte for byte, on every path and on the wire.
+  - **Declaring.** `orchestration task-create` and `worker-start` take `--result-schema '<json>'` or
+    `--result-schema-file <path>` (at most 16 KB). The schema is checked where the request is parsed,
+    so an invalid or unsupported one is refused before anything is created, on every start path.
+    Supported: JSON Schema draft-07 (no `$schema` or the draft-07 one), local `$ref`s only, no
+    `$id`, no recursion, no `pattern`, `patternProperties`, `format`, `uniqueItems` or
+    `dependencies`, at most 32 levels deep and 2000 schema nodes once every `$ref` is followed.
+    Validation is ajv 8 (already in the tree, bundled into main), strict mode, no `$data`, no
+    loader, so nothing is fetched and the schema cannot name code. With the caps above and a value
+    capped at 64 KB and 64 levels, a check's time is bounded by construction; it is also timed, and
+    one past 1 s counts as failed (it is not interrupted).
+  - **Submitting.** The worker is shown the schema under `=== RESULT ===` after its task, and adds
+    `--result-file <file.json>` (or `--result '<json>'`) to its `send --type worker_done`. That is
+    the only way a value is stored: nothing is parsed from text, and a `forkResult` key the worker
+    writes into its own `--payload` is dropped. It is the same CLI for Claude and Codex, chat and
+    terminal. `--result` on a Task without a schema is refused (`result_not_declared`), nothing
+    stored.
+  - **Checking.** The result is one more check of the completion contract (BAD-676): a valid value
+    is stored at once (a later done without `--result` keeps it); a missing or invalid one fails the
+    done with the validation errors (paths and messages, fenced as data) and the Task stays open. It
+    uses the contract's rounds (`--done-max-rounds`, else `forkCompletionContractMaxRounds`, 2), its
+    escalation and its Decision inbox row. Order: the result is checked with the done checks, in the
+    same report, so a done whose checks and result both fail uses one round and the worker gets both
+    at once; the reviewer gate (BAD-683) runs after both pass, so no review is spent on a done that
+    owes its result. `forkCompletionContract` off makes it a plain done (a matching value is still
+    stored) with the usual "Orca did not run" line.
+  - **Reading.** `worker-read --json` returns `forkResult: { value, storedAt }` (RPC
+    `fork.completionContract.result`); `run-show --json` returns `forkResults`, one per Task of the
+    Run with a stored value. The text views show the value fenced as data from the worker. The value
+    lives in a column of `fork_done_contracts` (added on first use), so it survives a restart.
+  - **Retries and follow-ups** inherit the schema, never the value; a `--retry-of` start of the same
+    Task on a server clears the value, so the retry owes it again.
+  - **Paired servers.** `worker-start --on` sends the schema with the Task's contract (the
+    `contract-carry-start.ts` wire, BAD-798). A server without
+    `orchestration.fork-result-schema.v1` is refused before any effect. The server checks the done;
+    the value rides home in the done's queue item and the home's import checks it again against its
+    own schema, stores it and drops it from the message. The older attach protocol cannot bring the
+    value home, so a start there that carries a schema is refused.
+  - Code: `src/main/fork/completion-contract/result-schema-check.ts` (the walk and ajv),
+    `result-schema-live.ts` (the hooks: store, preamble, home import, reads, the payload rules),
+    the result check in `completion-gate.ts`, its column and reads in `contract-store.ts`;
+    `src/shared/fork/result-schema.ts` (params shapes, caps, worker text);
+    `src/cli/fork/result-schema-flag.ts` and `result-schema-format.ts`.
 - **Goal loop: keep any agent going until a check or a judge passes (BAD-682).** Goals were
   harness-native (Codex and Grok thread goals, Claude /goal), so a terminal agent or a provider
   without a goal mode could not be told "keep going until the tests pass", and nothing capped such a
@@ -3847,6 +3894,7 @@ Apply these in this order. Each one is a single commit.
 209. `BAD-800 orcad loads agent and MCP profiles from its own settings and user data folder, so --profile and --mcp-profile apply on a server, and a host that has not loaded them says so instead of calling a profile unknown`
 210. `BAD-815 A profile's Claude account pins a new workspace's startup agent (worktree create, an automation run in a new workspace, a terminal worker in a new worktree), or the start is refused naming the account`
 211. `BAD-819 Own pull request loop limit through the real wiring: the inbox row registers when the connector is made, a worker on a paired server reads as cannot tell, and no event but an automation.* start brings a chain`
+212. `BAD-816 Result schema: task-create and worker-start take --result-schema (draft-07, local $ref only, capped, refused at parse when unsupported); the worker sends its JSON value with worker_done --result-file, the completion contract checks and stores it with its rounds, escalation and inbox row, worker-read and run-show return it as data, retries inherit the schema not the value, and a paired server without orchestration.fork-result-schema.v1 (or on the attach protocol) is refused before any effect`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5122,6 +5170,16 @@ Upstream files only get short hooks, which keeps merges small:
   BAD-820: both `remote-owned-start.ts` calls also pass `runtime` (the home's reviewer settings),
   and `federated-worker-start.ts` calls `forkFederatedStartCarry(args, ...)`, which passes it to
   `forkFederatedCarry`.
+- Result schema (BAD-816), small edits in stock files: `send-params.ts` spreads
+  `ForkResultSendShape` (`forkResult`); `remote-owned-import.ts` passes each imported worker mail
+  through `forkTakeRemoteResult`; `worker-dispatch-preamble.ts` wraps the task text in
+  `forkResultSchemaTaskSpec`; `runs.ts` (`orchestration.runShow`) spreads `forkRunResults`;
+  `orchestration-runtime-capabilities.ts` adds `orchestration.fork-result-schema.v1`;
+  `message-send-handler.ts` spreads `readForkResultFlag`; `worker-observation-handlers.ts` merges
+  `readForkWorkerResult`; `worker-output.ts` and `run-handlers.ts` print the fenced value and the
+  count; `task-handlers.ts` and `worker-launch-handler.ts` pass `cwd` to `readForkDoneContractFlags`;
+  `skill-guides/orchestration.md` has one line on `--result-schema-file`. The schema rides
+  `ForkDoneContractShape`, so the three params shapes are untouched.
 - Reviewer gate (BAD-683), small edits in stock files and fork files: `completion-gate-live.ts`
   (`forkGateWorkerDone` runs the review after the contract passed; `forkStoreDoneContract` also
   saves the request); `orchestration-params.ts` (`TaskCreateParams`) and

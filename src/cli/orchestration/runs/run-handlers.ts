@@ -1,3 +1,4 @@
+import { forkRunResultsLine } from '../../fork/result-schema-format'
 import { abbreviateOrchestrationText } from '../../../shared/orchestration/orchestration-task-summary'
 import type { CommandHandler } from '../../dispatch/dispatch'
 import { printResult } from '../../output/command-result-output'
@@ -129,6 +130,7 @@ export const ORCHESTRATION_RUN_HANDLERS: Record<string, CommandHandler> = {
         created_at: string
       }
       removedWork?: RunRemovedWork
+      forkResults?: unknown[]
     }>('orchestration.runShow', {
       id: getRequiredStringFlag(flags, 'id'),
       ...(removed ? { removed: true } : {}),
@@ -136,11 +138,15 @@ export const ORCHESTRATION_RUN_HANDLERS: Record<string, CommandHandler> = {
     })
     if (!flags.has('full')) {
       printOrchestrationResult(result, json, {
-        fields: (r) => ({ ...runFields(r.run), removedWork: r.removedWork }),
+        fields: (r) => ({
+          ...runFields(r.run),
+          removedWork: r.removedWork,
+          ...(r.forkResults ? { forkResults: r.forkResults } : {})
+        }),
         text: (_, r) =>
           removed
             ? formatRemovedWorkListing(r.run.id, r.removedWork, cursor)
-            : `${r.run.id}${r.run.legacy ? ' [legacy, inspect only]' : ''} ${r.run.objective}${formatRunRemovedWorkLine(r.run.id, r.removedWork)}`
+            : `${r.run.id}${r.run.legacy ? ' [legacy, inspect only]' : ''} ${r.run.objective}${formatRunRemovedWorkLine(r.run.id, r.removedWork)}${forkRunResultsLine(r)}`
       })
       return
     }
@@ -149,7 +155,7 @@ export const ORCHESTRATION_RUN_HANDLERS: Record<string, CommandHandler> = {
         ? formatRemovedWorkListing(r.run.id, r.removedWork, cursor)
         : `${r.run.id}${r.run.legacy ? ' [legacy, inspect only]' : ''} ${r.run.objective}\n` +
           `consumer generation ${r.run.consumer_generation}; created ${r.run.created_at}` +
-          `${formatRunRemovedWorkLine(r.run.id, r.removedWork)}`
+          `${formatRunRemovedWorkLine(r.run.id, r.removedWork)}${forkRunResultsLine(r)}`
     )
   }
 }

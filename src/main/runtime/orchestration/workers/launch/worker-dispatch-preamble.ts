@@ -2,6 +2,7 @@ import type { OrchestrationCliCommand } from './orchestration-cli-command'
 import type { RuntimeAgentPromptWriteOptions } from '../../../terminal/input/agent-prompt-write-options'
 import { ORCA_DISPATCH_PROMPT_LEAD_LINE } from '../../../../../shared/orchestration/workers/orca-dispatch-status-prompt'
 import { forkAgentProfileTaskSpec } from '../../../../fork/agent-profiles/agent-profile-launch-apply'
+import { forkResultSchemaTaskSpec } from '../../../../fork/completion-contract/result-schema-live'
 import { ORCA_SESSION_ADDRESS_PREFIX } from '../../../../../shared/agent-session/identity/orca-session-address-prefix'
 
 export type PreambleParams = {
@@ -137,7 +138,7 @@ ${postDoneInstructions}`
   return `${header}${drift}${subDispatch}
 
 === TASK ===
-${forkAgentProfileTaskSpec(params.taskId, params.taskSpec)}`
+${forkResultSchemaTaskSpec(params.taskId, cli, forkAgentProfileTaskSpec(params.taskId, params.taskSpec))}`
 }
 
 export type DispatchPreambleSendOptions = Pick<

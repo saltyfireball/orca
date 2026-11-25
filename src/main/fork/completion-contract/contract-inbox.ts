@@ -4,12 +4,14 @@
 // later push that went red after the Task settled is a row too, until it is dismissed.
 import type { OrchestrationDb } from '../../runtime/orchestration/db/orchestration-db'
 import type { ForkIdleRecoveryInboxItem } from '../../../shared/fork/idle-recovery-wire'
+import { RESULT_CHECK } from '../../../shared/fork/completion-contract'
 import {
   notifyForkInboxSourceChanged,
   registerForkInboxSource
 } from '../idle-recovery/idle-recovery-sources'
 import { clearEscalation, listAttempts, listEscalated } from './contract-store'
 import { listInboxWatches, updateWatch } from './later-push-store'
+import { forkResultSchemaUseDb } from './result-schema-live'
 
 const ROW_PREFIX = 'contract:'
 const PUSH_ROW_PREFIX = 'contract-push:'
@@ -62,7 +64,7 @@ function escalatedItems(db: TaskReader): ForkIdleRecoveryInboxItem[] {
         worktreeId: null,
         verdict: 'stalled',
         question: '',
-        reason: `The worker's done checks kept failing (${failed.join(', ') || 'see orca contract show'}). The Task is still open: re-dispatch it or accept it with task-update. Details: orca contract show ${taskId}`,
+        reason: `The worker's done checks${failed.includes(RESULT_CHECK) ? ' or result' : ''} kept failing (${failed.join(', ') || 'see orca contract show'}). The Task is still open: re-dispatch it or accept it with task-update. Details: orca contract show ${taskId}`,
         since: last ? Date.parse(`${last.at.replace(' ', 'T')}Z`) || Date.now() : Date.now(),
         wakes: 0,
         wakeAt: null,
@@ -75,6 +77,7 @@ function escalatedItems(db: TaskReader): ForkIdleRecoveryInboxItem[] {
 
 /** Idempotent; the newest database wins (there is one per runtime). */
 export function installForkContractInboxSource(db: OrchestrationDb): void {
+  forkResultSchemaUseDb(db)
   registerForkInboxSource({
     id: 'contract',
     items: async () =>

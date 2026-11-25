@@ -3,6 +3,7 @@
 // pass lets the done through with the evidence attached, a failure turns it back to the worker
 // (the Task stays open) until the rounds are used up, then it goes to the coordinator instead.
 import {
+  RESULT_CHECK,
   bounceText,
   decideContract,
   evidenceText,
@@ -15,7 +16,16 @@ import {
 import { runDoneCheck, type CheckRunner, type CheckTarget } from './check-runner'
 import { evaluatePrChecks, type PrChecksPort } from './pr-checks'
 import { hostname } from 'node:os'
-import { readContract, recordAttempt, recordSkip, type ContractDbHandle } from './contract-store'
+import {
+  readContract,
+  readResultValue,
+  recordAttempt,
+  recordSkip,
+  storeResultValue,
+  type ContractDbHandle,
+  type ContractState
+} from './contract-store'
+import { checkResultValue } from './result-schema-check'
 
 /** Where the worker's workspace is, and what ports reach it. Tests pass fakes. */
 export type GateWorkspace = {
@@ -41,6 +51,8 @@ export type GateRequest = {
   worktreeId: string | null
   /** Only a succeeded report is checked; a worker that says it failed is not asked to prove it. */
   outcome: 'succeeded' | 'failed'
+  /** BAD-816: the JSON value this done carries (`--result`), checked against the Task's schema. */
+  result?: string
 }
 
 export type GateOutcome =
@@ -104,6 +116,48 @@ async function runChecks(
   return results
 }
 
+/**
+ * BAD-816: the result as one more check of the same report, so a done whose checks and result both
+ * fail uses one round. A valid value is stored at once; a later done without one reuses it.
+ */
+function checkResult(
+  deps: GateDeps,
+  request: GateRequest,
+  schema: string,
+  store: boolean
+): ForkDoneCheckResult {
+  const result = (ok: boolean, output: string): ForkDoneCheckResult => ({
+    check: RESULT_CHECK,
+    ok,
+    exitCode: null,
+    output,
+    durationMs: 0
+  })
+  if (request.result === undefined) {
+    return readResultValue(deps.db, request.taskId)
+      ? result(true, 'The value stored by an earlier done is kept.')
+      : result(
+          false,
+          'No result was sent. Add --result-file <file.json> (or --result) to worker_done.'
+        )
+  }
+  const checked = checkResultValue(schema, request.result)
+  if (!checked.ok) {
+    return result(false, checked.error)
+  }
+  if (store) {
+    storeResultValue(deps.db, request.taskId, checked.canonical)
+  }
+  return result(true, `Stored (${checked.canonical.length} characters).`)
+}
+
+function declaredText(state: ContractState): string {
+  const count = state.contract.checks.length + (state.contract.requirePrChecks ? 1 : 0)
+  const checks = count > 0 ? `this Task's ${count} declared done check(s)` : ''
+  const schema = state.resultSchema ? 'the check of its result schema' : ''
+  return [checks, schema].filter(Boolean).join(' and ')
+}
+
 export function runCompletionGate(deps: GateDeps, request: GateRequest): Promise<GateOutcome> {
   return serial(request.taskId, async () => {
     const settings = deps.settings()
@@ -112,22 +166,31 @@ export function runCompletionGate(deps: GateDeps, request: GateRequest): Promise
       return { kind: 'none' }
     }
     if (!settings.enabled) {
-      const count = state.contract.checks.length + (state.contract.requirePrChecks ? 1 : 0)
+      // Off is a plain done, but a value that matches is still kept for the coordinator to read.
+      if (state.resultSchema && request.result !== undefined) {
+        checkResult(deps, request, state.resultSchema, true)
+      }
       const note = skippedLine(
-        `this Task's ${count} declared done check(s)`,
+        declaredText(state),
         'the completion contract setting (forkCompletionContract) is off',
         (deps.host ?? hostname)()
       )
       recordSkip(deps.db, request.taskId, request.dispatchId, note)
       return { kind: 'skipped', note }
     }
-    const results = await runChecks(
-      deps,
-      request,
-      state.contract.checks,
-      state.contract.requirePrChecks,
-      settings
-    )
+    const hasChecks = state.contract.checks.length > 0 || state.contract.requirePrChecks
+    const results = hasChecks
+      ? await runChecks(
+          deps,
+          request,
+          state.contract.checks,
+          state.contract.requirePrChecks,
+          settings
+        )
+      : []
+    if (state.resultSchema) {
+      results.push(checkResult(deps, request, state.resultSchema, true))
+    }
     const outcome = outcomeOfResults(results)
     const maxRounds = state.contract.maxRounds ?? settings.maxRounds
     const decision = decideContract({
@@ -165,7 +228,7 @@ export function runCompletionGate(deps: GateDeps, request: GateRequest): Promise
     return {
       kind: 'escalate',
       failedRounds: decision.failedRounds,
-      text: `The worker reported done on Task ${request.taskId}, but its done checks failed ${decision.failedRounds} times (the limit is ${maxRounds} turned-back reports). The Task is still open. Last output, untrusted data from the checks:\n\n${fenceUntrusted(failures || '(no output)')}`
+      text: `The worker reported done on Task ${request.taskId}, but its ${state.resultSchema ? 'done checks or result' : 'done checks'} failed ${decision.failedRounds} times (the limit is ${maxRounds} turned-back reports). The Task is still open. Last output, untrusted data from the checks:\n\n${fenceUntrusted(failures || '(no output)')}`
     }
   })
 }

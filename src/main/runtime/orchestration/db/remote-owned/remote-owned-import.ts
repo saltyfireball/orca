@@ -25,6 +25,7 @@ import {
   noteRemoteRunLinkPeerRun
 } from './remote-placements'
 import { recordMessageSenderDispatch } from '../messages/message-sender-dispatch'
+import { forkTakeRemoteResult } from '../../../../fork/completion-contract/result-schema-live'
 import {
   closeRemoteRunLink,
   getRemoteRunLink,
@@ -162,9 +163,11 @@ function advanceImportPosition(
 function importWorkerMail(
   db: OrchestrationDb,
   link: RemoteRunLinkRow,
-  mail: RemoteOwnedWorkerMail,
+  sent: RemoteOwnedWorkerMail,
   deletedChat: ((run: RunRow) => string | undefined) | undefined
 ): ImportedRemoteOwnedMail | undefined {
+  // Fork (BAD-816): a checked result is stored on the Task here, never kept in the message.
+  const mail = forkTakeRemoteResult(db, sent)
   if (mail.dispatchId && mail.taskId) {
     adoptRemoteAttempt(db, link, { taskId: mail.taskId, dispatchId: mail.dispatchId })
     if (mail.message.type === 'worker_done') {

@@ -86,6 +86,7 @@ import {
 } from '../fork/command-guards-wire'
 import {
   ForkCompletionContractLaterPushParams,
+  ForkCompletionContractResultParams,
   ForkCompletionContractShowParams
 } from '../fork/completion-contract-wire'
 import { ForkDeviceListParams, ForkDeviceTargetParams } from '../fork/device-approval'
@@ -1772,6 +1773,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.commandGuards.list': ForkCommandGuardsListParams,
   'fork.commandGuards.status': ForkCommandGuardsStatusParams,
   'fork.completionContract.laterPush': ForkCompletionContractLaterPushParams,
+  'fork.completionContract.result': ForkCompletionContractResultParams,
   'fork.completionContract.show': ForkCompletionContractShowParams,
   'fork.devices.approve': ForkDeviceTargetParams,
   'fork.devices.deny': ForkDeviceTargetParams,

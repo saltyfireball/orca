@@ -75,6 +75,8 @@ that the CLI is installed; a missing one fails as an `agent_readiness` timeout.
   current workspace's project runs where you are, with no host check.
 - Add `--model` only if the user named one.
 - `ORCA profiles list` shows saved agent profiles; add `--profile <name>` when one fits.
+- To get data back instead of prose, add `--result-schema-file <schema.json>` (JSON Schema,
+  draft-07); `worker-read --dispatch <id> --json` returns the checked value as `forkResult`.
 - If `worker-start` fails, do not rerun it; read `failedStage` and load
   `references/recovery-and-cleanup.md`.
 - To talk to a worker, use

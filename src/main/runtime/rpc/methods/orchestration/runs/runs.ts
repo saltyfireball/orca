@@ -8,6 +8,7 @@ import type { OrcaRuntimeService } from '../../../../orca-runtime'
 import type { OrchestrationPartyIdentity as OrchestrationCallerIdentity } from '../../../../../../shared/orchestration/mailbox/orchestration-party-identity'
 import type { RunRow } from '../../../../orchestration/db/orchestration-records'
 import { currentDispatchAssigneeRun } from '../messaging/recipient-routing'
+import { forkRunResults } from '../../../../../fork/completion-contract/result-schema-live'
 import {
   RunCreateParams,
   RunCurrentParams,
@@ -173,7 +174,10 @@ export const ORCHESTRATION_RUN_METHODS = [
         throw new OrchestrationError('run_not_found', `Run ${params.id} was not found.`)
       }
       const removedWork = readRunRemovedWork(db.db, run.id, params)
-      return removedWork ? { run: exposeRun(run), removedWork } : { run: exposeRun(run) }
+      const results = forkRunResults(db, run.id) // Fork (BAD-816): each Task's stored result
+      return removedWork
+        ? { run: exposeRun(run), removedWork, ...results }
+        : { run: exposeRun(run), ...results }
     }
   })
 ]

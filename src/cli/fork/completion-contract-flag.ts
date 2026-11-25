@@ -8,6 +8,7 @@ import {
 import { getOptionalNumberFlag, getRepeatedStringFlag } from '../arguments/flags'
 import { RuntimeClientError } from '../runtime/connection/types'
 import { readForkReviewGateFlags } from './reviewer-gate-flag'
+import { readForkResultSchemaFlags } from './result-schema-flag'
 
 export const FORK_DONE_CHECK_FLAG = 'done-check'
 export const FORK_REQUIRE_PR_CHECKS_FLAG = 'require-pr-checks'
@@ -18,11 +19,18 @@ export const FORK_DONE_CONTRACT_FLAGS = [
   FORK_DONE_MAX_ROUNDS_FLAG
 ]
 
-/** The done checks (BAD-676) and, riding the same hook, the review request (BAD-683). */
+/** The done checks (BAD-676) and, riding the same hook, the review request (BAD-683) and result schema (BAD-816). */
 export function readForkDoneContractFlags(
-  flags: Map<string, string | boolean>
-): ReturnType<typeof readForkDoneChecksFlags> & ReturnType<typeof readForkReviewGateFlags> {
-  return { ...readForkDoneChecksFlags(flags), ...readForkReviewGateFlags(flags) }
+  flags: Map<string, string | boolean>,
+  cwd: string = process.cwd()
+): ReturnType<typeof readForkDoneChecksFlags> &
+  ReturnType<typeof readForkReviewGateFlags> &
+  ReturnType<typeof readForkResultSchemaFlags> {
+  return {
+    ...readForkDoneChecksFlags(flags),
+    ...readForkReviewGateFlags(flags),
+    ...readForkResultSchemaFlags(flags, cwd)
+  }
 }
 
 function readForkDoneChecksFlags(flags: Map<string, string | boolean>): {

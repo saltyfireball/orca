@@ -6,11 +6,15 @@ import { OrchestrationError } from '../../runtime/orchestration/orchestration-er
 import type { OrchestrationDb } from '../../runtime/orchestration/db/orchestration-db'
 import type { OrcaRuntimeService } from '../../runtime/orca-runtime'
 import type { FederatedWorkerStartRequest } from '../../runtime/orchestration/legacy-remote-home/federated-worker-start-request'
-import { ORCHESTRATION_FORK_CONTRACT_CARRY_RUNTIME_CAPABILITY } from '../../../shared/orchestration/orchestration-runtime-capabilities'
+import {
+  ORCHESTRATION_FORK_CONTRACT_CARRY_RUNTIME_CAPABILITY,
+  ORCHESTRATION_FORK_RESULT_SCHEMA_RUNTIME_CAPABILITY
+} from '../../../shared/orchestration/orchestration-runtime-capabilities'
 import { effectiveReviewGate, type ForkReviewGate } from '../../../shared/fork/reviewer-gate'
 import { forkStoreDoneContract } from './completion-gate-live'
 import {
   forkStartCarriesContract,
+  forkStartCarriesResultSchema,
   forkTaskContractWire,
   type ForkContractWire
 } from './contract-carry'
@@ -85,6 +89,10 @@ export function forkFederatedCarry(
 ): FederatedCarry {
   // BAD-741: a --profile start's permission mode, account and preamble ride the same attach-start.
   const profile = forkAgentProfileServerCarry(serverName, capabilities)
+  // BAD-816: this older protocol reports home through a relay that cannot bring the value back.
+  if (forkStartCarriesResultSchema(db, { params, taskId, continuesDispatchId: params.retryOf })) {
+    throw resultSchemaRefused(serverName, 'protocol')
+  }
   if (!capabilities?.includes(ORCHESTRATION_FORK_CONTRACT_CARRY_RUNTIME_CAPABILITY)) {
     const reason = carryReason(home, db, params, taskId)
     if (reason) {
@@ -96,6 +104,16 @@ export function forkFederatedCarry(
     const contract = withAllTasksReview(home, db, taskForRemote)
     return contract || profile.forkAgentProfileLaunch ? { ...contract, ...profile } : null
   }
+}
+
+function resultSchemaRefused(serverName: string, why: 'protocol' | 'version'): OrchestrationError {
+  return new OrchestrationError(
+    'capability_unsupported',
+    why === 'protocol'
+      ? `Connected server ${serverName} runs this worker with the older attach protocol, which cannot return the Task's result here. Start the worker on a server that owns its workers, or here. No effects were applied.`
+      : `Connected server ${serverName} cannot check this Task's result schema before its worker settles (it needs the same Blackfish version as this computer). Update it or start the worker here. No effects were applied.`,
+    { effectsApplied: false }
+  )
 }
 
 function contractCarryRefused(
@@ -123,6 +141,12 @@ export async function forkRemoteOwnedContractPreflight(
   serverName: string,
   serverCarries: (capability: string) => Promise<boolean>
 ): Promise<void> {
+  if (
+    forkStartCarriesResultSchema(db, { params, taskId, continuesDispatchId: params.retryOf }) &&
+    !(await serverCarries(ORCHESTRATION_FORK_RESULT_SCHEMA_RUNTIME_CAPABILITY))
+  ) {
+    throw resultSchemaRefused(serverName, 'version')
+  }
   const reason = carryReason(runtime, db, params, taskId)
   if (reason && !(await serverCarries(ORCHESTRATION_FORK_CONTRACT_CARRY_RUNTIME_CAPABILITY))) {
     throw contractCarryRefused(serverName, reason)

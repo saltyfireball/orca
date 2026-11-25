@@ -14,6 +14,7 @@ import type {
   OrchestrationWorkerReadSource
 } from '../../../shared/orchestration/workers/orchestration-worker-output'
 import { formatWorkerRead, type LegacyWorkerReadResult } from './worker-output'
+import { readForkWorkerResult } from '../../fork/result-schema-format'
 
 export const ORCHESTRATION_WORKER_OBSERVATION_HANDLERS: Record<string, CommandHandler> = {
   'orchestration worker-show': async ({ flags, client, json }) => {
@@ -89,6 +90,11 @@ export const ORCHESTRATION_WORKER_OBSERVATION_HANDLERS: Record<string, CommandHa
         limit: getOptionalPositiveIntegerFlag(flags, 'limit'),
         source: source as OrchestrationWorkerReadSource | undefined
       }
+    )
+    // Fork (BAD-816): the Task's stored result, as data.
+    Object.assign(
+      result.result,
+      await readForkWorkerResult(client, getRequiredStringFlag(flags, 'dispatch'))
     )
     printOrchestrationReceipt(result, { flags, json }, formatWorkerRead)
   }

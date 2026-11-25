@@ -70,6 +70,9 @@ export const ORCHESTRATION_CLIENT_AGENT_ASKS_RUNTIME_CAPABILITY =
  *  remote worker's done on this host before the report goes home. */
 export const ORCHESTRATION_FORK_CONTRACT_CARRY_RUNTIME_CAPABILITY =
   'orchestration.fork-contract-carry.v1' as const
+/** Fork (BAD-816): its starts take a Task's result schema, check the worker's result and send it home. */
+export const ORCHESTRATION_FORK_RESULT_SCHEMA_RUNTIME_CAPABILITY =
+  'orchestration.fork-result-schema.v1' as const
 /** Fork (BAD-741): its starts apply a home's `--profile` permission mode, account and preamble. */
 export const ORCHESTRATION_FORK_AGENT_PROFILE_LAUNCH_RUNTIME_CAPABILITY =
   'orchestration.fork-agent-profile-launch.v1' as const
@@ -103,6 +106,7 @@ export const ORCHESTRATION_RUNTIME_CAPABILITIES = [
   ORCHESTRATION_REMOTE_OWNED_WORKERS_RUNTIME_CAPABILITY,
   ORCHESTRATION_CHAT_LINEAGE_RUNTIME_CAPABILITY,
   ORCHESTRATION_FORK_CONTRACT_CARRY_RUNTIME_CAPABILITY,
+  ORCHESTRATION_FORK_RESULT_SCHEMA_RUNTIME_CAPABILITY,
   ORCHESTRATION_FORK_AGENT_PROFILE_LAUNCH_RUNTIME_CAPABILITY,
   ORCHESTRATION_FORK_MCP_PROFILE_LAUNCH_RUNTIME_CAPABILITY
 ] as const

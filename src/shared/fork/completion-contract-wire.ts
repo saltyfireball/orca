@@ -9,6 +9,11 @@ export const ForkCompletionContractShowParams = z.object({
   task: z.string().trim().min(1).max(256)
 })
 
+/** BAD-816: the stored result of a worker's Task, for `worker-read`. */
+export const ForkCompletionContractResultParams = z.object({
+  dispatch: z.string().trim().min(1).max(256)
+})
+
 export type ForkCompletionContractShowResult = {
   taskId: string
   /** False when the Task declares no done checks. */

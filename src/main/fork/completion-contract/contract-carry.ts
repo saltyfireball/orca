@@ -5,7 +5,14 @@
 import { forkDoneContractOf } from '../../../shared/fork/completion-contract'
 import { forkReviewGateOf, type ForkReviewGate } from '../../../shared/fork/reviewer-gate'
 import { readReviewGate, saveReviewGate } from '../reviewer-gate/reviewer-store'
-import { readContract, saveContract, type ContractDbHandle } from './contract-store'
+import {
+  readContract,
+  saveContract,
+  saveResultSchema,
+  type ContractDbHandle,
+  type ContractState
+} from './contract-store'
+import { forkDeclaresResultSchema } from './result-schema-live'
 
 /** The request fields a start carries: the same names `worker-start` takes, so one reader serves both. */
 export type ForkContractWire = {
@@ -16,6 +23,12 @@ export type ForkContractWire = {
   forkReviewFocus?: ForkReviewGate['focus']
   forkReviewAgent?: NonNullable<ForkReviewGate['agent']>
   forkReviewMaxRounds?: number
+  forkResultSchema?: string
+}
+
+/** Checks or a pull request requirement; a row may hold only a result schema (BAD-816). */
+function hasChecks(state: ContractState | null): state is ContractState {
+  return !!state && (state.contract.checks.length > 0 || state.contract.requirePrChecks)
 }
 
 type TaskLookup = ContractDbHandle & {
@@ -45,6 +58,9 @@ export function forkTaskContractWire(
     }
     if (maxRounds !== null) {
       wire.forkDoneMaxRounds = maxRounds
+    }
+    if (state.resultSchema) {
+      wire.forkResultSchema = state.resultSchema
     }
   }
   if (review) {
@@ -78,11 +94,14 @@ export function forkCarryContract(
   if (!fromTaskId || fromTaskId === toTaskId) {
     return
   }
-  if (!readContract(db, toTaskId)) {
-    const state = readContract(db, fromTaskId)
-    if (state) {
-      saveContract(db, toTaskId, state.contract)
-    }
+  const own = readContract(db, toTaskId)
+  const from = readContract(db, fromTaskId)
+  if (!hasChecks(own) && hasChecks(from)) {
+    saveContract(db, toTaskId, from.contract)
+  }
+  // BAD-816: the schema comes across on its own; the value never does.
+  if (!own?.resultSchema && from?.resultSchema) {
+    saveResultSchema(db, toTaskId, from.resultSchema)
   }
   if (!readReviewGate(db, toTaskId)) {
     const review = readReviewGate(db, fromTaskId)
@@ -90,6 +109,18 @@ export function forkCarryContract(
       saveReviewGate(db, toTaskId, review.gate)
     }
   }
+}
+
+/** BAD-816: true when a start on a paired server would hand over a result schema. */
+export function forkStartCarriesResultSchema(
+  db: TaskLookup,
+  request: { params: unknown; taskId?: string; continuesDispatchId?: string }
+): boolean {
+  if (forkDeclaresResultSchema(request.params)) {
+    return true
+  }
+  const sources = [request.taskId, taskOfDispatch(db, request.continuesDispatchId)]
+  return sources.some((taskId) => taskId && readContract(db, taskId)?.resultSchema)
 }
 
 /**

@@ -38,7 +38,7 @@ export const ORCHESTRATION_TASK_HANDLERS: Record<string, CommandHandler> = {
         run: getOptionalStringFlag(flags, 'run'),
         callerTerminalHandle,
         // Fork (BAD-676): --done-check, --require-pr-checks, --done-max-rounds.
-        ...readForkDoneContractFlags(flags)
+        ...readForkDoneContractFlags(flags, cwd)
       }
     )
     if (!flags.has('full')) {

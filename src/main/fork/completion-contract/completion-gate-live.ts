@@ -12,6 +12,12 @@ import {
   type CompletionContractSettings
 } from '../../../shared/fork/completion-contract'
 import { saveContract, readContract } from './contract-store'
+import {
+  forkStoreResultSchema,
+  resultNotDeclared,
+  withResultForHome,
+  withoutResult
+} from './result-schema-live'
 import { runCompletionGate, type GateDeps, type GateWorkspace } from './completion-gate'
 import { checkRunnerFor } from './check-runner'
 import { resolveGateWorkspace } from './gate-workspace'
@@ -49,6 +55,8 @@ export function forkStoreDoneContract(
   if (contract) {
     saveContract(db, taskId, contract)
   }
+  // BAD-816: so does a result schema, on its own beside the checks.
+  forkStoreResultSchema(db, taskId, rawParams)
   // BAD-683: a review the request asked for rides the same hook.
   forkStoreReviewGate(db, taskId, rawParams)
   forkCarryContract(db, taskId, continuesDispatchId ?? retryOfOf(rawParams))
@@ -171,6 +179,8 @@ type SendShape = {
   subject: string
   body?: string
   payload?: string
+  /** BAD-816: the worker's JSON result; never stored with the message itself. */
+  forkResult?: string
   [key: string]: unknown
 }
 
@@ -194,34 +204,57 @@ function workerOutcomeOf(payload: string | undefined): 'succeeded' | 'failed' {
 async function gateByContract<P extends SendShape>(
   runtime: OrcaRuntimeService,
   db: OrchestrationDb,
-  params: P,
+  sent: P,
   subject: GateSubject | null
 ): Promise<{ kind: 'carry-on'; params: P } | { kind: 'answer'; receipt: unknown }> {
+  const result = sent.type === 'worker_done' ? sent.forkResult : undefined
+  const params = withoutResult(sent)
   if (params.type !== 'worker_done' || !subject) {
     return { kind: 'carry-on', params }
   }
   // Cheap read first: a Task with no contract never loads the rest.
-  if (!readContract(db, subject.taskId)) {
+  const state = readContract(db, subject.taskId)
+  if (result !== undefined && !state?.resultSchema) {
+    return { kind: 'answer', receipt: resultNotDeclared(subject.taskId) }
+  }
+  if (!state) {
     return { kind: 'carry-on', params }
   }
   const outcome = await runCompletionGate(liveGateDeps(runtime, db), {
     taskId: subject.taskId,
     dispatchId: subject.dispatchId,
     worktreeId: subject.worktreeId,
-    outcome: workerOutcomeOf(params.payload)
+    outcome: workerOutcomeOf(params.payload),
+    ...(result !== undefined ? { result } : {})
   })
   switch (outcome.kind) {
     case 'none':
       return { kind: 'carry-on', params }
-    case 'pass':
+    case 'pass': {
+      const read = state.resultSchema
+        ? `The result is stored on the Task. Read it as data: orca orchestration worker-read --dispatch ${subject.dispatchId} --json (field forkResult).`
+        : ''
       return {
         kind: 'carry-on',
-        params: { ...params, body: [params.body, outcome.evidence].filter(Boolean).join('\n\n') }
+        params: {
+          ...params,
+          body: [params.body, outcome.evidence, read].filter(Boolean).join('\n\n'),
+          ...(state.resultSchema
+            ? { payload: withResultForHome(db, subject.dispatchId, subject.taskId, params.payload) }
+            : {})
+        }
       }
+    }
     case 'skipped':
       return {
         kind: 'carry-on',
-        params: { ...params, body: [params.body, outcome.note].filter(Boolean).join('\n\n') }
+        params: {
+          ...params,
+          body: [params.body, outcome.note].filter(Boolean).join('\n\n'),
+          ...(state.resultSchema
+            ? { payload: withResultForHome(db, subject.dispatchId, subject.taskId, params.payload) }
+            : {})
+        }
       }
     case 'bounce':
       return {
@@ -237,7 +270,7 @@ async function gateByContract<P extends SendShape>(
         params: {
           ...params,
           type: 'escalation',
-          subject: `Done checks failed: Task ${subject.taskId}`,
+          subject: `${state.resultSchema ? 'Done checks or result failed' : 'Done checks failed'}: Task ${subject.taskId}`,
           body: outcome.text,
           payload: JSON.stringify({ taskId: subject.taskId })
         }

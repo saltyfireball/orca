@@ -19,6 +19,7 @@ import { readTextOrFileFlag } from '../../arguments/command-body-input'
 import { readInjectedAgentSessionId } from '../../../shared/agent-session/lifecycle/launch/agent-session-caller-env'
 import { requireWorkerDoneSettlement } from '../workers/orchestration-worker-settlement'
 import { getOptionalStructuredMessagePayload } from './message-payload'
+import { readForkResultFlag } from '../../fork/result-schema-flag'
 import { callOrchestrationMutation } from '../recovery/mutation-request'
 import { isDevCliInvocation } from '../recovery/runtime-compatibility'
 import { refuseAgentServerRoute, requirePeerMailCarrier } from '../identity/agent-server-route'
@@ -137,7 +138,9 @@ export const ORCHESTRATION_SEND_HANDLER: Record<string, CommandHandler> = {
           ? undefined
           : process.env.ORCA_PANE_KEY || undefined,
       waitForLifecycleSettlement: type === 'worker_done' ? true : undefined,
-      devMode: isDevCliInvocation()
+      devMode: isDevCliInvocation(),
+      // Fork (BAD-816): --result / --result-file on a worker_done.
+      ...readForkResultFlag(flags, cwd, type)
     }
     const dispatchCapability = getOptionalStringFlag(flags, 'dispatch-capability')
     const result = await callOrchestrationMutation<OrchestrationSendResult>(

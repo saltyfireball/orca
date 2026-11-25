@@ -12,6 +12,8 @@ export type ContractDbHandle = { db: Database.Database }
 
 export type ContractState = {
   contract: ForkDoneContract
+  /** BAD-816: the Task's result schema (the coordinator's text); null when it declares none. */
+  resultSchema: string | null
   failedRounds: number
   pendingReports: number
   escalated: boolean
@@ -59,6 +61,14 @@ function ensureTables(handle: ContractDbHandle): Database.Database {
       );
       CREATE INDEX IF NOT EXISTS fork_done_attempts_task ON fork_done_attempts (task_id, id);
     `)
+    // BAD-816: the result schema and the stored value, added on first use to an older table.
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: SQLite returns the columns this statement selects.
+    const columns = db.prepare('PRAGMA table_info(fork_done_contracts)').all() as { name: string }[]
+    for (const column of ['result_schema', 'result_value', 'result_at']) {
+      if (!columns.some((entry) => entry.name === column)) {
+        db.exec(`ALTER TABLE fork_done_contracts ADD COLUMN ${column} TEXT`)
+      }
+    }
     ready.add(db)
   }
   return db
@@ -90,6 +100,7 @@ export function saveContract(
 
 type ContractRow = {
   checks: string
+  result_schema: string | null
   require_pr_checks: number
   max_rounds: number | null
   failed_rounds: number
@@ -117,6 +128,7 @@ export function readContract(handle: ContractDbHandle, taskId: string): Contract
       requirePrChecks: row.require_pr_checks === 1,
       maxRounds: row.max_rounds
     },
+    resultSchema: row.result_schema ?? null,
     failedRounds: row.failed_rounds,
     pendingReports: row.pending_reports,
     escalated: row.escalated === 1
@@ -149,6 +161,71 @@ export function recordAttempt(
     db.exec('ROLLBACK')
     throw error
   }
+}
+
+/**
+ * BAD-816: declares the Task's result schema on its own, beside any checks. A Task with only a
+ * schema has a row with no checks. A changed schema drops a value stored under the old one.
+ */
+export function saveResultSchema(handle: ContractDbHandle, taskId: string, schema: string): void {
+  ensureTables(handle)
+    .prepare(
+      `INSERT INTO fork_done_contracts (task_id, checks, result_schema) VALUES (?, '[]', ?)
+       ON CONFLICT(task_id) DO UPDATE SET
+         result_value = CASE WHEN result_schema IS excluded.result_schema THEN result_value END,
+         result_at = CASE WHEN result_schema IS excluded.result_schema THEN result_at END,
+         result_schema = excluded.result_schema`
+    )
+    .run(taskId, schema)
+}
+
+/** A retry of the same Task owes its result again. */
+export function clearResultValue(handle: ContractDbHandle, taskId: string): void {
+  ensureTables(handle)
+    .prepare(
+      'UPDATE fork_done_contracts SET result_value = NULL, result_at = NULL WHERE task_id = ?'
+    )
+    .run(taskId)
+}
+
+export type StoredResult = { value: string; at: string }
+
+/** The value a worker's done stored on the Task (validated before it was stored). */
+export function readResultValue(handle: ContractDbHandle, taskId: string): StoredResult | null {
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: SQLite returns the columns this statement selects.
+  const row = ensureTables(handle)
+    .prepare('SELECT result_value, result_at FROM fork_done_contracts WHERE task_id = ?')
+    .get(taskId) as { result_value: string | null; result_at: string | null } | undefined
+  return row?.result_value ? { value: row.result_value, at: row.result_at ?? '' } : null
+}
+
+export function storeResultValue(handle: ContractDbHandle, taskId: string, value: string): void {
+  ensureTables(handle)
+    .prepare(
+      "UPDATE fork_done_contracts SET result_value = ?, result_at = datetime('now') WHERE task_id = ? AND result_schema IS NOT NULL"
+    )
+    .run(value, taskId)
+}
+
+/** Stored values of a Run's Tasks, oldest first, for the Run read. */
+export function listRunResults(
+  handle: ContractDbHandle,
+  runId: string
+): { taskId: string; value: string; at: string }[] {
+  ensureTables(handle)
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: SQLite returns the columns this statement selects.
+  const rows = handle.db
+    .prepare(
+      `SELECT c.task_id, c.result_value, c.result_at FROM fork_done_contracts c
+       JOIN tasks t ON t.id = c.task_id
+       WHERE t.run_id = ? AND c.result_value IS NOT NULL ORDER BY c.result_at, c.task_id`
+    )
+    .all(runId) as { task_id: string; result_value: string; result_at: string | null }[]
+  return rows.map((row) => ({
+    taskId: row.task_id,
+    value: row.result_value,
+    at: row.result_at ?? ''
+  }))
 }
 
 /** An attempt that changes no round or escalation: the later-push watch's reads of a settled Task. */

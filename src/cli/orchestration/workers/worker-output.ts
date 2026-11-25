@@ -1,3 +1,4 @@
+import { forkWorkerResultText } from '../../fork/result-schema-format'
 import type { RuntimeTerminalRead } from '../../../shared/terminal/runtime/runtime-terminal-contracts'
 import type { OrchestrationWorkerReadResult } from '../../../shared/orchestration/workers/orchestration-worker-output'
 import { formatWorkerTranscriptMessage } from '../../../shared/native-chat/transcript/worker-transcript-text'
@@ -92,7 +93,10 @@ export function formatWorkerRead(
   if (!('source' in value)) {
     return value.terminal.tail.join('\n')
   }
-  const details = formatWorkerReadDetails(value)
+  // Fork (BAD-816): the Task's stored result, fenced as data.
+  const details = [formatWorkerReadDetails(value), forkWorkerResultText(value)]
+    .filter(Boolean)
+    .join('\n')
   const output =
     value.source === 'terminal'
       ? value.terminal.tail.join('\n')
