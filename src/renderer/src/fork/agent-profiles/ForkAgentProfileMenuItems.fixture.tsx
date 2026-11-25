@@ -26,6 +26,11 @@ const profiles = [
     agent: 'claude',
     preamble: 'Imported text',
     imported: { path: '/repo/.claude/agents/helper.md' }
+  },
+  {
+    name: 'imported-checker',
+    agent: 'claude',
+    imported: { path: '/repo/.claude/agents/checker.md', notKept: ['tools: Read, Grep'] }
   }
 ]
 const settings = { forkAgentProfiles: profiles }
@@ -55,7 +60,7 @@ export const newTabMenu = defineFixture({
   width: 380,
   setup: withProfiles,
   render: () => (
-    <div className="h-[340px] bg-background p-3">
+    <div className="h-[400px] bg-background p-3">
       <DropdownMenu defaultOpen modal={false}>
         <DropdownMenuTrigger>New</DropdownMenuTrigger>
         <DropdownMenuContent align="start" style={{ width: 340 }}>

@@ -1,6 +1,6 @@
 // FORK.md "Agent profiles" (BAD-741): one profile in a menu: its name, its note, and what will not
-// apply as asked (an unconfirmed preamble, a capped mode, an account a UI start does not choose,
-// an MCP limit a UI start cannot carry).
+// apply as asked (an unconfirmed preamble or not-kept definition limits, a capped mode, an account
+// a UI start does not choose, an MCP limit a UI start cannot carry).
 import React from 'react'
 import { useTranslate } from '@/i18n/use-translate'
 import type { ForkAgentProfilePick } from './agent-profile-picks'
@@ -14,14 +14,26 @@ export function ForkAgentProfileLabel({
 }): React.JSX.Element {
   const t = useTranslate()
   const { profile } = pick
+  const notKept = (profile.imported?.notKept ?? []).join('; ')
+  // BAD-817: a confirm covers the preamble and the definition's limits the profile does not keep.
   const hint = pick.needsConfirm
-    ? t(
-        'fork.agentProfiles.needsConfirm',
-        'Confirm its preamble first: orca profiles confirm {{name}}',
-        {
-          name: profile.name
-        }
-      )
+    ? notKept && profile.preamble
+      ? t(
+          'fork.agentProfiles.needsConfirmBoth',
+          'Confirm its preamble and the limits it does not keep ({{notKept}}): orca profiles confirm {{name}}',
+          { name: profile.name, notKept }
+        )
+      : notKept
+        ? t(
+            'fork.agentProfiles.needsConfirmNotKept',
+            'Confirm the limits it does not keep ({{notKept}}): orca profiles confirm {{name}}',
+            { name: profile.name, notKept }
+          )
+        : t(
+            'fork.agentProfiles.needsConfirm',
+            'Confirm its preamble first: orca profiles confirm {{name}}',
+            { name: profile.name }
+          )
     : unavailable
       ? t('fork.agentProfiles.unavailable', '{{agent}} cannot start here', { agent: profile.agent })
       : pick.mcpLimit
@@ -53,7 +65,11 @@ export function ForkAgentProfileLabel({
       {profile.whenToUse ? (
         <span className="truncate text-xs text-muted-foreground">{profile.whenToUse}</span>
       ) : null}
-      {hint ? <span className="truncate text-xs text-muted-foreground">{hint}</span> : null}
+      {hint ? (
+        <span className="truncate text-xs text-muted-foreground" title={hint}>
+          {hint}
+        </span>
+      ) : null}
     </span>
   )
 }

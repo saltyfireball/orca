@@ -3452,6 +3452,9 @@ ones `SLRM-123 `).
     without a list hashes as before), so an edited list asks again; a list the settings file holds
     in an unreadable shape reads as one not-kept line. `set --preamble` keeps the list and keeps
     the confirm only if it was confirmed.
+    The app's profile picker says what the confirm is for: the preamble, the limits it does not
+    keep (listed), or both (`ForkAgentProfileLabel.tsx`); it said "Confirm its preamble first"
+    for a profile held only by its list.
   - **Security.** An imported preamble is not used until `orca profiles confirm <name>`, after
     `show` has printed it; changing the preamble asks again. A profile cannot widen permission:
     its mode is lowered to the agent's permission in Settings > Agents when that is set, else to
