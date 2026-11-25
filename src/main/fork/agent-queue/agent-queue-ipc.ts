@@ -11,6 +11,7 @@ import {
   installForkAgentQueue,
   onForkAgentQueueChanged
 } from './agent-queue-service'
+import { forkAgentQueueRuntimeTerminals } from './agent-queue-runtime'
 
 function mainWindowContents(): Electron.WebContents | null {
   const window = mainProcessState.mainWindow
@@ -23,12 +24,10 @@ function mainWindowContents(): Electron.WebContents | null {
  * starts waiting launches within one check without a change subscription.
  */
 export function installForkAgentQueueApp(readSettings: () => ForkGlobalSettings | undefined): void {
-  installForkAgentQueue(readSettings, {
-    // Protected on the runtime; bracket access keeps them type-checked against upstream renames.
-    ptys: () => mainProcessState.core.runtime?.['ptysById'],
-    ptyIdOfHandle: (handle) =>
-      mainProcessState.core.runtime?.['getLivePtyForHandle'](handle)?.pty.ptyId
-  })
+  installForkAgentQueue(
+    readSettings,
+    forkAgentQueueRuntimeTerminals(() => mainProcessState.core.runtime)
+  )
   const fromMainWindow = (event: Electron.IpcMainInvokeEvent): boolean =>
     event.sender === mainWindowContents()
   ipcMain.handle(CHANNELS.get, () => forkAgentQueueSnapshot())

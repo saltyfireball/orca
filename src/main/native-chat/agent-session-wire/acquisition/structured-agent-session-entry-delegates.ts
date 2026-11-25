@@ -8,10 +8,13 @@ import {
 } from './structured-agent-session-create'
 import { noteForkMcpNewChat } from '../../../fork/mcp-profiles/mcp-profiles-service'
 import { forkAgentProfileChatCreate } from '../../../fork/agent-profiles/agent-profile-launch-apply'
+import { forkPauseAllHeldLaunchHost } from '../../../fork/pause-all/pause-all-held-launches'
 
 export function structuredAgentSessionEntryDelegates(
   context: () => StructuredAgentSessionAttachContext
 ) {
+  // Fork (BAD-818): Pause all starts a worker launch it held across a restart through this host.
+  forkPauseAllHeldLaunchHost(context)
   return {
     attach: (
       caller: StructuredAgentSessionCaller,

@@ -116,9 +116,10 @@ export type ForkPauseAllResult = {
   state: ForkPauseAllState
   /** Paired servers asked; empty for a local-only change or a relayed one. */
   hosts: ForkPauseAllHostResult[]
-  /** What this host holds for resume-all (BAD-818): unread mail to bots' chats and room hand-offs.
-   *  Absent where it could not be read. */
-  held?: { mail: number; handOffs: number }
+  /** What this host holds for resume-all (BAD-818): unread mail to bots' chats, room hand-offs and
+   *  worker launches waiting in the launch queue (absent from an older host). Absent where it could
+   *  not be read. */
+  held?: { mail: number; handOffs: number; launches?: number }
 }
 
 /** The state a server answered with, or null when the answer is not a pause-all result. */
@@ -143,9 +144,10 @@ export function formatPauseAll(result: ForkPauseAllResult): string {
       : 'Not paused.'
   ]
   const held = result.held
-  if (held && held.mail + held.handOffs > 0) {
+  const launches = held?.launches ?? 0
+  if (held && held.mail + held.handOffs + launches > 0) {
     lines.push(
-      `Held for resume-all: ${held.mail} bot mail, ${held.handOffs} room hand-off${held.handOffs === 1 ? '' : 's'}.`
+      `Held for resume-all: ${held.mail} bot mail, ${held.handOffs} room hand-off${held.handOffs === 1 ? '' : 's'}, ${launches} worker launch${launches === 1 ? '' : 'es'} (orca agent queue list).`
     )
   }
   for (const host of result.hosts) {

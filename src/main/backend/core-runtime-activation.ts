@@ -304,7 +304,7 @@ export async function activateBackendRuntime(
 
   const connector = await installOrcadConnectorHost(runtime, profileStore, registerCleanup)
   // Fork (SLRM-2307, BAD-800): `orca settings`, boundary compaction and profiles run on this host.
-  registerCleanup(await installForkHeadlessHost(profileStore, runtimeUserDataPath))
+  registerCleanup(await installForkHeadlessHost(profileStore, runtimeUserDataPath, runtime))
   const bindHost = resolveOrcadBindHost(options.bind)
   bindOrcadStopTerminalAdmission(runtime.terminalUpdateAdmission)
   const rpc = createOrcadRuntimeRpcServer(runtime, runtimeUserDataPath, options, bindHost)

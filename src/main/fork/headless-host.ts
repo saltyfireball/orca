@@ -2,6 +2,9 @@
 // called once from `src/main/backend/core-runtime-activation.ts` before the RPC server starts.
 // Keep electron out of this file.
 import type { ForkGlobalSettings } from '../../shared/fork/fork-global-settings'
+import type { OrcaRuntimeService } from '../runtime/orca-runtime'
+import { installForkAgentQueue } from './agent-queue/agent-queue-service'
+import { forkAgentQueueRuntimeTerminals } from './agent-queue/agent-queue-runtime'
 import {
   startForkBoundaryCompactionService,
   stopForkBoundaryCompactionService,
@@ -35,6 +38,8 @@ export type ForkHeadlessHostStore = Omit<ForkCommandGuardsHostStore, 'getSetting
 }
 
 /**
+ * - The agent launch queue follows this host's own settings, and Pause all holds its chat worker
+ *   launches, also the ones a restart replays (BAD-818).
  * - `orca settings` writes this host's own settings store (FORK.md "Settings from the CLI").
  * - Boundary compaction sweeps the chats whose agent runs here; off unless its mode is on.
  * - The server heartbeat calls its outside address, when one is set (FORK.md "Server health").
@@ -53,9 +58,14 @@ export type ForkHeadlessHostStore = Omit<ForkCommandGuardsHostStore, 'getSetting
  */
 export async function installForkHeadlessHost(
   store: ForkHeadlessHostStore,
-  userDataPath: string
+  userDataPath: string,
+  runtime?: OrcaRuntimeService
 ): Promise<() => Promise<void>> {
   forkMarkHeadlessSettingsHost()
+  installForkAgentQueue(
+    () => store.getSettings() as ForkGlobalSettings,
+    forkAgentQueueRuntimeTerminals(() => runtime)
+  )
   installForkCommandGuards(store)
   const profiles = installForkProfilesOnHost({
     readSettings: () => store.getSettings(),

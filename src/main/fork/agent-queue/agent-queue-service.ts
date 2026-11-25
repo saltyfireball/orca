@@ -14,25 +14,18 @@ import { parseOrcaSessionAddress } from '../../../shared/agent-session/identity/
 import { structuredAgentSessionIdFromTabId } from '../../../shared/agent-session/view/structured-agent-session-tab-id'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { AgentLaunchGate } from './agent-launch-gate'
+import * as heldLaunches from '../pause-all/pause-all-held-launches'
+import type { ForkAgentQueueTerminals } from './agent-queue-runtime'
+import { recordedWorkerOf, recordedWorkerState } from './agent-queue-runtime'
 import { claimThroughGate, type QueueClaimInput } from './agent-queue-claim'
 import { isForkPauseAllEngaged, onForkPauseAllChanged } from '../pause-all/pause-all-state'
 import { onLaunchHoldChanged, shouldHoldLaunches } from './launch-hold'
-import { readLiveAgents, type LiveAgentSources, type PtyLike } from './live-agents'
+import { readLiveAgents, type LiveAgentSources } from './live-agents'
 
 type WorkerNote = { dispatchId: string; parentKey?: string }
 
 /** BAD-766: what a Run's spend index needs of a worker: who started it, chat or terminal. */
 export type ForkAgentQueueRunParent = { chat: string } | { handle: string }
-
-/**
- * The terminal side of the runtime, given at install so this module (which runtime and chat code
- * import) never reaches Electron.
- */
-export type ForkAgentQueueTerminals = {
-  ptys: () => ReadonlyMap<string, PtyLike> | undefined
-  /** The pty an orchestration terminal handle runs in, if it is live. */
-  ptyIdOfHandle: (handle: string) => string | undefined
-}
 
 let readSettings: () => ForkGlobalSettings | undefined = () => undefined
 let terminals: ForkAgentQueueTerminals = {
@@ -61,6 +54,7 @@ function notePassed(sessionId: string): void {
     }
   }
   passed.set(sessionId, now)
+  heldLaunches.forgetForkPauseAllHeldLaunch(sessionId)
 }
 
 function config(): ForkAgentQueueConfig {
@@ -108,13 +102,14 @@ export function onForkAgentQueueChanged(listener: () => void): () => void {
   return () => changeListeners.delete(listener)
 }
 
-/** Main-process start-up: the settings reader. */
+/** Start-up (desktop and orcad): settings, runtime, and Pause all's held launches (BAD-818). */
 export function installForkAgentQueue(
   read: () => ForkGlobalSettings | undefined,
   runtimeTerminals: ForkAgentQueueTerminals
 ): void {
   readSettings = read
   terminals = runtimeTerminals
+  heldLaunches.installForkPauseAllHeldLaunches((id) => recordedWorkerState(terminals, id))
 }
 
 /** The live key of whoever started a worker: a chat's session id, or a terminal's pty. */
@@ -225,14 +220,18 @@ export function forkAgentQueueStart<O>(input: {
 }): Promise<O> {
   // Off and nothing waiting: the start runs exactly as upstream's.
   if (!config().enabled && (gate?.entries().length ?? 0) === 0 && !isForkPauseAllEngaged()) {
+    heldLaunches.forgetForkPauseAllHeldLaunch(input.sessionId)
     return input.start()
   }
   const { sessionId } = input
   return claimThroughGate(agentQueueGate(), {
     key: sessionId,
     request: () => {
-      const worker = workers.get(sessionId)
+      const worker = workers.get(sessionId) ?? recordedWorkerOf(terminals, sessionId)
       const kind: ForkAgentQueueKind = worker ? 'worker' : 'interactive'
+      if (worker && isForkPauseAllEngaged()) {
+        heldLaunches.noteForkPauseAllHeldLaunch(sessionId)
+      }
       return {
         key: sessionId,
         kind,

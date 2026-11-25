@@ -3253,7 +3253,12 @@ ones `SLRM-123 `).
     uses the contract's rounds (`--done-max-rounds`, else `forkCompletionContractMaxRounds`, 2), its
     escalation and its Decision inbox row. Order: the result is checked with the done checks, in the
     same report, so a done whose checks and result both fail uses one round and the worker gets both
-    at once; the reviewer gate (BAD-683) runs after both pass, so no review is spent on a done that
+    at once. A done past its last round (an invalid result, failed done checks or a review past
+    its rounds) is escalated: the worker's `send` exits non-zero with `worker_done_escalated`,
+    "This worker_done was not accepted ... the Task stays open. This is final: stop here and wait
+    for the coordinator", the same on `--retry-request` (it replays the same mutation, so the
+    coordinator gets one escalation), locally and on a paired server, instead of an
+    `operation_unknown` that sent it back to retry; the reviewer gate (BAD-683) runs after both pass, so no review is spent on a done that
     owes its result. `forkCompletionContract` off makes it a plain done (a matching value is still
     stored) with the usual "Orca did not run" line.
   - **Reading.** `worker-read --json` returns `forkResult: { value, storedAt }` (RPC
@@ -3296,6 +3301,14 @@ ones `SLRM-123 `).
     which the mail gate reads as "unverified") is not refused for that alone: the loop lists only
     agents the status store shows idle, and the typed-text, dialog and agent-in-front checks still
     apply. `goal-send-headless.test.ts` runs the send against a real headless runtime and PTY.
+    After a restart (BAD-833), once the agent's status is seen live again, the gate wants the
+    agent's own rest evidence (its idle title or ready screen); until it is seen the gate answers
+    `unsettled` (or `restoring` while the screen restores). The goal then waits, its check
+    run at most once a minute: that is not a refused send, so it no longer counts toward the five
+    that stop a goal as `unreachable` (which stopped an idle agent about 50 seconds after a
+    restart). After 15 minutes of it the goal stops as `unreachable` with that reason. An agent
+    that is really gone still ends through the missing window. `goal-restart-orcad.test.ts` runs
+    it on the release orcad, with its daemon and a PTY that outlive the restart.
   - **Judge.** `--until-judge` runs the command in `forkGoalJudgeCommand` (none by default, and
     the flag is refused without it). It is one shell line that reads a JSON object on stdin
     (`criteria`, and `agent_output`, the agent's last message fenced as untrusted data) and prints
@@ -3654,7 +3667,22 @@ ones `SLRM-123 `).
     `launchFederatedWorkerAgent`) with the starter it belongs to. Its test reads `src/main` and
     fails when a gate the table names is removed, when a gate call appears in a file it does not
     name, and when a primitive is called somewhere it does not list. It cannot see a starter that
-    starts work through a call outside that list, or a gate left on a dead branch.
+    starts work through a call outside that list, or a gate left on a dead branch. Each gated row
+    also says where the server (orcad, no desktop app) reaches it (`orcad`): a file orcad loads
+    from `core-runtime-activation.ts` and the call there that installs or reaches the starter, or
+    that the starter does not run on orcad (idle recovery, a desktop service). The test follows
+    orcad's imports from its start-up and fails when a row's install is only in desktop code, when
+    the call is gone, or when a gate file is not loaded.
+  - **On a server (BAD-818).** orcad installs the agent launch queue from `installForkHeadlessHost`
+    with its own settings and runtime (the window IPC stays desktop-only, so this is safe: the
+    queue's limits now follow the server's settings, which were ignored before). A chat worker
+    started while paused, by `worker-start --on` or locally, waits in the queue with "paused by
+    pause-all" as its held reason; `orca agent queue list` and `orca pause-status` ("N worker
+    launch(es)") show it. The queue is in memory, so the held chat ids are also noted in
+    `fork-pause-all-held-launches.json` (mode 0600, at most 500): after a restart the replayed
+    start of a recorded worker (identified from its stored row and its active Dispatch) is held
+    again, and at resume-all each noted chat whose worker is still active is started once through
+    the structured chat host; one whose Dispatch is gone is dropped.
   - **What it never stops.** A person's own chats, sends and launches, "Run now" on an automation,
     `orca limits resume-now`, answering the Decision inbox, and a message an agent sends to a chat
     that already exists and is not a bot's. Reviewer-gate reviews started by a running worker's
@@ -3975,6 +4003,9 @@ Apply these in this order. Each one is a single commit.
 212. `BAD-816 Result schema: task-create and worker-start take --result-schema (draft-07, local $ref only, capped, refused at parse when unsupported); the worker sends its JSON value with worker_done --result-file, the completion contract checks and stores it with its rounds, escalation and inbox row, worker-read and run-show return it as data, retries inherit the schema not the value, and a paired server without orchestration.fork-result-schema.v1 (or on the attach protocol) is refused before any effect`
 213. `BAD-821 A bot tool's saved env values stay off Claude's command line: every Claude launch's MCP servers go in a private launch file merged with the launch's own --mcp-config, removed when Claude exits, and the sign-in mirror holds only tools that sign in`
 214. `BAD-818 Pause all reaches bots and connectors: scheduled Look around and Tidy-up are skipped with the reason in their history and run at the next slot, bot room hand-offs and bot mail are held and go on once at resume-all (also after a restart), connector messages to a bot are refused as bot_paused, the automatic limit handoff is held, the legacy attach start is refused; one starter table and a test that reads the code against it`
+215. `BAD-818 Pause all on a server: orcad installs the agent launch queue with its own settings, so a chat worker started while paused waits there with the reason, is shown by agent queue list and pause-status, is held again after a restart and starts once at resume-all; each starter row says where orcad reaches it and a test follows orcad's imports to check it`
+216. `BAD-816 A worker_done past its last allowed round is told it was escalated to the coordinator, that the Task stays open and to stop and wait, and exits not accepted, the same on --retry-request, locally and on a paired server`
+217. `BAD-833 A goal on a terminal agent waits after a restart until the agent is seen at rest, instead of counting the gate's cannot-tell answers as refused sends and stopping as not reachable`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5320,6 +5351,15 @@ Upstream files only get short hooks, which keeps merges small:
   call sites, `pause-all-background-runs.ts`,
   `pause-all-room-hold-store.ts`, `pause-all-room-release.ts`, `pause-all-bot-mail.ts`,
   `pause-all-connector-turns.ts`, `pause-all-limit-handoff.ts`, `pause-all-held-counts.ts`).
+- Pause all on a server (BAD-818), one hook per stock file: orcad's `core-runtime-activation.ts`
+  passes `runtime` as the third argument of `installForkHeadlessHost`, which installs the launch
+  queue (`forkAgentQueueRuntimeTerminals`, `src/main/fork/agent-queue/agent-queue-runtime.ts`);
+  `structured-agent-session-entry-delegates.ts` calls `forkPauseAllHeldLaunchHost(context)`, so
+  resume-all can start a held launch (`src/main/fork/pause-all/pause-all-held-launches.ts`). The
+  fork's `agent-queue-ipc.ts` passes the same runtime terminals on the desktop.
+- Worker done escalated (BAD-816), one hook in a stock file: `orchestration-worker-settlement.ts`
+  (`requireWorkerDoneSettlement`) calls `forkRefuseEscalatedWorkerDone` before its
+  post-verification read (`src/cli/fork/worker-done-escalated.ts`).
 - Agent profiles (BAD-687), small edits in stock files: `dispatch.ts` calls
   `applyForkAgentProfile` before each handler (it acts only on the four launch commands when
   `--profile` is given); `withForkMcpProfileFlag` also calls `withForkAgentProfileFlag`, so

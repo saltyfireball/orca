@@ -1,11 +1,12 @@
 // The Pause all starter table read against the code (BAD-818). It fails when a gate the table names
 // is removed, when a gate call appears in a file the table does not name, and when a start primitive
-// is called somewhere the table does not list. What it cannot see: a new starter that starts work
+// is called somewhere the table does not list, and when a row's starter is installed on the server
+// (orcad) only from desktop code, or its install call is gone. What it cannot see: a new starter that starts work
 // through a call that is not in PAUSE_ALL_START_PRIMITIVES (a new launch API, a direct PTY write, a
 // spawned CLI), or one that reaches a listed primitive through a wrapper the table already lists, or
 // a gate that is called but no longer guards the start (a call left on a dead branch).
-import { readdirSync, readFileSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { dirname, join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { PAUSE_ALL_START_SITES } from './pause-all-start-sites'
 import {
@@ -162,6 +163,37 @@ const files = sourceFiles(join(ROOT, 'src/main')).flatMap((path) => {
 
 const named = new Set(PAUSE_ALL_STARTERS.flatMap((row) => row.gates.map((gate) => gate.file)))
 
+const ORCAD_START = 'src/main/backend/core-runtime-activation.ts'
+
+/** Every file orcad loads from its start-up: relative static, dynamic and re-export imports. */
+function orcadClosure(): Set<string> {
+  const seen = new Set<string>()
+  const queue = [ORCAD_START]
+  while (queue.length > 0) {
+    const file = queue.pop()!
+    if (seen.has(file)) {
+      continue
+    }
+    seen.add(file)
+    const text = readFileSync(join(ROOT, file), 'utf8')
+    for (const match of text.matchAll(/(?:from\s+|import\s*\(\s*|import\s+)'(\.{1,2}\/[^']+)'/g)) {
+      const base = join(dirname(file), match[1]!)
+      const found = [`${base}.ts`, join(base, 'index.ts'), base].find(
+        (candidate) => candidate.endsWith('.ts') && existsSync(join(ROOT, candidate))
+      )
+      if (found) {
+        queue.push(found.split('\\').join('/'))
+      }
+    }
+  }
+  return seen
+}
+
+/** Whether `file`'s code calls `name` (or spreads it, for a method table). */
+function makesCall(text: string, name: string): boolean {
+  return callees(text).includes(name) || codeOnly(text).includes(`...${name}`)
+}
+
 describe('Pause all starters', () => {
   it('lists each starter once, with a gate unless it is allowed', () => {
     const ids = PAUSE_ALL_STARTERS.map((row) => row.id)
@@ -211,6 +243,46 @@ describe('Pause all starters', () => {
     // A new unattended starter that calls one of these and is not listed shows here: add it to
     // PAUSE_ALL_STARTERS with its answer and its gate, and to PAUSE_ALL_START_SITES.
     expect(Object.fromEntries(found)).toEqual(Object.fromEntries(declared))
+  })
+
+  it('says for each gated row where orcad reaches it, from the files orcad loads', () => {
+    const closure = orcadClosure()
+    // A starter installed only by the desktop app is not reached here: naming it fails.
+    expect(closure.has('src/main/fork/agent-queue/agent-queue-ipc.ts')).toBe(false)
+    expect(closure.has('src/main/index.ts')).toBe(false)
+    for (const row of PAUSE_ALL_STARTERS) {
+      const reach = row.orcad
+      expect(reach !== undefined, `${row.id}: a gated row says where orcad reaches it`).toBe(
+        row.gates.length > 0
+      )
+      if (!reach) {
+        continue
+      }
+      if ('notRun' in reach) {
+        const callers = [...closure].filter((file) =>
+          makesCall(readFileSync(join(ROOT, file), 'utf8'), reach.start)
+        )
+        expect(callers, `${row.id}: orcad starts ${reach.start}`).toEqual([])
+        continue
+      }
+      expect(closure.has(reach.from), `${row.id}: orcad does not load ${reach.from}`).toBe(true)
+      expect(
+        makesCall(readFileSync(join(ROOT, reach.from), 'utf8'), reach.call),
+        `${row.id}: ${reach.from} makes no ${reach.call} call`
+      ).toBe(true)
+      for (const gate of row.gates) {
+        expect(closure.has(gate.file), `${row.id}: orcad does not load ${gate.file}`).toBe(true)
+      }
+    }
+  })
+
+  it('no longer finds the launch queue on orcad when its install line is taken out', () => {
+    const file = 'src/main/fork/headless-host.ts'
+    const text = readFileSync(join(ROOT, file), 'utf8')
+    expect(makesCall(text, 'installForkAgentQueue')).toBe(true)
+    const removed = text.replace(/\n\s*installForkAgentQueue\([^\n]*(?:\n[^\n]*?\))?/, '\n')
+    expect(removed).not.toBe(text)
+    expect(makesCall(removed, 'installForkAgentQueue')).toBe(false)
   })
 
   it('counts one gate fewer when a real gate is taken out', () => {

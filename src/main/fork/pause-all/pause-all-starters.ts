@@ -17,7 +17,14 @@ export type PauseAllStarter = {
   reason: string
   /** Where it reads the switch; empty only for allowed rows. */
   gates: PauseAllGate[]
+  /** Where the server (orcad, no desktop app) runs it; every row with a gate says. */
+  orcad?: PauseAllOrcadReach
 }
+
+/** `from` is a file orcad loads from its start-up (src/main/backend/core-runtime-activation.ts) and
+ *  `call` the call there that installs or reaches the starter; or the starter does not run on orcad,
+ *  and `start`, the call that starts it, is made by no file orcad loads. */
+export type PauseAllOrcadReach = { from: string; call: string } | { notRun: string; start: string }
 
 /** The functions that read the switch for a gate; a call of any counts toward its file's gates. */
 export const PAUSE_ALL_GATE_FUNCTIONS = [
@@ -58,7 +65,11 @@ export const PAUSE_ALL_STARTERS: readonly PauseAllStarter[] = [
       'Scheduled and event automations: schedules, connector and Google triggers, webhooks, pull request events, run-ended chains, own pull request loops, automations in bot rooms',
     answer: 'skipped',
     reason: "Recorded as a skipped run with the reason in run history; Run now is a person's.",
-    gates: [{ file: 'src/main/automations/dispatch/automation-dispatch-request.ts', calls: 1 }]
+    gates: [{ file: 'src/main/automations/dispatch/automation-dispatch-request.ts', calls: 1 }],
+    orcad: {
+      from: 'src/main/orcad/host-runtime/orcad-automations.ts',
+      call: 'createRuntimeAutomationService'
+    }
   },
   {
     id: 'idle-recovery',
@@ -68,21 +79,27 @@ export const PAUSE_ALL_STARTERS: readonly PauseAllStarter[] = [
     gates: [
       { file: 'src/main/fork/idle-recovery/idle-recovery-sweep.ts', calls: 1 },
       { file: 'src/main/fork/idle-recovery/idle-recovery-wake.ts', calls: 1 }
-    ]
+    ],
+    orcad: {
+      notRun: 'Idle recovery is a desktop service; the server starts no sweep.',
+      start: 'startForkIdleRecovery'
+    }
   },
   {
     id: 'pr-babysit',
     starter: 'PR babysitter fix requests and merges',
     answer: 'skipped',
     reason: 'Sends no fix request and merges nothing.',
-    gates: [{ file: 'src/main/fork/pr-babysit/pr-babysit-core.ts', calls: 2 }]
+    gates: [{ file: 'src/main/fork/pr-babysit/pr-babysit-core.ts', calls: 2 }],
+    orcad: { from: 'src/main/fork/headless-host.ts', call: 'installForkPrBabysit' }
   },
   {
     id: 'pr-nudge',
     starter: 'PR nudges',
     answer: 'skipped',
     reason: 'Sends nothing.',
-    gates: [{ file: 'src/main/fork/pr-nudge/pr-nudge-service.ts', calls: 1 }]
+    gates: [{ file: 'src/main/fork/pr-nudge/pr-nudge-service.ts', calls: 1 }],
+    orcad: { from: 'src/main/fork/headless-host.ts', call: 'installForkPrNudge' }
   },
   {
     id: 'limit-resume',
@@ -92,35 +109,47 @@ export const PAUSE_ALL_STARTERS: readonly PauseAllStarter[] = [
     gates: [
       { file: 'src/main/fork/limit-resume/limit-resume-native.ts', calls: 1 },
       { file: 'src/main/fork/limit-resume/limit-resume-service.ts', calls: 1 }
-    ]
+    ],
+    orcad: { from: 'src/main/fork/runtime-settle-hooks.ts', call: 'startForkLimitResume' }
   },
   {
     id: 'auto-continue',
     starter: 'Automatic continue of chats after a restart',
     answer: 'skipped',
     reason: 'Continues no chat.',
-    gates: [{ file: 'src/main/fork/auto-continue/auto-continue-chats.ts', calls: 1 }]
+    gates: [{ file: 'src/main/fork/auto-continue/auto-continue-chats.ts', calls: 1 }],
+    orcad: {
+      from: 'src/main/runtime/orchestration/terminal-authority/legacy-worker-runtime-recovery.ts',
+      call: 'forkAutoContinueForRuntime'
+    }
   },
   {
     id: 'goal-steps',
     starter: 'Goal loop steps',
     answer: 'held',
     reason: 'The step waits and is looked at again.',
-    gates: [{ file: 'src/main/fork/goal-loop/goal-service.ts', calls: 1 }]
+    gates: [{ file: 'src/main/fork/goal-loop/goal-service.ts', calls: 1 }],
+    orcad: { from: 'src/main/fork/runtime-settle-hooks.ts', call: 'startForkGoalLoop' }
   },
   {
     id: 'worker-retry',
     starter: 'Worker retries',
     answer: 'held',
     reason: 'A due retry stays scheduled and is looked at again every 30 seconds.',
-    gates: [{ file: 'src/main/fork/worker-retry/worker-retry-live.ts', calls: 1 }]
+    gates: [{ file: 'src/main/fork/worker-retry/worker-retry-live.ts', calls: 1 }],
+    orcad: {
+      from: 'src/main/runtime/orchestration/db/runtime-orchestration-database-access.ts',
+      call: 'installForkWorkerRetry'
+    }
   },
   {
     id: 'chat-worker-launch',
     starter: 'Chat worker launches',
     answer: 'held',
-    reason: 'They wait in the agent launch queue with "paused by pause-all" as the held reason.',
-    gates: [{ file: 'src/main/fork/agent-queue/agent-queue-service.ts', calls: 1 }]
+    reason:
+      'They wait in the agent launch queue with "paused by pause-all" as the held reason; a launch held when the host restarts is noted on disk and starts once at resume-all.',
+    gates: [{ file: 'src/main/fork/agent-queue/agent-queue-service.ts', calls: 2 }],
+    orcad: { from: 'src/main/fork/headless-host.ts', call: 'installForkAgentQueue' }
   },
   {
     id: 'terminal-worker-start',
@@ -137,21 +166,33 @@ export const PAUSE_ALL_STARTERS: readonly PauseAllStarter[] = [
         file: 'src/main/runtime/rpc/methods/orchestration/worker/start/placement/worker-start-agent-placement.ts',
         calls: 2
       }
-    ]
+    ],
+    orcad: {
+      from: 'src/main/runtime/rpc/methods/orchestration/worker/worker-start-method.ts',
+      call: 'startLocalWorker'
+    }
   },
   {
     id: 'terminal-worker-restart-resume',
     starter: 'Restart resume of terminal workers',
     answer: 'held',
     reason: 'Offered with the reason; resume-all resumes exactly those, once.',
-    gates: [{ file: 'src/main/fork/pause-all/pause-all-restart-holds.ts', calls: 2 }]
+    gates: [{ file: 'src/main/fork/pause-all/pause-all-restart-holds.ts', calls: 2 }],
+    orcad: {
+      from: 'src/main/runtime/construction/orca-runtime-terminal-worker-restart-resume.ts',
+      call: 'ForkPauseAllRestartHolds'
+    }
   },
   {
     id: 'card-routing',
     starter: 'Card routing to a bot',
     answer: 'refused',
     reason: 'The route is refused with the reason.',
-    gates: [{ file: 'src/main/fork/card-routing/card-route-start.ts', calls: 1 }]
+    gates: [{ file: 'src/main/fork/card-routing/card-route-start.ts', calls: 1 }],
+    orcad: {
+      from: 'src/main/runtime/rpc/methods/fork/fork-quick-task.ts',
+      call: 'runtimeCardChatStart'
+    }
   },
   {
     id: 'look-around',
@@ -159,7 +200,8 @@ export const PAUSE_ALL_STARTERS: readonly PauseAllStarter[] = [
     answer: 'skipped',
     reason:
       "The due slot is recorded in the look history with the reason and used up; the next look is the next slot, not a catch-up at resume. Look now is a person's.",
-    gates: [{ file: 'src/main/bots/bot-look-around-runner.ts', calls: 2 }]
+    gates: [{ file: 'src/main/bots/bot-look-around-runner.ts', calls: 2 }],
+    orcad: { from: 'src/main/bots/bot-look-around-runtime.ts', call: 'runtimeLookAroundRunner' }
   },
   {
     id: 'tidy-up',
@@ -167,7 +209,8 @@ export const PAUSE_ALL_STARTERS: readonly PauseAllStarter[] = [
     answer: 'skipped',
     reason:
       "The night is recorded in the tidy-up history with the reason and used up; the next night runs. Tidy now is a person's.",
-    gates: [{ file: 'src/main/bots/bot-memory-tidy-up-runner.ts', calls: 2 }]
+    gates: [{ file: 'src/main/bots/bot-memory-tidy-up-runner.ts', calls: 2 }],
+    orcad: { from: 'src/main/bots/bot-look-around-runtime.ts', call: 'runtimeTidyUpRunner' }
   },
   {
     id: 'room-handoffs',
@@ -175,7 +218,8 @@ export const PAUSE_ALL_STARTERS: readonly PauseAllStarter[] = [
     answer: 'held',
     reason:
       "Saved beside the room store with a line in the speaker's chat; resume-all lets each go on once, oldest first, also after a restart.",
-    gates: [{ file: 'src/main/bots/bot-group-mention-handoffs.ts', calls: 1 }]
+    gates: [{ file: 'src/main/bots/bot-group-mention-handoffs.ts', calls: 1 }],
+    orcad: { from: 'src/main/bots/bot-group-latest.ts', call: 'handOffGroupMentions' }
   },
   {
     id: 'bot-mail',
@@ -184,7 +228,8 @@ export const PAUSE_ALL_STARTERS: readonly PauseAllStarter[] = [
     answer: 'held',
     reason:
       "It stays unread in the orchestration database, in order, and resume-all redrives those chats once, also after a restart. The hold is per chat: an owner's item comment or answer waits too, and its chat says so; pause-status counts held mail.",
-    gates: [{ file: 'src/main/bots/bot-paused-mail.ts', calls: 1 }]
+    gates: [{ file: 'src/main/bots/bot-paused-mail.ts', calls: 1 }],
+    orcad: { from: 'src/main/bots/bot-group-runtime.ts', call: 'pausedBotChatHoldsMail' }
   },
   {
     id: 'connector-turns',
@@ -192,21 +237,30 @@ export const PAUSE_ALL_STARTERS: readonly PauseAllStarter[] = [
     answer: 'refused',
     reason:
       'The cloud cannot hold a delivery past its deadline, so it is refused as bot_paused, which the cloud tells the asker; its receipt keeps the refusal, so a resend never runs it. Events that only start an automation are skipped as automations.',
-    gates: [{ file: 'src/main/external-conversations/external-conversation-bots.ts', calls: 1 }]
+    gates: [{ file: 'src/main/external-conversations/external-conversation-bots.ts', calls: 1 }],
+    orcad: {
+      from: 'src/main/external-conversations/external-conversation-seam.ts',
+      call: 'botChatFor'
+    }
   },
   {
     id: 'limit-handoff',
     starter: 'Automatic chat handoff on a usage limit (forkChatHandoffOnLimit auto)',
     answer: 'held',
     reason: 'Not marked answered; resume-all hands off the stops still parked then, once.',
-    gates: [{ file: 'src/main/fork/chat-handoff/chat-handoff-on-limit.ts', calls: 1 }]
+    gates: [{ file: 'src/main/fork/chat-handoff/chat-handoff-on-limit.ts', calls: 1 }],
+    orcad: { from: 'src/main/fork/runtime-settle-hooks.ts', call: 'startForkChatHandoffOnLimit' }
   },
   {
     id: 'legacy-attach',
     starter: 'Terminal worker start on the legacy attach path (federation)',
     answer: 'refused',
     reason: 'Refused with the pause reason before the attachment is written.',
-    gates: [{ file: 'src/main/runtime/orchestration/legacy-remote/federation.ts', calls: 1 }]
+    gates: [{ file: 'src/main/runtime/orchestration/legacy-remote/federation.ts', calls: 1 }],
+    orcad: {
+      from: 'src/main/runtime/rpc/methods/orchestration/federation/federation-methods.ts',
+      call: 'ORCHESTRATION_FEDERATION_ATTACH_METHODS'
+    }
   },
   {
     id: 'reviewer-gate',
