@@ -7,6 +7,7 @@ import type { AutomationRunTargetResult } from './ownership/run-target-resolutio
 import { missedBeyondGrace, recordMissedRun } from './dispatch/dispatch-refusal'
 import type { AutomationRunFailure } from '../../shared/automations/history/automation-run-failure-copy'
 import { onceClaimed } from '../../shared/automation-once'
+import { recordSkippedEventRun } from './automation-skipped-event-run'
 
 /** What a wait does beyond a run, whose run row is how its chat shows it ended: its expiry with no
  *  run, and its deletion after the run. */
@@ -81,9 +82,12 @@ export async function runScheduledOccurrence(
  * created sees the run before it is launched.
  */
 export type EventStartGate = {
-  reserve(
-    automation: Automation
-  ): Promise<{ retryAt: number } | { refused: true } | { event: AutomationRunEvent; runId: string }>
+  reserve(automation: Automation): Promise<
+    // Fork (BAD-819): `skipped` keeps the refusal in run history as a skipped run with that reason.
+    | { retryAt: number }
+    | { refused: true; skipped?: string }
+    | { event: AutomationRunEvent; runId: string }
+  >
   created(run: AutomationRun): void
 }
 
@@ -146,7 +150,9 @@ async function admitEvent(
   }
   const reserved = refusal || !gate ? null : await gate.reserve(automation)
   if (reserved && !('event' in reserved)) {
-    return null
+    return 'skipped' in reserved && reserved.skipped
+      ? { run: await recordSkippedEventRun(ctx.runs, automation, event, reserved.skipped) }
+      : null
   }
   const run = await ctx.runs.createRun(
     automation,

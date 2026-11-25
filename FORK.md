@@ -40,6 +40,44 @@ ones `SLRM-123 `).
 
 ## What the fork changes
 
+- **Own pull request loop limit: an automation started by your own pull requests stops when its
+  runs keep opening them (BAD-819).** Since upstream v1.4.273 a `github.pr_opened from=me` rule
+  starts on every pull request opened under the owner's account, the ones agents open included
+  (upstream's rule, kept), so a run that opens a pull request started its own automation again,
+  with no end but the spend caps, a disabled automation or Pause all. The fork adds the limit
+  (`src/main/fork/own-pr-loop/`), checked in the automation's lane just before the run is made,
+  after resends and folds:
+  - **The hop.** The delivery's head branch is compared with the branches of the newest 20 runs
+    of the same automation: their own workspace when it is a worktree, and the workspaces of the
+    workers their chat started (orchestration's Dispatches by creator session). A match is the
+    opener, and the new run is one hop deeper (`event.chain.depth`, the opener's depth plus 1; a
+    pull request no run can be told to have opened is depth 0). `chainDepthOfRun` reads that depth,
+    so it also counts toward `automation.*` chains. Past `forkAutomationChainMaxDepth` (default 3)
+    the start is skipped: four runs, then the fifth pull request of a loop starts nothing.
+  - **The cap.** However the opener is missed (a worker on a paired server, a workspace gone, a
+    read slower than 3 seconds), at most 5 own pull request starts per automation in 15 minutes.
+    The count is read from the run history in the store, so a restart does not reset it.
+  - **A stop.** The automation gets a skipped run (`skipped_unavailable`) saying "Own pull request
+    loop limit: ..." or "Own pull request cap: ...", the same pull request delivered again finds it
+    and adds nothing, and the Decision inbox has one row per automation (`source: 'pr-loop'`,
+    `pr-loop:<automationId>`), listed until Dismiss (kept in `fork-own-pr-loop-dismissed.json` in
+    the data folder) or until 15 minutes pass with no new stop. The row has Dismiss only; the
+    automation stays on.
+  - **Unchanged.** Someone else's pull requests, every other event, and the owner's own pull
+    requests below the limits start as upstream has them.
+  - **Untrusted.** The head branch is only compared as text, never checked out or run; a delivery
+    cannot name a depth (the contract strips unknown fields and the guard drops `chain`).
+  - **Limits.** The inbox row is registered when this host's connector handles its first trigger
+    delivery after a start, so a stop from before a restart shows again from then on. The desktop
+    shows the Decision inbox while it is on (bots on with the bot room hop limit set, as by default,
+    idle recovery, or the PR babysitter); `orca inbox list` always lists it. The phone has no
+    Decision inbox. Only `github.pr_opened` takes from=me, so no other event loops this way (see the
+    card for the analysis).
+  - Tests: `own-pr-loop.test.ts` delivers pull requests through `runTriggerDelivery` and
+    `forkOwnPrLoopRun` into a real store, `AutomationService` and bot dispatcher: a loop of five
+    stops at the limit with one skipped run and one inbox row, six by hand skip the sixth across a
+    store reopened between them, and someone else's seven all start.
+
 - **Bot room hop limit: chained bot hand-offs in a group room stop at a limit (BAD-801).** In a
   group room, a member's reply that names another as @Name wakes it (`handOffGroupMentions`), so
   two bots naming each other could go on until a person pressed Stop.
@@ -3758,6 +3796,7 @@ Apply these in this order. Each one is a single commit.
 205. `BAD-817 Agent profile import keeps a definition's limits or names them: permissionMode maps to the profile mode (narrowest when unreadable), tools, disallowedTools, MCP servers, hooks and Codex sandbox, approval and tables are stored as not kept, shown by import, list and show, and held for orca profiles confirm; a definition that does not parse is refused`
 206. `BAD-820 With forkReviewerGateAllTasks on, a start on a paired server sends the setting's review as the Task's own (both protocols, retries, best-of attempts), a server that cannot take it is refused before any effect naming the setting, and with the setting off nothing changes`
 207. `BAD-822 A goal whose agent died says so: it ends as agent-lost with a Decision inbox row and the notify targets, once; only a chat or terminal a person closed, or a worker that reported done, ends quietly, and after a restart the missing window starts once the restore has finished`
+208. `BAD-819 Own pull request loop limit: a from=me pr_opened run started by a pull request another run of the same automation opened is one hop deeper and stops past forkAutomationChainMaxDepth, at most 5 own pull request starts per automation in 15 minutes, each stop a skipped run with the reason and one Decision inbox row`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5253,6 +5292,14 @@ Upstream files only get short hooks, which keeps merges small:
   `vitest-caller-identity-env-setup.ts` lists more session variables to clear. Stock tests edited:
   `filesystem-quick-open-options.integration.test.ts`. The reviewer gate change is in the fork file
   `reviewer-gate-live.ts`, so no upstream hook.
+- Own pull request loop limit (BAD-819), small edits in stock files: `connector-cloud-install.ts`
+  imports `forkOwnPrLoopRun` and passes it as `runTriggerDelivery`'s `run`;
+  `automation-trigger-runs.ts` lets an `EventStartGate` refusal carry `skipped` (its reason), which
+  `admitEvent` records as a skipped run through `recordSkippedEventRun`. The Decision inbox wire
+  (`idle-recovery-wire.ts`, `idle-recovery-sources.ts`) takes the `pr-loop` source,
+  `ForkDecisionInboxRow.tsx` gives it Dismiss only and `inbox-format.ts` labels it. The fork files
+  `automation-chain-runs.ts` (`chainDepthOfRun` reads a depth on any event) and
+  `automation-chain-start.ts` (records through `recordSkippedEventRun`) changed too.
 - Bot room hop limit (BAD-801), small edits in stock files: `bot-group-mention-handoffs.ts` asks
   `forkHoldsBotRoomHandOff` before it reserves the woken turns and, when held, marks the turn
   handed off to no one (one `if`); `bot-group-runtime.ts` calls `installForkBotRoomHops` in the

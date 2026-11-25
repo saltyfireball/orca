@@ -7,6 +7,7 @@ import {
 import type { AutomationRun } from '../../shared/automations/history/automation-run'
 import type { GlobalSettings } from '../../shared/settings/global-settings-types'
 import { chainStartsFor, type ChainStart } from './automation-chain-runs'
+import { recordSkippedEventRun } from './automation-skipped-event-run'
 import {
   eventRun,
   runForEvent,
@@ -25,13 +26,7 @@ async function recordChainRefusal(
     if (!automation || eventRun(deps.store, automationId, event)) {
       return
     }
-    const refused = await deps.runs.createRun(automation, event.occurredAt, 'event', event)
-    await deps.runs.updateRun({
-      runId: refused.id,
-      status: 'skipped_unavailable',
-      workspaceId: automation.workspaceId,
-      error: start.refusal ?? null
-    })
+    await recordSkippedEventRun(deps.runs, automation, event, start.refusal ?? '')
   })
 }
 

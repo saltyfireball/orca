@@ -40,10 +40,11 @@ export function chainEventOf(
   return run.status === 'dispatch_failed' ? 'run_failed' : null
 }
 
-/** How many automation-started runs lead to this run; 0 for one a schedule or a person started. */
+/** How many automation-started runs lead to this run; 0 for one a schedule or a person started. A
+ *  run an own pull request of an earlier run started carries its depth too (BAD-819). */
 export function chainDepthOfRun(run: Pick<AutomationRun, 'event'>): number {
   const event = run.event
-  return event?.source === 'automation' ? (event.chain?.depth ?? 1) : 0
+  return event?.chain?.depth ?? (event?.source === 'automation' ? 1 : 0)
 }
 
 function describeRun(automation: Pick<Automation, 'name'>, run: AutomationRun, event: ChainEvent) {

@@ -41,6 +41,9 @@ function kindLabel(item: ForkIdleRecoveryInboxItem): string {
   if (item.source === 'hops') {
     return 'bot-room-hops'
   }
+  if (item.source === 'pr-loop') {
+    return 'own-pr-loop'
+  }
   if (item.verdict === 'guard') {
     return 'guard-paused'
   }

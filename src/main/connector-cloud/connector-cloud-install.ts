@@ -19,6 +19,7 @@ import { BotPrWaker } from '../bots/bot-pr-events'
 import { cancelConnectorConnectsForAccountChange } from './connector-connect'
 import { getStructuredAgentSessionHost } from '../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { readDispatchWorkers } from '../runtime/rpc/methods/orchestration/worker/session-workers-method'
+import { forkOwnPrLoopRun } from '../fork/own-pr-loop/own-pr-loop-run' // Fork BAD-819 (FORK.md)
 
 // A slow GitHub read holds the first hello only this long; a later answer still says a new one.
 const FIRST_GITHUB_ANSWER_WAIT_MS = 3_000
@@ -137,7 +138,7 @@ export function createConnectorCloud({
             automations: store.listAutomations(),
             bots: store.getBots?.() ?? [],
             webhook: (call, event) => webhooks.receive(call, event),
-            run: (id, event) => runtime.runAutomationForEvent(id, event)
+            run: forkOwnPrLoopRun({ runtime, store, userDataPath }, delivery)
           },
           delivery
         ),
