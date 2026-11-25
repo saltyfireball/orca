@@ -33,7 +33,10 @@ import { callRemoteOwnedServer } from './remote-owned-calls'
 import { resolveCrossMachineChildParent } from '../cross-machine-child-parent'
 import { remoteForwardKey } from './remote-forward-caller'
 import { forkAgentProfileRemoteOwnedCarry } from '../../../../fork/agent-profiles/agent-profile-remote-carry'
-import { forkStoreDoneContract } from '../../../../fork/completion-contract/completion-gate-live'
+import {
+  forkRemoteOwnedContractPreflight,
+  forkRemoteOwnedContractWire
+} from '../../../../fork/completion-contract/contract-carry-start'
 import {
   errorData,
   failedBeforeSending,
@@ -144,6 +147,10 @@ export async function startRemoteOwnedWorker(
     await prepareWorkerStart(params, ctx)
   const db = runtime.getOrchestrationDb()
   const server = await runtime.resolveOrchestrationWorkerServer(params.on!)
+  // Fork (BAD-798): a server that cannot gate the Task's checks or review is refused here.
+  await forkRemoteOwnedContractPreflight(db, params, existingTask?.id, server.name, (capability) =>
+    serverSupports(runtime, server, capability)
+  )
   // This caller's workspace is here, so a server's new-child nests under it across machines.
   const crossStoreParent =
     params.worktree === 'new-child'
@@ -181,8 +188,8 @@ export async function startRemoteOwnedWorker(
           createdByRunGeneration: run.consumer_generation
         }
   })
-  // Fork (BAD-763, FORK.md "Completion contract"): the declared checks are kept here too, so `orca contract show` names them; the server runs them.
-  forkStoreDoneContract(db, task.id, params)
+  // Fork (BAD-763, BAD-798, FORK.md "Completion contract"): the Task's checks and review, stored here for `orca contract show`, go to the server, which runs them.
+  const contractWire = forkRemoteOwnedContractWire(db, task.id, params)
   // Its queue has a reader from the start, so mail sent before the answer still comes home.
   runtime.ensureOrchestrationFederationRelay(run.id)
   const options = serverStartOptions(params)
@@ -208,6 +215,7 @@ export async function startRemoteOwnedWorker(
         ...(params.retryOf
           ? { task: task.id }
           : { spec: task.spec, ...(task.task_title ? { taskTitle: task.task_title } : {}) }),
+        ...contractWire,
         adoptTaskId: task.id,
         ...(crossStoreParent ? { crossStoreParent } : {}),
         ...lineage

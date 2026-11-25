@@ -75,4 +75,35 @@ describe('resolveGateWorkspace', () => {
     expect(resolved?.target.cwd).toBe('/notes/project')
     expect(resolved?.git).toBe(false)
   })
+
+  it('runs a project group folder workspace (folder:<id>) in its folder, inside WSL for a WSL path', async () => {
+    const runtime = (path: string) => ({
+      resolveRuntimeFileTarget: async () => ({
+        worktree: { repoId: 'folder-workspace:group_1', path, git: { branch: '' } },
+        executionHostId: 'local' as const
+      }),
+      store: () => ({ getRepo: () => undefined }) as never
+    })
+    expect(await resolveGateWorkspace(runtime('/notes/group') as never, 'folder:ws_1')).toEqual({
+      target: { cwd: '/notes/group', connectionId: null },
+      branch: null,
+      git: false
+    })
+    const wsl = await resolveGateWorkspace(
+      runtime('\\\\wsl.localhost\\Ubuntu\\home\\dev\\group') as never,
+      'folder:ws_1'
+    )
+    expect(wsl?.target).toEqual({ cwd: '/home/dev/group', connectionId: null, wslDistro: 'Ubuntu' })
+  })
+
+  it('is null for an unknown repo that is not a project group', async () => {
+    const runtime = {
+      resolveRuntimeFileTarget: async () => ({
+        worktree: { repoId: 'repo_gone', path: '/x', git: { branch: '' } },
+        executionHostId: 'local' as const
+      }),
+      store: () => ({ getRepo: () => undefined }) as never
+    }
+    expect(await resolveGateWorkspace(runtime as never, 'wt_1')).toBeNull()
+  })
 })

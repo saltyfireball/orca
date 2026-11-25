@@ -32,6 +32,7 @@ import { assertWorkerStartTaskSpecWithinPromptBudget } from '../../rpc/methods/o
 import { prepareFederatedAttachmentAuthority } from './federation-attachment-authority'
 import { resolveRpcWorkspaceCreatorProvenance } from '../../rpc/callers/workspace-creator-context'
 import { forkStoreDoneContract } from '../../../fork/completion-contract/completion-gate-live'
+import { forkPinAttachedReviewer } from '../../../fork/reviewer-gate/reviewer-gate-live'
 import { claimTerminalForRemoteAttach } from '../db/worker-dispatch/worker-terminal-claim'
 
 export const ORCHESTRATION_FEDERATION_ATTACH_METHODS = [
@@ -104,6 +105,7 @@ export const ORCHESTRATION_FEDERATION_ATTACH_METHODS = [
         })
         // Fork (BAD-763): the Task's done checks and review come with it, so this host gates the done.
         forkStoreDoneContract(db, params.taskId, params)
+        forkPinAttachedReviewer(db, params.taskId, agent)
       } catch (error) {
         releaseTerminalClaim()
         throw error

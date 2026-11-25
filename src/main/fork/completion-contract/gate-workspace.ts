@@ -7,6 +7,8 @@ import { hostedReviewSshConnectionId } from '../../source-control/hosted-review-
 import type { ProjectRuntimeResolutionStore } from '../../workspaces/execution-host/local-project-runtime-resolution'
 import { getLocalProjectWorktreeGitOptions } from '../../workspaces/execution-host/project-runtime-git-options'
 import type { CheckTarget } from './check-runner'
+import { projectGroupIdFromRepoId } from '../../../shared/folder-workspaces/folder-workspace-worktree'
+import { parseWslUncPath } from '../../../shared/file-access/wsl-paths'
 
 export type GateWorkspaceRuntime = {
   resolveRuntimeFileTarget(selector: string): Promise<{
@@ -55,13 +57,29 @@ export async function resolveGateWorkspace(
   worktreeId: string
 ): Promise<ResolvedGateWorkspace | null> {
   const { worktree, executionHostId } = await runtime.resolveRuntimeFileTarget(`id:${worktreeId}`)
+  const connectionId = hostedReviewSshConnectionId(executionHostId)
   const repo = runtime.store().getRepo(worktree.repoId)
   if (!repo) {
-    return null
+    // BAD-798: a folder:<id> workspace (project group, bot home) names its group, not a repo.
+    return projectGroupIdFromRepoId(worktree.repoId) === null
+      ? null
+      : folderGroupWorkspace(worktree.path, connectionId)
   }
   const { wslDistro } = getLocalProjectWorktreeGitOptions(runtime.store(), repo)
-  return gateWorkspaceOf(worktree, repo, {
-    connectionId: hostedReviewSshConnectionId(executionHostId),
-    wslDistro
-  })
+  return gateWorkspaceOf(worktree, repo, { connectionId, wslDistro })
+}
+
+/** A project group's folder workspace: its own folder, in WSL when the folder is a WSL path. */
+function folderGroupWorkspace(
+  folderPath: string,
+  connectionId: string | null
+): ResolvedGateWorkspace | null {
+  if (!folderPath) {
+    return null
+  }
+  const wsl = connectionId ? null : parseWslUncPath(folderPath)
+  const target: CheckTarget = wsl
+    ? { cwd: wsl.linuxPath, connectionId, wslDistro: wsl.distro }
+    : { cwd: folderPath, connectionId }
+  return { target, branch: null, git: false }
 }

@@ -3024,7 +3024,28 @@ ones `SLRM-123 `).
     placement and dispatch records, and shows the checks, each attempt and its output tail, live and
     after it settles. A server too old to answer is named as one whose check evidence cannot be
     seen, never as a Task that "declares no done checks".
+  - **A Task made with `task-create` and started on a server that owns its workers (BAD-798).**
+    `worker-start --task T --on <server>` on the default server protocol used to send only the
+    start's own flags, so a Task that declared its checks or review on `task-create` settled there
+    unchecked and in silence. The start now sends the Task's stored contract and review request
+    (focus, agent and rounds) with it, and the server stores and gates them as it does a start that
+    names them itself. The start's own flags win, per part: its checks replace the Task's checks,
+    and the Task's review still travels when the start names none (as a local
+    `worker-start --task` does). A `--retry-of` start of the same Task sends them again, with the
+    server's rounds at zero. A server without `orchestration.fork-contract-carry.v1` is refused
+    before anything is created, with the attach path's message; a start with nothing to carry is
+    not asked about it. `--on auto` and `orca best-of --on` resolve to a server name first and take
+    the same path (best-of carries no contract).
+  - **Project group folders (BAD-798).** A `folder:<id>` workspace (a project group's folder, a
+    bot's home) names its group in place of a repo, so the check could not find it and every
+    command check failed. It now runs in that folder, inside WSL for a WSL path.
+  - **Reviewer of an attached worker (BAD-798).** A worker a paired computer attached here (the
+    older protocol) has no agent recorded at its done, so a review naming no reviewer always went to
+    Codex, even for a Codex worker. The review is pinned to the other provider when the attach
+    starts the agent. A worker on a server that owns its workers was never affected: that server's
+    own Dispatch records the agent.
   - Code: `src/main/fork/completion-contract/contract-carry.ts` (what travels and the retry copy),
+    `contract-carry-start.ts` (the capability refusal and the wire of both start paths),
     `gate-subject.ts` (a local Dispatch or a remote attachment as one shape for both gates),
     `gate-workspace.ts` (folder workspaces) and `contract-show.ts` (the home's read-through).
 - **Goal loop: keep any agent going until a check or a judge passes (BAD-682).** Goals were
@@ -3556,6 +3577,7 @@ Apply these in this order. Each one is a single commit.
 196. `BAD-764 Every flag of a fork command has its own help line, and orca guards automation-cap takes a unique id prefix of 4 or more characters and names orca automations list`
 197. `BAD-764 The flag help test finds the fork's spec files without import.meta`
 198. `BAD-764 Command guards read every Claude tool that takes a shell command (Monitor and PowerShell beside Bash) on both surfaces, and a chat not known to the app shows as unguarded, counted only while it runs`
+199. `BAD-798 A Task made with task-create and started with worker-start --task --on a server that owns its workers carries its done checks and review there, a server that cannot take them is refused before any effect, a folder:<id> workspace runs its command checks in its folder, and an attached worker's review goes to the other provider`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4818,8 +4840,11 @@ Upstream files only get short hooks, which keeps merges small:
   `orchestration.fork-contract-carry.v1`; `fork-completion-contract.ts` answers through
   `showWithServerEvidence`. `completion-gate-live.ts` and `reviewer-gate-live.ts` read a
   `GateSubject` instead of a Dispatch row.
-  `remote-owned-start.ts` (a start on a server that owns its workers) calls `forkStoreDoneContract`
-  once its placement is reserved, so the home holds the contract `orca contract show` reads.
+  `remote-owned-start.ts` (a start on a server that owns its workers) calls
+  `forkRemoteOwnedContractPreflight` right after the server resolves (BAD-798: refuses a server
+  without the capability) and `forkRemoteOwnedContractWire` once its placement is reserved, which
+  stores the start's contract at home and returns the Task's stored one, spread into the start it
+  sends. `federation.ts` also calls `forkPinAttachedReviewer` with the agent the attach starts.
 - Reviewer gate (BAD-683), small edits in stock files and fork files: `completion-gate-live.ts`
   (`forkGateWorkerDone` runs the review after the contract passed; `forkStoreDoneContract` also
   saves the request); `orchestration-params.ts` (`TaskCreateParams`) and

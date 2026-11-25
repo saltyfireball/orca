@@ -9,6 +9,7 @@ import type { OrchestrationDb } from '../../runtime/orchestration/db/orchestrati
 import {
   forkReviewGateOf,
   readReviewerGateSettings,
+  reviewerAgentFor,
   type ReviewerGateSettings
 } from '../../../shared/fork/reviewer-gate'
 import type { GateDeps } from '../completion-contract/completion-gate'
@@ -22,6 +23,23 @@ export function forkStoreReviewGate(db: OrchestrationDb, taskId: string, rawPara
   if (gate) {
     saveReviewGate(db, taskId, gate)
   }
+}
+
+/**
+ * BAD-798: a worker a paired computer attached here has no recorded agent at its done, which would
+ * pick Codex even for a Codex worker. A review that names no reviewer is pinned now, while the
+ * agent it starts is known, to the other provider.
+ */
+export function forkPinAttachedReviewer(
+  db: OrchestrationDb,
+  taskId: string,
+  workerAgent: string | null | undefined
+): void {
+  const found = readReviewGate(db, taskId)
+  if (!workerAgent || !found || found.implicit || found.gate.agent) {
+    return
+  }
+  saveReviewGate(db, taskId, { ...found.gate, agent: reviewerAgentFor(workerAgent, null) })
 }
 
 function settingsOf(runtime: OrcaRuntimeService): ReviewerGateSettings {
