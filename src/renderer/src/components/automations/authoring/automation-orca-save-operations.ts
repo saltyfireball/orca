@@ -36,6 +36,7 @@ import type { AutomationSaveContext } from './automation-save-context'
 import { automationAuthorityCatalogKey } from '../hosts/automation-host-catalog-types'
 import { withoutIgnoredRruleParts } from '../../../../../shared/automations/scheduling/automation-schedule-parsing'
 import { createNonSecureContextUuid as createBrowserUuid } from '../../../../../shared/identifiers/non-secure-context-uuid'
+import { forkAutomationMcpProfileCarry } from '@/fork/agent-profiles/automation-mcp-profile-move'
 
 export type AutomationMoveOperationContext = {
   automationDispatchContext: AutomationDispatchContext
@@ -177,7 +178,13 @@ export async function moveAutomationToDestination(
     await createAutomationAtDestination(
       target.authority,
       // Why: the destination refuses parts this host dropped; send the cadence that actually runs (#45519).
-      { ...input, rrule: withoutIgnoredRruleParts(input.rrule), creationKey },
+      // Fork (BAD-800): the copy keeps the original's MCP profile, or the destination refuses it.
+      {
+        ...input,
+        ...forkAutomationMcpProfileCarry(source),
+        rrule: withoutIgnoredRruleParts(input.rrule),
+        creationKey
+      },
       target.destination
     )
   )

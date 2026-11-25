@@ -24,6 +24,7 @@ import { useIntlLocale, useTranslate, type Translate } from '@/i18n/use-translat
 import { AutomationPromptDisclosure } from './AutomationPromptDisclosure'
 import { automationRunErrorText } from '../runs/automation-run-error-copy'
 import { automationModelEffortProperties } from '@/fork/automation-model-effort/automation-model-effort-label'
+import { automationMcpProfileProperties } from '@/fork/agent-profiles/automation-mcp-profile-row'
 import { getAgentLabel } from '../authoring/automation-draft-model'
 import { AutomationDetailHealth } from './AutomationDetailHealth'
 import { AutomationRecentRunsRail } from './AutomationRecentRunsRail'
@@ -225,6 +226,7 @@ export function AutomationDetail({
       )
     },
     ...automationModelEffortProperties(automation, t),
+    ...automationMcpProfileProperties(automation, t),
     {
       key: 'host',
       label: t('auto.components.automations.AutomationDetail.host', 'Host'),

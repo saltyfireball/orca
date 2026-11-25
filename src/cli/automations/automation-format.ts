@@ -20,6 +20,7 @@ import { quoteCliCommandArgument } from '../arguments/shell-command-quote'
 import { BOT_CHAT_ID_PREFIX } from '../../shared/bots/bot-chat-row'
 import type { RuntimeRpcSuccess } from '../../shared/remote-runtime/rpc/runtime-rpc-envelope'
 import { printResult } from '../output/command-result-output'
+import { forkAutomationMcpProfileLines } from '../fork/automation-mcp-profile-line'
 
 export type AutomationListPayload = {
   automations: Automation[]
@@ -178,6 +179,8 @@ export function formatAutomationShow(result: AutomationShowPayload): string {
     `provider: ${automation.agentId}`,
     ...(automation.bot ? [formatBotAgent(automation.bot)] : []),
     ...modelEffortLines(automation),
+    // Fork (BAD-800): the MCP profile its runs keep.
+    ...forkAutomationMcpProfileLines(automation),
     ...(automation.extraAgentArgs ? [`extraAgentArgs: ${automation.extraAgentArgs}`] : []),
     `enabled: ${automation.enabled}`,
     ...(automation.bot

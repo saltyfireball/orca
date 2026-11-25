@@ -38,6 +38,7 @@ import {
   AutomationHostScopeUnsupportedError,
   REQUEST_TIMEOUT_MS
 } from './automation-capability-probe'
+import { assertForkAutomationMcpProfileSupported } from '@/fork/agent-profiles/automation-mcp-profile-move'
 import {
   AUTOMATION_LIST_HOST_SCOPE_RUNTIME_CAPABILITY,
   AUTOMATION_LIST_HOST_SCOPE_UPDATE_REQUIRED_MESSAGE
@@ -317,6 +318,7 @@ export async function createAutomationForDestination(
     await assertAutomationCreateIdempotencySupported(authority)
   }
   await assertOwnerFencingSupported(authority)
+  await assertForkAutomationMcpProfileSupported(authority, input)
   // Why before create: a move is create-then-delete and must refuse before mutating anything.
   const prepared = await prepareAutomationLaunchSetup(authority, input)
   const result = await callAuthority<{ automation: Automation }>(authority, 'automation.create', {

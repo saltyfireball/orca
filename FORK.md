@@ -3273,19 +3273,34 @@ ones `SLRM-123 `).
     (BAD-800): a UI start has no way to carry it, so its row says "MCP profile X applies only
     from the CLI: orca agent launch --profile NAME" instead of starting with every server.
   - **Automations keep the MCP profile (BAD-800).** `orca automations create --profile` with a
-    profile that names an MCP profile stores that name on the automation, and every run (chat or
-    terminal, a reused chat too) launches in the background scope with it, so Claude loads only
-    its servers. The host checks it before anything is created: a bot automation (`--bot`, which
-    refuses `--profile` anyway), another agent, a profile the host lacks, a host without MCP
-    profiles, or an older host (no `automations.fork-mcp-profile.v1`, checked by the CLI) is
-    refused with nothing created. It is saved before the automation is written, under the
-    automation's creation key (`fork-mcp:<uuid>`, made when the create names none), in
-    `<userData>/fork-mcp-profiles/automations.json` (0600). Each run checks the name again as it
-    is then: an MCP profile changed since applies as it is now; one deleted refuses the run with
-    the reason (the run shows as failed). A run whose key was made for a profile but has no saved
-    entry (the file lost or unreadable) is refused too, never run with every server. Changing or
-    deleting the agent profile afterwards does not change the automation, as with its mode. The
-    automation dialog does not carry it (see Pickers).
+    profile that names an MCP profile keeps that name on the automation record itself
+    (`forkMcpProfile`), and every run (chat or terminal, a reused chat or terminal too) launches
+    in the background scope with it, so Claude loads only its servers. The host checks it before
+    anything is created: a bot automation (`--bot`, which refuses `--profile` anyway), another
+    agent, a profile the host lacks, a host without MCP profiles, or an older host (no
+    `automations.fork-mcp-profile.v2`, checked by the CLI) is refused with nothing created. The
+    dispatcher hook runs the create in a scope the store's write reads, so the record is written
+    with it in one step, and checks the saved record has it (a retried creation key that found an
+    automation saved without it is refused). Nothing links it by a key, so nothing can lose or
+    evict it, and a deleted automation takes it along. An edit cannot set or clear it (the update
+    schema drops the field). Each run checks the name again as it is then: an MCP profile changed
+    since applies as it is now; one deleted, or the automation edited to another agent, refuses
+    the run with the reason (the run shows as failed). Changing or deleting the agent profile
+    afterwards does not change the automation, as with its mode. `orca automations show` prints
+    `mcp profile: NAME` and the automation's card has an MCP profile row.
+  - **Moving an automation keeps it (BAD-800).** The automation dialog's move to another host is a
+    create there and a delete here; the create carries the original's MCP profile, so the
+    destination refuses a profile it lacks or an Orca without `automations.fork-mcp-profile.v2`,
+    with nothing created and the original untouched. Other copies: the orcad and WSL moves copy
+    the whole record, so the field goes along and the destination applies it; a destination Orca
+    from before BAD-800 ignores it and runs with every server (not checked). Owner migration,
+    host reselection, zone reseed and edits keep the record's fields. Plugin and bot creates never
+    carry one.
+  - **First build's side file.** The first BAD-800 build kept the profile in
+    `<userData>/fork-mcp-profiles/automations.json` under a `fork-mcp:<uuid>` creation key. The
+    file is removed at start; an automation it made, with that key and no `forkMcpProfile`, is
+    refused on every run with the reason (create it again with `--profile`), and show and the card
+    say its MCP profile is lost.
   - **Retries and follow-ups (BAD-741).** A worker-start stores what it applied with its Task
     (`fork_task_agent_profiles`: profile name, preamble, agent, the capped mode, the account's id
     or the profile's own name for it, never a credential, and the MCP profile name, also for a
@@ -3664,6 +3679,7 @@ Apply these in this order. Each one is a single commit.
 200. `BAD-800 Agent profiles keep their MCP limit: automations create --profile stores the MCP profile on the automation and every run applies it (refused when it cannot, or once it is deleted), the + menu and automation dialog refuse a profile whose MCP limit a UI start cannot carry, and a chat account pin that cannot be saved is a note in the chat`
 201. `BAD-799 Pause all holds the restart resume of terminal workers as offers that say why and that resume-all resumes once, and refuses a terminal worker-start with the pause reason`
 202. `BAD-801 Bot room hop limit: chained bot hand-offs under one person post stop at forkBotRoomHopLimit (default 6, 0 none), counted by chain depth from the stored lines, with one Decision inbox entry holding the last exchange and a Continue that resumes the held hand-off once with a fresh count; a later person post makes it moot`
+203. `BAD-800 An automation keeps its MCP profile on its own record, so a move to another host carries it or is refused, nothing can lose or evict it, and automations show and the card name it`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4993,11 +5009,20 @@ Upstream files only get short hooks, which keeps merges small:
   the name rides the existing `forkAgentProfileRemoteOwnedCarry` spread in `remote-owned-start.ts`.
   BAD-800: `withForkMcpLaunchScope` (the dispatcher's existing hook) also passes
   `automation.create` through `withForkAutomationMcpProfile`, so `dispatcher.ts` is untouched;
-  both launchers in `runtime-automation-service.ts` are wrapped in `forkMcpLaunched` (aliased
-  `mcp`, the file is at max-lines); `automation-runtime-capabilities.ts` lists
-  `automations.fork-mcp-profile.v1`; `structured-agent-session-entry-delegates.ts` hands its
-  `createStructuredAgentSession` call to `forkAgentProfileChatCreate`, which writes the failed-pin
-  note after the chat exists.
+  `automation-create-identity.ts` spreads `forkAutomationCreateMcpProfile()` into the new record
+  and `automation-definition.ts` declares the optional `forkMcpProfile` on `Automation` and
+  `AutomationCreateInput`; both launchers in `runtime-automation-service.ts` are wrapped in
+  `forkMcpLaunched` (aliased `mcp`, the file is at max-lines); `automation-runtime-capabilities.ts`
+  lists `automations.fork-mcp-profile.v2`; `automation-orca-save-operations.ts` spreads
+  `forkAutomationMcpProfileCarry(source)` into a move's create, `automation-scoped-list-client.ts`
+  calls `assertForkAutomationMcpProfileSupported` before it, `automation-format.ts` prints
+  `forkAutomationMcpProfileLines` in `formatAutomationShow`, and `AutomationDetail.tsx` adds
+  `automationMcpProfileProperties` after the model and effort rows;
+  `structured-agent-session-entry-delegates.ts` hands its `createStructuredAgentSession` call to
+  `forkAgentProfileChatCreate`, which writes the failed-pin note after the chat exists. Proof:
+  `mcp-automation-profiles.test.ts` runs the CLI create through the real dispatcher, automation
+  methods and store, then Run now through `createRuntimeAutomationService` on both surfaces down
+  to the terminal argv and the chat's Claude MCP arguments, and the dialog's own move.
 
 - Services mail a bot (BAD-742), two small edits in stock files, `message-send-handler.ts`
   calls `assertServiceSend` when `--as-service` is given and then sends with no `from`, and

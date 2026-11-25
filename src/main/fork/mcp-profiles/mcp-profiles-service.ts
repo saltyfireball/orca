@@ -1,7 +1,7 @@
 // FORK.md "MCP profiles": the app's profile state and the calls the hooks, IPC and RPC make.
 // Without install (headless hosts, tests of upstream code) a launch that names no profile passes
 // through, so chats load every server as stock does; one that names a profile is refused.
-import { readFile } from 'node:fs/promises'
+import { readFile, rm } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import {
@@ -18,7 +18,6 @@ import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-w
 import { InvalidArgumentError } from '../../runtime/rpc/core'
 import { discoverClaudeMcpServers, forkMcpServerViews } from './claude-mcp-discovery'
 import { ForkMcpChatStore } from './mcp-chat-state'
-import { ForkMcpAutomationProfiles, setForkMcpAutomationProfiles } from './mcp-automation-profiles'
 import { claudeConfigPaths, sweepLaunchMcpConfigs } from './mcp-launch-files'
 import { currentForkMcpLaunchScope, setForkMcpProfileCheck } from './mcp-launch-scope'
 
@@ -45,10 +44,8 @@ export async function installForkMcpProfiles(input: {
     input.chatStateFile === undefined ? join(input.dataFolder, 'chats.json') : input.chatStateFile
   )
   await store.load()
-  // BAD-800: the MCP profile each `--profile` automation was created with.
-  const automations = new ForkMcpAutomationProfiles(join(input.dataFolder, 'automations.json'))
-  await automations.load()
-  setForkMcpAutomationProfiles(automations)
+  // BAD-800: the first build's side file of automation MCP profiles; the record keeps them now.
+  await rm(join(input.dataFolder, 'automations.json'), { force: true }).catch(() => undefined)
   state = {
     readSettings: input.readSettings,
     store,
@@ -70,7 +67,6 @@ export async function shutdownForkMcpProfiles(): Promise<void> {
 export function uninstallForkMcpProfilesForTests(): void {
   state = null
   setForkMcpProfileCheck(null)
-  setForkMcpAutomationProfiles(null)
 }
 
 export function forkMcpConfig(): ForkMcpProfileConfig {

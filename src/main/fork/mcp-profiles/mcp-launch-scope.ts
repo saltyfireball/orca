@@ -10,7 +10,7 @@ import {
   type ForkMcpLaunchKind
 } from '../../../shared/fork/mcp-profiles'
 import { withForkAgentProfileLaunchScope } from '../agent-profiles/agent-profile-launch-scope'
-import { forkMcpAutomationProfiles, withForkAutomationMcpProfile } from './mcp-automation-profiles'
+import { withForkAutomationMcpProfile } from './mcp-automation-profiles'
 
 export type ForkMcpLaunchScope = { kind: ForkMcpLaunchKind; profile?: string }
 
@@ -126,9 +126,10 @@ export function withForkMcpLaunchScope<T>(
   run: () => T
 ): T {
   if (call.request.method === 'automation.create') {
-    // BAD-800: an automation keeps a --profile's MCP profile for every run. Its result is the
-    // handler's promise either way, which the dispatcher awaits.
-    return withForkAutomationMcpProfile(forkMcpAutomationProfiles(), call, run) as T
+    // BAD-800: an automation keeps a --profile's MCP profile on its record for every run. Its
+    // result is the handler's promise either way, which the dispatcher awaits.
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the dispatcher's `run` is the async method handler, so T is already a promise of the same result.
+    return withForkAutomationMcpProfile(call, run) as T
   }
   // BAD-741: a --profile launch's own scope (FORK.md "Agent profiles") rides the same hook.
   return withForkAgentProfileLaunchScope(call, () => mcpLaunchScope(call, run))

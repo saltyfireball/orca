@@ -20,9 +20,10 @@ export const AUTOMATION_SURFACE_RUNTIME_CAPABILITY = 'automations.surface.v1' as
 
 export const AUTOMATION_LAUNCH_SETUP_RUNTIME_CAPABILITY = 'automations.launch-setup.v1' as const
 
-/** Fork (BAD-800): `automation.create` stores a `--profile`'s MCP profile and every run applies it. */
+/** Fork (BAD-800): `automation.create` keeps an MCP profile on the automation and every run applies
+ *  it. v1 kept it in a side file by creation key, which a move's own key could outlive. */
 export const AUTOMATION_FORK_MCP_PROFILE_RUNTIME_CAPABILITY =
-  'automations.fork-mcp-profile.v1' as const
+  'automations.fork-mcp-profile.v2' as const
 
 export const AUTOMATION_RUNTIME_CAPABILITIES = [
   AUTOMATION_FORK_MCP_PROFILE_RUNTIME_CAPABILITY,

@@ -273,6 +273,12 @@ export const ForkMcpChatSetParams = z.object({
 /** The param the CLI adds to agent.launch, worktree.create and orchestration.workerStart. */
 export const FORK_MCP_PROFILE_PARAM = 'forkMcpProfile'
 
+/** BAD-800: an automation whose creation key has this prefix was made by the first build, which
+ *  kept its MCP profile in a side file now retired; without `forkMcpProfile` its runs are refused. */
+export function isForkMcpRetiredAutomationKey(creationKey: string | undefined): boolean {
+  return creationKey?.startsWith('fork-mcp:') === true
+}
+
 export const FORK_MCP_CHANNELS = {
   list: 'fork:mcpProfiles:list',
   chat: 'fork:mcpProfiles:chat',

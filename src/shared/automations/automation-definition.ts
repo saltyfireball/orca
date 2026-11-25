@@ -102,6 +102,8 @@ export type Automation = {
   createdAt: number
   updatedAt: number
   createdBy?: AutomationCreator
+  /** Fork (BAD-800): the MCP profile every run applies; set only by its create, never by an edit. */
+  forkMcpProfile?: string
 }
 
 export type AutomationCreateInput = {
@@ -135,6 +137,8 @@ export type AutomationCreateInput = {
   enabled?: boolean
   missedRunGraceMinutes?: number
   createdBy?: AutomationCreator
+  /** Fork (BAD-800): sent as the create's MCP profile param; the host checks it and stores it. */
+  forkMcpProfile?: string
 }
 
 export type AutomationUpdateInput = { launchSetupPatch?: AutomationLaunchSetupPatch } & Partial<
