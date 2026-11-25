@@ -11,12 +11,22 @@ import {
   uninstallForkAgentProfileLaunchForTests,
   withForkAgentProfileLaunchScope
 } from './agent-profile-launch-scope'
+import type * as AgentQueueRuntime from '../agent-queue/agent-queue-runtime'
+import { forkAgentQueueRuntimeTerminals } from '../agent-queue/agent-queue-runtime'
 import { installForkHeadlessHost } from '../headless-host'
 import {
   forkMcpServiceState,
   uninstallForkMcpProfilesForTests
 } from '../mcp-profiles/mcp-profiles-service'
 import { forkMarkHeadlessSettingsHost } from '../settings-cli/settings-cli-headless'
+
+vi.mock('../agent-queue/agent-queue-runtime', async (original) => {
+  const actual = await original<typeof AgentQueueRuntime>()
+  return {
+    ...actual,
+    forkAgentQueueRuntimeTerminals: vi.fn(actual.forkAgentQueueRuntimeTerminals)
+  }
+})
 
 const settings = { forkAgentProfiles: [{ name: 'nightly', agent: 'claude' }] }
 const NOT_LOADED = /Agent profiles are not loaded on this computer/
@@ -180,5 +190,8 @@ describe('profiles on a host', () => {
       vi.doUnmock(resolve(dirname(ACTIVATION), specifier))
     }
     expect(seenAtRpcStart).toEqual({ launch: 'started', mcpLoaded: true })
+    // BAD-818: the launch queue reads this host's runtime.
+    const readRuntime = vi.mocked(forkAgentQueueRuntimeTerminals).mock.lastCall?.[0]
+    expect(readRuntime?.()).toBeDefined()
   })
 })
