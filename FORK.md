@@ -5935,3 +5935,42 @@ Choices made where upstream now does the same thing the fork did, or both sides 
   `workspace-process-listing.ts`, `runtime-rpc-websocket-dispatch.ts`, `collector.ts`,
   `AgentLaunchPicker.tsx`, `NativeChatApprovalCard.tsx`, `AppRootSurfaces.tsx`, `sidebar/index.tsx`
   and `NativeChatStructuredSession.tsx` were folded into fork files (see their entries above).
+
+## Merge notes: upstream v1.4.275 (BAD-834)
+
+Upstream has no v1.4.274 tag; the merge takes v1.4.275 (06832a81b7a) as it is. Git's own merge base
+for it is a main commit that the v1.4.273 release branch lacks features of, so a plain `git merge`
+showed 13 untouched upstream files (paired port forwards, workspace ports, item reply jump) as
+deleted by the fork and rewrote files the fork never changed. The merge was made with v1.4.273 as
+the base (`git merge-recursive v1.4.273 -- HEAD v1.4.275`, then a merge commit with both parents),
+so only the fork's own changes can conflict; do the same next time the plain merge conflicts in
+files the fork has not touched.
+
+Choices where both sides changed:
+
+- Paired port forwards: upstream's code as it is; the fork has no port forward feature.
+- Phone item page: upstream's chat-style comment row and docked answer card replace the fork's card
+  with quick replies and held answers (upstream dropped those props). The owner steps (BAD-747/BAD-762)
+  still draw inside the ask's row (`steps` on `MobileBotItemCommentCard`, `MobileBotItemActivity`);
+  the steps line and the steps above the Activity come from `use-mobile-bot-item-owner-steps.tsx`.
+  The description is upstream's `MobileBotItemDescription`.
+- Desktop item page: upstream's Needs you jump, header and Activity; `BotItemView.tsx` still takes
+  `stepsLine`, `above` and `inAsk` from `use-bot-item-steps-place.tsx`, and `BotItemHeader.tsx` keeps
+  the fork's server worker links.
+- Bot preamble: upstream's item link text, with the fork's "nothing waits on your owner" rule and
+  the steps text kept in the Needs you rule. `BotItemsInput` keeps `steps` next to upstream's `startedIn`.
+- New chat menu: the fork's agent profile entries hide while a search is typed, as upstream's
+  static entries do.
+- Phone bundle limit: 11 MiB, now also upstream's own.
+
+Line limits: more upstream files sit at their `max-lines` budget, so fork hooks moved out:
+
+- `rpc-method-registry.ts` spreads one `FORK_RPC_METHODS` (`methods/fork/fork-rpc-methods.ts`), which
+  lists every `FORK_*_METHODS` array the registry spread before, in the same order. A new fork RPC
+  method list goes there, not in the registry.
+- `bot-controller.ts` calls `forkNewBotInput` and `forkSeedSoul` (`src/main/fork/bots/fork-bot-make.ts`),
+  which hold the launch default and starting rules hooks described above.
+- `send-methods.ts` reads its sender through `send-sender-identity.ts` (upstream code moved to make room
+  for the `forkGateWorkerDone` call).
+- `BotItemActivityList.tsx` keeps `str`, `statusWord` and `FieldChange` in `BotItemFieldChange.tsx`
+  (upstream code moved to make room for the steps events).
