@@ -46,7 +46,7 @@ export const FORK_AGENT_PROFILE_COMMAND_SPECS: CommandSpec[] = [
     notes: [
       'A new profile needs --agent. Flags not given keep the profile\'s current value; pass an empty value (--model "") to clear one.',
       "The permission mode is capped by Settings: the agent's permission in Settings > Agents when it sets one, else Settings > Blackfish > Agent profiles (default accept-edits). A wider mode is lowered at launch.",
-      'The account is recorded and shown; launches use the account selected with `orca account select`.'
+      'A Claude account is applied at launch, and a missing or signed-out one is refused; Codex runs on the account selected with `orca account select`.'
     ],
     examples: [
       'orca profiles set reviewer --agent claude --model opus --effort high --when-to-use "Read-only review of a diff"',

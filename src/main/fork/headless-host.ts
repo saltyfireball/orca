@@ -23,9 +23,14 @@ import {
   installForkCommandGuards,
   type ForkCommandGuardsHostStore
 } from './command-guards/command-guards-install'
+import {
+  installForkProfilesOnHost,
+  type ForkProfilesHostSettings
+} from './mcp-profiles/mcp-profiles-host'
 
 export type ForkHeadlessHostStore = Omit<ForkCommandGuardsHostStore, 'getSettings'> & {
-  getSettings: () => NonNullable<ReturnType<BoundaryCompactionSettingsReader>>
+  getSettings: () => NonNullable<ReturnType<BoundaryCompactionSettingsReader>> &
+    ForkProfilesHostSettings
   onSettingsChanged: (listener: (updates: Partial<ForkGlobalSettings>) => void) => unknown
 }
 
@@ -41,11 +46,21 @@ export type ForkHeadlessHostStore = Omit<ForkCommandGuardsHostStore, 'getSetting
  * - Command guards answer from here on, before a chat can start (BAD-764).
  * - The PR babysitter acts on CI lines of this host's chats (SLRM-2386).
  * - PR nudges send this host's chats their pull requests' new review comments and conflicts (BAD-680).
- * Returns what to run at shutdown.
+ * - Agent and MCP profiles apply to the launches that run here, from this host's own settings and
+ *   `<userDataPath>/fork-mcp-profiles` (BAD-800). Resolves once they are loaded, before the RPC
+ *   server starts, so no launch arrives ahead of them.
+ * Resolves to what to run at shutdown.
  */
-export function installForkHeadlessHost(store: ForkHeadlessHostStore): () => void {
+export async function installForkHeadlessHost(
+  store: ForkHeadlessHostStore,
+  userDataPath: string
+): Promise<() => Promise<void>> {
   forkMarkHeadlessSettingsHost()
   installForkCommandGuards(store)
+  const profiles = installForkProfilesOnHost({
+    readSettings: () => store.getSettings(),
+    userDataPath
+  })
   startForkBoundaryCompactionService(() => store.getSettings(), {
     store: () => store,
     windowless: () => true
@@ -66,11 +81,13 @@ export function installForkHeadlessHost(store: ForkHeadlessHostStore): () => voi
   installForkTurnCheckpoints(store)
   const stopPrBabysit = installForkPrBabysit(store)
   const stopPrNudge = installForkPrNudge(store)
-  return () => {
+  await profiles.ready
+  return async () => {
     stopPrBabysit()
     stopPrNudge()
     stopForkBoundaryCompactionService()
     stopForkServerHeartbeat()
     flushLedger?.()
+    await profiles.shutdown()
   }
 }

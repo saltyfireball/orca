@@ -40,8 +40,9 @@ describe('ForkMcpChatStore', () => {
     expect(store.get('good')).toEqual({ kind: 'background', updatedAt: 0 })
     expect(store.get('bad')).toBeUndefined()
     await writeFile(file, '{oops')
-    await store.load()
-    expect(store.get('good')).toBeUndefined()
+    const broken = new ForkMcpChatStore(file)
+    await broken.load()
+    expect(broken.get('good')).toBeUndefined()
   })
 
   it('works without a file', async () => {

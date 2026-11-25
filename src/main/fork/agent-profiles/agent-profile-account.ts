@@ -98,14 +98,19 @@ export function resolveForkProfileAccount(
         }
       }
     }
-    const found = router
-      ? find(
-          'claude',
-          hostAccounts(settings.claudeManagedAccounts),
-          settings.managedAccountDisplayNames?.claude,
-          query
-        )
-      : null
+    if (!router) {
+      // BAD-800: a host that does not manage Claude accounts (orcad inside WSL) cannot pin one.
+      return {
+        ok: false,
+        message: `This computer does not manage Claude accounts, so the profile's Claude account "${query}" cannot apply. Change the profile's account to ${FORK_CLAUDE_SYSTEM_DEFAULT}, or start it without the profile. Nothing was started.`
+      }
+    }
+    const found = find(
+      'claude',
+      hostAccounts(settings.claudeManagedAccounts),
+      settings.managedAccountDisplayNames?.claude,
+      query
+    )
     if (!found) {
       return missing('Claude', query)
     }

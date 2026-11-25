@@ -12,6 +12,8 @@ import { closeTestStores, createStore, testState } from '../../persistence/persi
 import { ensureTestStructuredAgentSessionHost as ensureStructuredAgentSessionHost } from '../../runtime/agent-session/records/agent-session-record-store-test-harness'
 import { stopStructuredAgentSessionRuntime } from '../../runtime/agent-session/installation/structured-agent-session-runtime'
 import { installForkHeadlessHost } from '../headless-host'
+import { uninstallForkMcpProfilesForTests } from '../mcp-profiles/mcp-profiles-service'
+import { uninstallForkAgentProfileLaunchForTests } from '../agent-profiles/agent-profile-launch-scope'
 import { installForkReady } from '../fork-ready-foundation-hooks'
 import { forkMarkHeadlessSettingsHost } from '../settings-cli/settings-cli-headless'
 import { installForkWorkspaceFolders } from '../workspace-folder/workspace-folder-path'
@@ -44,7 +46,7 @@ vi.mock('../../telemetry/client', () => ({ track: vi.fn() }))
 let answers = ''
 let scratch = ''
 let state = ''
-const stops: (() => void)[] = []
+const stops: (() => void | Promise<void>)[] = []
 
 beforeAll(() => {
   // One path for every test: the host reads its environment once.
@@ -65,8 +67,10 @@ beforeEach(() => {
 })
 afterEach(async () => {
   for (const stop of stops.splice(0)) {
-    stop()
+    await stop()
   }
+  uninstallForkMcpProfilesForTests()
+  uninstallForkAgentProfileLaunchForTests()
   stopForkCommandGuards()
   installForkWorkspaceFolders(null)
   forkMarkHeadlessSettingsHost(false)
@@ -124,7 +128,7 @@ describe('command guards before the runtime settles', () => {
   }, 60_000)
 
   it('the headless server: a chat started right after installForkHeadlessHost is guarded', async () => {
-    stops.push(installForkHeadlessHost(createStore()))
+    stops.push(await installForkHeadlessHost(createStore(), testState.dir))
     const chat = await startChat()
     expect(decisionOf(await chat.ask()).decision).toBe('deny')
     expect(nativeChat()).toMatchObject(GUARDED)

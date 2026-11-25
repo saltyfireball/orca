@@ -21,7 +21,7 @@ import {
   managedMcpPolicyFiles,
   writeLaunchMcpConfig
 } from './mcp-launch-files'
-import { chatFolders, forkMcpConfig, forkMcpServiceState } from './mcp-profiles-service'
+import { chatFolders, forkMcpConfig, forkMcpLoadedState } from './mcp-profiles-service'
 
 export type ForkMcpClaudeLaunch = {
   sessionId: string
@@ -85,7 +85,7 @@ export function forkMcpClaudeExtraArgs(
 
 /** Extra Claude arguments for this launch; empty when the chat runs with every server. */
 export async function forkMcpClaudeLaunchArgs(input: ForkMcpClaudeLaunch): Promise<ExtraArgs> {
-  const state = forkMcpServiceState()
+  const state = await forkMcpLoadedState()
   if (!state) {
     return {}
   }
@@ -173,7 +173,7 @@ export type ForkMcpTerminalLaunch = {
 export async function forkMcpClaudeTerminalArgs(
   input: ForkMcpTerminalLaunch
 ): Promise<{ args: string[] } | { refused: string }> {
-  const state = forkMcpServiceState()
+  const state = await forkMcpLoadedState()
   if (!state) {
     return { refused: 'MCP profiles are not loaded on this computer' }
   }

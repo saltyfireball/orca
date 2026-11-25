@@ -93,7 +93,7 @@ export const FORK_CHAT_FLAG_HELP: ForkFlagHelp = {
       'ask, accept-edits, auto or full-access, capped by Settings; "" clears it'
     ],
     'mcp-profile': ['<name>', 'MCP profile it starts with; "" clears it'],
-    account: ['<account>', 'Account to record and show; launches use the selected account'],
+    account: ['<account>', 'Account it starts on (Claude), or system; "" clears it'],
     preamble: ['<text>', 'Text put in front of the prompt or spec; "" clears it'],
     'preamble-file': ['<path>', 'Read the preamble from a file'],
     'when-to-use': ['<text>', 'Note on when to pick this profile; "" clears it']

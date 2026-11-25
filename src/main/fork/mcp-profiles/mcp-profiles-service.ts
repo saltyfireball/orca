@@ -26,6 +26,8 @@ type ServiceState = {
   store: ForkMcpChatStore
   /** Where per-launch config files go. */
   launchFolder: string
+  /** Settles once the chat state is read and old launch files are swept; launches wait for it. */
+  ready: Promise<void>
 }
 
 let state: ServiceState | null = null
@@ -34,8 +36,21 @@ export function forkMcpServiceState(): ServiceState | null {
   return state
 }
 
-/** Test seam and install: the settings reader and the data folder the fork owns. */
-export async function installForkMcpProfiles(input: {
+/** The state once loaded; a launch that arrives during the load waits here instead of running wider. */
+export async function forkMcpLoadedState(): Promise<ServiceState | null> {
+  const current = state
+  if (current) {
+    await current.ready
+  }
+  return current
+}
+
+/**
+ * Test seam and install: the settings reader and the data folder the fork owns, under the host's
+ * own user data (FORK.md "MCP profiles"). Profiles count as loaded from this call on: a launch
+ * that names one is accepted, and its chat or terminal waits for the returned load.
+ */
+export function installForkMcpProfiles(input: {
   readSettings: () => ForkMcpProfileSettings | undefined
   dataFolder: string
   chatStateFile?: string | null
@@ -43,25 +58,29 @@ export async function installForkMcpProfiles(input: {
   const store = new ForkMcpChatStore(
     input.chatStateFile === undefined ? join(input.dataFolder, 'chats.json') : input.chatStateFile
   )
-  await store.load()
-  // BAD-800: the first build's side file of automation MCP profiles; the record keeps them now.
-  await rm(join(input.dataFolder, 'automations.json'), { force: true }).catch(() => undefined)
-  state = {
-    readSettings: input.readSettings,
-    store,
-    launchFolder: join(input.dataFolder, 'launch')
-  }
+  const launchFolder = join(input.dataFolder, 'launch')
+  const ready = (async () => {
+    await store.load()
+    // BAD-800: the first build's side file of automation MCP profiles; the record keeps them now.
+    await rm(join(input.dataFolder, 'automations.json'), { force: true }).catch(() => undefined)
+    // Files a crashed run left behind; a running chat's file is replaced on its next start.
+    await sweepLaunchMcpConfigs(launchFolder)
+  })()
+  state = { readSettings: input.readSettings, store, launchFolder, ready }
   setForkMcpProfileCheck((name) => forkMcpProfileExists(forkMcpConfig().profiles, name))
-  // Files a crashed run left behind; a running chat's file is replaced on its next start.
-  await sweepLaunchMcpConfigs(state.launchFolder)
+  return ready
 }
 
 /** On quit: every per-launch file goes, and the chat state is written. */
 export async function shutdownForkMcpProfiles(): Promise<void> {
-  if (!state) {
+  const current = await forkMcpLoadedState()
+  if (!current) {
     return
   }
-  await Promise.all([state.store.flush(), sweepLaunchMcpConfigs(state.launchFolder, { all: true })])
+  await Promise.all([
+    current.store.flush(),
+    sweepLaunchMcpConfigs(current.launchFolder, { all: true })
+  ])
 }
 
 export function uninstallForkMcpProfilesForTests(): void {
@@ -120,11 +139,12 @@ export async function chatFolders(folder: string | undefined): Promise<string[]>
 }
 
 export async function forkMcpChat(sessionId: string): Promise<ForkMcpChatInfo | null> {
-  if (!state) {
+  const current = await forkMcpLoadedState()
+  if (!current) {
     return null
   }
   const config = forkMcpConfig()
-  const saved = state.store.get(sessionId)
+  const saved = current.store.get(sessionId)
   const record = recordOf(sessionId)
   const provider = record?.provider ?? saved?.provider ?? null
   const kind = saved?.kind ?? 'interactive'
@@ -151,13 +171,14 @@ export async function forkMcpSetChat(
   sessionId: string,
   profile: string | null
 ): Promise<ForkMcpChatInfo | null> {
-  if (!state) {
+  const current = await forkMcpLoadedState()
+  if (!current) {
     return null
   }
   if (profile !== null && !forkMcpProfileExists(forkMcpConfig().profiles, profile)) {
     throw new InvalidArgumentError(`Unknown MCP profile "${profile}".`)
   }
-  state.store.update(sessionId, (current) => {
+  current.store.update(sessionId, (current) => {
     const { chosen: _chosen, ...rest } = current
     return profile === null ? rest : { ...rest, chosen: profile }
   })

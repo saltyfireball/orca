@@ -47,9 +47,26 @@ type Deps = {
 
 const scope = new AsyncLocalStorage<ForkAgentProfileLaunch>()
 let deps: Deps = { readSettings: () => undefined, claudeRouter: () => getClaudeProfileRouter() }
+/** BAD-800: set by the host install (desktop and orcad); a host without it cannot tell profiles. */
+let loaded = false
 
 export function installForkAgentProfileLaunch(next: Partial<Deps>): void {
   deps = { ...deps, ...next }
+  loaded ||= next.readSettings !== undefined
+}
+
+export function uninstallForkAgentProfileLaunchForTests(): void {
+  deps = { readSettings: () => undefined, claudeRouter: () => getClaudeProfileRouter() }
+  loaded = false
+}
+
+/** A start that names a profile on a host that has not loaded them is refused as that, not as unknown. */
+function assertLoaded(name: string, refusedBecause = ''): void {
+  if (!loaded) {
+    throw new InvalidArgumentError(
+      `${refusedBecause}Agent profiles are not loaded on this computer, so profile "${name}" cannot apply. Start it without --profile. Nothing was started.`
+    )
+  }
 }
 
 /** The methods that start agents, and the request field naming the agent each starts. */
@@ -124,8 +141,9 @@ export function forkAgentProfileLaunchOfTask(
   if (!agent || (explicitAgent && explicitAgent !== agent)) {
     return undefined
   }
-  const settings = deps.readSettings() ?? {}
   const name = stored.profile || 'none'
+  assertLoaded(name, `This Task's worker was first started with profile "${name}": `)
+  const settings = deps.readSettings() ?? {}
   const base = {
     name,
     agent,
@@ -182,6 +200,11 @@ function fromName(
   return { ...base, ...(account ? { account } : {}) }
 }
 
+function carriedName(wire: unknown): string {
+  const parsed = ForkAgentProfileLaunchWire.safeParse(wire)
+  return parsed.success ? parsed.data.name : 'carried'
+}
+
 /** A profile a home resolved and sent here: this server's policy and accounts still decide. */
 function fromWire(
   raw: unknown,
@@ -233,6 +256,7 @@ export function withForkAgentProfileLaunchScope<T>(
   if (wire === undefined && !name) {
     return run()
   }
+  assertLoaded(name ?? carriedName(wire))
   const settings = deps.readSettings() ?? {}
   const agent = field(values, agentField)
   const launch =

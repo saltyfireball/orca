@@ -61,11 +61,14 @@ export class ForkMcpChatStore {
     if (!this.file) {
       return
     }
+    let saved = new Map<string, ForkMcpChatState>()
     try {
-      this.chats = parseChats(await readFile(this.file, 'utf8'))
+      saved = parseChats(await readFile(this.file, 'utf8'))
     } catch {
-      this.chats = new Map()
+      // A missing or unreadable file starts empty.
     }
+    // A chat noted while the file was read keeps that newer entry.
+    this.chats = new Map([...saved, ...this.chats])
   }
 
   get(sessionId: string): ForkMcpChatState | undefined {

@@ -867,6 +867,25 @@ ones `SLRM-123 `).
     a name the server lacks refuses with no effects; the server's own profile of that name then
     decides what loads, for a chat or a terminal. An older server (one without the capability,
     or that takes the attach start) is refused with no effects. The home's own list is not used.
+  - **On a server without the desktop app (BAD-800).** orcad loaded neither MCP nor agent
+    profiles: only the desktop's `installForkMcpProfilesApp` did, so on a server
+    `automations create --profile` with an MCP profile was refused ("MCP profiles are not loaded
+    on this computer"), every `--profile` was refused as an unknown agent profile, and
+    `mcp-profile list` there showed none of the server's profiles. The paired WebSocket path
+    skipped the launch scope before BAD-800 (204), so no server ever applied a profile.
+    `installForkHeadlessHost` now runs the same install as the desktop
+    (`installForkProfilesOnHost`, `src/main/fork/mcp-profiles/mcp-profiles-host.ts`, no
+    electron): agent profile resolution, the permission cap and account checks read orcad's own
+    settings, and the chat state and per-launch files live in `<orcad user data>/fork-mcp-profiles`
+    (`ORCA_USER_DATA`, default `~/.orca`). Each host's folder is under its own user data, which that
+    host's instance lock holds, so two hosts never share one. The same folder rules hold there:
+    files 0600 in a 0700 folder, old ones swept at start, chat files swept and the chat state
+    written in orcad's shutdown cleanup, terminal files kept for a resume.
+  - **Start-up order (BAD-800).** Profiles count as loaded from the install call on; the load
+    (chat state read, old files swept) settles after. A chat or terminal start that arrives in
+    between waits for it instead of running with every server, and a choice noted then is kept
+    when the file is read. orcad awaits the load before its RPC server starts, so no client
+    launch, retry or resume reaches it first.
   - **Settings** (Settings > Blackfish > MCP profiles): `forkMcpProfiles` ([]),
     `forkMcpDefaultInteractive`, `forkMcpDefaultWorker` and `forkMcpDefaultBackground` ("all"),
     and `forkMcpProjectProfiles` ([]).
@@ -874,7 +893,7 @@ ones `SLRM-123 `).
     or in WSL, and plugin or claude.ai connector servers, which Claude adds on its own and which
     any profile but "all" leaves out. A launch that names a profile where it cannot apply is
     refused with the reason (BAD-741), and so is one on a host that has not loaded MCP profiles
-    (headless orcad), and so is `orchestration worker-start --terminal` with a named profile (or a
+    (see "On a server without the desktop app" below), and so is `orchestration worker-start --terminal` with a named profile (or a
     retry or follow-up whose Task stored one, or a mode or account): that agent is already
     running, so nothing would apply; `all` is never refused. A launch that names none passes
     through unchanged.
@@ -3425,6 +3444,22 @@ ones `SLRM-123 `).
     `--agent` wins. The row a retry copies is the first one, so a narrower policy never sticks.
     A chat worker reopened in its own session keeps its mode: the session record holds the mode
     it was created with and every start of it launches on that.
+  - **On a server without the desktop app (BAD-800).** orcad loads agent profiles from its own
+    settings (see "MCP profiles", On a server without the desktop app), so `--profile` on
+    `agent launch`, `worktree create`, `worker-start` and `automations create` with
+    `--environment` or `--on` applies the server's profile there: the mode capped by the server's
+    policy, its MCP profile, account and preamble, and the same refusals. A host that has not
+    loaded agent profiles says so ("Agent profiles are not loaded on this computer") instead of
+    calling an existing profile unknown, also for a retry or follow-up whose Task stored one. A
+    named Claude account on a host that does not manage Claude accounts (an orcad inside WSL) is
+    refused as that, not as missing. `orca profiles set --help` no longer says the account is only
+    recorded. Proof: `orcad-profile-launch-native.test.ts` starts the release orcad
+    (`pnpm build:orcad`, then `ORCA_BUILT_ORCAD_TEST=1`) in its own HOME and user data folder with
+    a bare environment (`ORCA_DISABLE_MACOS_LOGIN_SHELL=1`, since a macOS pane otherwise starts
+    through login(1) in the account's own home and profile), pairs the built CLI over the
+    WebSocket and reads the arguments a stand-in `claude` got: automations create and its run,
+    agent launch, worktree create and worker-start with a limited profile, a deleted profile, and a
+    run whose MCP profile is gone. With the install line taken out, every case fails but the deleted profile (the CLI's own resolve refuses that one either way).
   - **MCP profile on every surface.** A start that names one (`--mcp-profile`, or a profile's)
     applies it to a Claude chat and a Claude terminal (see "MCP profiles", Terminals) and, with
     `--on`, on the server (see "MCP profiles", Paired servers). Where it cannot apply it is refused
@@ -3797,6 +3832,7 @@ Apply these in this order. Each one is a single commit.
 206. `BAD-820 With forkReviewerGateAllTasks on, a start on a paired server sends the setting's review as the Task's own (both protocols, retries, best-of attempts), a server that cannot take it is refused before any effect naming the setting, and with the setting off nothing changes`
 207. `BAD-822 A goal whose agent died says so: it ends as agent-lost with a Decision inbox row and the notify targets, once; only a chat or terminal a person closed, or a worker that reported done, ends quietly, and after a restart the missing window starts once the restore has finished`
 208. `BAD-819 Own pull request loop limit: a from=me pr_opened run started by a pull request another run of the same automation opened is one hop deeper and stops past forkAutomationChainMaxDepth, at most 5 own pull request starts per automation in 15 minutes, each stop a skipped run with the reason and one Decision inbox row`
+209. `BAD-800 orcad loads agent and MCP profiles from its own settings and user data folder, so --profile and --mcp-profile apply on a server, and a host that has not loaded them says so instead of calling a profile unknown`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -4260,7 +4296,8 @@ Upstream files only get short hooks, which keeps merges small:
     gives nothing for any row the feature did not send.
   - orcad's `src/main/backend/core-runtime-activation.ts` calls `installForkHeadlessHost(...)`
     (`src/main/fork/headless-host.ts`) before its RPC server is made (one import, one call, with
-    the call's result registered as a cleanup). It starts the same sweep with `windowless` set
+    the call's result registered as a cleanup). Since BAD-800 (209) the call is awaited and passes
+    orcad's user data path, so agent and MCP profiles are loaded before the RPC server starts. It starts the same sweep with `windowless` set
     and marks the host for `orca settings` writes (SLRM-2307).
   - Since upstream 1.4.261 stores chats in SQLite, it and idle recovery read a chat's newest
     page through the host's `history` (`src/main/fork/chat-journal-tail.ts`, at most 200 rows),
