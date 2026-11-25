@@ -322,6 +322,11 @@ function verifyPackagedMainRuntimeDeps(resourcesDir, asar = require('@electron/a
         continue
       }
       const packageName = packageNameFromSpecifier(specifier)
+      // Fork (BAD-816): ajv is compiled into main and carries require text in its code strings, each
+      // starting right after the string's quote; a real require never does.
+      if (packageName === 'ajv' && /["'`]/.test(source[match.index - 1] ?? '')) {
+        continue
+      }
       if (!existsSync(join(resourcesDir, 'node_modules', ...packageName.split('/')))) {
         missing.add(packageName)
       }

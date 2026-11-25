@@ -5267,6 +5267,8 @@ Upstream files only get short hooks, which keeps merges small:
   count; `task-handlers.ts` and `worker-launch-handler.ts` pass `cwd` to `readForkDoneContractFlags`;
   `skill-guides/orchestration.md` has one line on `--result-schema-file`. The schema rides
   `ForkDoneContractShape`, so the three params shapes are untouched.
+  `config/packaged-runtime-node-modules.cjs` skips ajv's own code strings in the packaged import
+  check (ajv is compiled into main; its source carries `require(...)` text inside quotes).
 - Reviewer gate (BAD-683), small edits in stock files and fork files: `completion-gate-live.ts`
   (`forkGateWorkerDone` runs the review after the contract passed; `forkStoreDoneContract` also
   saves the request); `orchestration-params.ts` (`TaskCreateParams`) and
