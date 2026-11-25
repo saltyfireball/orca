@@ -35,6 +35,9 @@ function detailLine(item: ForkIdleRecoveryInboxItem, now: number, t: Translate):
   if (item.source === 'hops') {
     return t('fork.decisionInbox.hopsDetail', 'Bot room hop limit')
   }
+  if (item.source === 'pr-loop') {
+    return t('fork.decisionInbox.prLoopDetail', 'Own pull request loop limit')
+  }
   const parts = [
     item.kind === 'chat'
       ? t('fork.decisionInbox.kind.chat', 'Chat')
@@ -113,6 +116,8 @@ export function ForkDecisionInboxRow({
   })
   // A held bot room chain (BAD-801) takes no words: Continue or Dismiss.
   const hops = item.source === 'hops'
+  // A stopped own pull request loop (BAD-819) has nothing to answer: Dismiss only.
+  const prLoop = item.source === 'pr-loop'
   const continueChain = (): void => {
     setSending(true)
     void actions.answer(item, 'continue').finally(() => setSending(false))
@@ -142,7 +147,7 @@ export function ForkDecisionInboxRow({
           {body}
         </p>
       ) : null}
-      {hops ? null : (
+      {hops || prLoop ? null : (
         <Textarea
           className="min-h-14"
           rows={2}
@@ -184,13 +189,13 @@ export function ForkDecisionInboxRow({
               ? t('fork.decisionInbox.stopBabysit', 'Stop babysitting')
               : item.source === 'nudge'
                 ? t('fork.decisionInbox.stopNudge', 'Stop nudging')
-                : item.source === 'contract' || item.source === 'goal' || hops
+                : item.source === 'contract' || item.source === 'goal' || hops || prLoop
                   ? t('fork.decisionInbox.dismissContract', 'Dismiss')
                   : item.paused
                     ? t('fork.decisionInbox.resume', 'Resume recovery')
                     : t('fork.decisionInbox.pause', 'Pause recovery')}
         </Button>
-        {hops ? (
+        {prLoop ? null : hops ? (
           <Button size="sm" disabled={sending} onClick={continueChain}>
             {t('fork.decisionInbox.continueHops', 'Continue')}
           </Button>
