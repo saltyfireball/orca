@@ -12,7 +12,10 @@ import { makeTestBotItem } from '../../../../../shared/bots/bot-item.test-fixtur
 import type { BotItemViewRead } from './use-bot-item-view'
 
 const read = vi.hoisted((): { current: BotItemViewRead | null } => ({ current: null }))
-vi.mock('./use-bot-item-view', () => ({ useBotItemView: () => read.current }))
+vi.mock('./use-bot-item-view', () => ({
+  useBotItemView: () => read.current,
+  useWaitingQuestionPage: () => false
+}))
 vi.mock('./use-bot-items', () => ({
   commentOnBotItem: vi.fn(),
   setBotItemsStatus: vi.fn()
