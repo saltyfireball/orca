@@ -147,6 +147,15 @@ export function setReviewEscalated(
     .run(escalated ? 1 : 0, taskId)
 }
 
+/** Tasks whose review escalated and is not yet answered, for the Decision inbox. */
+export function listReviewEscalated(handle: ReviewDbHandle): string[] {
+  return (
+    ensureTables(handle)
+      .prepare('SELECT task_id FROM fork_review_gates WHERE escalated = 1 ORDER BY created_at')
+      .all() as { task_id: string }[]
+  ).map((row) => row.task_id)
+}
+
 export function listReviewRuns(handle: ReviewDbHandle, taskId: string): ReviewRunRecord[] {
   return (
     ensureTables(handle)

@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import Database from '../../sqlite/sync-database'
 import { contractInboxItems } from './contract-inbox'
+import {
+  finishReviewRun,
+  saveReviewGate,
+  setReviewEscalated,
+  startReviewRun
+} from '../reviewer-gate/reviewer-store'
 import { recordAttempt, saveContract } from './contract-store'
 
 const handles: Database[] = []
@@ -39,5 +45,29 @@ describe('contractInboxItems', () => {
     const open = reader('dispatched')
     saveContract(open, 'task_1', { checks: ['x'], requirePrChecks: false, maxRounds: null })
     expect(contractInboxItems(open)).toEqual([])
+  })
+
+  it('lists a Task whose reviewer could not run, with the error, until it completes (BAD-820)', () => {
+    const open = reader('dispatched')
+    saveReviewGate(open, 'task_1', { focus: 'correctness', agent: null, maxRounds: null })
+    const runId = startReviewRun(open, {
+      taskId: 'task_1',
+      round: 1,
+      headKey: 'k',
+      headSha: 'a'.repeat(40),
+      reviewer: 'codex',
+      model: 'default'
+    })
+    finishReviewRun(open, runId, {
+      status: 'error',
+      findingsCount: 0,
+      output: "the reviewer's own sandbox failed (bwrap: x)\nmore"
+    })
+    expect(contractInboxItems(open)).toEqual([])
+    setReviewEscalated(open, 'task_1', true)
+    const [row] = contractInboxItems(open)
+    expect(row).toMatchObject({ chatId: 'contract-review:task_1', source: 'contract' })
+    expect(row?.reason).toContain("reviewer could not run: the reviewer's own sandbox failed")
+    expect(contractInboxItems({ ...open, taskStatus: () => 'completed' })).toEqual([])
   })
 })

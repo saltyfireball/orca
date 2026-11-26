@@ -11,10 +11,16 @@ import {
 } from '../idle-recovery/idle-recovery-sources'
 import { clearEscalation, listAttempts, listEscalated } from './contract-store'
 import { listInboxWatches, updateWatch } from './later-push-store'
+import {
+  listReviewEscalated,
+  listReviewRuns,
+  setReviewEscalated
+} from '../reviewer-gate/reviewer-store'
 import { forkResultSchemaUseDb } from './result-schema-live'
 
 const ROW_PREFIX = 'contract:'
 const PUSH_ROW_PREFIX = 'contract-push:'
+const REVIEW_ROW_PREFIX = 'contract-review:'
 
 type TaskReader = { db: OrchestrationDb['db']; taskStatus: (taskId: string) => string | null }
 
@@ -42,7 +48,42 @@ function laterPushItems(db: TaskReader): ForkIdleRecoveryInboxItem[] {
 }
 
 export function contractInboxItems(db: TaskReader): ForkIdleRecoveryInboxItem[] {
-  return [...escalatedItems(db), ...laterPushItems(db)]
+  return [...escalatedItems(db), ...reviewEscalatedItems(db), ...laterPushItems(db)]
+}
+
+/** A Task whose review escalated (BAD-820): the reviewer could not run, or findings outlasted the rounds. */
+function reviewEscalatedItems(db: TaskReader): ForkIdleRecoveryInboxItem[] {
+  return listReviewEscalated(db).flatMap((taskId): ForkIdleRecoveryInboxItem[] => {
+    const status = db.taskStatus(taskId)
+    if (status === null || status === 'completed') {
+      return []
+    }
+    const last = listReviewRuns(db, taskId).at(-1)
+    const why =
+      last?.status === 'error'
+        ? `reviewer could not run: ${last.output.split('\n')[0]?.trim() || 'it gave no verdict'}`
+        : 'the review still has findings after its rounds'
+    return [
+      {
+        chatId: `${REVIEW_ROW_PREFIX}${taskId}`,
+        kind: 'chat',
+        agent: '',
+        title: `Task ${taskId}`,
+        workspace: '',
+        worktreeId: null,
+        verdict: 'stalled',
+        question: '',
+        reason: `The worker is done but ${why}. The Task is still open and its worker was told to wait: accept it with task-update or re-dispatch it. Details: orca contract show ${taskId}`,
+        since: last
+          ? Date.parse(`${(last.finishedAt ?? last.startedAt).replace(' ', 'T')}Z`) || Date.now()
+          : Date.now(),
+        wakes: 0,
+        wakeAt: null,
+        paused: false,
+        source: 'contract'
+      }
+    ]
+  })
 }
 
 function escalatedItems(db: TaskReader): ForkIdleRecoveryInboxItem[] {
@@ -87,6 +128,10 @@ export function installForkContractInboxSource(db: OrchestrationDb): void {
     dismiss: async (chatId) => {
       if (chatId.startsWith(PUSH_ROW_PREFIX)) {
         updateWatch(db, chatId.slice(PUSH_ROW_PREFIX.length), { inbox: false })
+        return true
+      }
+      if (chatId.startsWith(REVIEW_ROW_PREFIX)) {
+        setReviewEscalated(db, chatId.slice(REVIEW_ROW_PREFIX.length), false)
         return true
       }
       if (!chatId.startsWith(ROW_PREFIX)) {

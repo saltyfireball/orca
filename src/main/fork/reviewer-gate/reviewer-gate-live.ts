@@ -14,6 +14,7 @@ import {
 } from '../../../shared/fork/reviewer-gate'
 import type { GateDeps } from '../completion-contract/completion-gate'
 import type { GateSubject } from '../completion-contract/gate-subject'
+import { notifyContractInboxChanged } from '../completion-contract/contract-inbox'
 import { sendIdleRecoveryAnswer } from '../idle-recovery/idle-recovery-wake'
 import { runReviewGate, type ReviewGateDeps } from './reviewer-gate'
 import { readReviewGate, saveReviewGate } from './reviewer-store'
@@ -86,7 +87,26 @@ function liveReviewDeps(
         : null
     },
     workerAgent: () => subject.agent,
-    deliver: (_dispatchId, text) => deliverToWorker(subject, text)
+    deliver: (_dispatchId, text) => deliverToWorker(subject, text),
+    // BAD-820: a reviewer that could not run tells the Run's coordinator now; the worker is waiting.
+    escalate: async ({ taskId, dispatchId, text }) => {
+      const context = db.getDispatchContextById(dispatchId)
+      if (!context) {
+        return
+      }
+      const message = db.insertMessage({
+        from: context.assignee_handle ?? `dispatch:${dispatchId}`,
+        to: `run:${context.run_id}`,
+        subject: `Review gate: Task ${taskId}`,
+        body: text,
+        type: 'escalation',
+        payload: JSON.stringify({ taskId }),
+        runId: context.run_id,
+        senderDispatchId: dispatchId
+      })
+      notifyContractInboxChanged()
+      runtime.notifyMessageArrived(message.to_handle, message.type)
+    }
   }
 }
 

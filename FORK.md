@@ -3123,8 +3123,15 @@ ones `SLRM-123 `).
   - **Rounds.** Each review that finds something is a round, up to the Task's `--review-max-rounds`
     else `forkReviewerGateMaxRounds` (2). A new head is reviewed again; past the limit (the
     worker is told the rounds are used up) the next report is delivered to the coordinator as an
-    `escalation` and the Task stays open. A review that gave no verdict (timeout, no VERDICT line,
-    the checkout changed) is retried on the next report of the head, then escalates.
+    `escalation` and the Task stays open. A review that is not a review (BAD-820) is an error, never
+    a finding, and spends no round: a timeout, no VERDICT line, empty output, the checkout changed,
+    or the reviewing tool's own sandbox failing (`bwrap:`, `RTM_NEWADDR`, `sandbox-exec:`, which
+    count even when the model wrote a VERDICT line after them). The gate retries it once by itself
+    (2 runs of the head), then escalates at once: an `escalation` message to the Run's coordinator
+    "reviewer could not run: <error>" and a Decision inbox row (source `contract`, dismissable;
+    it leaves with the Task or a clean head), and the worker is told its done is held because the
+    reviewer failed and to wait, not to commit. The message is best effort (a coordinator reached
+    only over a paired computer may not get it); the row and the next report still carry it.
   - **Evidence.** `orca contract show <task_id>` also lists the review request and every run:
     reviewer, model, head, round, status, findings count and the findings text.
   - **Settings** (Settings > Blackfish, `orca settings`): `forkReviewerGate` (on; off makes every
@@ -3141,7 +3148,7 @@ ones `SLRM-123 `).
     on the host that holds the Task's database. The result message is sent when the worker is idle
     (retried for about 8 minutes); a worker that never receives it is not stopped, but nothing
     wakes it. The review does not use the agent launch queue (BAD-518); `forkReviewerGateMaxConcurrent`
-    bounds it. No Decision inbox row yet: an escalation is the message to the coordinator.
+    bounds it. An escalated review (reviewer could not run, or findings past the rounds) is a Decision inbox row too (BAD-820).
   - Code is in `src/main/fork/reviewer-gate/` (`reviewer-gate.ts` the engine over the store,
     `reviewer-store.ts`, `reviewer-gate-live.ts` the hooks), `src/shared/fork/reviewer-gate.ts`
     (params, settings, prompt, verdict parser, the pure decision and texts),
@@ -4037,6 +4044,7 @@ Apply these in this order. Each one is a single commit.
 218. `BAD-818 A worker launch pause-all held over a restart starts with its Task: a held chat opens before the message it never sent, so upstream does not fail it; agent queue list says a held launch is held, and why`
 219. `BAD-836 Antigravity chats name Orca on every ACP handshake (managed server and agy, any version), never another editor; the managed server's Gemini-only model list says why and names agy 1.5.1, a non-Gemini model on agy below 1.5.1 is refused before the session opens, and a test fails on a Google internal API call under src/main/antigravity or the antigravity usage reader`
 220. `Fork release version: a base whose upstream tag was deleted is read from package.json, so a release never sorts below the one before it`
+221. `BAD-820 A reviewer run that errored or produced no review (its own sandbox failed, even with a VERDICT line after it; empty output; no verdict) is a reviewer error, not a finding: no review round is spent and no new commit is asked for; the gate retries it once itself, then escalates to the coordinator as "reviewer could not run: <error>" with a Decision inbox row and tells the worker to wait`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

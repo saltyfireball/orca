@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { readReviewerGateSettings } from '../../../shared/fork/reviewer-gate'
 import type { CheckRunner } from '../completion-contract/check-runner'
 import { runReviewGate, type ReviewGateDeps, type ReviewGateRequest } from './reviewer-gate'
-import { latestRunOfHead, listReviewRuns, readReviewGate, saveReviewGate } from './reviewer-store'
+import { listReviewRuns, readReviewGate, saveReviewGate } from './reviewer-store'
 
 const handles: Database.Database[] = []
 afterEach(() => {
@@ -16,9 +16,16 @@ const sha = (n: number): string => String(n).repeat(40)
 
 /** A checkout whose head the test moves, and a reviewer that prints what the test queued. */
 function fixture(options?: { maxRounds?: number; delivered?: string[]; mutate?: boolean }) {
+  const escalations: string[] = []
   const db = new Database(':memory:')
   handles.push(db)
-  const state = { head: 1, replies: [] as string[], reviewerCommands: [] as string[], extra: '' }
+  const state = {
+    head: 1,
+    replies: [] as string[],
+    exitCodes: [] as number[],
+    reviewerCommands: [] as string[],
+    extra: ''
+  }
   const runner: CheckRunner = async (_target, command) => {
     if (command.startsWith('git rev-parse')) {
       return { exitCode: 0, output: `${sha(state.head)}\n${state.extra}`, timedOut: false }
@@ -27,7 +34,11 @@ function fixture(options?: { maxRounds?: number; delivered?: string[]; mutate?: 
     if (options?.mutate) {
       state.extra = ' M changed.ts\n'
     }
-    return { exitCode: 0, output: state.replies.shift() ?? '', timedOut: false }
+    return {
+      exitCode: state.exitCodes.shift() ?? 0,
+      output: state.replies.shift() ?? '',
+      timedOut: false
+    }
   }
   const delivered = options?.delivered ?? []
   const deps: ReviewGateDeps = {
@@ -42,6 +53,9 @@ function fixture(options?: { maxRounds?: number; delivered?: string[]; mutate?: 
     deliver: async (_dispatchId, text) => {
       delivered.push(text)
       return true
+    },
+    escalate: async ({ text }) => {
+      escalations.push(text)
     },
     platform: 'linux',
     sleep: async () => undefined
@@ -58,7 +72,7 @@ function fixture(options?: { maxRounds?: number; delivered?: string[]; mutate?: 
       await new Promise((resolve) => setImmediate(resolve))
     }
   }
-  return { db, deps, request, state, delivered, settled }
+  return { db, deps, request, state, delivered, escalations, settled }
 }
 
 describe('runReviewGate', () => {
@@ -144,19 +158,86 @@ describe('runReviewGate', () => {
     expect(readReviewGate({ db: f.db }, 'task_1')?.escalated).toBe(true)
   })
 
-  it('retries an unreadable review once, then escalates', async () => {
+  it('retries an unreadable review itself, then escalates to the coordinator and tells the worker to wait', async () => {
     const f = fixture()
     f.state.replies.push('no verdict here', 'still nothing')
     await runReviewGate(f.deps, f.request)
     await f.settled()
-    expect(
-      latestRunOfHead({ db: f.db }, 'task_1', listReviewRuns({ db: f.db }, 'task_1')[0]!.headKey)
-        ?.status
-    ).toBe('error')
-    await runReviewGate(f.deps, f.request)
-    await f.settled()
+    expect(f.state.reviewerCommands).toHaveLength(2)
+    expect(listReviewRuns({ db: f.db }, 'task_1').map((run) => run.status)).toEqual([
+      'error',
+      'error'
+    ])
+    expect(f.escalations).toHaveLength(1)
+    expect(f.escalations[0]).toContain('reviewer could not run')
+    expect(readReviewGate({ db: f.db }, 'task_1')?.escalated).toBe(true)
+    expect(f.delivered).toHaveLength(1)
+    expect(f.delivered[0]).toContain('reviewer failed')
+    expect(f.delivered[0]).toContain('Do not commit')
     expect((await runReviewGate(f.deps, f.request)).kind).toBe('escalate')
     expect(f.state.reviewerCommands).toHaveLength(2)
+  })
+
+  describe('a reviewer that errored is not a finding (BAD-820)', () => {
+    const sandboxFailure =
+      'bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted\nVERDICT: FINDINGS 1'
+
+    it('treats a sandbox failure, even with a verdict line after it, as an error that spends no round', async () => {
+      const f = fixture()
+      f.state.replies.push(sandboxFailure, 'VERDICT: CLEAN')
+      f.state.exitCodes.push(1, 0)
+      await runReviewGate(f.deps, f.request)
+      await f.settled()
+      const runs = listReviewRuns({ db: f.db }, 'task_1')
+      expect(runs.map((run) => run.status)).toEqual(['error', 'clean'])
+      expect(runs.map((run) => run.round)).toEqual([1, 1])
+      expect(f.escalations).toEqual([])
+      expect(f.delivered).toHaveLength(1)
+      expect(f.delivered[0]).not.toContain('finding(s)')
+      expect(await runReviewGate(f.deps, f.request)).toMatchObject({ kind: 'pass' })
+    })
+
+    it('escalates with the error when every try hits the sandbox failure, and never asks for a commit', async () => {
+      const f = fixture()
+      f.state.replies.push(sandboxFailure, sandboxFailure)
+      await runReviewGate(f.deps, f.request)
+      await f.settled()
+      expect(f.escalations[0]).toContain('reviewer could not run: the reviewer')
+      expect(f.escalations[0]).toContain('RTM_NEWADDR')
+      expect(f.delivered[0]).not.toMatch(/commit,? then|new commit/u)
+      expect(f.delivered[0]).toContain('Wait')
+      const again = await runReviewGate(f.deps, f.request)
+      expect(again.kind).toBe('escalate')
+      expect(again).not.toMatchObject({ text: expect.stringContaining('has not changed') })
+    })
+
+    it('treats a reviewer that printed nothing as an error', async () => {
+      const f = fixture()
+      f.state.replies.push('', '   \n')
+      f.state.exitCodes.push(0, 0)
+      await runReviewGate(f.deps, f.request)
+      await f.settled()
+      const runs = listReviewRuns({ db: f.db }, 'task_1')
+      expect(runs.map((run) => run.status)).toEqual(['error', 'error'])
+      expect(runs[0]?.output).toContain('printed nothing')
+      expect(f.escalations).toHaveLength(1)
+    })
+
+    it('still treats a real finding as a finding: a round is spent and a new commit is expected', async () => {
+      const f = fixture()
+      f.state.replies.push('1. bug in a.ts line 3\nVERDICT: FINDINGS 1')
+      await runReviewGate(f.deps, f.request)
+      await f.settled()
+      expect(listReviewRuns({ db: f.db }, 'task_1')).toMatchObject([
+        { status: 'findings', round: 1 }
+      ])
+      expect(f.escalations).toEqual([])
+      expect(f.delivered[0]).toContain('Fix what is real, commit')
+      expect(await runReviewGate(f.deps, f.request)).toMatchObject({
+        kind: 'hold',
+        text: expect.stringContaining('has not changed')
+      })
+    })
   })
 
   it('does not trust a review that changed the checkout', async () => {
