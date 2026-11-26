@@ -9,11 +9,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { PAUSE_ALL_START_SITES } from './pause-all-start-sites'
-import {
-  PAUSE_ALL_GATE_FUNCTIONS,
-  PAUSE_ALL_START_PRIMITIVES,
-  PAUSE_ALL_STARTERS
-} from './pause-all-starters'
+import { PAUSE_ALL_GATE_FUNCTIONS, PAUSE_ALL_START_PRIMITIVES } from './pause-all-start-primitives'
+import { PAUSE_ALL_STARTERS } from './pause-all-starters'
 
 const ROOT = join(__dirname, '../../../..')
 const PAUSE_ALL_DIR = 'src/main/fork/pause-all/'

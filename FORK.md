@@ -1248,6 +1248,8 @@ ones `SLRM-123 `).
   guide is [docs/fork/boundary-compaction.md](docs/fork/boundary-compaction.md).
   - **Off.** No chat is read, nothing is sent and no window reports anything; the timer only
     reads the setting and backs off to every 2 minutes.
+  - **Pause all (BAD-818).** While it is on, a sweep reads and asks no chat; one engaged during a
+    sweep stops before it asks. Releasing it runs a sweep at once.
   - **When.** The context measured by the chat's last finished turn is at least
     `forkBoundaryCompactThresholdTokens` (120000) and the chat has rested
     `forkBoundaryCompactIdleSeconds` (120). With `forkBoundaryCompactPreferCold` (on) it also
@@ -2169,7 +2171,9 @@ ones `SLRM-123 `).
     holds its queued messages as Stop does), a Claude Code or Codex terminal gets Esc (never on a
     dialog; an agent it cannot interrupt is marked so). The note never quotes the tool, its input
     or output. The watch is kept in memory: a restart starts a new episode and never replays
-    history.
+    history. While Pause all is on (BAD-818) a note goes only into a running turn; one that would
+    start a turn (the agent at rest or not seen in a turn, also when it comes to rest during the
+    send) waits and goes once at resume-all, unless its loop ended meanwhile. Stops always go.
   - **Spend cap** (`forkAgentGuardSpendCapUsd`, 0 = off). The estimate is the usage ledger's
     (SLRM-2103): the chat's tokens per model priced like the usage report (`forkUsagePrices`, else
     the built-in Claude prices), subscription chats at the same per-token prices, a model with
@@ -3696,11 +3700,20 @@ ones `SLRM-123 `).
     waits there unread until resume-all, and to tell the asker so. `orca pause-status` prints and
     returns held counts only while the switch is on; with it off, unread mail in bots' chats is not
     held, so nothing is printed (also when an older host sends counts).
+  - **Guarded sends (BAD-818).** Idle recovery's guarded send ports are start primitives of the
+    table, so a new feature that types into an idle chat or terminal agent through them fails the
+    test until it has a row. Two users had none: boundary compaction (a `/compact` sent to an idle
+    chat) asks nothing while paused, stops before it asks when engaged during a sweep, and sweeps at
+    once at resume-all; the agent guards' loop note goes into a running turn as before (the
+    guard's stop after a note needs it), while one that would start a turn waits and goes once at
+    resume-all if its loop is still the newest. A guard's stop always goes.
   - **The starter table.** `src/main/fork/pause-all/pause-all-starters.ts` lists every starter
     with its answer (held, refused, skipped or allowed) and the reason, and
     `pause-all-start-sites.ts` each call of a start primitive (`startConversation`, `executeAgentLaunch`, `deliverTurn`, `runForEvent`,
     `handOffGroupMentions`, `seam.start`, `seam.send`, `forkChatHandoffService`,
-    `launchFederatedWorkerAgent`) with the starter it belongs to. Its test reads `src/main` and
+    `launchFederatedWorkerAgent`, and idle recovery's guarded send into an idle chat or terminal
+    agent: `idleRecoveryChatPort`, `idleRecoveryTerminalPort`, `idleRecoveryPorts`; listed in
+    `pause-all-start-primitives.ts`) with the starter it belongs to. Its test reads `src/main` and
     fails when a gate the table names is removed, when a gate call appears in a file it does not
     name, and when a primitive is called somewhere it does not list. It cannot see a starter that
     starts work through a call outside that list, or a gate left on a dead branch. Each gated row
@@ -4076,6 +4089,7 @@ Apply these in this order. Each one is a single commit.
 221. `BAD-820 A reviewer run that errored or produced no review (its own sandbox failed, even with a VERDICT line after it; empty output; no verdict) is a reviewer error, not a finding: no review round is spent and no new commit is asked for; the gate retries it once itself, then escalates to the coordinator as "reviewer could not run: <error>" with a Decision inbox row and tells the worker to wait`
 222. `BAD-818 Letters wait while Pause all is on: none is typed into an idle chat or terminal agent, none expires, the sender's receipt says it is held, and resume-all delivers at once; the sender of held bot mail is told it waits for resume-all; pause-status shows held counts only while paused`
 223. `BAD-838 A failed Look around or Tidy-up records why its turn failed (the turn's failure line or the agent's refusal of its start, such as a signed-out Claude account), not only that it didn't finish`
+224. `BAD-818 Idle recovery's guarded send ports are start primitives of the pause-all starter table: boundary compaction asks no chat to compact while paused and sweeps at resume-all; an agent guard's loop note that would start a turn waits for resume-all, one into a running turn and every stop still go`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

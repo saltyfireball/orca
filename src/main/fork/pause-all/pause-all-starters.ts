@@ -3,7 +3,8 @@
 // caller is told why. skipped: recorded with the reason and not caught up. allowed: runs, for the
 // reason given (a person asked, or the work is already running). `pause-all-starters.test.ts` reads
 // the code against this table: each gate's calls must be where it says, and each call of a start
-// primitive must belong to a row here (`pause-all-start-sites.ts`).
+// primitive must belong to a row here (`pause-all-start-sites.ts`). The gate functions and the
+// start primitives are listed in `pause-all-start-primitives.ts`.
 
 export type PauseAllAnswer = 'held' | 'refused' | 'skipped' | 'allowed'
 
@@ -25,35 +26,6 @@ export type PauseAllStarter = {
  *  `call` the call there that installs or reaches the starter; or the starter does not run on orcad,
  *  and `start`, the call that starts it, is made by no file orcad loads. */
 export type PauseAllOrcadReach = { from: string; call: string } | { notRun: string; start: string }
-
-/** The functions that read the switch for a gate; a call of any counts toward its file's gates. */
-export const PAUSE_ALL_GATE_FUNCTIONS = [
-  'isForkPauseAllEngaged',
-  'forkPauseAllRefusal',
-  'forkRefuseTerminalWorkerWhilePaused',
-  'assertForkPauseAllAllowsTerminalWorkerStart',
-  'forkPauseAllSkipsScheduledRun',
-  'forkPauseAllHoldsRoomHandOff',
-  'forkPauseAllHoldsBotMail',
-  'forkPauseAllRefusesConnectorTurn',
-  'forkPauseAllHoldsLimitHandoff'
-] as const
-
-/** Calls that start agent work: a conversation, a launch, a room turn, an event run, a hand-off,
- *  a connector turn, a chat handoff or a legacy attach. */
-export const PAUSE_ALL_START_PRIMITIVES = [
-  'startConversation',
-  'executeAgentLaunch',
-  'deliverTurn',
-  'runForEvent',
-  'handOffGroupMentions',
-  'seam.start',
-  'seam.send',
-  'forkChatHandoffService',
-  'launchFederatedWorkerAgent'
-] as const
-
-export type PauseAllStartPrimitive = (typeof PAUSE_ALL_START_PRIMITIVES)[number]
 
 export const PAUSE_ALL_PERSON_STARTER = 'person'
 const PERSON = PAUSE_ALL_PERSON_STARTER
@@ -263,6 +235,24 @@ export const PAUSE_ALL_STARTERS: readonly PauseAllStarter[] = [
       { file: 'src/main/fork/letters/letters-service.ts', calls: 1 }
     ],
     orcad: { from: 'src/main/fork/runtime-settle-hooks.ts', call: 'startForkLetters' }
+  },
+  {
+    id: 'boundary-compaction',
+    starter: 'Boundary compaction: /compact sent to an idle chat past its threshold',
+    answer: 'held',
+    reason:
+      'A run asks no chat to compact, and one engaged mid-run stops before it asks; nothing is marked tried, so releasing the switch runs one at once and the rule decides again.',
+    gates: [{ file: 'src/main/fork/boundary-compaction/boundary-compaction-service.ts', calls: 2 }],
+    orcad: { from: 'src/main/fork/headless-host.ts', call: 'startForkBoundaryCompactionService' }
+  },
+  {
+    id: 'agent-guards',
+    starter: "Agent guards' loop warning to a chat or terminal agent",
+    answer: 'held',
+    reason:
+      "A warning goes into a running turn, which the guard's stop after it needs; one that would start a turn (the agent at rest, or not seen in a turn) waits and goes once at resume-all while its loop is still the newest. Stops always go: they end work.",
+    gates: [{ file: 'src/main/fork/agent-guards/agent-guards-act.ts', calls: 2 }],
+    orcad: { from: 'src/main/fork/runtime-settle-hooks.ts', call: 'startForkAgentGuards' }
   },
   {
     id: 'legacy-attach',

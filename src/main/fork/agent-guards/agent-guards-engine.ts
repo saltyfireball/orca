@@ -2,16 +2,15 @@
 // ledger and the saved records all passed in. The service wires it to this process.
 // - Loop: each finished tool call goes through `stepAgentGuardLoop`. `warn` sends the fixed note
 //   once per episode (recorded only once delivered); `pause` interrupts the agent, records the
-//   pause, lists it in the Decision inbox and tells the notify targets.
+//   pause, lists it in the Decision inbox and tells the notify targets. A warning Pause all held
+//   (BAD-818) goes once at resume-all.
 // - Spend: at each turn end of a chat with a cap, its estimated spend since the cap began (or
 //   since its last resume) is read; at or past the cap the chat is paused there, between turns.
 // - Held: a paused chat that starts a turn another agent asked for (mail) is stopped at once; a
 //   turn a person started lifts the pause. A paused terminal agent is left as the interrupt left it.
 import {
-  AGENT_GUARD_LOOP_MESSAGE,
   agentGuardLabel,
   newAgentGuardLoopTrack,
-  noteAgentGuardWarned,
   stepAgentGuardLoop,
   type AgentGuardEntry,
   type AgentGuardLoopTrack,
@@ -26,6 +25,7 @@ import {
   type AgentGuardWarned
 } from './agent-guards-entries'
 import { enforceAgentGuardSpend } from './agent-guards-enforce'
+import { agentGuardWarnings, type AgentGuardWarnings } from './agent-guards-warning'
 import { AgentGuardLimits } from './agent-guards-limits'
 import {
   AgentGuardLanes,
@@ -54,11 +54,18 @@ export class AgentGuardEngine {
   private readonly seen = new Map<string, Set<string>>()
   private readonly meta = new Map<string, AgentGuardAgentMeta>()
   private readonly lanes = new AgentGuardLanes()
+  private readonly warnings: AgentGuardWarnings
   /** The caps that cover each agent: Run caps and automation caps are read and set here. */
   readonly caps: AgentGuardLimits
 
   constructor(private readonly deps: AgentGuardEngineDeps) {
     this.caps = new AgentGuardLimits(deps, (id, meta) => this.record(id, meta ?? this.metaOf(id)))
+    this.warnings = agentGuardWarnings(
+      deps,
+      this.warned,
+      (id, task) => this.lane(id, task),
+      (id) => (this.deps.settings().loop && !this.isPaused(id) ? this.tracks.get(id) : undefined)
+    )
   }
 
   /** The ids the fork's automatic senders leave alone. */
@@ -133,20 +140,7 @@ export class AgentGuardEngine {
       this.deps.changed()
     }
     if (action.kind === 'warn') {
-      const sent =
-        meta.kind === 'chat'
-          ? await this.deps.ports.warnChat(id, AGENT_GUARD_LOOP_MESSAGE)
-          : await this.deps.ports.warnTerminal(id, meta.agent, AGENT_GUARD_LOOP_MESSAGE)
-      if (sent !== 'refused') {
-        // A send that may have arrived counts as sent: the note never goes twice.
-        noteAgentGuardWarned(track, action, this.deps.now())
-        this.warned.set(id, {
-          since: this.deps.now(),
-          repeats: action.count,
-          tool: agentGuardLabel(action.tool)
-        })
-        this.deps.changed()
-      }
+      await this.warnings.send(id, meta, track, action)
       return
     }
     if (action.kind === 'pause') {

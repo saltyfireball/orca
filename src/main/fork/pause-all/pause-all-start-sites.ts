@@ -1,10 +1,8 @@
 // Pause all (BAD-818, FORK.md "Pause all"): each call of a start primitive outside tests, and the
 // row of `PAUSE_ALL_STARTERS` it belongs to, one entry per call. `pause-all-starters.test.ts` fails
 // when the code calls a primitive somewhere this list does not name.
-import {
-  PAUSE_ALL_PERSON_STARTER as PERSON,
-  type PauseAllStartPrimitive
-} from './pause-all-starters'
+import type { PauseAllStartPrimitive } from './pause-all-start-primitives'
+import { PAUSE_ALL_PERSON_STARTER as PERSON } from './pause-all-starters'
 
 const M = 'src/main/'
 const SITES: readonly [file: string, primitive: PauseAllStartPrimitive, starter: string][] = [
@@ -21,11 +19,29 @@ const SITES: readonly [file: string, primitive: PauseAllStartPrimitive, starter:
   [`${M}connector-cloud/connector-cloud-install.ts`, 'seam.send', 'pr-waker'],
   [`${M}connector-cloud/connector-deliveries.ts`, 'seam.start', 'connector-turns'],
   [`${M}connector-cloud/connector-deliveries.ts`, 'seam.send', 'connector-turns'],
+  [`${M}fork/agent-guards/agent-guards-act.ts`, 'idleRecoveryTerminalPort', 'agent-guards'],
+  [
+    `${M}fork/boundary-compaction/boundary-compaction-host.ts`,
+    'idleRecoveryChatPort',
+    'boundary-compaction'
+  ],
   [`${M}fork/bot-room-hops/bot-room-hop-inbox.ts`, 'handOffGroupMentions', PERSON],
+  [`${M}fork/chat-handoff/chat-handoff-host.ts`, 'idleRecoveryChatPort', 'limit-handoff'],
   [`${M}fork/chat-handoff/chat-handoff-on-limit.ts`, 'forkChatHandoffService', 'limit-handoff'],
+  [`${M}fork/goal-loop/goal-send.ts`, 'idleRecoveryPorts', 'goal-steps'],
+  [`${M}fork/idle-recovery/idle-recovery-ports.ts`, 'idleRecoveryChatPort', 'idle-recovery'],
+  [`${M}fork/idle-recovery/idle-recovery-ports.ts`, 'idleRecoveryTerminalPort', 'idle-recovery'],
+  [`${M}fork/idle-recovery/idle-recovery-wake.ts`, 'idleRecoveryPorts', 'idle-recovery'],
+  [`${M}fork/idle-recovery/idle-recovery-wake.ts`, 'idleRecoveryPorts', 'idle-recovery'],
+  [`${M}fork/letters/letters-deps.ts`, 'idleRecoveryChatPort', 'letters'],
+  [`${M}fork/letters/letters-deps.ts`, 'idleRecoveryTerminalPort', 'letters'],
+  [`${M}fork/limit-resume/limit-resume-host.ts`, 'idleRecoveryTerminalPort', 'limit-resume'],
+  [`${M}fork/limit-resume/limit-resume-service.ts`, 'idleRecoveryChatPort', PERSON],
   [`${M}fork/own-pr-loop/own-pr-loop-guard.ts`, 'runForEvent', 'automations'],
   [`${M}fork/own-pr-loop/own-pr-loop-guard.ts`, 'runForEvent', 'automations'],
   [`${M}fork/pause-all/pause-all-room-release.ts`, 'handOffGroupMentions', 'room-handoffs'],
+  [`${M}fork/pr-babysit/pr-babysit-hooks.ts`, 'idleRecoveryChatPort', 'pr-babysit'],
+  [`${M}fork/pr-nudge/pr-nudge-hooks.ts`, 'idleRecoveryChatPort', 'pr-nudge'],
   [`${M}google/google-trigger-checker.ts`, 'runForEvent', 'automations'],
   [
     `${M}runtime/integrations/automations/runtime-automation-controller.ts`,

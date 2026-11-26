@@ -4,7 +4,8 @@
 // (`startForkBackoffTimer`) backs off; it starts over when `forkBoundaryCompactMode` changes.
 // With the mode on, each run looks at the chats whose agent runs here and asks at most the ones
 // the rule in `src/shared/fork/boundary-compaction.ts` allows to compact, once per turn ending.
-// It does not depend on idle recovery being on. Keep electron out of this file.
+// It does not depend on idle recovery being on. While Pause all is on (BAD-818) a run asks no chat
+// to compact (a compaction is a turn); releasing it runs one at once. Keep electron out of this file.
 import { randomUUID } from 'node:crypto'
 import {
   boundaryCompactionEndingKey,
@@ -30,6 +31,7 @@ import {
   type ForkUsageLedgerSettings
 } from '../../../shared/fork/usage-ledger'
 import { startForkBackoffTimer } from '../fork-backoff-timer'
+import { isForkPauseAllEngaged, onForkPauseAllChanged } from '../pause-all/pause-all-state'
 import { limitResumeWatchesDrafts } from '../../../shared/fork/limit-resume'
 import { forkUsageLedgerCacheStates } from '../usage-ledger/usage-ledger-service'
 import {
@@ -106,6 +108,7 @@ export function createBoundaryCompactionService(
   let windowless: () => boolean = () => false
   const storesWatched = new WeakSet<object>()
   let stopTimer: (() => void) | null = null
+  let stopPauseAll: (() => void) | null = null
   let running = false
   /** The turn ending each chat was last asked to compact for. */
   const tried = new Map<string, string>()
@@ -224,6 +227,10 @@ export function createBoundaryCompactionService(
         outcomes.set(sessionId, 'working')
         continue
       }
+      // Engaged during this run: nothing is tried, so resume-all asks it again.
+      if (isForkPauseAllEngaged()) {
+        return
+      }
       // Remembered before the send, so an attempt that fails is not made twice for one ending.
       tried.set(sessionId, boundaryCompactionEndingKey(journal))
       const outcome = await deps.host.compact(
@@ -250,7 +257,7 @@ export function createBoundaryCompactionService(
       forget()
       return false
     }
-    if (running) {
+    if (running || isForkPauseAllEngaged()) {
       return true
     }
     running = true
@@ -277,11 +284,18 @@ export function createBoundaryCompactionService(
       if (!stopTimer) {
         startTimer()
       }
+      stopPauseAll ??= onForkPauseAllChanged((state) => {
+        if (!state.engaged && stopTimer) {
+          void sweep()
+        }
+      })
     },
 
     stop(): void {
       stopTimer?.()
       stopTimer = null
+      stopPauseAll?.()
+      stopPauseAll = null
     },
 
     sweep,

@@ -5,6 +5,9 @@
 //   queued messages as the Stop button does.
 // - A terminal agent's warning is typed like orchestration mail, only when no dialog or draft is
 //   up; it is paused with Esc, only on proof that the agent (not a shell) reads the terminal.
+// - While Pause all is on (BAD-818) a warning goes only into a running turn: one that would start
+//   a turn (the agent at rest, or its state unknown) is 'held', and the engine sends it at
+//   resume-all. Stops always go.
 // Keep electron out of this file: the headless server bundles it too.
 import { randomUUID } from 'node:crypto'
 import { isTuiAgent } from '../../../shared/agent-launch/catalog/tui-agent-config'
@@ -18,11 +21,13 @@ import { forkStopChatTurn } from '../chat-host-turn-stop'
 import { readChatJournalTail } from '../chat-journal-tail'
 import { idleRecoveryTerminalPort } from '../idle-recovery/idle-recovery-ports'
 import type { LimitResumeRuntime } from '../limit-resume/limit-resume-host'
+import { isForkPauseAllEngaged, onForkPauseAllChanged } from '../pause-all/pause-all-state'
 
 const CALLER_KEY = 'trusted-local:fork-agent-guards'
 const CHAT_SEND_BUDGET_MS = 20_000
 
-export type AgentGuardSendOutcome = 'sent' | 'refused' | 'unknown'
+/** held: Pause all keeps a warning that would start a turn until resume-all. */
+export type AgentGuardSendOutcome = 'sent' | 'refused' | 'unknown' | 'held'
 
 export type AgentGuardActPorts = {
   /** Null when this host has no such chat. */
@@ -34,21 +39,27 @@ export type AgentGuardActPorts = {
   warnTerminal: (paneKey: string, agent: string, text: string) => Promise<AgentGuardSendOutcome>
   /** True when Esc went to the agent. */
   stopTerminal: (paneKey: string, agent: string) => Promise<boolean>
+  /** Calls `listener` each time Pause all is released; resolves its unsubscribe. */
+  onPauseAllReleased?: (listener: () => void) => () => void
 }
 
 export function liveAgentGuardActPorts(
   runtime: () => LimitResumeRuntime | null
 ): AgentGuardActPorts {
   const terminal = idleRecoveryTerminalPort(runtime)
+  const chatInTurn = (sessionId: string): boolean | null => {
+    const host = getStructuredAgentSessionHost()
+    if (!host?.deps.store.getRecord(sessionId)) {
+      return null
+    }
+    const summary = host.readStatusSummary(sessionId)
+    return chatStatusInTurn(summary?.status) || summary?.hostExecutionPhase === 'starting'
+  }
+  // Pause all (BAD-818): a chat not seen in a turn would take the warning as a new turn.
+  const chatHeld = (sessionId: string): boolean =>
+    isForkPauseAllEngaged() && chatInTurn(sessionId) !== true
   return {
-    chatInTurn: (sessionId) => {
-      const host = getStructuredAgentSessionHost()
-      if (!host?.deps.store.getRecord(sessionId)) {
-        return null
-      }
-      const summary = host.readStatusSummary(sessionId)
-      return chatStatusInTurn(summary?.status) || summary?.hostExecutionPhase === 'starting'
-    },
+    chatInTurn,
     chatTail: async (sessionId) => {
       const host = getStructuredAgentSessionHost()
       return host ? (await readChatJournalTail(host, sessionId)).items : []
@@ -71,12 +82,21 @@ export function liveAgentGuardActPorts(
             operationId: `${String(Date.now()).padStart(13, '0')}-${randomUUID().replaceAll('-', '')}`,
             expectedRuntimeFence: record.lease.runtimeFence,
             // Into the running turn, where the agent is retrying; a chat at rest takes it as a turn.
-            delivery: 'now'
+            delivery: 'now',
+            // Checked at admission, so a chat that came to rest meanwhile is held too.
+            beforeRun: () => {
+              if (chatHeld(sessionId)) {
+                throw new AgentSessionPreDispatchError('fork_pause_all_held')
+              }
+            }
           }
         })
         return outcome.kind === 'refused' ? 'refused' : 'sent'
       } catch (error) {
-        return error instanceof AgentSessionPreDispatchError ? 'refused' : 'unknown'
+        if (!(error instanceof AgentSessionPreDispatchError)) {
+          return 'unknown'
+        }
+        return chatHeld(sessionId) ? 'held' : 'refused'
       }
     },
     stopChat: async (sessionId) => {
@@ -89,18 +109,21 @@ export function liveAgentGuardActPorts(
       if (!live || !bound) {
         return 'refused'
       }
+      // Pause all (BAD-818): typed in only while the agent is seen in a turn.
+      const held = async (): Promise<boolean> =>
+        isForkPauseAllEngaged() && (await terminal.refusal(paneKey, bound.handle)) !== 'in-turn'
       // The gate orchestration mail uses: never typed over a dialog or a draft.
       const clear = async (): Promise<boolean> => {
         try {
-          return live.readTerminalMailHold(bound.handle) === null
+          return live.readTerminalMailHold(bound.handle) === null && !(await held())
         } catch {
           return false
         }
       }
-      if (!(await clear())) {
-        return 'refused'
+      const outcome = (await clear()) ? await terminal.send(bound, agent, text, clear) : 'refused'
+      if (outcome === 'refused' && (await held())) {
+        return 'held'
       }
-      const outcome = await terminal.send(bound, agent, text, clear)
       return outcome === 'queued' ? 'sent' : outcome
     },
     stopTerminal: async (paneKey, agent) => {
@@ -131,6 +154,12 @@ export function liveAgentGuardActPorts(
       } finally {
         guard.dispose()
       }
-    }
+    },
+    onPauseAllReleased: (listener) =>
+      onForkPauseAllChanged((state) => {
+        if (!state.engaged) {
+          listener()
+        }
+      })
   }
 }
