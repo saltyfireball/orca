@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Why: upstream keeps this file at the 300-line limit, and the fork's completion-contract gate (FORK.md, BAD-676) adds one import and the done check beside the reply it settles. */
 import { defineOrchestrationMethod } from '../access/orchestration-method-access'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import { isGroupAddress } from '../../../../orchestration/addressing/groups/group-addressing'
@@ -25,8 +26,9 @@ import { withDispatchPrefixHint } from './dispatch-prefix-hint'
 import { sendPointToPointMessage } from './send-point-to-point'
 import { sendGroupMessage } from './send-group'
 import { sendFederatedControlMail } from '../../../../orchestration/legacy-remote-home/send-control-mail'
-import { sendSenderIdentity } from './send-sender-identity'
+import { orchestrationCallerIdentity } from '../runs/run-scope'
 import { assertLifecycleCallerIsNotAnotherParty } from './lifecycle-caller-fence'
+import { resolveWorkerReporterIdentity } from '../../../../orchestration/workers/reports/reminted-worker-reporter'
 import {
   assertFollowUpForItem,
   planWorkerFollowUp,
@@ -61,6 +63,7 @@ export const ORCHESTRATION_SEND_METHODS = [
         runtime,
         legacyCoordinatorRunId,
         revalidateLegacyCoordinator,
+        orchestrationCompatibilityCallerAuthority,
         recordMutationReceipt,
         markWorkerDoneMutationEffectFree,
         orchestrationCaller,
@@ -70,7 +73,17 @@ export const ORCHESTRATION_SEND_METHODS = [
       } = context
       const db = runtime.getOrchestrationDb()
       const from = params.from ?? 'unknown'
-      const { attestedCaller, sender } = sendSenderIdentity(runtime, from, context)
+      const reporter = resolveWorkerReporterIdentity(runtime, db, {
+        from,
+        authority: orchestrationCompatibilityCallerAuthority,
+        hasSessionCaller: Boolean(orchestrationCaller),
+        evidence: orchestrationCompatibilityEvidence
+      })
+      const sender = orchestrationCallerIdentity(runtime, {
+        handle: from,
+        session: orchestrationCaller,
+        paneKey: reporter.paneKey
+      })
       const senderPaneKey = sender.paneKey ?? undefined
       // Why: a session caller was already bound to its own identity at the dispatch entry.
       if (isDispatchMutationMessageType(params.type) && !orchestrationCaller) {
@@ -80,10 +93,7 @@ export const ORCHESTRATION_SEND_METHODS = [
           evidence: orchestrationCompatibilityEvidence
         })
       }
-      const processIncarnation = () =>
-        attestedCaller?.processIncarnation ??
-        runtime.getTerminalProcessIncarnation(from) ??
-        undefined
+      const processIncarnation = () => reporter.processIncarnation() ?? undefined
       const remoteAttachment = senderPaneKey
         ? db.findActiveRemoteAttachmentForPane(senderPaneKey)
         : undefined
@@ -100,7 +110,7 @@ export const ORCHESTRATION_SEND_METHODS = [
         })
       }
 
-      refuseFinishedRemoteWorker(db, senderPaneKey, params.to)
+      refuseFinishedRemoteWorker(db, { address: from, paneKey: senderPaneKey }, params.to)
       const runGroup =
         params.to && isGroupAddress(params.to) && !params.to.toLowerCase().startsWith('@worktree:')
       // Run groups validate their own audience; message scope cannot select a parent Dispatch.

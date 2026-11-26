@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Why: upstream keeps this file at the 400-line limit, and the fork's hooks (FORK.md) add a few lines to the one landing refresh. */
 import type { TaskPageGitHubLandingRefreshModel } from './task-page-github-landing-refresh-model'
 import { stripRepoQualifiers } from '../../../../../../shared/work-items/task-query'
 import { useAppStore } from '@/store/index'
@@ -8,7 +9,7 @@ import {
 import type { GitHubWorkItem } from '../../../../../../shared/github/work-items/work-item-types'
 import { getTaskPageRepoSourceContext } from '../../../../lib/work-items/task-repo-source-context'
 import { getTaskPageGitHubRepoArgs } from '@/components/task-page/task-page-source-context'
-import { sortWorkItemsByNumber } from '../../../../../../shared/work-items/work-item-order'
+import { sortWorkItemsByRecency } from '../../../../../../shared/work-items/work-item-order'
 import { taskPageToGitHubApiPage } from '../../../../../../shared/work-items/work-item-pagination'
 import {
   materializeTaskPageItemList,
@@ -138,7 +139,9 @@ export function runTaskPageGitHubLandingRefresh(model: TaskPageGitHubLandingRefr
   }
   // Why: page-one metadata and the restored numbered page have independent lifecycles.
   const page0Raw =
-    preMerged.length > 0 ? sortWorkItemsByNumber(preMerged).slice(0, githubPageSize) : []
+    preMerged.length > 0
+      ? sortWorkItemsByRecency(preMerged, (item) => item).slice(0, githubPageSize)
+      : []
   // Why: pre-paint must still overlay in-flight mutations (K4/K18).
   const landingPages: (GitHubWorkItem[] | null)[] = Array.from(
     {

@@ -5,7 +5,10 @@ import {
   compareAppVersions,
   isValidAppVersion
 } from '../../shared/app-lifecycle/identity/app-version'
-import { isAntigravityGeminiModel } from '../acp/acp-dialects/antigravity-dialect'
+
+export function isAntigravityGeminiModel(model: string): boolean {
+  return /^gemini\b/i.test(model.trim())
+}
 
 /** The first agy that offers every model to any client. */
 export const AGY_ALL_MODELS_MINIMUM_VERSION = '1.5.1'

@@ -26,6 +26,7 @@ import {
 } from './remote-placements'
 import { recordMessageSenderDispatch } from '../messages/message-sender-dispatch'
 import { forkTakeRemoteResult } from '../../../../fork/completion-contract/result-schema-live'
+import { workerReportSignInMessage } from '../../workers/launch/worker-agent-computer-words'
 import {
   closeRemoteRunLink,
   getRemoteRunLink,
@@ -192,12 +193,17 @@ function importWorkerMail(
     from: mail.message.from,
     body: mail.message.body
   })
+  // The server can only say "this computer"; here it has the name this Orca paired it under.
+  const signIn = workerReportSignInMessage(
+    mail.message.payload,
+    link.server_name ?? link.environment_id
+  )
   db.insertMessage({
     id: mail.id,
     from: presented.from,
     to,
     subject: mail.message.subject,
-    body: presented.body,
+    body: signIn ? `${signIn}\n${presented.body}` : presented.body,
     type: mail.message.type,
     priority: mail.message.priority,
     threadId: mail.message.threadId ?? undefined,

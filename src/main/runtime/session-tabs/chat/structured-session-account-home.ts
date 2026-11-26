@@ -63,10 +63,18 @@ export abstract class OrcaRuntimeWithStructuredSessionAccountHome extends OrcaRu
     purpose: 'read' | 'identity' = 'read'
   ): Promise<AgentSessionAccountHome | null> {
     const { provider, location } = record
-    if (!structuredAgentRuntimeMetadata(provider)?.launchFollowsSelection?.()) {
+    const metadata = structuredAgentRuntimeMetadata(provider)
+    // A chat with no conversation yet starts wherever the selection now points (its catalog read).
+    const beforeFirstTurn =
+      metadata?.followsSelectionBeforeFirstTurn === true && record.providerHandleChain.length === 0
+    if (!metadata?.launchFollowsSelection?.() && !beforeFirstTurn) {
       return null
     }
-    const read = this.structuredAgentAccountHomeResolver(provider, '', purpose)
+    const read = this.structuredAgentAccountHomeResolver(
+      provider,
+      '',
+      beforeFirstTurn ? 'catalog' : purpose
+    )
     const launchEnv = this.structuredAgentLaunchEnv(provider, this.requireStore().getSettings())
     // SLRM-1503: a moved chat reads its pin, so the stock outgrown-child check moves it (FORK.md).
     const pinned = forkPinnedClaudeAccountHome(record, launchEnv)

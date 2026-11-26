@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Why: upstream keeps this file at the 300-line limit, and the fork's hooks (FORK.md) add a few lines to the one federated call path. */
 import type { RuntimeTerminalCreate } from '../../../../shared/terminal/runtime/runtime-terminal-create-contract'
 import { waitForWorkerAgentReady } from '../../terminal/wait/launched-agent-composer-readiness'
 import { agentStartupBlockedMessage } from '../../terminal/wait/agent-startup-blocked-message'
@@ -35,6 +36,7 @@ import { resolveRpcWorkspaceCreatorProvenance } from '../../rpc/callers/workspac
 import { forkStoreDoneContract } from '../../../fork/completion-contract/completion-gate-live'
 import { forkPinAttachedReviewer } from '../../../fork/reviewer-gate/reviewer-gate-live'
 import { claimTerminalForRemoteAttach } from '../db/worker-dispatch/worker-terminal-claim'
+import { refuseUninstalledWorkerAgent } from '../../rpc/methods/orchestration/worker/start/launch/worker-agent-host-preflight'
 
 export const ORCHESTRATION_FEDERATION_ATTACH_METHODS = [
   defineOrchestrationMethod({
@@ -86,6 +88,15 @@ export const ORCHESTRATION_FEDERATION_ATTACH_METHODS = [
           })
         )
       }
+      // The same installed-agent check as every start, before anything is created here.
+      await refuseUninstalledWorkerAgent(runtime, {
+        agent,
+        terminal: params.terminal,
+        repoSelector: createsWorktree
+          ? params.repo
+          : (await runtime.showManagedTerminalWorkspace(params.worktree).catch(() => undefined))
+              ?.repoId
+      })
 
       // Fork (BAD-818): a start that would launch a terminal agent is refused while paused, before
       // any effect; `--terminal` reusing a running agent is a message, not a launch.
@@ -260,7 +271,7 @@ export const ORCHESTRATION_FEDERATION_ATTACH_METHODS = [
               // Enforce the execution host's nesting cap using its own setting.
               canDispatchSubWorkers: (params.depth ?? 1) < runtime.getNestedWorkerMaxDepth(),
               subWorkersInOwnRun: true,
-              cliCommand: runtime.getTerminalOrchestrationCliCommand(terminalHandle)
+              ...runtime.getTerminalOrchestrationCliTarget(terminalHandle)
             })
           }
         }).finally(() => briefGuard?.dispose())

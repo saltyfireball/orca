@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Why: upstream keeps this file at the 300-line limit, and the fork's hooks (FORK.md) add a few lines to the one federated start. */
 import type { FederatedWorkerStartRequest } from './federated-worker-start-request'
 import { isTuiAgent } from '../../../../shared/agent-launch/catalog/tui-agent-config'
 import type { RuntimeStatus } from '../../../../shared/remote-runtime/session-graph/runtime-session-contracts'
@@ -260,7 +261,9 @@ export async function startFederatedWorker(args: FederatedWorkerStartRequest): P
           : {
               name: server.name,
               dispatchId: started.dispatch.id,
-              cli: params.from ? runtime.getTerminalOrchestrationCliCommand(params.from) : 'orca'
+              cli: params.from
+                ? runtime.getTerminalOrchestrationCliTarget(params.from).cliCommand
+                : 'orca'
             }
       )
     } else if (remote.state === 'outcome_unknown') {

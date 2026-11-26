@@ -46,6 +46,7 @@ import { PAIR_COMMAND_SPECS } from './pair'
 import { PLUGIN_VIEW_COMMAND_SPECS } from './plugin-view'
 import { PLUGIN_INSTALL_COMMAND_SPECS } from './plugin-install'
 import { WORKSPACE_CLEANUP_COMMAND_SPECS } from './workspace-cleanup'
+import { MCP_COMMAND_SPECS } from './mcp'
 // SLRM-1503: orca account which / move (FORK.md).
 import { FORK_ACCOUNT_MOVE_COMMAND_SPECS } from '../fork/account-move-specs'
 import { FORK_LOST_WORK_COMMAND_SPECS } from '../fork/lost-work-specs'
@@ -116,6 +117,7 @@ export const COMMAND_SPECS: CommandSpec[] = withForkDoneContractFlags(
           ...ORCHESTRATION_COMMAND_SPECS.map(withFullRecordFlag),
           ...COMPUTER_COMMAND_SPECS,
           ...AGENT_HOOK_COMMAND_SPECS,
+          ...MCP_COMMAND_SPECS,
           ...AGENT_LAUNCH_COMMAND_SPECS,
           ...AGENT_CONVERSATION_COMMAND_SPECS,
           ...CHAT_COMMAND_SPECS,
