@@ -119,7 +119,7 @@ describe('resolveForkLaunchChoice', () => {
       agent: 'claude',
       source: 'stock'
     })
-    expect(resolveForkLaunchChoice({ settings, kind: 'cli', agent: 'gemini' }).source).toBe('stock')
+    expect(resolveForkLaunchChoice({ settings, kind: 'cli', agent: 'amp' }).source).toBe('stock')
   })
 
   it('falls back to stock with a note when the catalog refuses the default', () => {

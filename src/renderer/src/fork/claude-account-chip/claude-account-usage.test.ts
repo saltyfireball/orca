@@ -31,7 +31,6 @@ function state(overrides: Partial<RateLimitState>): RateLimitState {
   return {
     claude: null,
     codex: null,
-    gemini: null,
     opencodeGo: null,
     kimi: null,
     antigravity: null,

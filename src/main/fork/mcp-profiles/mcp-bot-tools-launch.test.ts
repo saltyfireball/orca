@@ -15,7 +15,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { openClaudeStreamJsonConnection } from '../../claude/claude-stream-json-connection'
 import { claudeBotSessionOptions } from '../../claude/structured/launch/claude-bot-session-options'
-import { BotLaunchTools } from '../../bots/bot-launch-tools'
+import { SessionMcpTools } from '../../mcp-servers/session-mcp-tools'
 import type { BotToolServer } from '../../../shared/bot-tools'
 import { claudeSignInFolder, type BotToolsCli } from '../../bots/bot-tools-host'
 import { scrubClaudeToolMirror } from '../../bots/bot-tool-secret-scrub'
@@ -89,10 +89,10 @@ async function launch(
   writeFileSync(claude, `#!/bin/sh\nexec "${process.execPath}" "${script}" "$@"\n`)
   chmodSync(claude, 0o755)
   const out = join(dir, `record-${Math.random().toString(16).slice(2)}.json`)
-  const tools = await BotLaunchTools.for(
+  const tools = await SessionMcpTools.for(
     { grant: async () => ({ origin: 'http://127.0.0.1:9', token: 'relay-token' }) },
-    { botId: 'bot-1', folder: dir, agent: 'claude' },
-    [STDIO, RELAYED]
+    { bot: { botId: 'bot-1', folder: dir }, agent: 'claude' },
+    { own: [STDIO, RELAYED] }
   )
   const bot = await claudeBotSessionOptions({ instructions: async () => null }, [], tools, {
     mcpConfig

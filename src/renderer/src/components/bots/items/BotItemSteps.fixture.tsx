@@ -136,7 +136,7 @@ function AskWithSteps(): React.JSX.Element {
         bot={fixtureCos}
         item={askItem}
         events={askEvents}
-        quickReplies={{ send: () => {}, edit: () => {}, recover: () => {}, type: () => {} }}
+        quickReplies={{ send: () => {}, edit: () => {}, restore: () => false, type: () => {} }}
         steps={<BotItemSteps view={askView} onMark={mark} terminalFor={open} />}
       />
     </div>

@@ -48,11 +48,11 @@ export const FORK_SETTINGS_ROWS_AGENTS = {
   antigravityChatAuth:
     '{"t":{"k":"union","of":[{"k":"object","fields":{"method":{"k":"enum","values":["oauth-personal"]},"gcpProject":{"k":"string","optional":true},"gcpLocation":{"k":"string","optional":true}}},{"k":"object","fields":{"method":{"k":"enum","values":["oauth-business"]},"gcpProject":{"k":"string"},"gcpLocation":{"k":"string"}}},{"k":"object","fields":{"method":{"k":"enum","values":["gemini-api-key"]},"gcpProject":{"k":"string","optional":true},"gcpLocation":{"k":"string","optional":true}}},{"k":"object","fields":{"method":{"k":"enum","values":["agent-platform"]},"gcpProject":{"k":"string","optional":true},"gcpLocation":{"k":"string","optional":true}}}]},"d":"How Antigravity chat signs in; set through its account setup.","o":true}',
   antigravityGoogleSignIn:
-    '{"t":{"k":"enum","values":["agy","auto","orca"]},"d":"How chats on the Google account method sign in: agy\'s own login, or Orca\'s built-in sign-in on Google\'s ACP server. Absent or \'auto\': the server where Orca\'s sign-in is already in use, else agy.","o":true}',
+    '{"t":{"k":"enum","values":["agy","auto","orca"]},"d":"No longer read: Google-account chats always use agy\'s own login. Kept so older clients\' updates of this host-owned key are still accepted.","o":true}',
   antigravityManagedAgyEnabled:
-    '{"t":{"k":"boolean"},"d":"Main-side kill switch for Orca\'s copy of agy. Off, it runs no chat and isn\'t updated: new chats use the user\'s own signed-in agy or Orca\'s server, and chats already on agy run the user\'s own agy (same history) or, where there is none, refuse as agy not found. Absent means on.","o":true}',
+    '{"t":{"k":"boolean"},"d":"Main-side kill switch for Orca\'s copy of agy. Off, it runs no chat and isn\'t updated: chats run the user\'s own agy or, where there is none, refuse as agy not found. Absent means on.","o":true}',
   antigravityServerAutoUpdateEnabled:
-    '{"t":{"k":"boolean"},"d":"Kill switch for Orca updating its installed Antigravity ACP server by itself when a newer Orca pins a newer release. Off, the older server keeps running until Update in Settings, and an automatic download in flight stops. Host-owned: each host (desktop, SSH, WSL) reads its own value; there is no UI. Separate from antigravityManagedAgyEnabled: with that off, chats run on this server. Absent means on.","o":true}',
+    '{"t":{"k":"boolean"},"d":"No longer read: Orca\'s Antigravity ACP server is retired. Kept so older clients\' updates of this host-owned key are still accepted.","o":true}',
   claudeAccountSwitchRunningSessions:
     '{"t":{"k":"enum","values":["ask","keep","restart"]},"d":"Absent means \'ask\'.","o":true}',
   claudeAgentTeamsDefaultDisabledMigrated:
@@ -84,13 +84,11 @@ export const FORK_SETTINGS_ROWS_AGENTS = {
   computerAwakeMode:
     '{"t":{"k":"enum","values":["auto","off","on"]},"d":"Optional for mixed-version compatibility; the legacy boolean maps true to Auto.","o":true}',
   defaultTuiAgent:
-    '{"t":{"k":"enum","values":["aider","amp","ante","antigravity","aug","autohand","blank","claude","claude-agent-teams","cline","codebuddy","codebuff","codex","command-code","continue","copilot","crush","cursor","devin","droid","dsh","freebuff","gemini","goose","grok","hermes","jcode","kilo","kimi","kiro","mimo-code","mistral-vibe","muse","omp","openclaude","openclaw","opencode","opencode2","pi","prime-agent","qoder","qoder-cn","qwen-code","rovo","trae","zcode"],"nullable":true},"d":"New-workspace agent: null chooses first detected, blank launches no agent, otherwise select that TuiAgent."}',
+    '{"t":{"k":"enum","values":["aider","amp","ante","antigravity","aug","autohand","blank","claude","claude-agent-teams","cline","codebuddy","codebuff","codex","command-code","continue","copilot","crush","cursor","devin","droid","dsh","freebuff","goose","grok","hermes","jcode","kilo","kimi","kiro","mimo-code","mistral-vibe","muse","omp","openclaude","openclaw","opencode","opencode2","pi","prime-agent","qoder","qoder-cn","qwen-code","rovo","trae","zcode"],"nullable":true},"d":"New-workspace agent: null chooses first detected, blank launches no agent, otherwise select that TuiAgent."}',
   disabledTuiAgents:
-    '{"t":{"k":"array","of":{"k":"enum","values":["aider","amp","ante","antigravity","aug","autohand","claude","claude-agent-teams","cline","codebuddy","codebuff","codex","command-code","continue","copilot","crush","cursor","devin","droid","dsh","freebuff","gemini","goose","grok","hermes","jcode","kilo","kimi","kiro","mimo-code","mistral-vibe","muse","omp","openclaude","openclaw","opencode","opencode2","pi","prime-agent","qoder","qoder-cn","qwen-code","rovo","trae","zcode"]}},"d":"Agents hidden from picker/auto-launch; detection stays a raw PATH snapshot."}',
+    '{"t":{"k":"array","of":{"k":"enum","values":["aider","amp","ante","antigravity","aug","autohand","claude","claude-agent-teams","cline","codebuddy","codebuff","codex","command-code","continue","copilot","crush","cursor","devin","droid","dsh","freebuff","goose","grok","hermes","jcode","kilo","kimi","kiro","mimo-code","mistral-vibe","muse","omp","openclaude","openclaw","opencode","opencode2","pi","prime-agent","qoder","qoder-cn","qwen-code","rovo","trae","zcode"]}},"d":"Agents hidden from picker/auto-launch; detection stays a raw PATH snapshot."}',
   dismissedSkillFreshnessNudges:
     '{"t":{"k":"array","of":{"k":"string"}},"d":"Dismissed freshness tuples: no write authority, just suppress re-nudging the same official placement/revision.","o":true}',
-  geminiCliOAuthEnabled:
-    '{"t":{"k":"boolean"},"d":"Extract OAuth credentials from the local Gemini CLI for rate-limit fetching. Off by default (explicit opt-in)."}',
   keepComputerAwakeWhileAgentsRun:
     '{"t":{"k":"boolean"},"d":"When true, Orca requests local awake assertions while hook-reported agents are working."}',
   localAccountRuntime:

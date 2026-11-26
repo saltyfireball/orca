@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { CanUseTool, HookCallback } from '@anthropic-ai/claude-agent-sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { BotLaunchTools } from '../../bots/bot-launch-tools'
+import { SessionMcpTools } from '../../mcp-servers/session-mcp-tools'
 import { REPLY_ONLY_REFUSAL } from '../../bots/bot-look-around-policy'
 import { claudeBotSessionOptions } from '../../claude/structured/launch/claude-bot-session-options'
 import { buildClaudePermissionCallbacks } from '../../claude/structured/permissions/claude-structured-inbound-control'
@@ -59,7 +59,7 @@ async function readOnly(mode: 'look-around' | 'reply-only'): Promise<RealOptions
   return claudeBotSessionOptions(
     { instructions: async () => null, readOnly: mode },
     [],
-    BotLaunchTools.none,
+    SessionMcpTools.none,
     { mcpConfig: false }
   )
 }

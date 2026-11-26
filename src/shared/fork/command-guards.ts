@@ -153,7 +153,6 @@ const HOOK_SOURCES: Record<AgentHookSource, true> = {
   'qoder-cn': true,
   'qwen-code': true,
   codebuddy: true,
-  gemini: true,
   antigravity: true,
   amp: true,
   opencode: true,
