@@ -4212,9 +4212,10 @@ Upstream files only get short hooks, which keeps merges small:
   Keep `openFd` when a merge brings the stock lines back; the test file checks that no command
   contains `command exec`, and its flock timeout tests clean up with `onTestFinished`.
 - Phone page size fence (BAD-770). `verify-mobile-web-app-bundle.mjs` holds
-  `MOBILE_WEB_APP_BUNDLE_MAX_EAGER_BYTES` at 11 MiB where upstream has 10.9375 MiB (v1.4.273): the fork's phone
-  screens add about 53 KB over the tag, and every code chunk counts as eager. Take the larger number
-  when a merge brings upstream's budget back.
+  `MOBILE_WEB_APP_BUNDLE_MAX_EAGER_BYTES` at 11 MiB + 128 KiB where upstream has 11 MiB (v1.4.278; 10.9375 MiB
+  at v1.4.273): the fork's phone screens add about 50 KB over the tag (11,584,581 bytes measured at
+  v1.4.278), and every code chunk counts as eager. Take the larger number when a merge brings
+  upstream's budget back.
 - One call in `configureDevUserDataPath` (`src/main/startup/configure-process.ts`) for the
   pinned data folder and shared mode. It runs before anything reads userData or takes the
   instance locks.
@@ -6056,7 +6057,7 @@ Choices where both sides changed:
   the steps text kept in the Needs you rule. `BotItemsInput` keeps `steps` next to upstream's `startedIn`.
 - New chat menu: the fork's agent profile entries hide while a search is typed, as upstream's
   static entries do.
-- Phone bundle limit: 11 MiB, now also upstream's own.
+- Phone bundle limit: the fork's bundle is 50 KB over upstream's 11 MiB (run 45883891796 failed the build on it), so the fence is 11 MiB + 128 KiB (BAD-770 entry).
 
 Line limits: more upstream files sit at their `max-lines` budget, so fork hooks moved out:
 

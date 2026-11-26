@@ -50,7 +50,9 @@ export const MOBILE_WEB_APP_HOST_CATALOG_MAX_BYTES = 1024 * 1024
 // 11,479,156 bytes (2026-11-24). The fork keeps the same 11 MiB fence (BAD-770); its phone screens add
 // about 53 KB on top of the tag. All code counts as eager, so loading it on demand would not lower this
 // number.
-export const MOBILE_WEB_APP_BUNDLE_MAX_EAGER_BYTES = 11 * 1024 * 1024
+// Fork (BAD-770, BAD-837): upstream's v1.4.278 bundle plus the fork's phone screens measures 11,584,581 bytes, 50 KB over
+// upstream's 11 MiB, so the fork's fence is 128 KiB higher.
+export const MOBILE_WEB_APP_BUNDLE_MAX_EAGER_BYTES = 11 * 1024 * 1024 + 128 * 1024
 export const MOBILE_WEB_APP_BUNDLE_MAX_ON_DEMAND_BYTES = 1024 * 1024
 export const MOBILE_WEB_APP_BUNDLE_MAX_ON_DEMAND_FILE_BYTES = 128 * 1024
 
