@@ -6,13 +6,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { ANTIGRAVITY_LAUNCH_SPEC } from './antigravity-acp-launch-spec'
 import { antigravityHostAccountHome } from './antigravity-host-acp'
 import { acpClientInfo } from '../acp/launch/acp-client-info'
-import type { AcpLaunchSpec } from '../acp/launch/acp-launch-contract'
-import { readSessionModels } from '../acp/discovery/acp-listing-session-models'
-import type { AcpSessionModelDiscovery } from '../acp/discovery/acp-model-discovery-policy'
 import { createAcpStructuredLaunchResolver } from '../runtime/agent-session/launch/structured-agent-launch-composition.test-support'
 import { agentSessionRecordFixture } from '../native-chat/testing/agent-session-record-test-fixture'
 
-const MANAGED = ANTIGRAVITY_LAUNCH_SPEC
 const AGY = ANTIGRAVITY_LAUNCH_SPEC.hostBackend.spec
 const AGY_ORCA_HOME = ANTIGRAVITY_LAUNCH_SPEC.hostBackend.otherSpecs[0]
 
@@ -23,60 +19,12 @@ afterEach(async () => {
 
 describe('Antigravity handshakes name Orca', () => {
   it.each([
-    ['managed server', MANAGED as AcpLaunchSpec, '1.5.2'],
-    ['managed server, version unknown', MANAGED as AcpLaunchSpec, null],
     ['agy 1.6.0', AGY, '1.6.0'],
     ['agy, version unknown', AGY, null],
     ['agy 1.5.0', AGY, '1.5.0'],
     ['agy on Orca home', AGY_ORCA_HOME, '1.5.5']
   ])('%s', (_name, spec, version) => {
     expect(acpClientInfo(spec, version).name).toBe('orca')
-  })
-})
-
-function listingConnection(modelIds: string[]) {
-  const availableModels = modelIds.map((modelId) => ({ modelId, name: modelId }))
-  return {
-    initialize: async () => ({
-      protocolVersion: 1,
-      agentCapabilities: { sessionCapabilities: { delete: {} } }
-    }),
-    start: async () => ({
-      sessionId: 'listing-1',
-      response: {
-        sessionId: 'listing-1',
-        models: { availableModels, currentModelId: modelIds[0] }
-      }
-    }),
-    setConfigOption: async () => ({ configOptions: [] }),
-    deleteSession: async () => ({}),
-    close: async () => undefined
-  }
-}
-
-describe("managed server's model picker", () => {
-  const discovery = MANAGED.modelDiscovery as AcpSessionModelDiscovery
-
-  it('says why a Google-account listing is Gemini only and names the update', async () => {
-    const { models } = await readSessionModels(
-      MANAGED,
-      discovery,
-      listingConnection(['gemini-3.1-pro', 'gemini-3.5-flash']) as never,
-      '/listing'
-    )
-    expect(models[0].description).toContain('allowlisted editors')
-    expect(models[0].description).toContain('agy 1.5.1 or newer')
-    expect(models[1].description).toBeUndefined()
-  })
-
-  it('adds nothing when other models are listed', async () => {
-    const { models } = await readSessionModels(
-      MANAGED,
-      discovery,
-      listingConnection(['gemini-3.1-pro', 'claude-sonnet-4-6']) as never,
-      '/listing'
-    )
-    expect(models.every((model) => model.description === undefined)).toBe(true)
   })
 })
 

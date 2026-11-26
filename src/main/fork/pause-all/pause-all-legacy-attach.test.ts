@@ -55,6 +55,8 @@ async function attachRequest(): Promise<Record<string, unknown>> {
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the home start reads only these.
   const runtime = {
     getOrchestrationDb: () => db,
+    // Upstream's worker-start checks the agent is installed before any launch.
+    detectProjectLaunchContext: async () => ({ agents: ['claude', 'codex'] }),
     resolveOrchestrationWorkerServer: async () => ({
       environmentId: 'env_1',
       name: 'build-server',
@@ -117,6 +119,8 @@ async function attachOnServer(sent: Record<string, unknown>) {
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the attach handler reads only these before placement.
   const runtime = {
     getOrchestrationDb: () => serverDb,
+    // Upstream's worker-start checks the agent is installed before any launch.
+    detectProjectLaunchContext: async () => ({ agents: ['claude', 'codex'] }),
     getRuntimeId: () => 'runtime_server',
     validateOrchestrationAgentLauncher: () => undefined,
     showManagedTerminalWorkspace: placed

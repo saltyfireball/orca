@@ -31,6 +31,8 @@ vi.mock(
 function runtimeFor(db: OrchestrationDb, pane: string, settings: object): OrcaRuntimeService {
   return {
     getOrchestrationDb: () => db,
+    // Upstream's worker-start checks the agent is installed before any launch.
+    detectProjectLaunchContext: async () => ({ agents: ['claude', 'codex'] }),
     getNestedWorkerMaxDepth: () => 4,
     showTerminal: async (handle: string) => ({ handle, worktreeId: 'wt_1' }),
     validateOrchestrationAgentLauncher: () => undefined,

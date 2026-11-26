@@ -76,6 +76,11 @@ export const ORCHESTRATION_FEDERATION_ATTACH_METHODS = [
         createsWorktree,
         requestedWorktree: params.worktree
       })
+      // Fork (BAD-818): a start that would launch a terminal agent is refused while paused, before
+      // any effect; `--terminal` reusing a running agent is a message, not a launch.
+      if (createsWorktree || !params.terminal) {
+        forkRefuseTerminalWorkerWhilePaused(false)
+      }
       const { agent, launch } = await refuseUnmatchedWorkerSelector(targetLabel, () =>
         prepareFederationWorkerLaunchOnHost({ params, createsWorktree, runtime })
       )
@@ -97,12 +102,6 @@ export const ORCHESTRATION_FEDERATION_ATTACH_METHODS = [
           : (await runtime.showManagedTerminalWorkspace(params.worktree).catch(() => undefined))
               ?.repoId
       })
-
-      // Fork (BAD-818): a start that would launch a terminal agent is refused while paused, before
-      // any effect; `--terminal` reusing a running agent is a message, not a launch.
-      if (createsWorktree || !params.terminal) {
-        forkRefuseTerminalWorkerWhilePaused(false)
-      }
       const db = runtime.getOrchestrationDb()
       // Synchronous through the insert, so a racing start on the same terminal is refused before any wait.
       const releaseTerminalClaim = claimTerminalForRemoteAttach(db, params.terminal, runtime, {

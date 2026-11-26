@@ -49,6 +49,8 @@ function renderAgentCard(mode: 'compact' | 'full') {
   useAppStore.setState({
     repos: [TEST_REPO],
     worktreesByRepo: { [TEST_REPO.id]: [worktree] },
+    // Fork (SLRM-2269): with snooze on, an agent row's right-click is the snooze menu, not the card's.
+    settings: { ...useAppStore.getState().settings!, forkSnooze: false },
     agentActivityDisplayMode: mode,
     unifiedTabsByWorktree: { [worktree.id]: [tab] },
     agentStatusByPaneKey: acceptedAgentStatuses([

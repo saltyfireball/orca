@@ -3799,19 +3799,18 @@ ones `SLRM-123 `).
     as another client breaks Google's rule that external clients use Antigravity over ACP as
     themselves, and can get the Google account flagged. The fork keeps its own name and takes the
     smaller model list.
-  - **What the user sees.** On the managed server, a listing with only Gemini models carries a note on
-    its first row: the server offers Claude and GPT-OSS only to allowlisted editors, and with a Google
-    account agy 1.5.1 or newer brings them back (agy 1.5.1 and later offer every model to any
-    client, and a signed-in agy, 1.5.2 or newer, already takes new chats over the managed server).
-    A chat whose saved model is not a Gemini model, on agy older than 1.5.1 or whose version Orca
-    could not read, is refused before the session opens, naming the update.
+  - **What the user sees.** A chat whose saved model is not a Gemini model, on agy older than 1.5.1
+    or whose version Orca could not read, is refused before the session opens, naming the update (agy
+    1.5.1 and later offer every model to any client). Upstream retired Orca's managed ACP server in
+    v1.4.278 (#48305, every chat runs on agy), so the picker note for its Gemini-only listing is
+    gone; the dialect hook `modelListNote` stays, unused.
   - **No internal Google APIs.** Nothing under `src/main/antigravity` or
     `src/main/rate-limits/providers/antigravity` calls cloudcode-pa or another internal Google
     endpoint; usage comes from agy's own `/usage` command. A test reads both folders and fails if one
     appears.
   - Code is in `antigravity-acp-launch-spec.ts` (`antigravityClientInfo`),
-    `antigravity-agy-model-gate.ts`, `acp-launch-model-refusal.ts`, `antigravity-dialect.ts`
-    (`ANTIGRAVITY_MANAGED_SERVER_DIALECT`) and the test `antigravity-own-client-identity.test.ts`.
+    `antigravity-agy-model-gate.ts` (also `isAntigravityGeminiModel`), `acp-launch-model-refusal.ts`
+    and the test `antigravity-own-client-identity.test.ts`.
 
 ## Patch list
 
@@ -5605,10 +5604,8 @@ Upstream files only get short hooks, which keeps merges small:
   inbox on while the limit is, `inbox-format.ts` labels it, and `fork-global-settings.ts`
   intersects the setting; the settings catalog is regenerated.
 - Antigravity names Orca (BAD-836), small edits in stock files: `antigravity-acp-launch-spec.ts`
-  drops `ZED_CLIENT_INFO`, sends `antigravityClientInfo` from both specs, gives the host agy spec
-  `refuseModel` and the managed spec `ANTIGRAVITY_MANAGED_SERVER_DIALECT`;
-  `antigravity-dialect.ts` adds that dialect, `antigravityGeminiOnlyNote` and
-  `isAntigravityGeminiModel`; `acp-dialect.ts` adds the optional `modelListNote`, which
+  drops `ZED_CLIENT_INFO` and `agyClientInfo`, sends `antigravityClientInfo` from the agy specs and
+  gives the host agy spec `refuseModel`; `acp-dialect.ts` adds the optional `modelListNote`, which
   `acp-model-menu.ts` (`acpModelMenuModels`) puts on the first row; `acp-launch-contract.ts` adds
   the optional `refuseModel`, which `acp-structured-launch-resolution.ts` (`acpStructuredLaunchPart`)
   checks after the version check through the fork file `acp-launch-model-refusal.ts`. A sync that
@@ -6064,3 +6061,37 @@ Line limits: more upstream files sit at their `max-lines` budget, so fork hooks 
   for the `forkGateWorkerDone` call).
 - `BotItemActivityList.tsx` keeps `str`, `statusWord` and `FieldChange` in `BotItemFieldChange.tsx`
   (upstream code moved to make room for the steps events).
+
+## Merge notes: upstream v1.4.278 (BAD-837)
+
+The plain `git merge v1.4.278` on main conflicted in 71 files, 44 of them untouched by the fork,
+because main carries upstream commits that upstream later reverted or reordered (the "Save to this
+computer" browser feature, a usage-limit write guard). Merging with the previous tag as the base
+leaves 27 real conflicts and the right result for the rest: `git merge-recursive v1.4.275 -- HEAD
+v1.4.278` in a throwaway checkout, then compare its tree with the hand merge, as this merge did.
+Do that first next time the plain merge conflicts in files the fork has not touched.
+
+Choices where both sides changed:
+
+- Antigravity: upstream retired the managed ACP server (every chat runs on agy). BAD-836 keeps Orca's
+  own client name on the agy specs and the model refusal; the managed server's Gemini-only picker
+  note and its tests are gone (see that feature section).
+- Packaged import check: upstream now parses a candidate file to keep only real calls
+  (`packaged-main-bare-imports.cjs`), which also passes ajv's code strings, so the BAD-816 exception in
+  `packaged-runtime-node-modules.cjs` is dropped; `packaged-ajv-code-strings.test.mjs` keeps the ajv cases.
+- Item page: upstream's header and Activity without the Needs you jump (reverted again upstream); the
+  owner steps (BAD-747/BAD-762) still come from `use-bot-item-steps-place.tsx` into `BotItemView.tsx`
+  (`stepsLine`, `above`, `inAsk`), `BotItemHeader.tsx` (`stepsLine`) and `BotItemActivityList.tsx` (`steps`).
+- Sidebar: the fork's recent-chat window is `forkRecent` in `BotSidebarChats.tsx`, since upstream's
+  older-chats hook returns its own `recent`.
+- Worker start: upstream's installed-agent preflight runs first; the pause-all check
+  (`assertForkPauseAllAllowsTerminalWorkerStart`) follows it in `local-worker-start.ts` and comes before it
+  in `federation.ts`. Fork tests that fake a runtime give it `detectProjectLaunchContext`.
+- Tab bar: the fork's pinned-tab pin glyph is gone with upstream's (#49230); `TabBar.performance.test.tsx`
+  went with upstream's reverted perf change.
+- MCP: upstream's host MCP list (`SessionMcpTools`) replaced `BotLaunchTools`; the two fork launch tests use it.
+- Gemini was removed upstream: its hook source, setting (`geminiCliOAuthEnabled`) and agent are gone from the
+  fork catalogs and tests.
+
+Line limits: `send-methods.ts`, `local-worker-start.ts`, `federation.ts`, `federated-worker-start.ts` and
+`task-page-github-landing-refresh-run.tsx` carry a `max-lines` disable naming the fork hooks that need it.

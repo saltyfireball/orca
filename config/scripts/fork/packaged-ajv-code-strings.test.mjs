@@ -1,6 +1,6 @@
 // BAD-816: ajv is compiled into main and carries `require("ajv/...")` text inside its code strings.
 // The packaged import check passes those, and still fails a real require of ajv or of any other
-// package without copied node_modules, in a string or not. Faked: the asar reader.
+// package without copied node_modules (upstream's parser keeps only real calls). Faked: the asar reader.
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
@@ -37,9 +37,8 @@ describe('packaged import check and ajv', () => {
     expect(verify(`e.code='require("ajv/dist/runtime/uri").default'`)).not.toThrow()
   })
 
-  it('fails a real require of ajv and a code string of any other package', () => {
+  it('fails a real require of ajv', () => {
     expect(verify('const a=require("ajv")')).toThrow(/ajv/)
     expect(verify('const a=require("ajv/dist/runtime/equal")')).toThrow(/ajv/)
-    expect(verify('t.code=`require("left-pad")`')).toThrow(/left-pad/)
   })
 })
