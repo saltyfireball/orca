@@ -3790,6 +3790,29 @@ ones `SLRM-123 `).
     (matching and depth) and `automation-chain-start.ts` (starting and recording refusals), and
     `src/cli/automations/automation-chain-trigger-spec.ts`.
 
+- **Antigravity names Orca, never another editor (BAD-836).** Every Antigravity ACP handshake
+  sends Orca's own clientInfo (`orca`, with the app version): Orca's managed ACP server, the host's
+  agy at any version (known, unknown or old) and agy on Orca's key home.
+  - **Why we diverge from upstream.** Upstream sent `zed` to the managed server and to agy whose
+    version was unknown or below 1.5.1, because Google's ACP server offers Claude and GPT-OSS only to
+    allowlisted editors; it tried naming Orca (#47585) and reverted that the same day (#47607). Posing
+    as another client breaks Google's rule that external clients use Antigravity over ACP as
+    themselves, and can get the Google account flagged. The fork keeps its own name and takes the
+    smaller model list.
+  - **What the user sees.** On the managed server, a listing with only Gemini models carries a note on
+    its first row: the server offers Claude and GPT-OSS only to allowlisted editors, and with a Google
+    account agy 1.5.1 or newer brings them back (agy 1.5.1 and later offer every model to any
+    client, and a signed-in agy, 1.5.2 or newer, already takes new chats over the managed server).
+    A chat whose saved model is not a Gemini model, on agy older than 1.5.1 or whose version Orca
+    could not read, is refused before the session opens, naming the update.
+  - **No internal Google APIs.** Nothing under `src/main/antigravity` or
+    `src/main/rate-limits/providers/antigravity` calls cloudcode-pa or another internal Google
+    endpoint; usage comes from agy's own `/usage` command. A test reads both folders and fails if one
+    appears.
+  - Code is in `antigravity-acp-launch-spec.ts` (`antigravityClientInfo`),
+    `antigravity-agy-model-gate.ts`, `acp-launch-model-refusal.ts`, `antigravity-dialect.ts`
+    (`ANTIGRAVITY_MANAGED_SERVER_DIALECT`) and the test `antigravity-own-client-identity.test.ts`.
+
 ## Patch list
 
 Apply these in this order. Each one is a single commit.
@@ -4013,6 +4036,7 @@ Apply these in this order. Each one is a single commit.
 216. `BAD-816 A worker_done past its last allowed round is told it was escalated to the coordinator, that the Task stays open and to stop and wait, and exits not accepted, the same on --retry-request, locally and on a paired server`
 217. `BAD-833 A goal on a terminal agent waits after a restart until the agent is seen at rest, instead of counting the gate's cannot-tell answers as refused sends and stopping as not reachable`
 218. `BAD-818 A worker launch pause-all held over a restart starts with its Task: a held chat opens before the message it never sent, so upstream does not fail it; agent queue list says a held launch is held, and why`
+219. `BAD-836 Antigravity chats name Orca on every ACP handshake (managed server and agy, any version), never another editor; the managed server's Gemini-only model list says why and names agy 1.5.1, a non-Gemini model on agy below 1.5.1 is refused before the session opens, and a test fails on a Google internal API call under src/main/antigravity or the antigravity usage reader`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5579,6 +5603,15 @@ Upstream files only get short hooks, which keeps merges small:
   `ForkDecisionInboxRow.tsx` gives it Continue and Dismiss, `decision-inbox-store.ts` keeps the
   inbox on while the limit is, `inbox-format.ts` labels it, and `fork-global-settings.ts`
   intersects the setting; the settings catalog is regenerated.
+- Antigravity names Orca (BAD-836), small edits in stock files: `antigravity-acp-launch-spec.ts`
+  drops `ZED_CLIENT_INFO`, sends `antigravityClientInfo` from both specs, gives the host agy spec
+  `refuseModel` and the managed spec `ANTIGRAVITY_MANAGED_SERVER_DIALECT`;
+  `antigravity-dialect.ts` adds that dialect, `antigravityGeminiOnlyNote` and
+  `isAntigravityGeminiModel`; `acp-dialect.ts` adds the optional `modelListNote`, which
+  `acp-model-menu.ts` (`acpModelMenuModels`) puts on the first row; `acp-launch-contract.ts` adds
+  the optional `refuseModel`, which `acp-structured-launch-resolution.ts` (`acpStructuredLaunchPart`)
+  checks after the version check through the fork file `acp-launch-model-refusal.ts`. A sync that
+  brings back upstream's `zed` identity must keep Orca's.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

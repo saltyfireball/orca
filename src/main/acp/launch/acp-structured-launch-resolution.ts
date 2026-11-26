@@ -26,6 +26,7 @@ import type { AgentSessionAccountHome } from '../../../shared/agent-session/life
 import type { resolveCliCommand } from '../../../shared/shell/command-resolution/node-cli-command-resolution'
 import type { AgentCliVersionReader } from '../../agent-launch/preflight/agent-cli-version-probe'
 import { AgentCliInstallationError } from '../../native-chat/agent-launch/agent-cli-installation-error'
+import { assertAcpLaunchRunsModel } from './acp-launch-model-refusal'
 import type { StructuredAgentLaunchPartResolver } from '../../runtime/agent-session/launch/structured-agent-launch-composition'
 import {
   LEGACY_NATIVE_CHAT_VISUALS_DIR_ENV,
@@ -214,6 +215,7 @@ export function acpStructuredLaunchPart(
     if (launchVersion.status === 'tooOld') {
       throw AgentCliInstallationError.tooOld(spec.agent, launchVersion)
     }
+    assertAcpLaunchRunsModel(spec, record.options?.model, version ?? launchVersion.version)
     const inherited = deps.inheritedEnv ?? process.env
     const skill = await loadAcpSkillRoots(spec, deps, {
       sessionId: identity.sessionId,

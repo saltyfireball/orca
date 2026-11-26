@@ -207,6 +207,8 @@ export type AcpDialect = {
   modelEfforts?(model: ModelInfo): AcpAdvertisedEfforts
   /** Efforts of a listed model family that `models` advertises only as per-effort variants. */
   familyEfforts?(family: string, models: readonly ModelInfo[]): AcpAdvertisedEfforts | undefined
+  /** Why the listed models are fewer than the agent can offer, shown on the first row; null when not. */
+  modelListNote?(modelIds: readonly string[]): string | null
   /** A saved model id the chat lists as another row and effort, e.g. a family's level id. */
   listedSelection?: StructuredAgentListedSelection
   /** Native thinking choices remain valid across models; the agent clamps unsupported levels. */

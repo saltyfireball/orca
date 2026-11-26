@@ -252,6 +252,25 @@ export const ANTIGRAVITY_ACP_DIALECT: AcpDialect = {
   listedSelection: antigravityListedFamilySelection
 }
 
+// Fork (BAD-836): Orca names itself, so Google's managed server (still in 1.5.2) lists Gemini only
+// for a Google account; agy 1.5.1 or newer offers the rest to any client.
+const GEMINI_ONLY_NOTE =
+  'Only Gemini models: this server offers Claude and GPT-OSS only to allowlisted editors. With a Google account, install agy 1.5.1 or newer to get them back.'
+
+export function isAntigravityGeminiModel(model: string): boolean {
+  return /^gemini\b/i.test(model.trim())
+}
+
+export function antigravityGeminiOnlyNote(modelIds: readonly string[]): string | null {
+  return modelIds.length > 0 && modelIds.every(isAntigravityGeminiModel) ? GEMINI_ONLY_NOTE : null
+}
+
+/** Orca's managed ACP server: says why a listing is Gemini only. */
+export const ANTIGRAVITY_MANAGED_SERVER_DIALECT: AcpDialect = {
+  ...ANTIGRAVITY_ACP_DIALECT,
+  modelListNote: antigravityGeminiOnlyNote
+}
+
 // agy answers "Authentication required" alone; on Orca's home that is a key it rejects, so the
 // notice names the fix. Only key chats run there: the home refuses any other method at start, and
 // changing the method stops every Antigravity chat.

@@ -46,6 +46,8 @@ export type AcpLaunchSpec = {
   /** Initialize's identity for the launched version (null when unknown), for agents that grant
    *  features by client name; absent sends Orca's. */
   clientInfo?(version: string | null): Implementation
+  /** Why this release cannot run the chat's saved model, refused before the session opens. */
+  refuseModel?(model: string, version: string | null): string | null
   loginCommand: readonly string[]
   /** Selects authentication from the execution host's resolved launch inputs. */
   authMethod?(input: {

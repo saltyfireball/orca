@@ -13,8 +13,10 @@ import { windowsLocalAppDataBinDirectories } from '../acp/launch/acp-windows-ins
 import type { Implementation } from '../acp/generated/acp-protocol.generated'
 import {
   ANTIGRAVITY_ACP_DIALECT,
-  ANTIGRAVITY_AGY_ORCA_HOME_DIALECT
+  ANTIGRAVITY_AGY_ORCA_HOME_DIALECT,
+  ANTIGRAVITY_MANAGED_SERVER_DIALECT
 } from '../acp/acp-dialects/antigravity-dialect'
+import { agyRefusesModel } from './antigravity-agy-model-gate'
 import type { AgentSessionAccountHome } from '../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
 import {
   AGY_ORCA_HOME_MINIMUM_VERSION,
@@ -33,10 +35,6 @@ import { resolveAntigravityChatAuthConfig } from '../../shared/agent-accounts/an
 import { agentSessionSetupFor } from '../../shared/agent-session/lifecycle/launch/agent-session-setup-commands'
 import { deliverAntigravityInstructions } from '../acp/launch/acp-instructions'
 import { ANTIGRAVITY_ACP_COMMAND, ANTIGRAVITY_ACP_RUNTIME } from './antigravity-acp-runtime'
-import {
-  compareAppVersions,
-  isValidAppVersion
-} from '../../shared/app-lifecycle/identity/app-version'
 import { ANTIGRAVITY_ACP_ENV, scrubAntigravityAcpEnvironment } from './antigravity-acp-environment'
 import { scrubAgyOrcaHomeEnvironment } from './antigravity-agy-orca-home-environment'
 import {
@@ -71,18 +69,13 @@ const ANTIGRAVITY_SESSION_HISTORY: StructuredAgentSessionHistory = {
     })
 }
 
-const ZED_CLIENT_INFO: Implementation = { name: 'zed', version: '0.0.0' }
-
-// Google's ACP server (still in 1.5.2) offers non-Gemini models only to allowlisted editors such
-// as Zed; named `orca`, a Google-account chat loses Claude and GPT-OSS. Its versions are not agy's.
-const managedServerClientInfo = (): Implementation => ZED_CLIENT_INFO
-
-// agy 1.5.1 and later offer every model to any client. Orca requires a newer agy, so `zed` is only
-// the fallback when agy's version is unknown.
-function agyClientInfo(version: string | null): Implementation {
-  return version && isValidAppVersion(version) && compareAppVersions(version, '1.5.1') >= 0
-    ? ORCA_ACP_CLIENT_INFO
-    : ZED_CLIENT_INFO
+// Fork (BAD-836): every handshake names Orca. Posing as an allowlisted editor (upstream #47607)
+// risks the Google account; the managed server then lists Gemini only, and its picker says why.
+function antigravityClientInfo(): Implementation {
+  return {
+    name: ORCA_ACP_CLIENT_INFO.name,
+    version: process.env.ORCA_APP_VERSION?.trim() || '0.0.0-dev'
+  }
 }
 
 // Orca's managed ACP server keeps its own sign-in under <userData>/antigravity-chat.
@@ -94,8 +87,8 @@ const ANTIGRAVITY_MANAGED_LAUNCH_SPEC = {
   args: () => (process.platform === 'linux' ? ['--uid='] : []),
   env: ANTIGRAVITY_ACP_ENV,
   scrubEnvironment: scrubAntigravityAcpEnvironment,
-  dialect: ANTIGRAVITY_ACP_DIALECT,
-  clientInfo: managedServerClientInfo,
+  dialect: ANTIGRAVITY_MANAGED_SERVER_DIALECT,
+  clientInfo: antigravityClientInfo,
   loginCommand: agentSessionSetupFor('antigravity')?.loginCommand ?? [],
   authMethod: ({ antigravityChatAuth }) =>
     resolveAntigravityChatAuthConfig(antigravityChatAuth).method,
@@ -161,7 +154,8 @@ const ANTIGRAVITY_HOST_LAUNCH_SPEC: AcpLaunchSpec = {
   // and on a host without one they get launch's cliMissing refusal.
   managedCopyAllowed: (settings) => settings.antigravityManagedAgyEnabled !== false,
   args: ({ fullAccess }) => ['acp', ...(fullAccess ? [AGY_SKIP_PERMISSIONS_FLAG] : [])],
-  clientInfo: agyClientInfo,
+  clientInfo: antigravityClientInfo,
+  refuseModel: agyRefusesModel,
   // Match terminal and quota launches: a background updater steals focus on Windows (#27390)
   // and can replace agy mid-probe.
   env: { AGY_CLI_DISABLE_AUTO_UPDATE: 'true' },
