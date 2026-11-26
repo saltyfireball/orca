@@ -4037,6 +4037,7 @@ Apply these in this order. Each one is a single commit.
 217. `BAD-833 A goal on a terminal agent waits after a restart until the agent is seen at rest, instead of counting the gate's cannot-tell answers as refused sends and stopping as not reachable`
 218. `BAD-818 A worker launch pause-all held over a restart starts with its Task: a held chat opens before the message it never sent, so upstream does not fail it; agent queue list says a held launch is held, and why`
 219. `BAD-836 Antigravity chats name Orca on every ACP handshake (managed server and agy, any version), never another editor; the managed server's Gemini-only model list says why and names agy 1.5.1, a non-Gemini model on agy below 1.5.1 is refused before the session opens, and a test fails on a Google internal API call under src/main/antigravity or the antigravity usage reader`
+220. `Fork release version: a base whose upstream tag was deleted is read from package.json, so a release never sorts below the one before it`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5745,6 +5746,9 @@ tag merged into `main`, found by ancestry; the sync job reads it with
 for each base and starts again at 1 on a new base. For example, upstream `1.4.252` with fork
 release 1 is `1.4.252001`, tagged `v1.4.252001`. A fork release on a newer base always sorts
 above one on an older base. A base that would need N 1000 fails the build.
+When upstream deletes the tag `main` was merged at (v1.4.275 and v1.4.276 went on 2026-11-26),
+ancestry finds an older tag; `package.json`'s version, when it is newer and its tag is gone, is
+then the base, so a release never sorts below the one before it (1.4.273005 was cut that way).
 
 `package.json` keeps the upstream version in git (a tag merge takes the tag's version). The sync job works out the next version
 with `config/scripts/fork/fork-version.mjs`, and the template and app jobs set it in their own

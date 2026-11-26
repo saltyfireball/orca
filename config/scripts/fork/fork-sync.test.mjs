@@ -491,6 +491,19 @@ describe('fork-sync.sh', () => {
     expect(next.stdout.trim()).toBe('1.1.3')
   })
 
+  it('names the version from package.json when upstream deleted the tag main was merged at', () => {
+    const { r2 } = setUpOffBranchReleases()
+    const job = join(root, 'job')
+    expect(sync('detect').status).toBe(0)
+    expect(sync('merge', { LATEST: 'v1.1.0', LATEST_SHA: r2 }).status).toBe(0)
+    git(join(root, 'up'), 'tag', '-d', 'v1.1.0')
+    git(job, 'update-ref', '-d', 'refs/upstream-tags/v1.1.0')
+    expect(run(job, 'bash', [SCRIPT, 'merged-tag']).stdout.trim()).toBe('1.1.0')
+    const detect = sync('detect')
+    expect(detect.out).toMatchObject({ base_version: '1.1.0' })
+    expect(detect.out.base_source).toMatch(/was deleted upstream/)
+  })
+
   it('treats a tag upstream re-cut to another commit as new and merges it', () => {
     const { up } = setUp()
     git(up, 'reset', '-q', '--hard', 'HEAD~1')

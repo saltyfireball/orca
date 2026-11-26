@@ -94,6 +94,19 @@ moved_tag_version() {
   fi
 }
 
+# package.json's version at HEAD when it is a stable version newer than $1 whose tag upstream no
+# longer has (upstream deletes a tag now and then: v1.4.275 and v1.4.276 went on 2026-11-26). A tag
+# merge takes the tag's version, so it is still the base the fork was built on; else nothing.
+deleted_tag_version() {
+  local version
+  version="$(git show HEAD:package.json 2>/dev/null | sed -n 's/^  "version": "\([^"]*\)".*/\1/p' | head -n 1 || true)"
+  if [ -n "$version" ] && [ "$version" != "$1" ] && printf 'v%s' "$version" | grep -Eq "$STABLE_RE" \
+    && ! git rev-parse --verify --quiet "refs/upstream-tags/v$version^{commit}" >/dev/null \
+    && [ "$(printf '%s\n%s\n' "$1" "$version" | sort -V | tail -n 1)" = "$version" ]; then
+    printf '%s\n' "$version"
+  fi
+}
+
 # The upstream version of a commit: its stable tag when one points at it, else package.json.
 version_at() {
   local sha="$1" tag
@@ -126,6 +139,12 @@ cmd_detect() {
   local base_version='' source='newest upstream tag merged into main'
   if [ -n "$base" ]; then
     base_version="$(version_at "$base")"
+    local deleted
+    deleted="$(deleted_tag_version "$base_version")"
+    if [ -n "$deleted" ]; then
+      base_version="$deleted"
+      source='package.json version (its tag was deleted upstream)'
+    fi
   else
     # Upstream moved the tag main was built on, so no tag commit is under main any more. The merged
     # tag's version is still in package.json (a tag merge takes the tag's version).
@@ -158,7 +177,10 @@ cmd_merged_tag() {
   local sha
   sha="$(newest_tag_under_main || true)"
   if [ -n "$sha" ]; then
-    version_at "$sha"
+    local version deleted
+    version="$(version_at "$sha")"
+    deleted="$(deleted_tag_version "$version")"
+    printf '%s\n' "${deleted:-$version}"
   else
     moved_tag_version
   fi
