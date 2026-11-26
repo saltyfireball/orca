@@ -9,11 +9,16 @@ import { randomUUID } from 'node:crypto'
 import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { getAppEnvironment, hasAppEnvironment } from '../../../shared/app-lifecycle/app-environment'
-import { isOrcaSessionId } from '../../../shared/agent-session/identity/orca-session-address'
+import {
+  isOrcaSessionId,
+  parseOrcaSessionAddress
+} from '../../../shared/agent-session/identity/orca-session-address'
 import { isBotGroupMemberSession } from '../../../shared/bots/bot-group'
 import { botOfHomeWorkspace } from '../../../shared/bots/bot-homes'
 import type { Bot } from '../../../shared/bot-types'
 import { writeInChat } from '../../bots/bot-chat-status-line'
+import { heldChatSentNext, type HeldChat } from '../../bots/bot-held-chat-request'
+import type { BotRequestRecord } from '../../bots/bot-request-view'
 import { isBotOwnChat } from '../../bots/bot-own-chat'
 import {
   getStructuredAgentSessionHost,
@@ -130,6 +135,27 @@ export function noteForkPauseAllHeldItemMail(
       'pause-all'
     )
   }
+}
+
+/** The sender's receipt line for a request to a bot: while this switch holds the chat it lands in
+ *  (`address`, else the chat the bot address named), that it waits for resume-all instead of saying
+ *  the bot has it; otherwise upstream's line. */
+export function forkPauseAllSentNext(
+  runtime: Pick<PauseAllBotMailRuntime, 'bots' | 'getOrchestrationDb'>,
+  address: string,
+  chat: string | null,
+  record: BotRequestRecord,
+  held: HeldChat | null | undefined
+): string {
+  const sessionId = parseOrcaSessionAddress(address) ?? chat
+  if (!sessionId || !forkPauseAllHoldsBotMail(runtime, sessionId)) {
+    return heldChatSentNext(record, held)
+  }
+  const bot = record.toBotName
+  const waits = `${forkPauseAllRefusal() ?? 'Paused by pause-all.'} ${bot}'s chat takes no mail until then, so this waits there unread and has not started; it reaches ${bot} once at resume-all.`
+  return record.purpose === 'status'
+    ? `${waits} Nothing comes back.`
+    : `${waits} Its answer comes back as usual after that. Tell the asker in one line that it waits for resume-all.`
 }
 
 /** The chats whose mail this switch holds, as the agent record store lists them now. */

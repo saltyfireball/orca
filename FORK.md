@@ -2721,7 +2721,10 @@ ones `SLRM-123 `).
     dialog or draft and only where the agent reads the terminal (checked again before the first
     write). One letter per recipient per pass, a pass every 5 s while letters wait and none
     otherwise; a send that may have arrived counts as delivered, so none is typed twice. A sleeping
-    chat keeps its letters until it is loaded; a letter not delivered in a day expires.
+    chat keeps its letters until it is loaded; a letter not delivered in a day expires. While
+    Pause all is on (BAD-818) every letter queued here waits, with the pause reason as its note
+    ("held by pause-all" in the sender's receipt, "queued (pause-all)" in `orca letter list`), and
+    none expires; resume-all runs a pass at once, and a letter it held then waits a new day.
   - **Untrusted.** The recipient sees `[Blackfish letter <id> from ...]`, a line saying the words
     are another agent's, not the user's, and cannot approve anything, then the body between
     `--- letter begins ---` and `--- letter ends ---`, then the command to answer. The frame is
@@ -3667,6 +3670,19 @@ ones `SLRM-123 `).
     stops still parked then. A terminal worker start on the legacy attach path
     (`orchestration.federationAttachStart`) is refused with the pause reason before the attachment
     is written.
+  - **Letters and the sender's receipt (BAD-818).** A letter (`orca letter send`, one a paired host
+    hands over, a board throw-back) is typed into an idle chat or terminal agent by the letters
+    delivery pass, which is not a start primitive of the table and was missed at first: a letter
+    woke a paused bot chat and its answer came back while paused. Now the pass and the send read
+    the switch (also inside the guarded send, just before the first write): each letter queued here
+    keeps the reason as its note, none expires while held, and the receipt of `orca letter send`
+    says it is held by pause-all until `orca resume-all`. Releasing the switch runs a delivery pass
+    at once, and each held letter then waits a new day (`pauseReleasedAt`). The hold is per
+    recipient, as bot mail's is, so a person's letter or throw-back waits too. The sender of a
+    request to a bot whose chat the switch holds reads, instead of "<bot> has it now", that it
+    waits there unread until resume-all, and to tell the asker so. `orca pause-status` prints and
+    returns held counts only while the switch is on; with it off, unread mail in bots' chats is not
+    held, so nothing is printed (also when an older host sends counts).
   - **The starter table.** `src/main/fork/pause-all/pause-all-starters.ts` lists every starter
     with its answer (held, refused, skipped or allowed) and the reason, and
     `pause-all-start-sites.ts` each call of a start primitive (`startConversation`, `executeAgentLaunch`, `deliverTurn`, `runForEvent`,
@@ -4045,6 +4061,7 @@ Apply these in this order. Each one is a single commit.
 219. `BAD-836 Antigravity chats name Orca on every ACP handshake (managed server and agy, any version), never another editor; the managed server's Gemini-only model list says why and names agy 1.5.1, a non-Gemini model on agy below 1.5.1 is refused before the session opens, and a test fails on a Google internal API call under src/main/antigravity or the antigravity usage reader`
 220. `Fork release version: a base whose upstream tag was deleted is read from package.json, so a release never sorts below the one before it`
 221. `BAD-820 A reviewer run that errored or produced no review (its own sandbox failed, even with a VERDICT line after it; empty output; no verdict) is a reviewer error, not a finding: no review round is spent and no new commit is asked for; the gate retries it once itself, then escalates to the coordinator as "reviewer could not run: <error>" with a Decision inbox row and tells the worker to wait`
+222. `BAD-818 Letters wait while Pause all is on: none is typed into an idle chat or terminal agent, none expires, the sender's receipt says it is held, and resume-all delivers at once; the sender of held bot mail is told it waits for resume-all; pause-status shows held counts only while paused`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5382,6 +5399,8 @@ Upstream files only get short hooks, which keeps merges small:
   asks `forkPauseAllHoldsRoomHandOff` before the hop limit; `bot-group-runtime.ts` installs the
   room hold release and the bot mail release (`botMailOwner`, and `startBotGroupsSoon` at start);
   `bot-paused-mail.ts` (`pausedBotChatHoldsMail`) asks `forkPauseAllHoldsBotMail`;
+  `bot-request-send.ts` takes the sender's receipt line from `forkPauseAllSentNext`
+  (`pause-all-bot-mail.ts`), which falls back to upstream's `heldChatSentNext`;
   `bots-items-mail.ts` notes an owner's held item change in its chat;
   `external-conversation-bots.ts` (`botChatFor`) asks `forkPauseAllRefusesConnectorTurn`;
   `federation.ts` calls `forkRefuseTerminalWorkerWhilePaused` before the attachment;

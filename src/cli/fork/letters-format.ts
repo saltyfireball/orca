@@ -1,5 +1,6 @@
 // Letters and the board (FORK.md, SLRM-2389): what `orca letter` and `orca board` print.
 import type { ForkBoardAsk, ForkLetter, ForkLetterParty } from '../../shared/fork/letters'
+import { PAUSE_ALL_REASON_PREFIX } from '../../shared/fork/pause-all'
 import type {
   ForkBoardListResult,
   ForkLettersChatsResult,
@@ -39,13 +40,19 @@ export function formatLetterParty(party: ForkLetterParty): string {
   return party.host ? `${name} @${oneLine(party.host.name, 60)}` : name
 }
 
+/** A queued letter Pause all holds (BAD-818): its note is the switch's reason. */
+const heldByPause = (letter: ForkLetter): boolean =>
+  letter.state === 'queued' && letter.note?.startsWith(PAUSE_ALL_REASON_PREFIX) === true
+
 export function formatLetterSent(letter: ForkLetter): string {
   const where =
     letter.state === 'forwarded'
       ? `handed to ${letter.to.host?.name ?? 'the paired server'}`
       : letter.state === 'pickup'
         ? 'waiting for the paired device to collect it'
-        : 'queued: delivered when the chat ends its turn'
+        : heldByPause(letter)
+          ? 'held by pause-all: delivered after `orca resume-all`, when the chat ends its turn'
+          : 'queued: delivered when the chat ends its turn'
   return `Letter ${letter.id} to ${formatLetterParty(letter.to)}: ${where}.`
 }
 
@@ -58,7 +65,7 @@ export function formatLetterList(result: ForkLettersListResult): string {
     ...result.letters.map((letter) => [
       letter.id,
       age(result.now - letter.at),
-      letter.state,
+      heldByPause(letter) ? 'queued (pause-all)' : letter.state,
       formatLetterParty(letter.from),
       formatLetterParty(letter.to),
       oneLine(letter.text, 60)

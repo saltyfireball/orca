@@ -252,6 +252,19 @@ export const PAUSE_ALL_STARTERS: readonly PauseAllStarter[] = [
     orcad: { from: 'src/main/fork/runtime-settle-hooks.ts', call: 'startForkChatHandoffOnLimit' }
   },
   {
+    id: 'letters',
+    starter:
+      'Letters (`orca letter send`, one from a paired host, a board throw-back) typed into an idle chat or terminal agent',
+    answer: 'held',
+    reason:
+      "Each letter queued here keeps the reason as its note and does not expire; the sender's receipt says it is held. resume-all runs a delivery pass at once, and each letter then waits a new day. The hold is per recipient, as bot mail's is: a person's letter or throw-back waits too.",
+    gates: [
+      { file: 'src/main/fork/letters/letters-delivery.ts', calls: 4 },
+      { file: 'src/main/fork/letters/letters-service.ts', calls: 1 }
+    ],
+    orcad: { from: 'src/main/fork/runtime-settle-hooks.ts', call: 'startForkLetters' }
+  },
+  {
     id: 'legacy-attach',
     starter: 'Terminal worker start on the legacy attach path (federation)',
     answer: 'refused',

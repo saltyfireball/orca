@@ -31,6 +31,7 @@ import { OrchestrationDb } from '../../runtime/orchestration/db/orchestration-db
 import type { OrcaRuntimeService } from '../../runtime/orca-runtime'
 import { sendBotItemMail } from '../../runtime/rpc/methods/bots-items-mail'
 import { FORK_PAUSE_ALL_METHODS } from '../../runtime/rpc/methods/fork/fork-pause-all'
+import { formatPauseAll } from '../../../shared/fork/pause-all'
 import { selectOwnedMail } from '../../runtime/orchestration/structured-mail-owner-narrowing'
 import {
   countForkPauseAllHeldMail,
@@ -214,14 +215,22 @@ describe('pause all over bot mail', () => {
     await vi.waitFor(() => expect(after.redrive).toHaveBeenCalledWith(MEMBER))
   })
 
-  it('counts held mail in pause-status', async () => {
+  it('counts held mail in pause-status only while paused', async () => {
     const { service } = runtime()
-    writeForkPauseAll(true, { by: 'cli' })
-    mail('first')
     const status = FORK_PAUSE_ALL_METHODS.find((method) => method.name === 'fork.pauseAll.status')!
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the status reads only the runtime here.
-    const result = await status.handler({ fleet: false } as never, { runtime: service } as never)
-    expect(result).toMatchObject({ state: { engaged: true }, held: { mail: 1, handOffs: 0 } })
+    const read = () => status.handler({ fleet: false } as never, { runtime: service } as never)
+    // Unread mail in a bot's chat with the switch off is not held: pause-status says nothing of it.
+    mail('unread')
+    const running = await read()
+    expect(running.held).toBeUndefined()
+    expect(formatPauseAll(running)).toBe('Not paused.')
+
+    writeForkPauseAll(true, { by: 'cli' })
+    mail('first')
+    const paused = await read()
+    expect(paused).toMatchObject({ state: { engaged: true }, held: { mail: 2, handOffs: 0 } })
+    expect(formatPauseAll(paused)).toContain('Held for resume-all: 2 bot mail, 0 room hand-offs')
   })
 
   it("says in the chat that the owner's item comment waits, and not when running", async () => {

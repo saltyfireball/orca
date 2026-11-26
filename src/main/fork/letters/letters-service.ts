@@ -27,6 +27,7 @@ import {
   resolveForkLetterRecipient
 } from './letters-parties'
 import { forwardForkLetter } from './letters-peers'
+import { forkPauseAllRefusal } from '../pause-all/pause-all-state'
 import type { ForkLettersState } from './letters-store'
 
 export function requireForkLetters(deps: ForkLettersDeps): void {
@@ -142,7 +143,8 @@ function newLetter(
     at: deps.now(),
     state: to.host?.kind === 'device' ? 'pickup' : 'queued',
     settledAt: null,
-    note: null,
+    // Pause all (BAD-818): the sender reads in its receipt that the letter waits for resume-all.
+    note: to.host?.kind === 'device' ? null : forkPauseAllRefusal(),
     tries: 0
   }
 }

@@ -5,11 +5,8 @@ import { runtimeBotGroups } from '../../../../../bots/bot-group-runtime'
 import { randomUUID } from 'node:crypto'
 import type { z } from 'zod'
 import { runtimeBotChats } from '../../../../../bots/bot-chat-session'
-import {
-  failureHeldChat,
-  heldChatSentNext,
-  type HeldChat
-} from '../../../../../bots/bot-held-chat-request'
+import { failureHeldChat, type HeldChat } from '../../../../../bots/bot-held-chat-request'
+import { forkPauseAllSentNext } from '../../../../../fork/pause-all/pause-all-bot-mail'
 import { admitInNewChat, sessionAddress } from './bot-request-conversation'
 import { ownerChatCard } from './bot-request-owner-card'
 import { botRequestPayload, type BotRequestRecord } from '../../../../../bots/bot-request-view'
@@ -289,7 +286,10 @@ async function admitBotRequestMail(
     card.write({ messageId: message.id })
     const sent = recordReceiptForPostCommitNudge(
       args.recordMutationReceipt,
-      { message: exposeMessage(message), next: heldChatSentNext(record, held) },
+      {
+        message: exposeMessage(message),
+        next: forkPauseAllSentNext(runtime, address, receiving.chat, record, held)
+      },
       () => runtime.notifyMessageArrived(message.to_handle, message.type)
     )
     if (args.held) {

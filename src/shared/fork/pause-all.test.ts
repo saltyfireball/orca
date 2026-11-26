@@ -66,6 +66,15 @@ describe('messages and params', () => {
     expect(formatPauseAll({ state: PAUSE_ALL_OFF, hosts: [] })).toBe('Not paused.')
   })
 
+  it('prints held counts only while paused, also when an older host sends them', () => {
+    const held = { mail: 6, handOffs: 0, launches: 0 }
+    expect(formatPauseAll({ state: PAUSE_ALL_OFF, hosts: [], held })).toBe('Not paused.')
+    const paused = { engaged: true, since: null, by: 'cli', note: null, corrupt: false }
+    expect(formatPauseAll({ state: paused, hosts: [], held })).toContain(
+      'Held for resume-all: 6 bot mail'
+    )
+  })
+
   it('reads a server answer, and refuses an unrelated one', () => {
     expect(parsePauseAllAnswer({ state: { engaged: true } })).toBe(true)
     expect(parsePauseAllAnswer({ state: {} })).toBeNull()

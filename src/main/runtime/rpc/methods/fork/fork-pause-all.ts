@@ -60,7 +60,8 @@ export const FORK_PAUSE_ALL_METHODS = [
         fleetDeps(ctx.runtime, 'cli'),
         params.fleet === true
       )
-      const held = forkPauseAllHeldCounts(ctx.runtime)
+      // Unread mail is held only while the switch is on (BAD-818).
+      const held = result.state.engaged ? forkPauseAllHeldCounts(ctx.runtime) : null
       return held ? { ...result, held } : result
     }
   }),

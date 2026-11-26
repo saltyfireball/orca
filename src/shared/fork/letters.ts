@@ -111,6 +111,8 @@ export type ForkLetter = {
   tries: number
   /** Set on the host's own message that an ask was thrown back: `text` is typed in as it is. */
   boardBack?: true
+  /** When Pause all let it go (BAD-818): its day to be delivered counts from then, not from `at`. */
+  pauseReleasedAt?: number
 }
 
 export type ForkBoardAskType = 'REVIEW' | 'DECIDE' | 'DO'

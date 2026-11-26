@@ -4,10 +4,13 @@
 // no draft (checked again right before the first write), and only where the agent, not a shell,
 // reads the terminal. One letter per recipient per pass: the next waits for the turn it starts
 // to end. A send that failed after it may have arrived counts as delivered, so a letter is never
-// typed in twice.
+// typed in twice. While Pause all is engaged (BAD-818) every letter queued here waits with the
+// reason as its note and none expires; once released each waits a new day.
 import { FORK_LETTER_EXPIRE_MS, type ForkLetter } from '../../../shared/fork/letters'
 import { buildForkLetterDelivery } from '../../../shared/fork/letters-frame'
+import { PAUSE_ALL_REASON_PREFIX } from '../../../shared/fork/pause-all'
 import type { IdleRecoveryPorts } from '../idle-recovery/idle-recovery-ports'
+import { forkPauseAllRefusal, isForkPauseAllEngaged } from '../pause-all/pause-all-state'
 import type { ForkLettersState, ForkLettersStore } from './letters-store'
 
 export type ForkLetterDeliveryResult = { outcome: 'delivered' } | { outcome: 'held'; note: string }
@@ -17,6 +20,10 @@ export async function deliverForkLetter(
   text: string,
   ports: IdleRecoveryPorts
 ): Promise<ForkLetterDeliveryResult> {
+  const paused = forkPauseAllRefusal()
+  if (paused !== null) {
+    return { outcome: 'held', note: paused }
+  }
   const { chatId } = letter.to
   if (letter.to.kind === 'chat') {
     const facts = ports.chat.read(chatId)
@@ -31,7 +38,7 @@ export async function deliverForkLetter(
     }
     const stillIdle = (): boolean => {
       const now = ports.chat.read(chatId)
-      return now !== null && now.loaded && !now.inTurn
+      return now !== null && now.loaded && !now.inTurn && !isForkPauseAllEngaged()
     }
     const outcome = await ports.chat.send(chatId, text, facts.fence, stillIdle)
     return outcome === 'refused'
@@ -53,7 +60,8 @@ export async function deliverForkLetter(
     bound,
     letter.to.agent,
     text,
-    async () => (await ports.terminal.refusal(chatId, bound.handle)) === null
+    async () =>
+      !isForkPauseAllEngaged() && (await ports.terminal.refusal(chatId, bound.handle)) === null
   )
   return outcome === 'refused'
     ? { outcome: 'held', note: 'the terminal got busy' }
@@ -83,11 +91,47 @@ export function forkLettersDue(letters: readonly ForkLetter[]): ForkLetter[] {
   return due
 }
 
-function expireOld(state: ForkLettersState, now: number): ForkLettersState | undefined {
+const queuedHere = (letter: ForkLetter): boolean =>
+  letter.state === 'queued' && letter.to.host === null
+
+/** Pause all (BAD-818): while engaged, each letter queued here notes the reason; once released, a
+ *  letter it held drops the note and starts its day again. */
+function holdOrRelease(
+  state: ForkLettersState,
+  now: number,
+  paused: string | null
+): ForkLettersState | undefined {
+  let changed = false
+  const letters = state.letters.map((letter): ForkLetter => {
+    if (!queuedHere(letter)) {
+      return letter
+    }
+    if (paused !== null && letter.note !== paused) {
+      changed = true
+      return { ...letter, note: paused }
+    }
+    if (paused === null && letter.note?.startsWith(PAUSE_ALL_REASON_PREFIX)) {
+      changed = true
+      return { ...letter, note: null, pauseReleasedAt: now }
+    }
+    return letter
+  })
+  return changed ? { ...state, letters } : undefined
+}
+
+function expireOld(
+  state: ForkLettersState,
+  now: number,
+  paused: boolean
+): ForkLettersState | undefined {
   let changed = false
   const letters = state.letters.map((letter) => {
     const waiting = letter.state === 'queued' || letter.state === 'pickup'
-    if (!waiting || now - letter.at < FORK_LETTER_EXPIRE_MS) {
+    if (
+      !waiting ||
+      (paused && queuedHere(letter)) ||
+      now - (letter.pauseReleasedAt ?? letter.at) < FORK_LETTER_EXPIRE_MS
+    ) {
       return letter
     }
     changed = true
@@ -107,8 +151,11 @@ export async function runForkLetterDeliveryPass(
   ports: IdleRecoveryPorts,
   now: () => number = Date.now
 ): Promise<number> {
+  const paused = forkPauseAllRefusal()
   const state = await store.update((current) => {
-    const next = expireOld(current, now())
+    const at = now()
+    const marked = holdOrRelease(current, at, paused)
+    const next = expireOld(marked ?? current, at, paused !== null) ?? marked
     return { next, result: next ?? current }
   })
   const results = new Map<string, ForkLetterDeliveryResult>()

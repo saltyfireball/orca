@@ -2,7 +2,9 @@
 // send or a received letter kicks a pass at once; while letters stay queued here a pass runs
 // every 5 s; while some paired server was written to in the last day its answers are collected
 // every 15 s. One timer, never overlapping runs, unref'd. Started by the start-up hook on the
-// desktop, `orca serve` and orcad, so a queue a restart left is picked up.
+// desktop, `orca serve` and orcad, so a queue a restart left is picked up. Releasing Pause all
+// (BAD-818) runs a pass at once, so what it held goes out at resume-all.
+import { onForkPauseAllChanged } from '../pause-all/pause-all-state'
 import { runForkLetterDeliveryPass } from './letters-delivery'
 import {
   liveForkLetters,
@@ -92,10 +94,16 @@ export function createForkLettersRunner(deps: ForkLettersDeps): ForkLettersRunne
         }
       })
   }
+  const stopPauseAll = onForkPauseAllChanged((state) => {
+    if (!state.engaged) {
+      arm(0)
+    }
+  })
   return {
     kick: () => arm(0),
     stop: () => {
       stopped = true
+      stopPauseAll()
       if (timer) {
         clearTimeout(timer)
       }

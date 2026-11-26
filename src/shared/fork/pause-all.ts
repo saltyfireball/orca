@@ -117,8 +117,8 @@ export type ForkPauseAllResult = {
   /** Paired servers asked; empty for a local-only change or a relayed one. */
   hosts: ForkPauseAllHostResult[]
   /** What this host holds for resume-all (BAD-818): unread mail to bots' chats, room hand-offs and
-   *  worker launches waiting in the launch queue (absent from an older host). Absent where it could
-   *  not be read. */
+   *  worker launches waiting in the launch queue (absent from an older host). Absent while the
+   *  switch is off, and where it could not be read. */
   held?: { mail: number; handOffs: number; launches?: number }
 }
 
@@ -143,7 +143,8 @@ export function formatPauseAll(result: ForkPauseAllResult): string {
       ? `Paused${state.corrupt ? ' (switch unreadable, counts as engaged)' : ''}: schedulers, automations, event triggers, idle-recovery wakes, babysitter and nudge sends, unattended resume, goal steps, worker retries, worker launches, bot looks and tidy-ups, bot room hand-offs, bot mail, connector messages to bots and automatic limit handoffs start nothing. Running turns finish.${state.since ? ` Since ${new Date(state.since).toISOString()}.` : ''}`
       : 'Not paused.'
   ]
-  const held = result.held
+  // Only the switch holds anything: with it off, unread bot mail is not held.
+  const held = state.engaged ? result.held : undefined
   const launches = held?.launches ?? 0
   if (held && held.mail + held.handOffs + launches > 0) {
     lines.push(
