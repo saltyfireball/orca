@@ -17,12 +17,13 @@ import {
   type ForkLettersListResult,
   type ForkLettersSendResult
 } from '../../shared/fork/letters-wire'
+import { forkHostLine } from '../../shared/fork/letters-frame'
+import { formatLetterSent } from '../../shared/fork/letters-receipt'
 import {
   formatBoardAsk,
   formatBoardList,
   formatLetterChats,
-  formatLetterList,
-  formatLetterSent
+  formatLetterList
 } from './letters-format'
 
 function incompatible(error: unknown): never {
@@ -81,7 +82,12 @@ export const FORK_LETTERS_HANDLERS: Record<string, CommandHandler> = {
       ...(host ? { host } : {}),
       ...(from ? { from } : {})
     })
-    printResult(result, ctx.json, (value) => formatLetterSent(value.letter))
+    // The host's own receipt (BAD-818); an older host's is worded here.
+    printResult(
+      result,
+      ctx.json,
+      (value) => forkHostLine(value.receipt) ?? formatLetterSent(value.letter)
+    )
   },
   'letter list': async (ctx) => {
     const own = forkLetterCallerClaim()

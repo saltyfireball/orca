@@ -3697,9 +3697,13 @@ ones `SLRM-123 `).
     at once, and each held letter then waits a new day (`pauseReleasedAt`). The hold is per
     recipient, as bot mail's is, so a person's letter or throw-back waits too. The sender of a
     request to a bot whose chat the switch holds reads, instead of "<bot> has it now", that it
-    waits there unread until resume-all, and to tell the asker so. `orca pause-status` prints and
-    returns held counts only while the switch is on; with it off, unread mail in bots' chats is not
-    held, so nothing is printed (also when an older host sends counts).
+    waits there unread until resume-all, and to tell the asker so. `orca pause-status` returns held
+    counts only while the switch is on, the letters queued here among them, and then prints its
+    held line also when nothing is held; with it off, unread mail in bots' chats is not held, so
+    nothing is printed (also when an older host sends counts). The host words the letter's receipt
+    (`receipt`) and the held line (`heldLine`), and the CLI prints them as given, cleaned to one
+    line: a paired desktop's older CLI worded the receipt itself and said "queued" of a letter the
+    server held. A CLI words them itself only for an older host that sends neither.
   - **Guarded sends (BAD-818).** Idle recovery's guarded send ports are start primitives of the
     table, so a new feature that types into an idle chat or terminal agent through them fails the
     test until it has a row. Two users had none: boundary compaction (a `/compact` sent to an idle
@@ -4090,6 +4094,7 @@ Apply these in this order. Each one is a single commit.
 222. `BAD-818 Letters wait while Pause all is on: none is typed into an idle chat or terminal agent, none expires, the sender's receipt says it is held, and resume-all delivers at once; the sender of held bot mail is told it waits for resume-all; pause-status shows held counts only while paused`
 223. `BAD-838 A failed Look around or Tidy-up records why its turn failed (the turn's failure line or the agent's refusal of its start, such as a signed-out Claude account), not only that it didn't finish`
 224. `BAD-818 Idle recovery's guarded send ports are start primitives of the pause-all starter table: boundary compaction asks no chat to compact while paused and sweeps at resume-all; an agent guard's loop note that would start a turn waits for resume-all, one into a running turn and every stop still go`
+225. `BAD-818 The host words a letter's receipt and pause-status's held line and the CLI prints them, so a sender's older CLI no longer says "queued" of a letter Pause all holds; pause-status counts the letters queued here and prints its held line whenever paused, also with nothing held`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

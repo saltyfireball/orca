@@ -52,6 +52,16 @@ export function cleanForkLetterText(text: string, maxChars: number): string {
     .slice(0, maxChars)
 }
 
+/** A line a host wrote for a CLI to print as is (BAD-818: a letter's receipt, pause-status's held
+ *  line): one line, no control or invisible characters, capped. Null when the host wrote none (an
+ *  older host), so the CLI words it itself. */
+export function forkHostLine(text: unknown, maxChars = 1000): string | null {
+  if (typeof text !== 'string') {
+    return null
+  }
+  return cleanForkLetterText(text, maxChars).replace(/\s+/g, ' ') || null
+}
+
 /** Why this text is refused, or undefined: it may not hold the frame's markers. */
 export function forkLetterBodyRefusal(text: string): string | undefined {
   const folded = text.normalize('NFKC').replace(INVISIBLE, '')

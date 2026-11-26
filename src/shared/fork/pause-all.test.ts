@@ -75,6 +75,26 @@ describe('messages and params', () => {
     )
   })
 
+  it("prints the host's held line while paused, also with nothing held, and words it for an older host", () => {
+    const paused = { engaged: true, since: null, by: 'cli', note: null, corrupt: false }
+    const held = { mail: 0, handOffs: 0, launches: 0, letters: 1 }
+    const after = (result: Parameters<typeof formatPauseAll>[0]) =>
+      formatPauseAll(result).split('\n').slice(1)
+    // A host newer than this CLI words what it holds; the line is printed as one, cleaned.
+    const heldLine = 'Held for resume-all: 3 things\u0007\nthis CLI does not know.'
+    expect(after({ state: paused, hosts: [], held, heldLine })).toEqual([
+      'Held for resume-all: 3 things this CLI does not know.'
+    ])
+    expect(after({ state: paused, hosts: [], held })).toEqual([
+      'Held for resume-all: 0 bot mail, 0 room hand-offs, 0 worker launches (orca agent queue list), 1 letter (orca letter list).'
+    ])
+    // An older host counts no letters.
+    expect(after({ state: paused, hosts: [], held: { mail: 0, handOffs: 0 } })).toEqual([
+      'Held for resume-all: 0 bot mail, 0 room hand-offs, 0 worker launches (orca agent queue list).'
+    ])
+    expect(formatPauseAll({ state: PAUSE_ALL_OFF, hosts: [], held, heldLine })).toBe('Not paused.')
+  })
+
   it('reads a server answer, and refuses an unrelated one', () => {
     expect(parsePauseAllAnswer({ state: { engaged: true } })).toBe(true)
     expect(parsePauseAllAnswer({ state: {} })).toBeNull()

@@ -1,10 +1,11 @@
 // Letters and the board (FORK.md, SLRM-2389): `orca letter` and `orca board` routing, the caller
-// claim read from the environment, and the tables.
-import { describe, expect, it } from 'vitest'
+// claim read from the environment, the tables, and the receipt the host words (BAD-818).
+import { describe, expect, it, vi } from 'vitest'
 import { normalizeCommandPositionals, parseArgs } from '../arguments/args'
 import { FORK_LETTERS_COMMAND_SPECS } from './letters-specs'
-import { forkLetterCallerClaim } from './letters-handlers'
-import { formatBoardList, formatLetterList, formatLetterSent } from './letters-format'
+import { FORK_LETTERS_HANDLERS, forkLetterCallerClaim } from './letters-handlers'
+import { formatBoardList, formatLetterList } from './letters-format'
+import { formatLetterSent } from '../../shared/fork/letters-receipt'
 import type { ForkLetter } from '../../shared/fork/letters'
 
 function route(argv: string[]) {
@@ -79,5 +80,43 @@ describe('the tables', () => {
     expect(table).toContain('Rebase on main')
     expect(formatLetterList({ now: 0, letters: [] })).toBe('No letters.')
     expect(formatBoardList({ now: 0, asks: [] })).toBe('The board is empty.')
+  })
+})
+
+describe('the receipt of a sent letter', () => {
+  const queued: ForkLetter = { ...letter, to: { ...letter.to, host: null }, state: 'queued' }
+
+  async function sent(result: unknown): Promise<string> {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    try {
+      await FORK_LETTERS_HANDLERS['letter send']!({
+        flags: new Map([
+          ['to', 'bbbb2222'],
+          ['text', 'hi']
+        ]),
+        client: {
+          call: async () => ({ id: '1', ok: true, result, _meta: { runtimeId: 'h' } })
+        } as never,
+        cwd: '/',
+        json: false
+      })
+      return log.mock.calls.map((call) => String(call[0])).join('\n')
+    } finally {
+      log.mockRestore()
+    }
+  }
+
+  it("prints the host's own receipt, on one line and without control characters", async () => {
+    // A host newer than this CLI words a hold this CLI knows nothing of.
+    const receipt = 'Letter a1 to Builder: held by a newer rule.\u001b[2J\n(see the host)'
+    expect(await sent({ letter: queued, receipt })).toBe(
+      'Letter a1 to Builder: held by a newer rule.[2J (see the host)'
+    )
+  })
+
+  it('words the receipt itself for an older host', async () => {
+    expect(await sent({ letter: queued })).toBe(
+      'Letter a1b2c3d4e5f6 to Builder (bbbb2222): queued: delivered when the chat ends its turn.'
+    )
   })
 })

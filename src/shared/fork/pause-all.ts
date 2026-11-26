@@ -2,6 +2,7 @@
 // feature from starting new work. Running turns finish. Pure parts shared by the host, the CLI,
 // the renderer and the tests.
 import { z } from 'zod'
+import { forkHostLine } from './letters-frame'
 
 export type ForkPauseAllSettings = {
   /** Fork pause all (BAD-685): when true, `orca pause-all` also pauses every paired server that is online; false pauses this host only. Unset is true. */
@@ -116,10 +117,20 @@ export type ForkPauseAllResult = {
   state: ForkPauseAllState
   /** Paired servers asked; empty for a local-only change or a relayed one. */
   hosts: ForkPauseAllHostResult[]
-  /** What this host holds for resume-all (BAD-818): unread mail to bots' chats, room hand-offs and
-   *  worker launches waiting in the launch queue (absent from an older host). Absent while the
-   *  switch is off, and where it could not be read. */
-  held?: { mail: number; handOffs: number; launches?: number }
+  /** What this host holds for resume-all (BAD-818): unread mail to bots' chats, room hand-offs,
+   *  worker launches waiting in the launch queue and letters queued for chats here (the last two
+   *  absent from an older host). Absent while the switch is off, and where it could not be read. */
+  held?: ForkPauseAllHeld
+  /** The held line as this host words it (BAD-818), printed as is, so a CLI older than the host
+   *  still shows all it holds. Present with `held`. */
+  heldLine?: string
+}
+
+export type ForkPauseAllHeld = {
+  mail: number
+  handOffs: number
+  launches?: number
+  letters?: number
 }
 
 /** The state a server answered with, or null when the answer is not a pause-all result. */
@@ -135,6 +146,22 @@ export function parsePauseAllAnswer(answer: unknown): boolean | null {
   return typeof engaged === 'boolean' ? engaged : null
 }
 
+const plural = (count: number, one: string, many: string): string =>
+  `${count} ${count === 1 ? one : many}`
+
+/** The held line: what this host keeps for resume-all, and where each is listed. */
+export function formatPauseAllHeld(held: ForkPauseAllHeld): string {
+  const parts = [
+    `${held.mail} bot mail`,
+    plural(held.handOffs, 'room hand-off', 'room hand-offs'),
+    `${plural(held.launches ?? 0, 'worker launch', 'worker launches')} (orca agent queue list)`
+  ]
+  if (held.letters !== undefined) {
+    parts.push(`${plural(held.letters, 'letter', 'letters')} (orca letter list)`)
+  }
+  return `Held for resume-all: ${parts.join(', ')}.`
+}
+
 /** What the CLI and the status bar print: one line for this host, one per paired server that did not take it. */
 export function formatPauseAll(result: ForkPauseAllResult): string {
   const { state } = result
@@ -143,13 +170,14 @@ export function formatPauseAll(result: ForkPauseAllResult): string {
       ? `Paused${state.corrupt ? ' (switch unreadable, counts as engaged)' : ''}: schedulers, automations, event triggers, idle-recovery wakes, babysitter and nudge sends, unattended resume, goal steps, worker retries, worker launches, bot looks and tidy-ups, bot room hand-offs, bot mail, connector messages to bots and automatic limit handoffs start nothing. Running turns finish.${state.since ? ` Since ${new Date(state.since).toISOString()}.` : ''}`
       : 'Not paused.'
   ]
-  // Only the switch holds anything: with it off, unread bot mail is not held.
-  const held = state.engaged ? result.held : undefined
-  const launches = held?.launches ?? 0
-  if (held && held.mail + held.handOffs + launches > 0) {
-    lines.push(
-      `Held for resume-all: ${held.mail} bot mail, ${held.handOffs} room hand-off${held.handOffs === 1 ? '' : 's'}, ${launches} worker launch${launches === 1 ? '' : 'es'} (orca agent queue list).`
-    )
+  // Only the switch holds anything: with it off, unread bot mail is not held. While it is on the
+  // line shows, also when nothing is held, in the host's own words where it gave them.
+  if (state.engaged) {
+    const held =
+      forkHostLine(result.heldLine) ?? (result.held ? formatPauseAllHeld(result.held) : null)
+    if (held) {
+      lines.push(held)
+    }
   }
   for (const host of result.hosts) {
     lines.push(

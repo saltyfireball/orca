@@ -14,7 +14,8 @@ vi.mock('../../../shared/app-lifecycle/app-environment', () => ({
   hasAppEnvironment: () => true
 }))
 
-import { formatLetterList, formatLetterSent } from '../../../cli/fork/letters-format'
+import { formatLetterList } from '../../../cli/fork/letters-format'
+import { formatLetterSent } from '../../../shared/fork/letters-receipt'
 import {
   PAUSE_ALL_STATE_FILE_NAME,
   resetForkPauseAllCacheForTests,

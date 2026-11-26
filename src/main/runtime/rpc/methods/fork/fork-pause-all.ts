@@ -7,6 +7,7 @@ import { defineMethod } from '../../core'
 import {
   ForkPauseAllSetParams,
   ForkPauseAllStatusParams,
+  formatPauseAllHeld,
   type ForkPauseAllResult
 } from '../../../../../shared/fork/pause-all'
 import { listEnvironments } from '../../../../../shared/remote-runtime/host-store/runtime-environment-store'
@@ -60,9 +61,10 @@ export const FORK_PAUSE_ALL_METHODS = [
         fleetDeps(ctx.runtime, 'cli'),
         params.fleet === true
       )
-      // Unread mail is held only while the switch is on (BAD-818).
-      const held = result.state.engaged ? forkPauseAllHeldCounts(ctx.runtime) : null
-      return held ? { ...result, held } : result
+      // Unread mail is held only while the switch is on (BAD-818). The line is worded here, so a
+      // CLI older than this host still prints all it holds.
+      const held = result.state.engaged ? await forkPauseAllHeldCounts(ctx.runtime) : null
+      return held ? { ...result, held, heldLine: formatPauseAllHeld(held) } : result
     }
   }),
   defineMethod({

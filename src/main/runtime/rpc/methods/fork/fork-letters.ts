@@ -12,8 +12,10 @@ import {
   ForkLettersDeliverParams,
   ForkLettersListParams,
   ForkLettersSendParams,
-  type ForkLetterCallerClaim
+  type ForkLetterCallerClaim,
+  type ForkLettersSendResult
 } from '../../../../../shared/fork/letters-wire'
+import { formatLetterSent } from '../../../../../shared/fork/letters-receipt'
 import {
   liveForkLetters,
   setForkLettersRuntime,
@@ -63,9 +65,11 @@ export const FORK_LETTERS_RPC_METHODS = [
     name: NAMES.send,
     permission: 'workspace',
     params: ForkLettersSendParams,
-    handler: async (params, ctx) => ({
-      letter: await sendForkLetter(await deps(ctx), params, callerOf(ctx, params.from))
-    })
+    handler: async (params, ctx): Promise<ForkLettersSendResult> => {
+      const letter = await sendForkLetter(await deps(ctx), params, callerOf(ctx, params.from))
+      // This host words the receipt (BAD-818): a sender's older CLI prints what happens here.
+      return { letter, receipt: formatLetterSent(letter) }
+    }
   }),
   defineMethod({
     name: NAMES.list,

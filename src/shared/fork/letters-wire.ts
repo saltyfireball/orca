@@ -112,7 +112,13 @@ export type ForkLetterChat = {
   worktreeId: string | null
 }
 
-export type ForkLettersSendResult = { letter: ForkLetter }
+export type ForkLettersSendResult = {
+  letter: ForkLetter
+  /** The sender's receipt as this host words it (BAD-818), printed as is, so a CLI older than the
+   *  host still says what the host does with the letter (held by pause-all). Absent from an older
+   *  host. */
+  receipt?: string
+}
 export type ForkLettersListResult = { now: number; letters: ForkLetter[] }
 export type ForkLettersChatsResult = { chats: ForkLetterChat[] }
 export type ForkLettersCollectResult = { letters: ForkLetter[] }
