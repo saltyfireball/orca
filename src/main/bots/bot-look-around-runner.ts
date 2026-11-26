@@ -40,6 +40,7 @@ import {
   forkPauseAllSkipsScheduledRun,
   withPauseAllSkippedRun
 } from '../fork/pause-all/pause-all-background-runs'
+import { forkBackgroundRunFailure } from '../fork/background-runs/background-run-failure-reason'
 
 /** A look still going after this long awake is stopped on its host and recorded as stopped. */
 export const LOOK_RUN_LIMIT_MS = 10 * 60 * 1000
@@ -81,11 +82,13 @@ export type BotLookAroundRunnerDeps = {
   now: () => number
 }
 
-function failureOf(ended: BotTurnEnd | 'timed_out'): string | undefined {
+function failureOf(ended: BotTurnEnd | 'timed_out', agent: string): string | undefined {
   if (ended === 'timed_out') {
     return LOOK_FAILURES.timedOut
   }
-  return 'outcome' in ended && ended.outcome === 'success' ? undefined : LOOK_FAILURES.unfinished
+  return 'outcome' in ended && ended.outcome === 'success'
+    ? undefined
+    : forkBackgroundRunFailure(LOOK_FAILURES.unfinished, ended, agent)
 }
 
 export class BotLookAroundRunner {
@@ -275,7 +278,7 @@ export class BotLookAroundRunner {
       )
       gate.attach(start)
       const ended = await awaitRunEnd(watch, this.deps, sessionId, start)
-      failure = failureOf(ended)
+      failure = failureOf(ended, bot.agent)
       notifies = turnFailed(ended)
       if (notifies) {
         usageLimited = (await this.deps.usageLimitOf(sessionId).catch(() => null)) ?? undefined

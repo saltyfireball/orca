@@ -40,6 +40,19 @@ ones `SLRM-123 `).
 
 ## What the fork changes
 
+- **A failed look or tidy-up says why (BAD-838).** A bot's Look around and Tidy-up recorded only
+  "The last look didn't finish." (or "The last tidy-up didn't finish.") when their turn failed,
+  though the run already held the reason: when the bots' Claude account was signed out, every look
+  failed that way 2-3 seconds in and nothing on the bot said why. Automation runs record the reason
+  since upstream #47491; looks and tidy-ups now do the same. The stored failure is the old sentence
+  followed by the turn's own failure line, or the agent's refusal of its start (for a signed-out
+  Claude: "The last look didn't finish. This Claude account isn't signed in. Sign in again in
+  Claude Accounts settings."). It shows where the failure showed before: the bot's Look around row,
+  the Look around and Tidy-up sections of the bot's Settings, and Up next on the phone. A failure
+  with no reason, a stop at the time limit, a restart or a sleep keep their old text. Such a line
+  has no translation code, so it shows in English (the agent's reason is English already). Code is
+  in `src/main/fork/background-runs/background-run-failure-reason.ts`.
+
 - **Own pull request loop limit: an automation started by your own pull requests stops when its
   runs keep opening them (BAD-819).** Since upstream v1.4.273 a `github.pr_opened from=me` rule
   starts on every pull request opened under the owner's account, the ones agents open included
@@ -4062,6 +4075,7 @@ Apply these in this order. Each one is a single commit.
 220. `Fork release version: a base whose upstream tag was deleted is read from package.json, so a release never sorts below the one before it`
 221. `BAD-820 A reviewer run that errored or produced no review (its own sandbox failed, even with a VERDICT line after it; empty output; no verdict) is a reviewer error, not a finding: no review round is spent and no new commit is asked for; the gate retries it once itself, then escalates to the coordinator as "reviewer could not run: <error>" with a Decision inbox row and tells the worker to wait`
 222. `BAD-818 Letters wait while Pause all is on: none is typed into an idle chat or terminal agent, none expires, the sender's receipt says it is held, and resume-all delivers at once; the sender of held bot mail is told it waits for resume-all; pause-status shows held counts only while paused`
+223. `BAD-838 A failed Look around or Tidy-up records why its turn failed (the turn's failure line or the agent's refusal of its start, such as a signed-out Claude account), not only that it didn't finish`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5638,6 +5652,10 @@ Upstream files only get short hooks, which keeps merges small:
   the optional `refuseModel`, which `acp-structured-launch-resolution.ts` (`acpStructuredLaunchPart`)
   checks after the version check through the fork file `acp-launch-model-refusal.ts`. A sync that
   brings back upstream's `zed` identity must keep Orca's.
+- A failed look or tidy-up says why (BAD-838), one hook per stock file: `bot-look-around-runner.ts`
+  passes `bot.agent` to `failureOf`, which wraps `LOOK_FAILURES.unfinished` in
+  `forkBackgroundRunFailure`; `bot-memory-tidy-up-runner.ts` passes `bot.agent` to `reply`, which
+  wraps `TIDY_UP_FAILURES.unfinished` the same way.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

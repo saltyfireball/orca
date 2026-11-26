@@ -43,6 +43,7 @@ import {
   forkPauseAllSkipsScheduledRun,
   withPauseAllSkippedRun
 } from '../fork/pause-all/pause-all-background-runs'
+import { forkBackgroundRunFailure } from '../fork/background-runs/background-run-failure-reason'
 
 type Failed = { error: string; alerted: boolean; asleep?: boolean }
 type Ended = Failed | { through: number }
@@ -249,7 +250,7 @@ export class BotTidyUpRunner {
         TIDY_UP_RUN_LIMIT_MS
       )
       gate.attach(start)
-      const reply = await this.reply(watch, sessionId, start)
+      const reply = await this.reply(watch, sessionId, start, bot.agent)
       const outcome =
         'error' in reply
           ? reply
@@ -324,7 +325,8 @@ export class BotTidyUpRunner {
   private async reply(
     watch: BackgroundRunWatch,
     sessionId: string,
-    start: RunStart
+    start: RunStart,
+    agent: string
   ): Promise<{ text: string } | Failed> {
     const ended = await awaitRunEnd(watch, this.deps, sessionId, start)
     if (ended !== 'timed_out' && 'outcome' in ended && ended.outcome === 'success') {
@@ -332,7 +334,10 @@ export class BotTidyUpRunner {
     }
     return ended === 'timed_out'
       ? { error: TIDY_UP_FAILURES.timedOut, alerted: false }
-      : { error: TIDY_UP_FAILURES.unfinished, alerted: turnFailed(ended) }
+      : {
+          error: forkBackgroundRunFailure(TIDY_UP_FAILURES.unfinished, ended, agent),
+          alerted: turnFailed(ended)
+        }
   }
 }
 
