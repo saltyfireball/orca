@@ -141,6 +141,8 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"string"},"d":"Extra absolute folders, comma-separated, where an agent may delete.","o":true}',
   forkCommandGuardAuditLimit:
     '{"t":{"k":"number"},"d":"Blocked commands kept in the audit list; unset is 200.","o":true}',
+  forkCommandGuardBotOwnWorktreeRemoval:
+    '{"t":{"k":"boolean"},"d":"Let a bot\'s agent run `orca worktree rm` on a finished workspace of that bot (no agent running in it, nothing uncommitted, and with --delete-branch only a merged branch); every other removal stays blocked. Unset is on.","o":true}',
   forkCommandGuardDisabledRules:
     '{"t":{"k":"string"},"d":"Comma-separated rule ids to turn off everywhere: delete-outside-workspace, force-push, default-branch-rewrite, remove-worktree, guard-config, unreadable-command.","o":true}',
   forkCommandGuardProjectRules:

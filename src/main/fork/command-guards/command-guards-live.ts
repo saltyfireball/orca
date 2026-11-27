@@ -37,6 +37,7 @@ import {
   recordCommandGuardBlock
 } from './command-guards-audit'
 import { readCommandGuardGit } from './command-guards-git-state'
+import { answerOwnRemoval, type OwnRemovalRuntimeSeam } from './command-guards-own-removal-live'
 import {
   resetCommandGuardStart,
   settleCommandGuardStart,
@@ -48,13 +49,16 @@ import { noteUnguardedTerminalWorkspace } from './command-guards-terminal-gaps'
 export type ForkCommandGuardsStore = {
   getSettings: () => unknown
   getRepos?: () => Repo[]
+  getBots?: () => readonly { id: string; name: string }[]
   updateSettings?: (
     updates: Partial<ForkCommandGuardSettings>,
     options?: { notifyListeners?: boolean }
   ) => unknown
 }
 
-export type ForkCommandGuardsRuntime = { requireStore: () => ForkCommandGuardsStore }
+export type ForkCommandGuardsRuntime = {
+  requireStore: () => ForkCommandGuardsStore
+} & OwnRemovalRuntimeSeam
 
 let runtime: ForkCommandGuardsRuntime | null = null
 
@@ -117,13 +121,16 @@ type GuardedShellCall = {
   workspaceId: string
   /** The folder the agent works in. */
   root: string
+  /** Who is asking, for a bot's own removal (BAD-892). */
+  paneKey?: string
+  sessionId?: string
 }
 
 /**
  * The deny text when the command breaks a rule, else null; the block is audited. Never throws: a
  * fault in the guard lets the call through. Shared by the terminal hook and the chat hook.
  */
-export function guardShellCommand(call: GuardedShellCall): string | null {
+export async function guardShellCommand(call: GuardedShellCall): Promise<string | null> {
   try {
     const settled = commandGuardConfig()
     if (!settled.enabled) {
@@ -140,19 +147,35 @@ export function guardShellCommand(call: GuardedShellCall): string | null {
     if (verdict.allowed) {
       return null
     }
-    recordCommandGuardBlock(
-      {
-        at: Date.now(),
-        agent: call.agent,
-        surface: call.surface,
-        workspaceId: call.workspaceId,
-        rule: verdict.rule,
-        reason: verdict.reason,
-        command: call.command
-      },
-      settled.auditLimit
-    )
-    return `Blocked by Orca's command guard (${verdict.rule}): ${verdict.reason} Do not retry this command or look for a way around it; tell the user what you wanted to do so they can do it or allow it.`
+    const entry = {
+      at: Date.now(),
+      agent: call.agent,
+      surface: call.surface,
+      workspaceId: call.workspaceId,
+      rule: verdict.rule,
+      command: call.command
+    }
+    let reason = verdict.reason
+    if (verdict.ownRemoval && settled.botOwnWorktreeRemoval) {
+      const own = await answerOwnRemoval(
+        runtime,
+        {
+          workspaceId: call.workspaceId,
+          root: call.root,
+          paneKey: call.paneKey,
+          sessionId: call.sessionId
+        },
+        verdict.ownRemoval,
+        settled.protectedBranches
+      )
+      if (own?.allowed) {
+        recordCommandGuardBlock({ ...entry, ...own.audit }, settled.auditLimit)
+        return null
+      }
+      reason = own ? `${verdict.reason} ${own.why}` : reason
+    }
+    recordCommandGuardBlock({ ...entry, reason }, settled.auditLimit)
+    return `Blocked by Orca's command guard (${verdict.rule}): ${reason} Do not retry this command or look for a way around it; tell the user what you wanted to do so they can do it or allow it.`
   } catch (error) {
     console.warn('[fork-command-guards] check failed; the call goes through', error)
     return null
@@ -164,12 +187,12 @@ export function guardShellCommand(call: GuardedShellCall): string | null {
  * command guard, else null. `decides` is true when the hook script reads Orca's answer, so only
  * then is a block possible. Never throws: a fault in the guard lets the call through.
  */
-export function forkCommandGuardAnswer(
+export async function forkCommandGuardAnswer(
   source: AgentHookSource,
   body: unknown,
   owner: AgentToolCallOwner,
   decides: boolean
-): string | null {
+): Promise<string | null> {
   try {
     if (!decides || !owner.worktreeId) {
       return null
@@ -187,12 +210,13 @@ export function forkCommandGuardAnswer(
       noteUnguardedTerminalWorkspace(owner.worktreeId)
       return null
     }
-    const reason = guardShellCommand({
+    const reason = await guardShellCommand({
       agent: source,
       surface: 'terminal',
       command,
       workspaceId: owner.worktreeId,
-      root
+      root,
+      paneKey: owner.paneKey
     })
     return reason ? denyAnswer(reason) : null
   } catch (error) {
