@@ -50,6 +50,7 @@ import type { ForkWorkerRetrySettings } from './worker-retry'
 import type { ForkPauseAllSettings } from './pause-all'
 import type { ForkAutomationChainSettings } from '../automation-chain-triggers'
 import type { ForkBotRoomHopSettings } from './bot-room-hops'
+import type { ForkFeedbackEndpointSettings } from './feedback-endpoint'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -135,6 +136,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkPauseAllSettings &
   /** Fork (BAD-801): the hop limit on chained bot hand-offs in group rooms. */
   ForkBotRoomHopSettings &
+  /** Fork (BAD-895): where feedback and crash reports are posted; unset is off. */
+  ForkFeedbackEndpointSettings &
   /** Fork (BAD-689): automations that start on another automation's run ending, and the chain depth limit. */
   ForkAutomationChainSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */

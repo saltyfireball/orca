@@ -21,6 +21,8 @@ import {
 import type { CrashReportDiagnosticBundle } from '../../../../shared/crash-reporting/crash-reporting-diagnostic-bundle'
 import type { GitHubViewer } from '../../../../shared/github/pull-requests/pull-request-types'
 import { useIntlLocale, useTranslate } from '@/i18n/use-translate'
+import { useAppStore } from '@/store'
+import { forkFeedbackEndpoint } from '../../../../shared/fork/feedback-endpoint'
 import {
   CRASH_REPORT_SUBMIT_FAILURE_TOAST_ID,
   getCrashReportCopySubmissionFailure,
@@ -53,6 +55,8 @@ export function CrashReportDialogSurface({
   const t = useTranslate()
   const intlLocale = useIntlLocale()
   const mountedRef = useMountedRef()
+  // Fork (BAD-895): no feedback address means the report stays on this machine; only Copy details is offered.
+  const feedbackOn = useAppStore((s) => forkFeedbackEndpoint(s.settings) !== null)
   const [notes, setNotes] = useState('')
   const [includeDiagnosticLogs, setIncludeDiagnosticLogs] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -203,6 +207,14 @@ export function CrashReportDialogSurface({
           <DialogDescription>{getDialogDescription(report, t)}</DialogDescription>
         </DialogHeader>
 
+        {feedbackOn ? null : (
+          <p className="text-[13px] text-muted-foreground">
+            {t(
+              'fork.feedbackEndpoint.crashOff',
+              'Feedback is off, so this report stays on this machine. Copy the details to share them yourself.'
+            )}
+          </p>
+        )}
         {report ? null : (
           <p className="text-[13px] text-muted-foreground">
             {loading
@@ -288,11 +300,13 @@ export function CrashReportDialogSurface({
           }
         >
           <DialogCancel>{t('crashReport.dontSend', 'Don’t send')}</DialogCancel>
-          <Button type="button" size="sm" onClick={handleSubmit} disabled={loading || submitting}>
-            {submitting
-              ? t('crashReport.sending', 'Sending…')
-              : t('crashReport.sendReport', 'Send report')}
-          </Button>
+          {feedbackOn ? (
+            <Button type="button" size="sm" onClick={handleSubmit} disabled={loading || submitting}>
+              {submitting
+                ? t('crashReport.sending', 'Sending…')
+                : t('crashReport.sendReport', 'Send report')}
+            </Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>

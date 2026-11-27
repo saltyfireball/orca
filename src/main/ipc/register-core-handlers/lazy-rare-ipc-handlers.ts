@@ -1,3 +1,4 @@
+import { installForkFeedbackEndpointSource } from '../../fork/feedback-endpoint/feedback-endpoint-source'
 import type { Store } from '../../persistence/loading-store/store'
 import { registerLazyIpcHandleGroup } from '../lazy-ipc-handle-group'
 
@@ -36,6 +37,7 @@ export const FEEDBACK_IPC_CHANNELS = ['feedback:submit'] as const
 export const LINK_PREVIEW_IPC_CHANNELS = ['linkPreview:get'] as const
 
 export function registerLazyRareIpcHandlers(store: Store): void {
+  installForkFeedbackEndpointSource(() => store.getSettings())
   registerLazyIpcHandleGroup(ORCA_UNINSTALL_IPC_CHANNELS, async (ipc) => {
     const { registerOrcaUninstallHandlers } = await import('../orca-uninstall')
     registerOrcaUninstallHandlers(store, ipc)

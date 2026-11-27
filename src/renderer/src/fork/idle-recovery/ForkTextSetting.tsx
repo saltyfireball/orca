@@ -15,6 +15,7 @@ export type ForkTextSettingKey =
   | 'forkInboxNotifyCommand'
   | 'forkInboxNotifyWebhookUrl'
   | 'forkServerHeartbeatUrl'
+  | 'forkFeedbackEndpointUrl'
   | 'forkQuickTaskShortcut'
   | 'forkQuickTaskRouterBot'
   | 'forkQuickTaskRouterAgent'
