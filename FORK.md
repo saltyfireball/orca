@@ -2322,6 +2322,34 @@ ones `SLRM-123 `).
     **Help is not removal (BAD-764).** `orca worktree rm --help` and `git worktree remove -h`
     (a help flag as the only other argument) print usage and change nothing, so `remove-worktree`
     allows them; any other argument next to the help flag keeps the refusal.
+    **A bot removes its own workspace (BAD-892).** `forkCommandGuardBotOwnWorktreeRemoval` (on by
+    default) lets a lone, plain `orca worktree rm --worktree <selector> [--delete-branch] [--json]`
+    (also `remove`/`delete`) through when every condition holds, each read from Orca's own state
+    (the rows `orca worktree ps` shows and the bot chat index) and from git in the workspace, not
+    from the command text beyond the selector, which Orca resolves itself: (1) the calling agent
+    belongs to a bot (its pane or chat is one the bot chat index places, else its workspace is under
+    a bot) and that bot owns the target (the workspace sits under the bot, or a worker the bot
+    started made it); no bot, another bot, nobody, or an unresolvable selector refuses;
+    (2) no agent is open in the target, idle ones included, and the caller is not inside it (the
+    simple safe choice: run the removal from another workspace); (3) `git status --porcelain
+    --untracked-files=all` in the target prints nothing; (4) with `--delete-branch` the branch is an
+    ancestor of the repo's default branch (or its `origin/` copy) and is not itself the default or a
+    protected branch; without the flag the merged state does not matter (the worktree snapshot
+    still covers the removal). A squash-merged branch is not an ancestor, so it keeps the refusal
+    with `--delete-branch`. Anything else keeps its refusal as before: `--force`, `--run-hooks`,
+    `--allow-failed-archive-hook`, `--host`/`--environment`, a second argument, a selector with a
+    variable or substitution, input piped in, a second removal in the same command, any other
+    firm denial in the command, `git worktree remove`, the main checkout and folder workspaces. The
+    check runs inside the hook's 8 s wait; a check that does not finish in 6 s refuses. A refusal
+    names the failed condition (`caller-has-no-bot`, `target-unresolved`, `target-not-owned`,
+    `caller-inside-target`, `agent-running`, `uncommitted-changes`, `branch-not-merged`,
+    `timed-out`). Every allowed removal is a line in `fork-command-guard-audit.json` (`orca
+    command-guards list` marks it `ALLOWED`) with the bot, workspace, branch, whether the branch
+    was deleted and the reason; refusals are logged as before. The command is still only read:
+    the removal itself is `orca`'s, with its snapshot. The decision is pure
+    (`src/shared/fork/command-guards-own-removal.ts`); the facts come from
+    `src/main/fork/command-guards/command-guards-own-removal.ts`, wired to the runtime in
+    `command-guards-own-removal-live.ts`.
     **Escaped substitutions are text (BAD-785).** A backtick or `$(` after an odd run of
     backslashes (`"the guard also refuses \`orca worktree rm --help\`."`) is printed by the
     shell, not run, so it is not read as a command. A real one, and one a later `eval`or`bash -c` would run (the quotes of the outer command remove the backslash), are read and denied
@@ -4192,6 +4220,7 @@ Apply these in this order. Each one is a single commit.
 229. `BAD-847 mobile/src/bots/use-open-bot-home.ts: the useCallback parameters are typed (upstream e8819c3e21f left homeDraft and current implicitly any, which failed the mobile typecheck of Fork sync run 46027770648); one upstream file touched, a type annotation only, no behaviour change`
 230. `BAD-848 A finished fresh-session automation run's chat tab closes by itself after forkAutomationRunAutoCloseGraceMinutes (default 60; forkAutomationRunAutoClose turns it off) with its history kept, never a running, reuseSession, typed-into, pinned, Home Chat or person-started chat; orca agent close <id> closes one finished chat through the same close`
 231. `BAD-877 Tests hold the agy skip-permissions flag to Full access (real launch resolver and acquire: argv is [acp] for none, Ask, Accept edits, own and Auto), keep every agy permission request with the person in every mode, and keep the always-flagged readiness check to initialize and session/list; tests only, no code change`
+232. `BAD-892 Command guards let a bot's agent remove its own finished workspace with orca worktree rm (the bot owns it, no agent is open in it, the tree is clean, and with --delete-branch the branch is merged); every allow is audited, every other removal stays blocked; setting forkCommandGuardBotOwnWorktreeRemoval, on by default`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5658,6 +5687,9 @@ Upstream files only get short hooks, which keeps merges small:
   (`fork-agent-guards.ts`), so `rpc-method-registry.ts` is untouched, and `FORK_COMMAND_GUARDS_COMMAND_SPECS` in `src/cli/specs/index.ts`; `fork-handler-groups.ts`
   adds the `fork-command-guards` group. The seven settings are intersected in
   `fork-global-settings.ts`; the settings and RPC params catalogs are regenerated.
+  BAD-892: `forkCommandGuardAnswer` is async (it may ask Orca's state and git), so the same call in
+  `respondAfterAgentToolPluginHooks` is `await`ed (one word); the eighth setting,
+  `forkCommandGuardBotOwnWorktreeRemoval`, joins them in `ForkCommandGuardSettings`.
 
 - Automation run triggers (BAD-689), small edits in stock files: `automation-event-triggers.ts`
   adds the `automation` source to `AUTOMATION_EVENT_KINDS`, `AutomationEventTrigger`,

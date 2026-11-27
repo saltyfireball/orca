@@ -23,7 +23,8 @@ export const COMMAND_GUARD_RULE_TEXT: Record<CommandGuardRuleId, string> = {
   'force-push': 'git push --force, --force-with-lease, --mirror or a +refspec',
   'default-branch-rewrite':
     'reset --hard, rebase, amend, force-move or delete of the default branch; filter-branch and filter-repo',
-  'remove-worktree': 'git worktree remove and orca worktree rm',
+  'remove-worktree':
+    "git worktree remove and orca worktree rm (a bot's own finished, clean workspace excepted)",
   'guard-config': "changing these guards' own settings from an agent",
   'unreadable-command':
     'a command with an rm, git push or similar verb that the guard could not read (unbalanced quotes)'
@@ -47,6 +48,8 @@ export type ForkCommandGuardSettings = {
   forkCommandGuardProtectedBranches?: string
   /** Fork (BAD-686): blocked commands kept in the audit list; unset is 200. */
   forkCommandGuardAuditLimit?: number
+  /** Fork (BAD-892): let a bot's agent run `orca worktree rm` on a finished workspace of that bot (no agent running in it, nothing uncommitted, and with --delete-branch only a merged branch); every other removal stays blocked. Unset is on. */
+  forkCommandGuardBotOwnWorktreeRemoval?: boolean
 }
 
 export type CommandGuardConfig = {
@@ -57,6 +60,7 @@ export type CommandGuardConfig = {
   deleteRoots: string[]
   protectedBranches: string[]
   auditLimit: number
+  botOwnWorktreeRemoval: boolean
 }
 
 export function isCommandGuardRule(value: unknown): value is CommandGuardRuleId {
@@ -103,6 +107,7 @@ export function readCommandGuardConfig(source: unknown): CommandGuardConfig {
       root.startsWith('/')
     ),
     protectedBranches: list(raw.forkCommandGuardProtectedBranches),
+    botOwnWorktreeRemoval: raw.forkCommandGuardBotOwnWorktreeRemoval !== false,
     auditLimit:
       typeof limit === 'number' && Number.isFinite(limit) && limit >= 1
         ? Math.min(COMMAND_GUARD_MAX_AUDIT_LIMIT, Math.floor(limit))
@@ -133,6 +138,17 @@ export type CommandGuardAuditEntry = {
   reason: string
   /** The command text, cut to 400 characters. */
   command: string
+  /** Absent for a block; 'allowed' for a command a narrow exception let through (BAD-892). */
+  outcome?: 'allowed'
+  /** What an allowed bot removal removed, for the audit (BAD-892). */
+  removal?: CommandGuardRemovalAudit
+}
+
+export type CommandGuardRemovalAudit = {
+  bot: string
+  workspace: string
+  branch: string
+  branchDeleted: boolean
 }
 
 export type CommandGuardAgentCoverage = {

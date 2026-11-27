@@ -9,7 +9,8 @@ import { join } from 'node:path'
 import {
   COMMAND_GUARD_SURFACES,
   isCommandGuardRule,
-  type CommandGuardAuditEntry
+  type CommandGuardAuditEntry,
+  type CommandGuardRemovalAudit
 } from '../../../shared/fork/command-guards'
 
 export const COMMAND_GUARD_AUDIT_FILE = 'fork-command-guard-audit.json'
@@ -27,6 +28,7 @@ function readEntry(value: unknown): CommandGuardAuditEntry | null {
   const raw: Record<string, unknown> = { ...value }
   const { id, at, agent, workspaceId, rule, reason, command, surface } = raw
   const knownSurface = COMMAND_GUARD_SURFACES.find((known) => known === surface)
+  const removal = readRemoval(raw.removal)
   return typeof id === 'string' &&
     typeof at === 'number' &&
     typeof agent === 'string' &&
@@ -42,7 +44,28 @@ function readEntry(value: unknown): CommandGuardAuditEntry | null {
         workspaceId: workspaceId.slice(0, MAX_FIELD),
         rule,
         reason: reason.slice(0, MAX_FIELD),
-        command: command.slice(0, MAX_COMMAND)
+        command: command.slice(0, MAX_COMMAND),
+        ...(raw.outcome === 'allowed' ? { outcome: 'allowed' as const } : {}),
+        ...(removal ? { removal } : {})
+      }
+    : null
+}
+
+function readRemoval(value: unknown): CommandGuardRemovalAudit | null {
+  if (typeof value !== 'object' || value === null) {
+    return null
+  }
+  const raw: Record<string, unknown> = { ...value }
+  const { bot, workspace, branch, branchDeleted } = raw
+  return typeof bot === 'string' &&
+    typeof workspace === 'string' &&
+    typeof branch === 'string' &&
+    typeof branchDeleted === 'boolean'
+    ? {
+        bot: bot.slice(0, 120),
+        workspace: workspace.slice(0, MAX_FIELD),
+        branch: branch.slice(0, MAX_FIELD),
+        branchDeleted
       }
     : null
 }
@@ -86,7 +109,16 @@ export function recordCommandGuardBlock(
     ...entry,
     id: randomUUID(),
     command: entry.command.slice(0, MAX_COMMAND),
-    reason: entry.reason.slice(0, MAX_FIELD)
+    reason: entry.reason.slice(0, MAX_FIELD),
+    ...(entry.removal
+      ? {
+          removal: {
+            ...entry.removal,
+            workspace: entry.removal.workspace.slice(0, MAX_FIELD),
+            branch: entry.removal.branch.slice(0, MAX_FIELD)
+          }
+        }
+      : {})
   }
   entries = [added, ...entries].slice(0, limit)
   save()

@@ -24,9 +24,18 @@ export type CommandGuardContext = {
   off: ReadonlySet<CommandGuardRuleId>
 }
 
+/** What `orca worktree rm` asked for, read from its text; the host resolves it (BAD-892). */
+export type OwnWorktreeRemovalRequest = { selector: string; deleteBranch: boolean }
+
 export type CommandGuardVerdict =
   | { allowed: true }
-  | { allowed: false; rule: CommandGuardRuleId; reason: string }
+  | {
+      allowed: false
+      rule: CommandGuardRuleId
+      reason: string
+      /** Set on a lone plain `orca worktree rm`: the host may still allow it (own-removal.ts). */
+      ownRemoval?: OwnWorktreeRemovalRequest
+    }
 
 const DELETERS = new Set(['rm', 'rmdir', 'unlink', 'shred', 'rimraf'])
 const FORCE_PUSH_FLAG = /^--(force|force-with-lease|force-if-includes|mirror)(=.*)?$/
@@ -231,6 +240,37 @@ function checkGit(git: GitCall, ctx: CommandGuardContext): CommandGuardVerdict |
   return null
 }
 
+const OWN_REMOVAL_VALUE_FLAGS = new Set(['--worktree'])
+const OWN_REMOVAL_BOOLEAN_FLAGS = new Set(['--delete-branch', '--json'])
+
+/**
+ * The selector and branch choice of a plain `orca worktree rm`: only --worktree, --delete-branch
+ * and --json, a selector that holds no variable or substitution, nothing piped in. Anything else
+ * (force flags, hooks, hosts, a second argument) is not a request the host may decide on.
+ */
+export function readOwnWorktreeRemoval(
+  call: Pick<SimpleCommand, 'args' | 'stdinArgs'>
+): OwnWorktreeRemovalRequest | null {
+  const rest = call.args.slice(call.args.findIndex((arg) => !arg.startsWith('-')) + 2)
+  let selector: string | null = null
+  let deleteBranch = false
+  for (let i = 0; i < rest.length; i += 1) {
+    const [flag, inline] = rest[i].split(/=(.*)/s)
+    if (OWN_REMOVAL_VALUE_FLAGS.has(flag)) {
+      const value = inline !== undefined ? inline : rest[(i += 1)]
+      if (selector !== null || value === undefined || value === '' || /[$`]/.test(value)) {
+        return null
+      }
+      selector = value
+    } else if (OWN_REMOVAL_BOOLEAN_FLAGS.has(rest[i])) {
+      deleteBranch = deleteBranch || rest[i] === '--delete-branch'
+    } else {
+      return null
+    }
+  }
+  return selector === null || call.stdinArgs ? null : { selector, deleteBranch }
+}
+
 function checkOrca(call: SimpleCommand): CommandGuardVerdict | null {
   const words = call.args.filter((arg) => !arg.startsWith('-'))
   if (
@@ -238,10 +278,14 @@ function checkOrca(call: SimpleCommand): CommandGuardVerdict | null {
     ['rm', 'remove', 'delete'].includes(words[1]) &&
     !asksOnlyForHelp(call.args.slice(call.args.indexOf(words[1]) + 1))
   ) {
-    return deny(
-      'remove-worktree',
-      "orca worktree rm deletes a workspace, which may be another agent's."
-    )
+    const ownRemoval = readOwnWorktreeRemoval(call)
+    return {
+      ...deny(
+        'remove-worktree',
+        "orca worktree rm deletes a workspace, which may be another agent's."
+      ),
+      ...(ownRemoval ? { ownRemoval } : {})
+    }
   }
   const touchesGuards = call.args.some((arg) => /^forkCommandGuard/i.test(arg))
   if (words[0] === 'settings' && ['set', 'reset', 'import'].includes(words[1]) && touchesGuards) {
@@ -277,10 +321,16 @@ export function evaluateCommandGuard(
       )
     )
   }
-  for (const verdict of verdicts) {
-    if (verdict && !verdict.allowed && !ctx.off.has(verdict.rule)) {
-      return verdict
-    }
+  const denied = verdicts.flatMap((verdict) =>
+    verdict && !verdict.allowed && !ctx.off.has(verdict.rule) ? [verdict] : []
+  )
+  const firm = denied.find((verdict) => !verdict.allowed && !verdict.ownRemoval)
+  const pending = denied.filter((verdict) => !verdict.allowed && verdict.ownRemoval)
+  if (firm) {
+    return firm
   }
-  return { allowed: true }
+  if (pending.length > 1) {
+    return deny('remove-worktree', 'Remove one workspace per command: this one removes several.')
+  }
+  return pending[0] ?? { allowed: true }
 }

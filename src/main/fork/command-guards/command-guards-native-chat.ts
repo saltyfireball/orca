@@ -61,12 +61,13 @@ export function forkChatGuardOptions<T extends Pick<Options, 'hooks'>>(
     if (command === null || !(await forkCommandGuardsReady())) {
       return {}
     }
-    const reason = guardShellCommand({
+    const reason = await guardShellCommand({
       agent: 'claude',
       surface,
       command,
       workspaceId,
-      root: cwd
+      root: cwd,
+      sessionId
     })
     return reason ? denial(reason) : {}
   }

@@ -41,9 +41,9 @@ const body = (command: string): unknown => ({
 })
 
 describe('command guard proof: terminal', () => {
-  it('denies a force push to the default branch and audits it', () => {
+  it('denies a force push to the default branch and audits it', async () => {
     const before = listCommandGuardAudit(500).length
-    const answer = forkCommandGuardAnswer(
+    const answer = await forkCommandGuardAnswer(
       'claude',
       body('git push --force origin main'),
       { paneKey: 'tab:1', worktreeId: `repo1::${root}`, hookEventName: 'PreToolUse' },
@@ -54,18 +54,20 @@ describe('command guard proof: terminal', () => {
     expect(listCommandGuardAudit(1)[0]).toMatchObject({ agent: 'claude', rule: 'force-push' })
   })
 
-  it('reads a heredoc body as data, and as commands when a shell reads it (BAD-785)', () => {
+  it('reads a heredoc body as data, and as commands when a shell reads it (BAD-785)', async () => {
     const owner = { paneKey: 'tab:1', worktreeId: `repo1::${root}`, hookEventName: 'PreToolUse' }
-    const ask = (command: string): string | null =>
+    const ask = (command: string): Promise<string | null> =>
       forkCommandGuardAnswer('claude', body(command), owner, true)
-    expect(ask("cat > notes.md <<'EOF'\nit's a `quoted` note\nEOF")).toBeNull()
-    expect(ask("git commit -F - <<'EOF'\nfix: user's input\nEOF")).toBeNull()
-    expect(ask("bash <<'EOF'\ngit push --force origin main\nEOF")).toContain('force-push')
-    expect(ask("cat <<'EOF' | bash\ngit push --force origin main\nEOF")).toContain('force-push')
+    expect(await ask("cat > notes.md <<'EOF'\nit's a `quoted` note\nEOF")).toBeNull()
+    expect(await ask("git commit -F - <<'EOF'\nfix: user's input\nEOF")).toBeNull()
+    expect(await ask("bash <<'EOF'\ngit push --force origin main\nEOF")).toContain('force-push')
+    expect(await ask("cat <<'EOF' | bash\ngit push --force origin main\nEOF")).toContain(
+      'force-push'
+    )
   })
 
-  it('lets a script that does not read the answer through', () => {
-    const answer = forkCommandGuardAnswer(
+  it('lets a script that does not read the answer through', async () => {
+    const answer = await forkCommandGuardAnswer(
       'claude',
       body('git push --force origin main'),
       { paneKey: 'tab:1', worktreeId: `repo1::${root}`, hookEventName: 'PreToolUse' },
@@ -74,7 +76,7 @@ describe('command guard proof: terminal', () => {
     expect(answer).toBeNull()
   })
 
-  it('reports the terminal as guarded only because this test exists', () => {
+  it('reports the terminal as guarded only because this test exists', async () => {
     const terminal = forkCommandGuardStatus([]).surfaces?.find((row) => row.surface === 'terminal')
     expect(terminal).toMatchObject({
       guarded: true,
@@ -84,9 +86,9 @@ describe('command guard proof: terminal', () => {
 })
 
 describe('command guard proof: terminal in a folder workspace', () => {
-  it('denies a force push to the default branch from a folder workspace and audits it', () => {
+  it('denies a force push to the default branch from a folder workspace and audits it', async () => {
     const before = listCommandGuardAudit(500).length
-    const answer = forkCommandGuardAnswer(
+    const answer = await forkCommandGuardAnswer(
       'claude',
       body('git push --force origin main'),
       { paneKey: 'tab:2', worktreeId: 'folder:notes', hookEventName: 'PreToolUse' },
@@ -101,9 +103,9 @@ describe('command guard proof: terminal in a folder workspace', () => {
     })
   })
 
-  it('lets a folder workspace with no folder here through and says so in the status', () => {
+  it('lets a folder workspace with no folder here through and says so in the status', async () => {
     for (const worktreeId of ['folder:remote', 'folder:gone']) {
-      const answer = forkCommandGuardAnswer(
+      const answer = await forkCommandGuardAnswer(
         'claude',
         body('git push --force origin main'),
         { paneKey: 'tab:3', worktreeId, hookEventName: 'PreToolUse' },
@@ -123,8 +125,8 @@ describe('command guard proof: terminal in a folder workspace', () => {
     expect(terminal?.note).toMatch(/^unguarded: 2 workspaces with no folder on this host/)
   })
 
-  it('clears the terminal row once those workspaces have no live agent', () => {
-    forkCommandGuardAnswer(
+  it('clears the terminal row once those workspaces have no live agent', async () => {
+    await forkCommandGuardAnswer(
       'claude',
       body('git push --force origin main'),
       { paneKey: 'tab:4', worktreeId: 'folder:gone', hookEventName: 'PreToolUse' },

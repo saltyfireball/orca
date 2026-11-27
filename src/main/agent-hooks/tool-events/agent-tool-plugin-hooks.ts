@@ -98,7 +98,7 @@ export async function respondAfterAgentToolPluginHooks(
 ): Promise<void> {
   // Fork (BAD-686): a command guard may deny a destructive shell command before any plugin sees it.
   const guarded = owner
-    ? forkCommandGuardAnswer(
+    ? await forkCommandGuardAnswer(
         source,
         body,
         owner,

@@ -36,7 +36,7 @@ const oneLine = (text: string): string => text.replace(/\s+/g, ' ')
 
 function blockText(entry: CommandGuardAuditEntry): string[] {
   return [
-    `${new Date(entry.at).toISOString().slice(0, 19).replace('T', ' ')}  ${entry.agent}${entry.surface ? ` (${entry.surface})` : ''}  ${entry.rule}`,
+    `${new Date(entry.at).toISOString().slice(0, 19).replace('T', ' ')}  ${entry.agent}${entry.surface ? ` (${entry.surface})` : ''}  ${entry.outcome === 'allowed' ? 'ALLOWED ' : ''}${entry.rule}`,
     `  ${oneLine(entry.reason)}`,
     `  $ ${oneLine(entry.command).slice(0, 200)}`
   ]
