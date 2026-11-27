@@ -48,6 +48,11 @@ const power = {
 const NOT_SIGNED_IN =
   "This Claude account isn't signed in. Sign in again in Claude Accounts settings."
 
+// The default 1 s wait lost to a loaded Linux CI runner (run 46011234738, bun project): the runs
+// start a real host session, so give the run time to end and the test room to wait for it.
+const WAIT = { timeout: 15_000, interval: 50 }
+const TEST_TIMEOUT = 30_000
+
 let rig: RestTestRig | null = null
 afterEach(async () => {
   await rig?.dispose()
@@ -115,45 +120,54 @@ async function signedOutHost() {
 }
 
 describe('a background run whose agent refused to start', () => {
-  it('records the reason on a look and shows it on Up next', async () => {
-    const { deps, store, refusedAsSignedOut } = await signedOutHost()
-    const looks = new BotLookAroundRunner({
-      ...deps,
-      hadConversation: async () => true,
-      usageLimitOf: async () => null,
-      usageLimitContinues: async () => false
-    })
-    expect(looks.lookNow(BOT.id)).toEqual({ started: true })
-    await vi.waitFor(() => expect(store.get(BOT.id).runs.at(-1)?.endedAt).toBeDefined())
-    await refusedAsSignedOut()
-    const expected = `The last look didn't finish. ${NOT_SIGNED_IN}`
-    expect(store.get(BOT.id).runs.at(-1)?.error).toBe(expected)
-    expect(upNextState(store.get(BOT.id), undefined).error).toBe(expected)
-  })
+  it(
+    'records the reason on a look and shows it on Up next',
+    async () => {
+      const { deps, store, refusedAsSignedOut } = await signedOutHost()
+      const looks = new BotLookAroundRunner({
+        ...deps,
+        hadConversation: async () => true,
+        usageLimitOf: async () => null,
+        usageLimitContinues: async () => false
+      })
+      expect(looks.lookNow(BOT.id)).toEqual({ started: true })
+      await vi.waitFor(() => expect(store.get(BOT.id).runs.at(-1)?.endedAt).toBeDefined(), WAIT)
+      await refusedAsSignedOut()
+      const expected = `The last look didn't finish. ${NOT_SIGNED_IN}`
+      expect(store.get(BOT.id).runs.at(-1)?.error).toBe(expected)
+      expect(upNextState(store.get(BOT.id), undefined).error).toBe(expected)
+    },
+    TEST_TIMEOUT
+  )
 
-  it('records the reason on a tidy-up', async () => {
-    const { deps, store, refusedAsSignedOut } = await signedOutHost()
-    const tidy = new BotTidyUpRunner({
-      ...deps,
-      newChats: async () => [
-        { title: 'Plans', lines: [{ by: 'owner', text: 'Remember Tuesdays.' }] }
-      ],
-      busy: () => false,
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: a run that fails before its reply reads no memory history.
-      memory: { change: vi.fn(), history: async () => [] } as never,
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: tidy-up reads MEMORY.md and the pilot marker only.
-      fs: { readText: async () => '- A fact.\n', statFile: async () => null } as never,
-      memoryFiles: async () => [],
-      homeFolder: () => '/home/fern',
-      noteTidied: () => {}
-    })
-    expect(tidy.tidyNow(BOT.id)).toEqual({ started: true })
-    await vi.waitFor(() =>
-      expect(tidyUpState(store.get(BOT.id)).runs.at(-1)?.endedAt).toBeDefined()
-    )
-    await refusedAsSignedOut()
-    expect(tidyUpState(store.get(BOT.id)).runs.at(-1)?.error).toBe(
-      `The last tidy-up didn't finish. ${NOT_SIGNED_IN}`
-    )
-  })
+  it(
+    'records the reason on a tidy-up',
+    async () => {
+      const { deps, store, refusedAsSignedOut } = await signedOutHost()
+      const tidy = new BotTidyUpRunner({
+        ...deps,
+        newChats: async () => [
+          { title: 'Plans', lines: [{ by: 'owner', text: 'Remember Tuesdays.' }] }
+        ],
+        busy: () => false,
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: a run that fails before its reply reads no memory history.
+        memory: { change: vi.fn(), history: async () => [] } as never,
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: tidy-up reads MEMORY.md and the pilot marker only.
+        fs: { readText: async () => '- A fact.\n', statFile: async () => null } as never,
+        memoryFiles: async () => [],
+        homeFolder: () => '/home/fern',
+        noteTidied: () => {}
+      })
+      expect(tidy.tidyNow(BOT.id)).toEqual({ started: true })
+      await vi.waitFor(
+        () => expect(tidyUpState(store.get(BOT.id)).runs.at(-1)?.endedAt).toBeDefined(),
+        WAIT
+      )
+      await refusedAsSignedOut()
+      expect(tidyUpState(store.get(BOT.id)).runs.at(-1)?.error).toBe(
+        `The last tidy-up didn't finish. ${NOT_SIGNED_IN}`
+      )
+    },
+    TEST_TIMEOUT
+  )
 })
