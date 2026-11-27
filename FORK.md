@@ -4126,6 +4126,7 @@ Apply these in this order. Each one is a single commit.
 226. `BAD-840 The hop-limit inbox entry names each held exchange (or says two bots kept naming each other) and says Continue once, and orca inbox pause on a source's row prints dismissed instead of resumed`
 227. `BAD-820 The Decision inbox row of an escalated review or done check resolves once its Task settles on the host that holds it (completed, failed, worker stopped or Run cancelled), and rows left for settled Tasks are swept at start; a review result the worker's chat or terminal would not take is filed in its orchestration mailbox, and the reviewer-error row says how the worker was told`
 228. `BAD-844 Bot room hops: only a person post starts a new count or makes a held entry moot (an item-change or late worker-report line carries on the chain), and forkBotRoomTurnCap (default 24, 0 none, up to 500) holds a hand-off past that many woken turns under one post, in the same entry, which says which limit held it`
+229. `BAD-847 mobile/src/bots/use-open-bot-home.ts: the useCallback parameters are typed (upstream e8819c3e21f left homeDraft and current implicitly any, which failed the mobile typecheck of Fork sync run 46027770648); one upstream file touched, a type annotation only, no behaviour change`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
