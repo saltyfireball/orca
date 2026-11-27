@@ -4269,6 +4269,7 @@ Apply these in this order. Each one is a single commit.
 232. `BAD-848 Automation run tab auto-close: typed means a message sent after the run ended (from the chat's journal), not a later turn, so a run whose agent went on in turns of its own (woken by background tasks) closes; each sweep's decision shows as forkTabClose in automation.runs and as "tab kept: <reason>" in orca automations runs`
 233. `BAD-892 Command guards let a bot's agent remove its own finished workspace with orca worktree rm (the bot owns it, no agent is open in it, the tree is clean, and with --delete-branch the branch is merged); every allow is audited, every other removal stays blocked; setting forkCommandGuardBotOwnWorktreeRemoval, on by default`
 234. `BAD-895 Fork builds post feedback, crash reports, language requests and mobile connection diagnostics only to the address in forkFeedbackEndpointUrl (empty by default, so nothing goes to Stably's orca.dev/v1/feedback); Send Feedback and the startup crash prompt hide when it is empty, and mobile reads EXPO_PUBLIC_FEEDBACK_ENDPOINT_URL`
+235. `BAD-899 The CLI typecheck project no longer pulls src/main/bots: the own-removal seam types botChatTreeIndex structurally instead of importing BotChatTreeIndex (a type import still adds the file and its imports to the program); behavior unchanged`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

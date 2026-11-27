@@ -2,7 +2,6 @@
 // host seam is read from the runtime the guards start with; without it the removal stays blocked.
 import type { CommandGuardAuditEntry } from '../../../shared/fork/command-guards'
 import type { OwnWorktreeRemovalRequest } from '../../../shared/fork/command-guards-rules'
-import type { BotChatTreeIndex } from '../../bots/bot-chat-tree-index'
 import {
   judgeOwnWorktreeRemoval,
   type OwnRemovalCaller,
@@ -24,7 +23,12 @@ export type OwnRemovalRuntimeSeam = {
     includeAgentWait?: boolean,
     worktreeId?: string
   ) => Promise<{ worktrees: readonly OwnRemovalPsRow[] }>
-  botChatTreeIndex?: Pick<BotChatTreeIndex, 'botOfPane' | 'botOfSession' | 'botOfWorktree'> | null
+  // Structural, not BotChatTreeIndex: importing that type pulls src/main/bots into the CLI project (BAD-899).
+  botChatTreeIndex?: {
+    botOfPane: (paneKey: string) => string | null
+    botOfSession: (sessionId: string) => string | null
+    botOfWorktree: (worktreeId: string) => string | null
+  } | null
 }
 
 type SeamOwner = OwnRemovalRuntimeSeam & {
