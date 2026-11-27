@@ -11,7 +11,19 @@ export function botRoomHopsSearchEntry(t: Translate = translate): SettingsSearch
       'fork.settingsPane.search.botRoomHops',
       'Stop bots in a group room from waking each other without end after one post.'
     ),
-    keywords: words('bot', 'group', 'room', 'hand-off', 'loop', 'hops', 'forkBotRoomHopLimit')
+    keywords: words(
+      'bot',
+      'group',
+      'room',
+      'hand-off',
+      'loop',
+      'hops',
+      'turns',
+      'cap',
+      'fan-out',
+      'forkBotRoomHopLimit',
+      'forkBotRoomTurnCap'
+    )
   }
 }
 

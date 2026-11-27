@@ -1,14 +1,19 @@
 // Bot room hop limit (BAD-801, FORK.md "Bot room hop limit"): the hand-offs held at the limit, kept
 // beside the room store in its own database so a restart keeps them, and how deep a room line sits
-// in its chain of hand-offs, read from the stored lines themselves.
+// in its chain of hand-offs, read from the stored lines themselves. Only a person's post starts a
+// count (BAD-844): a line agents made (an item change, a late worker report) carries on the chain.
 import type Database from '../../sqlite/sync-database'
-import { startsBotGroupRequest, type BotGroupMessage } from '../../../shared/bots/bot-group-schema'
+import type { BotGroupMessage } from '../../../shared/bots/bot-group-schema'
 import type { BotGroupStore } from '../../bots/bot-group-store'
 
 /** held: waiting on the owner. continuing: claimed by a Continue whose wake has not finished (a
  *  restart settles it). continued: the owner's Continue let it go on once. dismissed: the owner left
  *  the room as it was. moot: a later person post or a Stop ended the chain. */
 export type BotRoomHopHoldState = 'held' | 'continuing' | 'continued' | 'dismissed' | 'moot'
+
+/** Which limit held it: the chain's depth (forkBotRoomHopLimit) or the post's woken turns
+ *  (forkBotRoomTurnCap, BAD-844). */
+export type BotRoomHopHeldBy = 'hops' | 'turns'
 
 /** A hold the owner let go on: it passes the limit once and starts a fresh count. */
 export function botRoomHopHoldLetGo(hold: BotRoomHopHold | null): boolean {
@@ -21,12 +26,17 @@ export type BotRoomHopHold = {
   messageId: string
   groupId: string
   threadId: string | null
+  /** The person's post the chain runs under, which names its inbox entry. */
   rootRequestId: string
+  /** The sequence of the request the held line serves, which a Stop ends. */
   rootSequence: number
   /** The room's newest sequence when it was held; a request line past it makes the hold moot. */
   heldAfter: number
   /** The hop the hand-off would have been. */
   hop: number
+  heldBy: BotRoomHopHeldBy
+  /** The turns the post had woken since its count started, when it was held. */
+  woken: number
   replyFull: string
   replySaved: string
   targets: string[]
@@ -56,6 +66,19 @@ function ensureTable(db: Database): void {
       state TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS fork_bot_room_hop_holds_state
       ON fork_bot_room_hop_holds(state, root_request_id);`)
+  // Added by BAD-844 to tables BAD-801 made.
+  const columns = new Set(
+    db
+      .prepare('PRAGMA table_info(fork_bot_room_hop_holds)')
+      .all()
+      .map((row) => String(row.name))
+  )
+  if (!columns.has('held_by')) {
+    db.exec('ALTER TABLE fork_bot_room_hop_holds ADD COLUMN held_by TEXT')
+  }
+  if (!columns.has('woken')) {
+    db.exec('ALTER TABLE fork_bot_room_hop_holds ADD COLUMN woken INTEGER')
+  }
   prepared.add(db)
 }
 
@@ -70,6 +93,8 @@ function holdRow(row: Record<string, unknown>): BotRoomHopHold {
     rootSequence: Number(row.root_sequence),
     heldAfter: Number(row.held_after),
     hop: Number(row.hop),
+    heldBy: row.held_by === 'turns' ? 'turns' : 'hops',
+    woken: Number(row.woken ?? 0),
     replyFull: String(row.reply_full),
     replySaved: String(row.reply_saved),
     targets: Array.isArray(targets) ? targets.map(String) : [],
@@ -103,8 +128,8 @@ export function saveBotRoomHopHold(db: Database, hold: Omit<BotRoomHopHold, 'sta
   ensureTable(db)
   db.prepare(
     `INSERT OR IGNORE INTO fork_bot_room_hop_holds (operation_id, message_id, group_id, thread_id,
-       root_request_id, root_sequence, held_after, hop, reply_full, reply_saved, targets, held_at,
-       state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'held')`
+       root_request_id, root_sequence, held_after, hop, held_by, woken, reply_full, reply_saved,
+       targets, held_at, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'held')`
   ).run(
     hold.operationId,
     hold.messageId,
@@ -114,6 +139,8 @@ export function saveBotRoomHopHold(db: Database, hold: Omit<BotRoomHopHold, 'sta
     hold.rootSequence,
     hold.heldAfter,
     hold.hop,
+    hold.heldBy,
+    hold.woken,
     hold.replyFull,
     hold.replySaved,
     JSON.stringify(hold.targets),
@@ -189,40 +216,46 @@ export function handOffSpeakerOperation(line: BotGroupMessage): string | null {
   return operationId || null
 }
 
-/** The latest hand-off line under `root` stored before `sequence`. */
-function latestHandOffBefore(
-  store: BotGroupStore,
-  groupId: string,
-  rootRequestId: string,
-  sequence: number
-): BotGroupMessage | null {
-  const row = store.db
-    .prepare(
-      `SELECT id FROM bot_group_messages WHERE group_id = ? AND sequence < ? AND id LIKE 'handoff:%'
-         AND json_extract(record, '$.rootRequestId') = ? ORDER BY sequence DESC LIMIT 1`
-    )
-    .get(groupId, sequence, rootRequestId)
+/** The latest hand-off line stored before `sequence` in `line`'s room and thread; under its own
+ *  request when it has one, under any otherwise (a line agents made carries on the room's chain). */
+function latestHandOffBefore(store: BotGroupStore, line: BotGroupMessage): BotGroupMessage | null {
+  const row = line.rootRequestId
+    ? store.db
+        .prepare(
+          `SELECT id FROM bot_group_messages WHERE group_id = ? AND sequence < ? AND id LIKE 'handoff:%'
+             AND json_extract(record, '$.rootRequestId') = ? ORDER BY sequence DESC LIMIT 1`
+        )
+        .get(line.groupId, line.sequence, line.rootRequestId)
+    : store.db
+        .prepare(
+          `SELECT id FROM bot_group_messages WHERE group_id = ? AND sequence < ? AND id LIKE 'handoff:%'
+             AND coalesce(json_extract(record, '$.threadId'), '') = ?
+           ORDER BY sequence DESC LIMIT 1`
+        )
+        .get(line.groupId, line.sequence, line.threadId ?? '')
   return row ? store.message(String(row.id)) : null
 }
 
 /**
- * How many hand-offs lead from the request to `line`: 0 for the person's post (or any line that
- * starts a request), one more per hand-off line up the chain. One reply naming several members
- * wakes them all at the same depth. A hand-off the owner let go on starts a fresh count at 1. A
- * mail line (a peer reply, a worker report) adds no hop: it carries on from the latest hand-off
- * under its request.
+ * How many hand-offs lead from the person's post to `line`: 0 for the post, one more per hand-off
+ * line up the chain. One reply naming several members wakes them all at the same depth. A hand-off
+ * the owner let go on starts a fresh count at 1. A mail line (a peer reply, a worker report) adds
+ * no hop: it carries on from the latest hand-off under its request. A line agents made that serves
+ * no post (an item change, a late worker report) carries on from the room's latest hand-off.
  */
 export function botRoomHandOffDepth(store: BotGroupStore, line: BotGroupMessage): number {
   let depth = 0
   const seen = new Set<string>()
   for (let at: BotGroupMessage | null = line; at && !seen.has(at.id);) {
     seen.add(at.id)
-    if (startsBotGroupRequest(at) || !at.rootRequestId || at.id === at.rootRequestId) {
+    if (at.author.kind === 'owner') {
       return depth
     }
     const speaker = handOffSpeakerOperation(at)
     if (!speaker) {
-      at = latestHandOffBefore(store, at.groupId, at.rootRequestId, at.sequence)
+      at =
+        latestHandOffBefore(store, at) ??
+        (at.rootRequestId && at.rootRequestId !== at.id ? store.message(at.rootRequestId) : null)
       continue
     }
     depth += 1
@@ -234,8 +267,83 @@ export function botRoomHandOffDepth(store: BotGroupStore, line: BotGroupMessage)
   return depth
 }
 
-/** Whether a request line (a person's post, or one that starts a request of its own) was stored
- *  in the room after `sequence`. */
+/** The latest person's post in `groupId`'s `threadId` stored before `sequence`. */
+function personPostBefore(
+  store: BotGroupStore,
+  groupId: string,
+  threadId: string | undefined,
+  sequence: number
+): BotGroupMessage | null {
+  const row = store.db
+    .prepare(
+      `SELECT id FROM bot_group_messages WHERE group_id = ? AND sequence < ?
+         AND coalesce(json_extract(record, '$.threadId'), '') = ?
+         AND json_extract(record, '$.author.kind') = 'owner' ORDER BY sequence DESC LIMIT 1`
+    )
+    .get(groupId, sequence, threadId ?? '')
+  const post = row ? store.message(String(row.id)) : null
+  return post?.author.kind === 'owner' ? post : null
+}
+
+/** The person's post `line`'s chain runs under: its request when a person wrote it, else (a line
+ *  agents made, or one whose request cannot be read) the person's post before that request. */
+export function botRoomPersonPost(
+  store: BotGroupStore,
+  line: BotGroupMessage
+): { id: string; sequence: number } {
+  const rootId = line.rootRequestId ?? line.id
+  const root = rootId === line.id ? line : store.message(rootId)
+  if (root?.author.kind === 'owner') {
+    return { id: root.id, sequence: root.sequence }
+  }
+  const sequence = root?.sequence ?? line.rootSequence ?? line.sequence
+  const post = personPostBefore(store, line.groupId, line.threadId, sequence)
+  return post ? { id: post.id, sequence: post.sequence } : { id: rootId, sequence }
+}
+
+/** The members woken by hand-offs under `post` after `since` (its own sequence or later). */
+export function botRoomWokenTurns(
+  store: BotGroupStore,
+  line: Pick<BotGroupMessage, 'groupId' | 'threadId'>,
+  post: { id: string; sequence: number },
+  since: number
+): number {
+  const rows = store.db
+    .prepare(
+      `SELECT id FROM bot_group_messages WHERE group_id = ? AND sequence > ? AND id LIKE 'handoff:%'
+         AND coalesce(json_extract(record, '$.threadId'), '') = ?`
+    )
+    .all(line.groupId, Math.max(post.sequence, since), line.threadId ?? '')
+  const postOf = new Map<string, string>()
+  return rows.filter((row) => {
+    const woken = store.message(String(row.id))
+    if (!woken) {
+      return false
+    }
+    const rootId = woken.rootRequestId ?? woken.id
+    let id = postOf.get(rootId)
+    if (id === undefined) {
+      id = botRoomPersonPost(store, woken).id
+      postOf.set(rootId, id)
+    }
+    return id === post.id
+  }).length
+}
+
+/** Where `post`'s woken-turn count starts: after the last hold the owner let go on, or 0. */
+export function botRoomTurnCountStart(db: Database, postId: string): number {
+  ensureTable(db)
+  const row = db
+    .prepare(
+      `SELECT max(held_after) AS since FROM fork_bot_room_hop_holds
+         WHERE root_request_id = ? AND state IN ('continuing', 'continued')`
+    )
+    .get(postId)
+  return Number(row?.since ?? 0)
+}
+
+/** Whether a person's post was stored in the room after `sequence`. A line agents made (an item
+ *  change, a late worker report) carries on a chain, so it does not count. */
 export function requestLineAfter(
   store: BotGroupStore,
   groupId: string,
@@ -246,13 +354,8 @@ export function requestLineAfter(
     .prepare(
       `SELECT id FROM bot_group_messages WHERE group_id = ? AND sequence > ?
          AND coalesce(json_extract(record, '$.threadId'), '') = ?
-         AND (json_extract(record, '$.author.kind') = 'owner'
-           OR json_extract(record, '$.fromItems') IS NOT NULL
-           OR json_extract(record, '$.fromReports') IS NOT NULL)`
+         AND json_extract(record, '$.author.kind') = 'owner'`
     )
     .all(groupId, sequence, threadId ?? '')
-  return rows.some((row) => {
-    const message = store.message(String(row.id))
-    return message !== null && startsBotGroupRequest(message)
-  })
+  return rows.some((row) => store.message(String(row.id))?.author.kind === 'owner')
 }

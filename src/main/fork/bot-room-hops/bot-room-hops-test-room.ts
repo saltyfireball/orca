@@ -1,4 +1,4 @@
-// Bot room hop limit (BAD-801): a group room of three bots over the real room store (SQLite), the
+// Bot room hop limit (BAD-801): a group room of four bots over the real room store (SQLite), the
 // real BotGroupRuntime, hand-off and Decision inbox registry. Faked: the bot list and settings the
 // runtime reads, and the member chats (a reply is written on its turn, or ended through a journal).
 import { expect, vi } from 'vitest'
@@ -12,7 +12,8 @@ import { inboxSourceItems } from '../idle-recovery/idle-recovery-sources'
 export const BOTS = [
   { id: 'bot-a', name: 'Ada' },
   { id: 'bot-b', name: 'Bo' },
-  { id: 'bot-c', name: 'Cy' }
+  { id: 'bot-c', name: 'Cy' },
+  { id: 'bot-d', name: 'Di' }
 ].map((bot) => ({ ...bot, avatar: null, agent: 'claude', paused: false }))
 
 const nameOf = (botId: string) => BOTS.find((bot) => bot.id === botId)!.name
@@ -65,6 +66,18 @@ export function room(settings: Record<string, unknown>, db = new SyncDatabase(':
       createdAt: Date.now(),
       turns: botIds.map(turnFor)
     })
+  /** A line agents made, as a member's mail stores it: an item change or a late worker report,
+   *  a request of its own in the room store (no root), that `botId` answers. */
+  const agentLine = (id: string, botId: string, kind: 'fromItems' | 'fromReports') =>
+    groups.store.append({
+      id,
+      groupId: group.id,
+      author: { kind: 'bot', id: botId, name: nameOf(botId) },
+      text: `${nameOf(botId)} read a change`,
+      createdAt: Date.now(),
+      [kind]: true,
+      turns: [{ ...turnFor(botId), mailbox: true }]
+    })
   /** The woken turns' sends settle (each fails, or the journal says it was sent). */
   const settled = async () => {
     await vi.waitFor(() => expect(groups.store.pending()).toEqual([]))
@@ -91,7 +104,19 @@ export function room(settings: Record<string, unknown>, db = new SyncDatabase(':
   }
   const turnOn = (lineId: string) => groups.store.message(lineId)!.turns[0]!
   const hopItems = async () => (await inboxSourceItems()).filter((item) => item.source === 'hops')
-  return { db, runtime: service, groups, group, post, reply, settled, wokenBy, turnOn, hopItems }
+  return {
+    db,
+    runtime: service,
+    groups,
+    group,
+    post,
+    agentLine,
+    reply,
+    settled,
+    wokenBy,
+    turnOn,
+    hopItems
+  }
 }
 
 export type Room = ReturnType<typeof room>

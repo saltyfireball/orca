@@ -1,27 +1,32 @@
 // Bot room hop limit (BAD-801, FORK.md "Bot room hop limit"): the check `handOffGroupMentions`
-// makes before it wakes the members a reply names. Past the limit it wakes nobody and saves the
-// hand-off for the owner's Continue; the reply itself stays in the room.
+// makes before it wakes the members a reply names. Past the hop limit, or (BAD-844) past the cap
+// on turns woken under the person's post, it wakes nobody and saves the hand-off for the owner's
+// Continue; the reply itself stays in the room.
 import type { BotGroupMessage, BotGroupTurn } from '../../../shared/bots/bot-group'
-import { forkBotRoomHopLimit } from '../../../shared/fork/bot-room-hops'
+import { forkBotRoomHopLimit, forkBotRoomTurnCap } from '../../../shared/fork/bot-room-hops'
 import type { BotGroupRuntime } from '../../bots/bot-group-runtime'
 import { notifyForkInboxSourceChanged } from '../idle-recovery/idle-recovery-sources'
 import {
   botRoomHandOffDepth,
   botRoomHopHoldLetGo,
+  botRoomPersonPost,
+  botRoomTurnCountStart,
+  botRoomWokenTurns,
   readBotRoomHopHold,
   saveBotRoomHopHold
 } from './bot-room-hop-store'
 
-function hopLimit(groups: BotGroupRuntime): number {
+function roomLimits(groups: BotGroupRuntime): { hops: number; turns: number } {
+  let settings: unknown
   try {
-    return forkBotRoomHopLimit(groups.runtime.requireStore().getSettings())
+    settings = groups.runtime.requireStore().getSettings()
   } catch {
-    // No settings store (a headless start): the default still guards the room.
-    return forkBotRoomHopLimit(undefined)
+    // No settings store (a headless start): the defaults still guard the room.
   }
+  return { hops: forkBotRoomHopLimit(settings), turns: forkBotRoomTurnCap(settings) }
 }
 
-/** True when this turn's hand-off to `targets` is past the limit and was held instead; called in
+/** True when this turn's hand-off to `targets` is past a limit and was held instead; called in
  *  the room's queue, with the turn not yet handed off. A hold the owner continued passes once. */
 export function forkHoldsBotRoomHandOff(
   groups: BotGroupRuntime,
@@ -30,8 +35,8 @@ export function forkHoldsBotRoomHandOff(
   reply: { full: string; saved: string },
   targets: readonly string[]
 ): boolean {
-  const limit = hopLimit(groups)
-  if (limit === 0) {
+  const limits = roomLimits(groups)
+  if (limits.hops === 0 && limits.turns === 0) {
     return false
   }
   const { db } = groups.store
@@ -40,7 +45,14 @@ export function forkHoldsBotRoomHandOff(
     return !botRoomHopHoldLetGo(saved)
   }
   const hop = botRoomHandOffDepth(groups.store, message) + 1
-  if (hop <= limit) {
+  const post = botRoomPersonPost(groups.store, message)
+  const woken =
+    limits.turns === 0
+      ? 0
+      : botRoomWokenTurns(groups.store, message, post, botRoomTurnCountStart(db, post.id))
+  const pastHops = limits.hops > 0 && hop > limits.hops
+  const pastTurns = limits.turns > 0 && woken + targets.length > limits.turns
+  if (!pastHops && !pastTurns) {
     return false
   }
   saveBotRoomHopHold(db, {
@@ -48,10 +60,12 @@ export function forkHoldsBotRoomHandOff(
     messageId: message.id,
     groupId: message.groupId,
     threadId: message.threadId ?? null,
-    rootRequestId: message.rootRequestId ?? message.id,
+    rootRequestId: post.id,
     rootSequence: message.rootSequence ?? message.sequence,
     heldAfter: groups.store.messages(message.groupId, 1)[0]?.sequence ?? message.sequence,
     hop,
+    heldBy: pastHops ? 'hops' : 'turns',
+    woken,
     replyFull: reply.full,
     replySaved: reply.saved,
     targets: [...targets],

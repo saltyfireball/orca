@@ -89,6 +89,8 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"A step with a command can open a terminal on its computer with the command typed in, never run; unset is on.","o":true}',
   forkBotRoomHopLimit:
     '{"t":{"k":"number"},"d":"The longest chain of bot hand-offs (one member\'s reply naming another, which wakes it) under one person\'s post in a group room; past it nobody is woken and one Decision inbox entry asks to Continue. 0 is no limit; unset is 6.","o":true}',
+  forkBotRoomTurnCap:
+    '{"t":{"k":"number"},"d":"The most bot turns hand-offs may wake in all under one person\'s post in a group room, however the chains branch; past it nobody is woken and the same Decision inbox entry asks to Continue. 0 is no cap; unset is 24.","o":true}',
   forkBotRowAskJump:
     '{"t":{"k":"union","of":[{"k":"boolean"},{"k":"enum","values":["item","list","off"]}]},"d":"(SLRM-2472, BAD-759): what clicking a bot row that has items waiting on you does: \'list\' shows its Home list with Needs you at the top (a panel left inside an item goes back to the list), \'item\' opens the oldest waiting item on its Home tab (a second click the next), \'off\' only opens the bot; unset is \'list\'. A saved true means \'item\' and false \'off\'.","o":true}',
   forkBotRowBadges:

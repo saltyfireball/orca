@@ -83,7 +83,7 @@ describe('with the Needs you list on (BAD-759)', () => {
 
 describe('with idle recovery off', () => {
   it('shows no button and no dialog, and never touches the bridge', () => {
-    state.current.settings = { forkNeedsYou: false, forkBotRoomHopLimit: 0 }
+    state.current.settings = { forkNeedsYou: false, forkBotRoomHopLimit: 0, forkBotRoomTurnCap: 0 }
     const bridge = installFakeBridge([inboxItem({})])
     const view = render(<App />)
     act(() => openForkDecisionInbox())
@@ -94,7 +94,7 @@ describe('with idle recovery off', () => {
   })
 
   it('offers no palette entry', () => {
-    state.current.settings = { forkNeedsYou: false, forkBotRoomHopLimit: 0 }
+    state.current.settings = { forkNeedsYou: false, forkBotRoomHopLimit: 0, forkBotRoomTurnCap: 0 }
     installFakeBridge()
     const actions = getForkDecisionInboxQuickActions()
     // The third is the letters history (SLRM-2389): this fake window has no letters bridge.
@@ -146,7 +146,7 @@ describe('a bot room chain held at the hop limit (BAD-801)', () => {
 
   it('stays off with the hop limit off or bots off', () => {
     for (const settings of [
-      { forkNeedsYou: false, forkBotRoomHopLimit: 0 },
+      { forkNeedsYou: false, forkBotRoomHopLimit: 0, forkBotRoomTurnCap: 0 },
       { forkNeedsYou: false, botsEnabled: false }
     ]) {
       state.current.settings = settings

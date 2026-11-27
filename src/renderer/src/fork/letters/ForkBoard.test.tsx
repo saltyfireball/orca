@@ -76,7 +76,7 @@ beforeEach(() => {
   // These tests are of the sidebar button; Needs you (BAD-759) folds it away while on. The bot
   // room hop limit (BAD-801) keeps the inbox on by itself, so it is off for the board alone.
   state.current = {
-    settings: { forkNeedsYou: false, forkBotRoomHopLimit: 0 },
+    settings: { forkNeedsYou: false, forkBotRoomHopLimit: 0, forkBotRoomTurnCap: 0 },
     unifiedTabsByWorktree: {}
   }
   vi.clearAllMocks()

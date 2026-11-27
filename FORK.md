@@ -105,10 +105,24 @@ ones `SLRM-123 `).
   limit) caps the chain under one person's post:
   - **The count.** A hop is one bot's reply waking another under the same post
     (`rootRequestId`). It is read from the stored room lines, so a restart keeps it: a hand-off
-    line is one deeper than the line its speaker's turn served, a person's post (or any line that
-    starts a request) is 0, and a mail line (a peer reply, a worker report) adds no hop and carries
+    line is one deeper than the line its speaker's turn served, a person's post is 0, and a mail line (a peer reply, a worker report) adds no hop and carries
     on from the latest hand-off under its post. A reply naming several members wakes them all at
     the same depth: the count is the depth of the chain, not how many were woken.
+  - **Only a person's post starts a count (BAD-844).** A room line agents made (a member's item
+    change, `fromItems`, or a worker report that landed after a Stop, `fromReports`) starts a
+    request of its own in the stock room, but for the count it carries on the room's latest chain
+    (the latest hand-off in its thread) and belongs to the person's post before it: it neither
+    resets the count nor makes a held entry moot, and a hold under it joins that post's entry.
+    Only a line whose author reads as the owner restarts the count, so a line that cannot be read
+    does not.
+  - **Turn cap (BAD-844).** `forkBotRoomTurnCap` (the row beside the hop limit, "Woken turns
+    before the room waits"; default 24, 0 is no cap, up to 500) bounds the turns hand-offs wake
+    under one person's post in all, however the chains branch: four bots each naming the other
+    three would wake about a thousand turns before any chain reached depth 6. A hand-off that
+    would take the count past the cap is held as at the hop limit, in the same single entry,
+    whose text says which limit held it ("after 6 woken turns" or "after 6 bot hand-offs"). The
+    count is of hand-off lines under the post, read from the store; Continue starts a fresh one
+    for both limits (from the last hold it let go on), the turns it wakes being its first.
   - **At the limit.** The hand-off that would go past it wakes nobody: the reply stays in the
     room, the turn is marked handed off to no one (a replayed end wakes nobody either), and the
     hand-off is saved in `fork_bot_room_hop_holds` beside the room store. One Decision inbox entry
@@ -4111,6 +4125,7 @@ Apply these in this order. Each one is a single commit.
 225. `BAD-818 The host words a letter's receipt and pause-status's held line and the CLI prints them, so a sender's older CLI no longer says "queued" of a letter Pause all holds; pause-status counts the letters queued here and prints its held line whenever paused, also with nothing held`
 226. `BAD-840 The hop-limit inbox entry names each held exchange (or says two bots kept naming each other) and says Continue once, and orca inbox pause on a source's row prints dismissed instead of resumed`
 227. `BAD-820 The Decision inbox row of an escalated review or done check resolves once its Task settles on the host that holds it (completed, failed, worker stopped or Run cancelled), and rows left for settled Tasks are swept at start; a review result the worker's chat or terminal would not take is filed in its orchestration mailbox, and the reviewer-error row says how the worker was told`
+228. `BAD-844 Bot room hops: only a person post starts a new count or makes a held entry moot (an item-change or late worker-report line carries on the chain), and forkBotRoomTurnCap (default 24, 0 none, up to 500) holds a hand-off past that many woken turns under one post, in the same entry, which says which limit held it`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5678,7 +5693,7 @@ Upstream files only get short hooks, which keeps merges small:
   `BotGroupRuntime` constructor and `forkBotRoomHopsChanged` in `changed()`. The Decision inbox
   wire (`idle-recovery-wire.ts`, `idle-recovery-sources.ts`) takes the `hops` source,
   `ForkDecisionInboxRow.tsx` gives it Continue and Dismiss, `decision-inbox-store.ts` keeps the
-  inbox on while the limit is, `inbox-format.ts` labels it, and `fork-global-settings.ts`
+  inbox on while the limit or (BAD-844) the turn cap is, `inbox-format.ts` labels it, and `fork-global-settings.ts`
   intersects the setting; the settings catalog is regenerated.
 - Antigravity names Orca (BAD-836), small edits in stock files: `antigravity-acp-runtime-probe.ts`
   replaces upstream's fixed `zed` `AGY_ACP_CLIENT_INFO` with `agyAcpClientInfo()`, which the probe and

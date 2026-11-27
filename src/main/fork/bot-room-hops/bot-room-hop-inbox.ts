@@ -1,5 +1,6 @@
 // Bot room hop limit (BAD-801, FORK.md "Bot room hop limit"): a chain held at the limit as one
-// Decision inbox entry per person post, with the last exchange. Continue lets each held hand-off
+// Decision inbox entry per person post, with the last exchange and the limit that held it (the
+// hand-offs in one chain, or BAD-844's turns woken under the post). Continue lets each held hand-off
 // go on once with a fresh count; Dismiss leaves the room as it is. A later person post in the room,
 // or a Stop of every member it would wake, makes the entry moot and takes it off.
 import type { BotGroupTurn } from '../../../shared/bots/bot-group'
@@ -163,19 +164,21 @@ function inboxItem(groups: BotGroupRuntime, holds: BotRoomHopHold[]): ForkIdleRe
   } catch {
     // The group went; isMoot takes the entry off on the next read.
   }
-  const hops = last.hop - 1
+  // The latest hold says which limit stopped the room.
+  const byTurns = last.heldBy === 'turns'
+  const stopped = byTurns ? `${last.woken} woken turns` : `${last.hop - 1} hand-offs`
   const held = holds.length > 1 ? ` ${holds.length} replies were held.` : ''
   const goOn = holds.length > 1 ? 'lets each chain go on' : 'lets the chain go on'
   return {
     chatId: `${BOT_ROOM_HOP_ROW_PREFIX}${last.rootRequestId}`,
     kind: 'chat',
     agent: speakers,
-    title: `${room}: bots stopped after ${hops} hand-offs`,
+    title: `${room}: bots stopped after ${stopped}`,
     workspace: '',
     worktreeId: null,
     verdict: 'waiting_user',
     question: [
-      `${describeHeld(exchanges)} after ${hops} bot hand-offs under one post, so nobody was woken.${held} Continue ${goOn} with a fresh count; Dismiss leaves the room as it is.`,
+      `${describeHeld(exchanges)} after ${byTurns ? stopped : `${last.hop - 1} bot hand-offs`} under one post, so nobody was woken.${held} Continue ${goOn} with a fresh count; Dismiss leaves the room as it is.`,
       '',
       'Last exchange:',
       ...lastExchange(groups, last, speaker)

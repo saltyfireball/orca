@@ -13,7 +13,7 @@ import {
   useForkAgentGuardPausedCount
 } from '../agent-guards/agent-guards-store'
 import { readPrBabysitSettings } from '../../../../shared/fork/pr-babysit'
-import { forkBotRoomHopLimit } from '../../../../shared/fork/bot-room-hops'
+import { forkBotRoomHopLimit, forkBotRoomTurnCap } from '../../../../shared/fork/bot-room-hops'
 import { isBotsEnabled } from '../../../../shared/bots-switch'
 import type {
   ForkIdleRecoveryApi,
@@ -60,15 +60,19 @@ export function useForkIdleRecoveryMode(): IdleRecoveryMode {
 
 type InboxSettings = Parameters<typeof readIdleRecoverySettings>[0] &
   Parameters<typeof readPrBabysitSettings>[0] &
-  Parameters<typeof isBotsEnabled>[0] & { forkBotRoomHopLimit?: number }
+  Parameters<typeof isBotsEnabled>[0] & {
+    forkBotRoomHopLimit?: number
+    forkBotRoomTurnCap?: number
+  }
 
 /** The inbox is on while idle recovery is, while the PR babysitter has a repo (SLRM-2386), or while
- *  a bot room's held chain can wait in it (BAD-801: bots on and a hop limit set). */
+ *  a bot room's held chain can wait in it (BAD-801: bots on and a hop limit or, BAD-844, a turn cap set). */
 export function forkDecisionInboxOn(settings: InboxSettings): boolean {
   return (
     readIdleRecoverySettings(settings).mode !== 'off' ||
     readPrBabysitSettings(settings).repos.length > 0 ||
-    (isBotsEnabled(settings) && forkBotRoomHopLimit(settings) > 0)
+    (isBotsEnabled(settings) &&
+      (forkBotRoomHopLimit(settings) > 0 || forkBotRoomTurnCap(settings) > 0))
   )
 }
 
