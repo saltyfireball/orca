@@ -123,6 +123,11 @@ ones `SLRM-123 `).
     room stored: when its woken lines are there it is continued (nobody is woken twice), and when
     they are not the entry is back in the inbox, its turn marked handed off to no one, so the
     owner can Continue again. A person's post in the room starts a new chain either way.
+  - **The entry's wording (BAD-840).** Each held exchange is named by its own speaker and the
+    bots it named ("Ada named Bo"); two bots holding each other read "Ada and Bo kept naming each
+    other". The "N replies were held" count and "Continue lets ..." are said once. `orca inbox
+    pause hops:<id>` prints `<id>: dismissed` (the pause result carries `dismissed: true` when a
+    source's row was taken off), not "resumed".
   - **Moot.** A later person post in the room (which starts its own count), or a Stop of every
     member the held replies named, takes the entry off; the room's change event settles it.
     Removing a room drops its holds (on the removal and at each start).
@@ -4095,6 +4100,7 @@ Apply these in this order. Each one is a single commit.
 223. `BAD-838 A failed Look around or Tidy-up records why its turn failed (the turn's failure line or the agent's refusal of its start, such as a signed-out Claude account), not only that it didn't finish`
 224. `BAD-818 Idle recovery's guarded send ports are start primitives of the pause-all starter table: boundary compaction asks no chat to compact while paused and sweeps at resume-all; an agent guard's loop note that would start a turn waits for resume-all, one into a running turn and every stop still go`
 225. `BAD-818 The host words a letter's receipt and pause-status's held line and the CLI prints them, so a sender's older CLI no longer says "queued" of a letter Pause all holds; pause-status counts the letters queued here and prints its held line whenever paused, also with nothing held`
+226. `BAD-840 The hop-limit inbox entry names each held exchange (or says two bots kept naming each other) and says Continue once, and orca inbox pause on a source's row prints dismissed instead of resumed`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

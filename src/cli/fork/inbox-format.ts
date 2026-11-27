@@ -93,5 +93,8 @@ export function formatInboxPause(result: ForkIdleRecoveryPauseResult): string {
   if (!result.saved) {
     return `${result.chatId}: not saved, this host cannot save settings`
   }
+  if (result.dismissed) {
+    return `${result.chatId}: dismissed`
+  }
   return `${result.chatId}: ${result.paused ? 'paused' : 'resumed'}`
 }

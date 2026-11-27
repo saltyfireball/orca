@@ -10,6 +10,8 @@ import {
   answerIdleRecoveryChat,
   listIdleRecoveryInbox
 } from '../idle-recovery/idle-recovery-service'
+import { FORK_INBOX_HANDLERS } from '../../../cli/fork/inbox-handlers'
+import type { HandlerContext } from '../../../cli/dispatch/dispatch'
 import { pingPong, room } from './bot-room-hops-test-room'
 
 describe('bot room hop limit', () => {
@@ -73,6 +75,52 @@ describe('bot room hop limit', () => {
     expect(
       r.wokenBy(r.turnOn(adaToCy!.id).operationId).map((line) => line.turns[0]!.botId)
     ).toEqual(['bot-a', 'bot-b'])
+  })
+
+  it('names each held chain of one post once, and the CLI says dismissed', async () => {
+    const r = room({ forkBotRoomHopLimit: 2 })
+    // One post names Ada and Bo: two chains, each ends held at the limit.
+    const post = r.post('post-1', ['bot-a', 'bot-b'])
+    // Bo's turn has ended without naming anyone yet, so Ada's hand-offs need not read Bo's chat.
+    r.groups.store.update({
+      ...post,
+      turns: post.turns.map((turn) => (turn.botId === 'bot-b' ? { ...turn, reply: 'Done.' } : turn))
+    })
+    expect(await pingPong(r, 'post-1', 10)).toHaveLength(2)
+    const [toAda] = await r.reply('post-1', 'bot-b', '@Ada over to you.')
+    expect(await pingPong(r, toAda!.id, 10)).toHaveLength(1)
+    const items = await r.hopItems()
+    expect(items).toHaveLength(1)
+    const { question } = items[0]!
+    expect(question).toContain('Ada and Bo kept naming each other after')
+    expect(question).not.toMatch(/Bo named Bo|Ada named Ada|named Ada, Bo|named Bo, Ada/)
+    expect(question).toContain('2 replies were held.')
+    expect(question.match(/fresh count/g)).toHaveLength(1)
+    expect(question.match(/Continue lets/g)).toHaveLength(1)
+
+    // The real `orca inbox pause` handler over the real source: the entry is dismissed.
+    const printed: string[] = []
+    vi.spyOn(console, 'log').mockImplementation((line: string) => {
+      printed.push(line)
+    })
+    const ctx = {
+      flags: new Map([['id', 'hops:post-1']]),
+      json: false,
+      cwd: '/tmp',
+      client: {
+        call: async (method: string, params: { chatId: string; paused: boolean }) => {
+          const result =
+            method === 'fork.idleRecovery.inbox'
+              ? { now: Date.now(), mode: 'inbox', items: await r.hopItems() }
+              : await pauseFromInboxSource({ ...params, source: 'hops' }, 0)
+          return { id: '1', ok: true, result, _meta: { runtimeId: 't' } }
+        }
+      }
+    } as unknown as HandlerContext
+    await FORK_INBOX_HANDLERS['inbox pause'](ctx)
+    expect(printed).toEqual(['hops:post-1: dismissed'])
+    expect(await r.hopItems()).toEqual([])
+    vi.restoreAllMocks()
   })
 
   it('a person post makes a held entry moot and starts a new count', async () => {

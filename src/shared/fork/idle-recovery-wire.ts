@@ -106,6 +106,8 @@ export type ForkIdleRecoveryPauseResult = {
   pausedCount: number
   /** False when this host cannot save settings; nothing changed. */
   saved: boolean
+  /** True when a source's row was taken off the inbox (Dismiss), not a chat's pause lifted. */
+  dismissed?: boolean
 }
 
 export type ForkIdleRecoveryStatusResult = {

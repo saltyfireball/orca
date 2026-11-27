@@ -124,14 +124,39 @@ function lastExchange(groups: BotGroupRuntime, hold: BotRoomHopHold, speaker: st
   ]
 }
 
+/** Who each held reply named, one entry per held exchange: speaker and the bots it named. */
+function heldExchanges(
+  groups: BotGroupRuntime,
+  holds: BotRoomHopHold[]
+): { speaker: string; named: string[] }[] {
+  const bots = groups.runtime.bots.list()
+  const nameOf = (id: string): string => bots.find((bot) => bot.id === id)?.name ?? id
+  return holds.map((hold) => ({
+    speaker: heldTurn(groups, hold)?.botName ?? 'A bot',
+    named: hold.targets.map(nameOf)
+  }))
+}
+
+/** "Ada named Bo", one clause per held exchange; two bots holding each other say so once. */
+function describeHeld(exchanges: { speaker: string; named: string[] }[]): string {
+  const pairs = new Set(exchanges.map((e) => e.speaker))
+  const solo = exchanges.every((e) => e.named.length === 1)
+  if (solo && pairs.size === 2 && exchanges.length >= 2) {
+    const [a, b] = [...pairs].sort()
+    if (exchanges.every((e) => e.named[0] === (e.speaker === a ? b : a))) {
+      return `${a} and ${b} kept naming each other`
+    }
+  }
+  const clauses = [...new Set(exchanges.map((e) => `${e.speaker} named ${e.named.join(', ')}`))]
+  return clauses.join('; ')
+}
+
 function inboxItem(groups: BotGroupRuntime, holds: BotRoomHopHold[]): ForkIdleRecoveryInboxItem {
   const first = holds[0]!
   const last = holds.at(-1)!
-  const speaker = heldTurn(groups, last)?.botName ?? 'A bot'
-  const bots = groups.runtime.bots.list()
-  const named = [...new Set(holds.flatMap((hold) => hold.targets))].map(
-    (id) => bots.find((bot) => bot.id === id)?.name ?? id
-  )
+  const exchanges = heldExchanges(groups, holds)
+  const speaker = exchanges.at(-1)!.speaker
+  const speakers = [...new Set(exchanges.map((e) => e.speaker))].join(' and ')
   let room = 'A bot room'
   try {
     room = groups.store.get(last.groupId).name
@@ -139,18 +164,18 @@ function inboxItem(groups: BotGroupRuntime, holds: BotRoomHopHold[]): ForkIdleRe
     // The group went; isMoot takes the entry off on the next read.
   }
   const hops = last.hop - 1
-  const held =
-    holds.length > 1 ? ` ${holds.length} replies were held; Continue lets each go on.` : ''
+  const held = holds.length > 1 ? ` ${holds.length} replies were held.` : ''
+  const goOn = holds.length > 1 ? 'lets each chain go on' : 'lets the chain go on'
   return {
     chatId: `${BOT_ROOM_HOP_ROW_PREFIX}${last.rootRequestId}`,
     kind: 'chat',
-    agent: speaker,
+    agent: speakers,
     title: `${room}: bots stopped after ${hops} hand-offs`,
     workspace: '',
     worktreeId: null,
     verdict: 'waiting_user',
     question: [
-      `${speaker} named ${named.join(', ')} after ${hops} bot hand-offs under one post, so nobody was woken.${held} Continue lets the chain go on with a fresh count; Dismiss leaves the room as it is.`,
+      `${describeHeld(exchanges)} after ${hops} bot hand-offs under one post, so nobody was woken.${held} Continue ${goOn} with a fresh count; Dismiss leaves the room as it is.`,
       '',
       'Last exchange:',
       ...lastExchange(groups, last, speaker)

@@ -82,5 +82,11 @@ export async function pauseFromInboxSource(
   if (saved) {
     notifyForkInboxSourceChanged()
   }
-  return { chatId: request.chatId, paused: false, pausedCount, saved }
+  return {
+    chatId: request.chatId,
+    paused: false,
+    pausedCount,
+    saved,
+    ...(saved ? { dismissed: true } : {})
+  }
 }
