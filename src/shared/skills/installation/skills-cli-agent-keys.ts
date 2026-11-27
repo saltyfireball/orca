@@ -49,5 +49,7 @@ export const SKILLS_CLI_AGENT_KEY_BY_TUI_AGENT = {
   zcode: 'zcode',
   // DSH uses Cordis plugins rather than a skills --agent target.
   dsh: null,
-  jcode: null
+  jcode: null,
+  // Fork: a custom ACP agent's skills are its own program's business.
+  'custom-acp': null
 } satisfies Record<TuiAgent, string | null>

@@ -91,7 +91,9 @@ export function structuredChatNamingDeps(
           'qwen-code',
           'cline',
           'devin',
-          'codebuddy'
+          'codebuddy',
+          // Fork (FORK.md "Custom ACP agents").
+          'custom-acp'
         ].includes(record.provider)
       ) {
         return null

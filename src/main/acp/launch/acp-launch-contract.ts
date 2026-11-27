@@ -35,6 +35,9 @@ export type AcpLaunchSpec = {
   launchesWithModel?: true
   /** Applied after the account and user environment. */
   env: Readonly<Record<string, string>>
+  /** Fork (FORK.md "Custom ACP agents"): the folder the program starts in; sessions still open in
+   *  the chat's folder. Absent, the program starts there too. */
+  processCwd?: string
   /** Scrubs inherited Orca plumbing and returns keys to omit entirely; the chat's saved
    *  Antigravity account type keeps the credentials it reads. */
   scrubEnvironment?(

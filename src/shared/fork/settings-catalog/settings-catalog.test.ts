@@ -120,7 +120,9 @@ describe('fork settings access', () => {
       'claudeManagedAccounts',
       'codexManagedAccounts',
       'voice',
-      'forkCustomAppThemes'
+      'forkCustomAppThemes',
+      // BAD-873: env names only; the values are kept in a private store, never in settings.
+      'forkCustomAcpAgents'
     ])
     const looksSecret =
       /token|secret|cookie|password|api_?key|credential|oauth|proxy|env(ironment)?\b|"[a-z]*auth[a-z]*"/i

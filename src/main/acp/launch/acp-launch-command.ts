@@ -25,6 +25,8 @@ import type {
   AcpHostBackendSettings,
   AcpLaunchSpec
 } from './acp-launch-contract'
+import { CUSTOM_ACP_AGENT } from '../../../shared/fork/custom-acp-agents/custom-acp-agent-types'
+import { forkCustomAcpLaunchSpec } from '../../fork/custom-acp-agents/custom-acp-launch-spec'
 
 /** Prefer explicit commands, then managed releases, then complete pinned copies on PATH. */
 export function resolveAcpLaunchCommand(
@@ -74,6 +76,10 @@ export function acpLaunchSpecForAccount(
   spec: AcpLaunchSpec,
   home: AgentSessionAccountHome
 ): AcpLaunchSpec {
+  // Fork (FORK.md "Custom ACP agents"): the home pins which saved program the chat runs.
+  if (spec.agent === CUSTOM_ACP_AGENT) {
+    return forkCustomAcpLaunchSpec(spec, home)
+  }
   const backend = spec.hostBackend
   return backend?.pins(home) ? (backend.specFor?.(home) ?? backend.spec) : spec
 }

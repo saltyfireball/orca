@@ -143,6 +143,8 @@ export const BotUpdate = lazyZodSchema(() =>
         permissionMode: z.enum(AGENT_CHAT_PERMISSION_MODES).nullable().optional(),
         /** null clears it; a new agent without one clears it too, since it belongs to the old agent. */
         launch: BotLaunchSchema.nullable().optional(),
+        /** Fork (FORK.md "Custom ACP agents"): null clears it, as does an agent other than custom-acp. */
+        customAcpAgent: z.string().min(1).max(40).nullable().optional(),
         notifications: BotNotificationsSchema.optional(),
         members: z.array(BotMemberSchema).max(BOT_MAX_MEMBERS).optional(),
         /** Takes one person off Who can ask, on the host, so a concurrent edit is kept. */

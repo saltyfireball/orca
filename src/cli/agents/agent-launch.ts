@@ -14,9 +14,14 @@ import {
   resolveCurrentWorktreeSelector
 } from '../workspace-selection/workspace-selector'
 import { noteForkQueuedAgentLaunch } from '../fork/agent-queue-launch-note'
+import { launchForkCustomAcpAgent } from '../fork/custom-acp-agent-launch'
 
 export const AGENT_LAUNCH_HANDLERS: Record<string, CommandHandler> = {
   'agent launch': async ({ flags, client, cwd, json, rawArgs }) => {
+    // Fork (FORK.md "Custom ACP agents"): --agent <custom name> starts a chat on that agent.
+    if (await launchForkCustomAcpAgent({ flags, client, cwd, json })) {
+      return
+    }
     const launch = readCliAgentLaunch(flags, parseCliAgent(getRequiredStringFlag(flags, 'agent')), {
       createsWorktree: false
     })

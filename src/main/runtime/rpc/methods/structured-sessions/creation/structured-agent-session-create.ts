@@ -39,6 +39,7 @@ import { resolveUncommittedStructuredCreate } from './structured-agent-session-p
 import { ORCA_LAYOUT_OWNER_IS_MAIN } from '../../../../../../shared/workspace-layout/layout-owner-switch'
 import { structuredAgentSessionClosedBeforeCreate } from './structured-agent-session-close-before-create'
 import type { ChatTabPlacement } from '../../../../session-tabs/chat/agent-session-tab-layout'
+import { forkCustomAcpCreate } from '../../../../../fork/custom-acp-agents/custom-acp-create'
 
 export type PreparedStructuredAgentSessionCreate = {
   host: StructuredAgentSessionHost
@@ -76,6 +77,9 @@ export async function prepareStructuredAgentSessionCreateForWorktree(args: {
   beforeFirstMessage?: () => void | Promise<void>
   beforeDelivery?: () => boolean
 }): Promise<PreparedStructuredAgentSessionCreate> {
+  // Fork (FORK.md "Custom ACP agents"): the picked custom agent pins the chat; it is no option.
+  const custom = forkCustomAcpCreate(args)
+  args = { ...args, options: custom.options }
   const fork = args.forkFrom
   if (fork && (args.resumeFrom || args.options || args.optionsMode || args.atRest !== true)) {
     throw agentSessionRefusalError('agent_session_operation_invalid', {
@@ -93,15 +97,17 @@ export async function prepareStructuredAgentSessionCreateForWorktree(args: {
       : undefined)
   // Adoption replay may need the record loaded from disk before source discovery can be skipped.
   let host = args.resumeFrom || args.forkFrom ? await args.ensureHost() : null
-  const resolved = await args.runtime.resolveStructuredAgentSessionCreateIntent({
-    envelope: args.envelope,
-    worktree: args.worktree,
-    agent: args.agent,
-    callerKey: args.caller.callerKey,
-    structuredAgentCliSourceEvidence,
-    ...(args.resumeFrom ? { resumeFrom: args.resumeFrom } : {}),
-    ...(args.forkFrom ? { forkFrom: args.forkFrom } : {})
-  })
+  const resolved = custom.pin(
+    await args.runtime.resolveStructuredAgentSessionCreateIntent({
+      envelope: args.envelope,
+      worktree: args.worktree,
+      agent: args.agent,
+      callerKey: args.caller.callerKey,
+      structuredAgentCliSourceEvidence,
+      ...(args.resumeFrom ? { resumeFrom: args.resumeFrom } : {}),
+      ...(args.forkFrom ? { forkFrom: args.forkFrom } : {})
+    })
+  )
   const attachFingerprint = computeAgentSessionPayloadFingerprint({
     method: 'agentSession.attach',
     sessionId: args.envelope.sessionId,

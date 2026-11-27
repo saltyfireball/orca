@@ -41,7 +41,8 @@ export const BOT_AGENTS = [
   'qwen-code',
   'cline',
   'devin',
-  'codebuddy'
+  'codebuddy',
+  'custom-acp'
 ] as const satisfies readonly Exclude<NativeChatAgent, (typeof BOT_HELD_BACK_AGENTS)[number]>[]
 
 /** A bot agent as old records and peers name it: a retired agent reads as its successor. */
@@ -165,6 +166,8 @@ export const BotSchema = lazyZodSchema(() =>
     /** The owner's model and options for `agent`; absent on older bots and dropped by older hosts. */
     // A malformed value reads as unset rather than losing the whole bot.
     launch: BotLaunchSchema.optional().catch(undefined),
+    /** Fork (FORK.md "Custom ACP agents"): the saved custom agent a `custom-acp` bot runs. */
+    customAcpAgent: z.string().min(1).max(40).optional().catch(undefined),
     notifications: BotNotificationsSchema,
     members: z.array(BotMemberSchema).max(BOT_MAX_MEMBERS),
     /** The first of slackApps, kept for readers that know one workspace (older Orcas, the phone). */

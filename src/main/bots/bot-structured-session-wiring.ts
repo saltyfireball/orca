@@ -38,6 +38,7 @@ import {
 } from '../native-chat/native-chat-skill-roots'
 import type { Repo } from '../../shared/repository/repo-types'
 import type { AgentSessionRecord } from '../../shared/agent-session/lifecycle/agent-session-record'
+import { forkCustomAcpBotInstructions } from '../fork/custom-acp-agents/custom-acp-bot-session'
 
 /** The agents that reload a watched skills folder mid-chat (checked on Claude 2.1.319, Codex 0.163). */
 const LIVE_SKILLS_PROVIDERS = new Set(['claude', 'codex'])
@@ -164,6 +165,11 @@ export function botStructuredSessionWiring(deps: {
   return {
     resolveSessionInstructions: (record, launchDirectory, linkedSkills, eachStart) => {
       const bot = botOfRecord(record)
+      // Fork (FORK.md "Custom ACP agents"): an agent that keeps its own persona gets the rules only.
+      const owned = forkCustomAcpBotInstructions(bot, record)
+      if (owned) {
+        return owned
+      }
       return botSessionInstructions(
         turnContext,
         bot ? [bot] : [],

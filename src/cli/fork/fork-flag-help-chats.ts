@@ -45,6 +45,21 @@ export const FORK_CHAT_FLAG_HELP: ForkFlagHelp = {
   'agent close': {
     id: ['<id>', 'Orca session ID of the chat (orca_session_id:...)']
   },
+  // BAD-873: custom ACP agents.
+  'agent custom add': {
+    name: ['<name>', 'Lowercase letters, digits and dashes; also accepted positionally'],
+    command: ['<program>', 'Absolute path, or a name on PATH, of a program speaking ACP on stdio'],
+    arg: ['<arg>', 'One argument for the program; repeat for more, in order'],
+    'args-json': ['<json>', 'Arguments as a JSON array of strings, after any --arg'],
+    cwd: ['<folder>', "Absolute folder it starts in (default: the chat's workspace)"],
+    env: ['<NAME>', 'Variable it gets, valued from this shell; repeat; never NAME=VALUE'],
+    'env-file': ['<file>', 'NAME=VALUE lines of variables it gets'],
+    'owns-prompt': ['', "It keeps its own persona: a bot sends it Orca's bot rules only"],
+    replace: ['', 'Replace a saved agent of the same name']
+  },
+  'agent custom remove': {
+    name: ['<name>', 'Saved custom agent to remove; also accepted positionally']
+  },
   'bot chats-cleanup': {
     bot: ['<name>', "Only this bot's chats (its name or id)"],
     'dry-run': ['', 'List what would close and why; close nothing'],
@@ -176,7 +191,7 @@ export const FORK_CHAT_FLAG_HELP: ForkFlagHelp = {
   'bot set': {
     bot: ['<name>', 'Bot to set (name or id)'],
     all: ['', 'Set every bot on the host'],
-    agent: ['<agent>', 'With --all: only bots of this agent'],
+    agent: ['<agent>', 'With --all: only bots of this agent; with --bot: move it to this agent'],
     model: ['<id>', 'Model its new chats start on'],
     effort: ['<level>', 'Reasoning effort its new chats start on'],
     clear: ['', 'Remove the choice, so new chats start on the native chat defaults']

@@ -37,6 +37,8 @@ import { carryQueuedMessages, type QueuedCarryHost } from './bot-chat-queued-car
 import type { TookOverNotice } from '../../shared/native-chat/took-over-notice'
 import type { AutomationRunMessage } from '../../shared/automations/automation-run-message'
 import { botStartOptions } from './bot-start-options'
+import { forkCustomAcpBotOption } from '../../shared/fork/custom-acp-agents/custom-acp-bot'
+import { forkCustomAcpRecordRunsBot } from '../fork/custom-acp-agents/custom-acp-bot-session'
 import { BotSessionRefusedError } from './bot-session-refused-error'
 import { showBotSessionTab } from './bot-session-tab-show'
 import { supportedStructuredSeedOptions } from '../runtime/agent-session/installation/structured-agent-runtime-metadata'
@@ -128,7 +130,10 @@ export function botChatSessions(deps: BotChatDependencies) {
   /** The current Chat, or a new one when it is gone or runs another agent than the bot's. */
   const open = (host: BotChatHost, bot: Bot): Promise<string> | string => {
     const record = bot.chatSessionId ? host.deps.store.getConversation(bot.chatSessionId) : null
-    return record?.provider === bot.agent ? record.sessionId : replace(host, bot)
+    // Fork (FORK.md "Custom ACP agents"): a bot moved to another custom agent gets a new Chat too.
+    return record?.provider === bot.agent && forkCustomAcpRecordRunsBot(record, bot)
+      ? record.sessionId
+      : replace(host, bot)
   }
 
   const underLock = <T>(botId: string, work: (host: BotChatHost, bot: Bot) => Promise<T> | T) =>
@@ -291,7 +296,9 @@ export async function startBotSession(
   }
   const options = {
     ...launch,
-    ...(permissionMode ? { [AGENT_CHAT_PERMISSION_MODE_OPTION_ID]: permissionMode } : {})
+    ...(permissionMode ? { [AGENT_CHAT_PERMISSION_MODE_OPTION_ID]: permissionMode } : {}),
+    // Fork (FORK.md "Custom ACP agents"): which saved agent a custom-acp bot runs.
+    ...forkCustomAcpBotOption(bot)
   }
   const host = () => requireStructuredHost(runtime)
   const create = input.background

@@ -41,7 +41,9 @@ describe('standing instructions on every start', () => {
       'qwen-code': true,
       cline: true,
       devin: false,
-      codebuddy: true
+      codebuddy: true,
+      // Fork (FORK.md "Custom ACP agents"): sent on every session/new and session/load.
+      'custom-acp': true
     })
   })
 

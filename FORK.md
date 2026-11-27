@@ -672,6 +672,63 @@ ones `SLRM-123 `).
     with the old last-turn rule back. The sweep's decision shows through the real `automation.runs`
     handler and `orca automations runs`'s formatter, and fails with either the record or the handler
     hook undone.
+- **Custom ACP agents (BAD-873).** Any program that speaks the Agent Client Protocol over stdio
+  can run as a native chat or a bot. `docs/fork/custom-acp-agents.md` is the adapter contract: the
+  handshake, persona, sessions, turns and errors.
+  - **Defining one.** `orca agent custom add <name> --command <program> [--arg ...]
+    [--args-json ...] [--cwd <folder>] [--env NAME ...] [--env-file FILE] [--owns-prompt]
+    [--replace]`, plus `orca agent custom list` and `orca agent custom remove <name>`
+    (`fork.customAcpAgents.list|add|remove`).
+    - Agents are saved in `forkCustomAcpAgents` in settings: name, command, args, folder, env
+      names and owns-prompt. That is at most 32 agents. `orca settings` cannot write the key (kind
+      `own-command` in `settings-access.ts`): the app runs what it holds, and only
+      `orca agent custom` checks it and keeps the values apart.
+    - Env values never go in settings or on a command line. `--env NAME` takes the value from the
+      CLI's shell, and `--env-file` reads `NAME=VALUE` lines. `NAME=VALUE` on argv is refused, and
+      so are `PATH`, `HOME`, `USERPROFILE` and `ORCA_*`.
+    - The values are kept in `<userData>/fork-custom-acp-agents/env.json` (0600, written by temp
+      file and rename). Only names are listed or logged.
+  - **One agent id.** Every custom agent runs as the chat-only agent `custom-acp`.
+    - It is never detected and never a terminal agent. It is not in the auto-pick order, so the
+      generic + menu rows and the new-bot agent picker leave it out.
+    - A new chat names its agent in the create option `customAcpAgent`. The host takes the option
+      out and pins the chat's account home to `<userData>/fork-custom-acp-agents/agents/<name>`,
+      which the program gets as `ORCA_CUSTOM_AGENT_HOME`.
+    - Every start of that chat then runs the saved program with its args, folder (`processCwd`,
+      else the workspace) and env values.
+    - The handshake sends `clientInfo` `orca` with the app version. The model and effort pickers
+      are not offered (no model discovery), and Orca runs no naming tasks on the agent.
+    - A create that names no saved agent is refused with the reason (the pre-commit refusal keeps
+      it). A chat whose agent was removed refuses to start, saying how to add it again.
+  - **Starting chats.** `orca agent launch --agent <name>` opens a chat on a saved agent
+    (`fork.customAcpAgents.startChat`, a person's start). It refuses `--model`, `--effort`,
+    `--surface terminal`, `--profile`, `--mcp-profile` and `--retry-launch`, saying why. The +
+    menu lists the host's saved agents under "Custom agents".
+  - **Bots.** `orca bot set --bot <bot> --agent <name>` saves `agent: custom-acp` with
+    `customAcpAgent` on the bot (`bots.update`). The bot's chats carry the option, and its Home
+    chat is replaced when the custom agent changes. Persona:
+    - **Owns its prompt** (`--owns-prompt`). The agent gets only Orca's bot rules, as
+      `_meta.orca.context`, never SOUL.md or MEMORY.md.
+    - **Otherwise.** The whole bot preamble goes in `_meta.orca.systemPrompt`, but only when the
+      agent's initialize advertises `agentCapabilities._meta.orca.systemPrompt: true`. Without
+      that, the chat refuses to start, and its failure Details say what to change.
+    - Both are sent on `session/new` and again on every reopen. A plain chat sends no `_meta`.
+  - **Pause all.** Its gates are agent-agnostic, so a custom agent bot's mail and background turns
+    are held like any other, and resume-all delivers them.
+  - **Code and tests.**
+    - Code is in `src/shared/fork/custom-acp-agents/`, `src/main/fork/custom-acp-agents/`,
+      `src/main/runtime/rpc/methods/fork/fork-custom-acp-agents.ts`,
+      `src/cli/fork/custom-acp-agent-*.ts`, `src/cli/fork/custom-acp-bot-agent.ts` and
+      `src/renderer/src/fork/custom-acp-agents/`.
+    - The tests run the real runtime, chat create, session host, provider supervisor (built from
+      `native/provider-exec`) and ACP client on a made-up node agent
+      (`pebble-acp-agent.test-fixture.mjs`):
+      - `custom-acp-chat.test.ts`: the reply streams; argv, folder, env and `clientInfo` arrive;
+        the value stays out of argv and settings; a restart resumes with `session/load`; Stop
+        sends `session/cancel`; the agent's error shows; an unsaved or removed agent refuses.
+      - `custom-acp-bot.test.ts`: owned rules without SOUL.md; the system prompt with the
+        capability; the refusal without it; mail held by Pause all and delivered at resume-all.
+    - CLI and rules: `custom-acp-agent-handlers.test.ts` and `custom-acp-agent-types.test.ts`.
 - **Lost work (SLRM-2096).** A Lost work button in the workspace cleanup dialog opens a scan of
   every local git project for work an agent worktree could lose. Nothing runs until you press
   Scan; the scan only reads git and can be stopped.
@@ -4270,6 +4327,7 @@ Apply these in this order. Each one is a single commit.
 233. `BAD-892 Command guards let a bot's agent remove its own finished workspace with orca worktree rm (the bot owns it, no agent is open in it, the tree is clean, and with --delete-branch the branch is merged); every allow is audited, every other removal stays blocked; setting forkCommandGuardBotOwnWorktreeRemoval, on by default`
 234. `BAD-895 Fork builds post feedback, crash reports, language requests and mobile connection diagnostics only to the address in forkFeedbackEndpointUrl (empty by default, so nothing goes to Stably's orca.dev/v1/feedback); Send Feedback and the startup crash prompt hide when it is empty, and mobile reads EXPO_PUBLIC_FEEDBACK_ENDPOINT_URL`
 235. `BAD-899 The CLI typecheck project no longer pulls src/main/bots: the own-removal seam types botChatTreeIndex structurally instead of importing BotChatTreeIndex (a type import still adds the file and its imports to the program); behavior unchanged`
+236. `BAD-873 Custom ACP agents: orca agent custom add|list|remove saves a program that speaks ACP over stdio (env values in a private 0600 store, never settings or argv); a native chat starts on it from orca agent launch --agent <name> or the + menu, and a bot runs on it with orca bot set --agent <name>; SOUL.md and MEMORY.md reach it only as _meta.orca.systemPrompt when it advertises that capability, and an --owns-prompt agent gets the bot rules only, as _meta.orca.context`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5877,6 +5935,43 @@ Upstream files only get short hooks, which keeps merges small:
   without it. `ForkTextSetting.tsx` takes the key, `ForkSettingsPane.tsx` and
   `endpoint-failover-search.ts` list the card, `fork-global-settings.ts` intersects the setting;
   the settings catalog is regenerated.
+
+- Custom ACP agents (BAD-873), small edits in stock files:
+  - **The agent id.** `custom-acp` is added to `tui-agent.ts`, `tui-agent-config.ts` (detection
+    off on every runtime), `tui-agent-display-names.ts`, `agent-kind.ts`,
+    `agent-type-icon-agent.ts`, `agent-chat-permission-support.ts` (ACP modes),
+    `skills-cli-agent-keys.ts`, `native-chat-agent-profiles.ts`, `telemetry-property-schemas.ts`
+    and `BOT_AGENTS` in `bot-record-schemas.ts`. These are one entry each in exhaustive maps, and
+    `bot-session-instructions-each-start.test.ts` lists it as sent on every start. It is not in
+    `TUI_AGENT_AUTO_PICK_ORDER`, which keeps it out of every agent menu row, so
+    `orderAgentLaunchPickerAgents` (`agent-launch-picker-rows.ts`) types its list as `TuiAgent[]`.
+  - **Launch.**
+    - `acp-launch-registry.ts` appends `CUSTOM_ACP_LAUNCH_SPEC`.
+    - `acp-launch-command.ts` (`acpLaunchSpecForAccount`) returns `forkCustomAcpLaunchSpec` for
+      `custom-acp`.
+    - `acp-launch-contract.ts` adds the optional `processCwd`, which `acp-structured-acquire.ts`
+      uses as the process folder.
+    - `structured-chat-naming-runtime.ts` excludes the agent from naming.
+  - **Create.** `structured-agent-session-create.ts` calls `forkCustomAcpCreate` (strip the option,
+    pin the home). `structured-agent-session-precommit-refusal.ts` keeps the reason of its refusal
+    (`forkCustomAcpRefusalMessage`).
+  - **Bots.**
+    - `BotSchema` gains `customAcpAgent` and `BotUpdate` a nullable one (`bots-lifecycle-params.ts`).
+    - `applyBotUpdates` (`bots-params.ts`) calls `applyForkCustomAcpBotUpdate`.
+    - `bot-chat-session.ts` replaces a Home chat on another custom agent and adds
+      `forkCustomAcpBotOption` to a start's options.
+    - `bot-structured-session-wiring.ts` (`resolveSessionInstructions`) returns
+      `forkCustomAcpBotInstructions` first.
+  - **CLI.**
+    - `src/cli/specs/index.ts` spreads `FORK_CUSTOM_ACP_AGENT_COMMAND_SPECS`.
+    - `src/cli/agents/agent-launch.ts` calls `launchForkCustomAcpAgent` first.
+    - `src/cli/specs/agent-launch.ts` gains one note.
+    - The fork's `bot-set-handlers.ts` and `bot-set-specs.ts` take `--agent` with `--bot`.
+  - **Renderer.** `tab-bar-surface.tsx` renders `ForkCustomAcpAgentMenuItems` after the profile
+    items.
+  - **Host and catalogs.** `mcp-profiles-host.ts` (a fork file) installs the agents on desktop and
+    orcad, and `fork-global-settings.ts` intersects `ForkCustomAcpAgentSettings`. The settings and
+    RPC params catalogs are regenerated.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

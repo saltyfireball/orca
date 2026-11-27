@@ -13,11 +13,14 @@ import { getOptionalStringFlag } from '../arguments/flags'
 import { printResult } from '../output/command-result-output'
 import { RuntimeClientError } from '../runtime/connection/types'
 import type { BotsListResult } from '../bots/bot'
+import { readForkBotAgentPick, type ForkBotAgentPick } from './custom-acp-bot-agent'
 
 export type BotSetRow = {
   id: string
   name: string
   agent: string
+  /** BAD-873: the custom ACP agent a `custom-acp` bot runs. */
+  customAcpAgent?: string
   launch: BotLaunch | null
 }
 export type BotSetResult = { bots: BotSetRow[] }
@@ -77,41 +80,67 @@ export function readBotLaunchChange(flags: Map<string, string | boolean>): ForkB
 
 export function formatBotSetResult(result: BotSetResult): string {
   return result.bots
-    .map((bot) => `${bot.name} (${bot.agent}): ${describeForkBotLaunch(bot.launch)}`)
+    .map(
+      (bot) =>
+        `${bot.name} (${bot.customAcpAgent ?? bot.agent}): ${describeForkBotLaunch(bot.launch)}`
+    )
     .join('\n')
+}
+
+const LAUNCH_FLAGS = ['model', 'effort', 'clear']
+
+/** The update for one bot: its new agent when --bot names one, and its launch when a change is
+ *  asked; a new agent starts from no launch, since a model belongs to its agent. */
+function botSetUpdates(
+  bot: Bot,
+  pick: ForkBotAgentPick | null,
+  change: ForkBotLaunchChange | null
+): Record<string, unknown> {
+  const launch = change ? forkBotLaunchAfter(pick ? undefined : bot.launch, change) : undefined
+  return { ...pick, ...(launch !== undefined ? { launch } : {}) }
 }
 
 export const FORK_BOT_SET_HANDLERS: Record<string, CommandHandler> = {
   'bot set': async (ctx) => {
-    const change = readBotLaunchChange(ctx.flags)
+    // BAD-873: with --bot, --agent moves the bot to that agent, a custom ACP agent's name too.
+    const agentFlag = getOptionalStringFlag(ctx.flags, 'agent')
+    const pick =
+      ctx.flags.has('bot') && agentFlag ? await readForkBotAgentPick(ctx, agentFlag) : null
+    const launchAsked = LAUNCH_FLAGS.some((flag) => ctx.flags.has(flag))
+    const change = pick && !launchAsked ? null : readBotLaunchChange(ctx.flags)
+    if (pick?.agent === 'custom-acp' && change) {
+      throw invalid(
+        `${agentFlag} is a custom ACP agent, which picks its own model; leave out --model, --effort and --clear.`
+      )
+    }
     const listed = await ctx.client.call<BotsListResult>('bots.list')
     const chosen = selectBotsToSet(
       listed.result.bots,
       {
         bot: getOptionalStringFlag(ctx.flags, 'bot'),
         all: ctx.flags.has('all'),
-        agent: getOptionalStringFlag(ctx.flags, 'agent')
+        agent: pick ? undefined : agentFlag
       },
-      change
+      change ?? {}
     )
     // Each launch is checked before any is saved, so a bad choice changes no bot.
     const planned = chosen.map((bot) => {
       try {
-        return { bot, launch: forkBotLaunchAfter(bot.launch, change) }
+        return { bot, updates: botSetUpdates(bot, pick, change) }
       } catch (error) {
         throw invalid(`${bot.name}: ${error instanceof Error ? error.message : String(error)}`)
       }
     })
     const rows: BotSetRow[] = []
-    for (const { bot, launch } of planned) {
-      const saved = await ctx.client.call<{ bot: Bot }>('bots.update', {
-        botId: bot.id,
-        updates: { launch }
-      })
+    for (const { bot, updates } of planned) {
+      const saved = await ctx.client.call<{ bot: Bot }>('bots.update', { botId: bot.id, updates })
       rows.push({
         id: bot.id,
         name: saved.result.bot.name,
         agent: saved.result.bot.agent,
+        ...(saved.result.bot.customAcpAgent
+          ? { customAcpAgent: saved.result.bot.customAcpAgent }
+          : {}),
         launch: saved.result.bot.launch ?? null
       })
     }

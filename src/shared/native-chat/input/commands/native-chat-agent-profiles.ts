@@ -134,7 +134,9 @@ const NATIVE_CHAT_AGENT_PROFILES: Record<NativeChatAgent, NativeChatAgentProfile
   codebuddy: {
     skillPrefix: '/',
     skillSourceOwner: 'codebuddy'
-  }
+  },
+  // Fork: Orca knows no skill folders of a custom ACP agent.
+  'custom-acp': null
 }
 
 /** Whether `skill` under `source` reaches `profile`'s agent: shared roots unless the profile sets

@@ -307,5 +307,12 @@ export const FORK_HANDLER_GROUPS: readonly HandlerGroup[] = [
     name: 'fork-session-export',
     keys: ['agent export'],
     load: async () => (await import('./session-export-handlers.js')).FORK_SESSION_EXPORT_HANDLERS
+  },
+  // BAD-873: custom ACP agents (FORK.md "Custom ACP agents").
+  {
+    name: 'fork-custom-acp-agents',
+    keys: ['agent custom add', 'agent custom list', 'agent custom remove'],
+    load: async () =>
+      (await import('./custom-acp-agent-handlers.js')).FORK_CUSTOM_ACP_AGENT_HANDLERS
   }
 ]

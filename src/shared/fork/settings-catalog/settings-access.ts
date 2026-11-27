@@ -12,6 +12,7 @@ export type ForkSettingReadOnlyKind =
   | 'account'
   | 'marker'
   | 'runs-command'
+  | 'own-command'
 
 const REASON: Record<ForkSettingReadOnlyKind, string> = {
   'runs-command':
@@ -22,7 +23,9 @@ const REASON: Record<ForkSettingReadOnlyKind, string> = {
   'agent-limit':
     'it limits what agents may do, and agents run this CLI; change it in the Settings screen',
   account: 'accounts are added, removed and switched with `orca account` or the Accounts screen',
-  marker: 'the app keeps this one-time marker itself'
+  marker: 'the app keeps this one-time marker itself',
+  'own-command':
+    'the app runs what it holds, and only its own command checks it and keeps its secret values apart (see its description)'
 }
 
 /** The keys the `settings:set` handler deletes from every update it is given. */
@@ -96,6 +99,12 @@ const RUNS_COMMAND: SettingsKey[] = [
   'forkBestOfAttemptNote'
 ]
 
+/** Programs the app runs that their own command saves, checked, with secrets kept elsewhere. */
+const OWN_COMMAND: SettingsKey[] = [
+  // BAD-873: custom ACP agents, saved by `orca agent custom add|remove`.
+  'forkCustomAcpAgents'
+]
+
 /** One-time migration and "already defaulted" markers. */
 const MARKERS: SettingsKey[] = [
   'agentWorkspaceTrustExistingReposMigrated',
@@ -133,7 +142,8 @@ const READ_ONLY = new Map<string, ForkSettingReadOnlyKind>([
   ...AGENT_LIMITS.map((key) => [key, 'agent-limit'] as const),
   ...ACCOUNTS.map((key) => [key, 'account'] as const),
   ...MARKERS.map((key) => [key, 'marker'] as const),
-  ...RUNS_COMMAND.map((key) => [key, 'runs-command'] as const)
+  ...RUNS_COMMAND.map((key) => [key, 'runs-command'] as const),
+  ...OWN_COMMAND.map((key) => [key, 'own-command'] as const)
 ])
 
 /**

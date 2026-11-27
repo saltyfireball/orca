@@ -30,6 +30,7 @@ import { FORK_CHAT_HANDOFF_METHODS } from './fork-chat-handoff'
 import { FORK_REVIEW_GUIDE_METHODS } from './fork-review-guide'
 import { FORK_DIGEST_METHODS } from './fork-digest'
 import { FORK_QUICK_TASK_METHODS } from './fork-quick-task'
+import { FORK_CUSTOM_ACP_AGENT_METHODS } from './fork-custom-acp-agents'
 
 export const FORK_RPC_METHODS = [
   // SLRM-1503: move Claude chats between this host's accounts (FORK.md).
@@ -89,5 +90,7 @@ export const FORK_RPC_METHODS = [
   // SLRM-2389: letters between chats and the board of asks, behind `orca letter` and `orca board` (FORK.md).
   ...FORK_LETTERS_RPC_METHODS,
   // SLRM-2428: hand a quick task to the router bot, behind `orca quick-task` and the phone (FORK.md).
-  ...FORK_QUICK_TASK_METHODS
+  ...FORK_QUICK_TASK_METHODS,
+  // BAD-873: custom ACP agents, behind `orca agent custom` and the new-chat menu (FORK.md).
+  ...FORK_CUSTOM_ACP_AGENT_METHODS
 ] as const

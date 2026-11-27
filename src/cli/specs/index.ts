@@ -88,6 +88,7 @@ import { FORK_GOAL_LOOP_COMMAND_SPECS } from '../fork/goal-loop-specs'
 import { FORK_WORKER_RETRY_COMMAND_SPECS } from '../fork/worker-retry-specs'
 import { FORK_PAUSE_ALL_COMMAND_SPECS } from '../fork/pause-all-specs'
 import { FORK_BOT_SET_COMMAND_SPECS } from '../fork/bot-set-specs'
+import { FORK_CUSTOM_ACP_AGENT_COMMAND_SPECS } from '../fork/custom-acp-agent-specs'
 import { FORK_BOT_CONNECT_COMMAND_SPECS } from '../fork/bot-connect-specs'
 import {
   FORK_AUTO_PLACEMENT_COMMAND_SPECS,
@@ -191,7 +192,8 @@ export const COMMAND_SPECS: CommandSpec[] = withForkDoneContractFlags(
           ...FORK_COMPLETION_CONTRACT_COMMAND_SPECS,
           ...FORK_GOAL_LOOP_COMMAND_SPECS,
           ...FORK_WORKER_RETRY_COMMAND_SPECS,
-          ...FORK_PAUSE_ALL_COMMAND_SPECS
+          ...FORK_PAUSE_ALL_COMMAND_SPECS,
+          ...FORK_CUSTOM_ACP_AGENT_COMMAND_SPECS
         ])
       )
     )

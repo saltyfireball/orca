@@ -17,6 +17,7 @@ import { withBotOfferAnswer } from '../bots/bot-offer-answers'
 import { type BotCancelledWait, withBotCancelledWait } from '../bots/bot-cancelled-waits'
 import { OptionalBoolean, OptionalString, requiredString } from './rpc-param-primitives'
 import type { BotCreate, BotDelete, BotUpdate } from './bots-lifecycle-params'
+import { applyForkCustomAcpBotUpdate } from '../fork/custom-acp-agents/custom-acp-bot'
 
 export * from './bots-lifecycle-params'
 
@@ -174,6 +175,7 @@ export function applyBotUpdates(bot: Bot, updates: BotHostUpdates): Bot {
   const {
     permissionMode,
     launch,
+    customAcpAgent,
     removeMember,
     removeMembers,
     addMembers,
@@ -247,5 +249,6 @@ export function applyBotUpdates(bot: Bot, updates: BotHostUpdates): Bot {
   } else if (launch === null || (rest.agent !== undefined && rest.agent !== bot.agent)) {
     delete next.launch
   }
+  applyForkCustomAcpBotUpdate(next, customAcpAgent)
   return next
 }

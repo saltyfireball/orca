@@ -34,7 +34,7 @@ export function orderAgentLaunchPickerAgents(
   disabled?: Iterable<unknown> | null
 ): TuiAgent[] {
   const enabled = filterEnabledTuiAgents(detected, disabled)
-  const ordered = TUI_AGENT_AUTO_PICK_ORDER.filter((agent) => enabled.includes(agent))
+  const ordered: TuiAgent[] = TUI_AGENT_AUTO_PICK_ORDER.filter((agent) => enabled.includes(agent))
   return defaultAgent && defaultAgent !== 'blank' && ordered.includes(defaultAgent)
     ? [defaultAgent, ...ordered.filter((agent) => agent !== defaultAgent)]
     : ordered

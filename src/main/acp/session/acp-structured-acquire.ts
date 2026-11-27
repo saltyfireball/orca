@@ -105,7 +105,7 @@ export async function acquireAcpStructuredSession(input: {
     {
       command: launch.command,
       args: launch.args,
-      cwd: launch.cwd,
+      cwd: spec.processCwd ?? launch.cwd,
       ...acpProcessEnvironment(launch)
     },
     {

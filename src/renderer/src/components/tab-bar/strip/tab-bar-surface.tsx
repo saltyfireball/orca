@@ -1,5 +1,6 @@
 import React from 'react'
 import { ForkAgentProfileMenuItems } from '@/fork/agent-profiles/ForkAgentProfileMenuItems'
+import { ForkCustomAcpAgentMenuItems } from '@/fork/custom-acp-agents/ForkCustomAcpAgentMenuItems'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
 import type { Translate } from '@/i18n/use-translate'
@@ -316,6 +317,8 @@ export function renderTabBarSurface(
           {!bot && !terminalOnly ? (
             <ForkAgentProfileMenuItems model={agentMenu} onLaunch={launchAgentFromNewTabEntry} />
           ) : null}
+          {/* Fork (BAD-873): custom ACP agents (FORK.md). */}
+          {!bot && !terminalOnly ? <ForkCustomAcpAgentMenuItems worktreeId={worktreeId} /> : null}
           {/* While a query is typed, the bot's chats are search results above instead. */}
           {bot && !terminalOnly && showStaticCreateMenuItems ? (
             <BotNewChatMenuItems bot={bot} model={agentMenu} />

@@ -12,6 +12,7 @@ import {
 import { isAgentSessionCreateAdmissionRefusal } from '../../../../../../shared/agent-session/failures/agent-session-definitive-refusal'
 import { AgentConversationCopyError } from '../../../../../native-chat/conversation-adoption/agent-conversation-copy-error'
 import { tuiAgentDisplayName } from '../../../../../../shared/agent-launch/catalog/tui-agent-display-names'
+import { forkCustomAcpRefusalMessage } from '../../../../../fork/custom-acp-agents/custom-acp-create'
 
 export type StructuredCreateRefused = { refusal: AgentSessionWireRefusal }
 
@@ -44,7 +45,8 @@ function precommitRefusal(error: unknown, agent?: string): AgentSessionWireRefus
       error.refusal,
       error.cause instanceof AgentConversationCopyError
         ? error.cause.message
-        : PRECOMMIT_REFUSAL_MESSAGE
+        : // Fork (FORK.md "Custom ACP agents"): a custom chat's refusal names its agent and why.
+          (forkCustomAcpRefusalMessage(error) ?? PRECOMMIT_REFUSAL_MESSAGE)
     )
     return error.cause instanceof AgentConversationCopyError &&
       error.refusal.createAttemptRefusedBeforeCommit

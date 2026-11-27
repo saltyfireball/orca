@@ -92,6 +92,12 @@ import {
   ForkCompletionContractResultParams,
   ForkCompletionContractShowParams
 } from '../fork/completion-contract-wire'
+import {
+  ForkCustomAcpAgentAddParams,
+  ForkCustomAcpAgentRemoveParams,
+  ForkCustomAcpAgentStartChatParams,
+  ForkCustomAcpAgentsListParams
+} from '../fork/custom-acp-agents/custom-acp-agents-wire'
 import { ForkDeviceListParams, ForkDeviceTargetParams } from '../fork/device-approval'
 import { ForkDigestCollectParams, ForkDigestLocalParams } from '../fork/digest'
 import { ForkEndpointAddressesParams } from '../fork/endpoint-failover'
@@ -1843,6 +1849,10 @@ export const RPC_PARAMS_BY_METHOD = {
   'fork.completionContract.laterPush': ForkCompletionContractLaterPushParams,
   'fork.completionContract.result': ForkCompletionContractResultParams,
   'fork.completionContract.show': ForkCompletionContractShowParams,
+  'fork.customAcpAgents.add': ForkCustomAcpAgentAddParams,
+  'fork.customAcpAgents.list': ForkCustomAcpAgentsListParams,
+  'fork.customAcpAgents.remove': ForkCustomAcpAgentRemoveParams,
+  'fork.customAcpAgents.startChat': ForkCustomAcpAgentStartChatParams,
   'fork.devices.approve': ForkDeviceTargetParams,
   'fork.devices.deny': ForkDeviceTargetParams,
   'fork.devices.list': ForkDeviceListParams,

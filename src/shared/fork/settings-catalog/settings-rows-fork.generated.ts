@@ -161,6 +161,8 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"number"},"d":"Completion contract: lines of a failing check\'s output sent back to the worker and kept as evidence (5 to 200); unset is 40.","o":true}',
   forkCompletionContractTimeoutSeconds:
     '{"t":{"k":"number"},"d":"Completion contract: seconds one done check may run before it counts as failed (10 to 3600); unset is 600.","o":true}',
+  forkCustomAcpAgents:
+    '{"t":{"k":"array","of":{"k":"object","fields":{"name":{"k":"string"},"command":{"k":"string"},"args":{"k":"array","of":{"k":"string"},"optional":true},"cwd":{"k":"string","optional":true},"env":{"k":"array","of":{"k":"string"},"optional":true},"ownsPrompt":{"k":"boolean","optional":true}}}},"d":"Custom ACP agents: programs that speak ACP over stdio, run as chats and bots by name; unset is none. Saved by orca agent custom add|remove; env values are kept apart, in this host\'s private store.","o":true}',
   forkDeviceApproval:
     '{"t":{"k":"boolean"},"d":"A newly paired device needs approval from an approved device or this host\'s owner. Off unless true.","o":true}',
   forkDigest:
