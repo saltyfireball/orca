@@ -1,9 +1,11 @@
-// The fork's installs on a host with no desktop app, on fakes: no timer fires and no chat is read.
+// The fork's installs on a host with no desktop app: no timer fires and no chat is read.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { closeTestStores, createStore, testState } from '../persistence/persistence-test-harness'
 import { installForkHeadlessHost } from './headless-host'
+import { readForkApfsCloneSettings } from './apfs-clone/apfs-clone-settings-reader'
 import { uninstallForkMcpProfilesForTests } from './mcp-profiles/mcp-profiles-service'
 import { uninstallForkAgentProfileLaunchForTests } from './agent-profiles/agent-profile-launch-scope'
 import {
@@ -11,9 +13,16 @@ import {
   forkMarkHeadlessSettingsHost
 } from './settings-cli/settings-cli-headless'
 
+vi.mock('electron', () => ({
+  app: { getPath: () => testState.dir },
+  safeStorage: { isEncryptionAvailable: () => false }
+}))
+vi.mock('../telemetry/client', () => ({ track: vi.fn() }))
+
 let userData = ''
 
-afterEach(() => {
+afterEach(async () => {
+  await closeTestStores()
   forkMarkHeadlessSettingsHost(false)
   uninstallForkMcpProfilesForTests()
   uninstallForkAgentProfileLaunchForTests()
@@ -46,5 +55,29 @@ describe('installForkHeadlessHost', () => {
     expect(getSettings).not.toHaveBeenCalled()
     await stop()
     expect(vi.getTimerCount()).toBe(0)
+  })
+
+  // BAD-562: worktrees created through `orca serve` cloned nothing because only the desktop
+  // entry installed the APFS clone reader.
+  it('installs the APFS clone reader on the saved settings of a real store', async () => {
+    userData = mkdtempSync(join(tmpdir(), 'headless-host-apfs-'))
+    testState.dir = userData
+    const saved = createStore()
+    saved.updateSettings({ forkApfsCloneFolders: ['vendor/bundle'] })
+    await saved.flushAsync()
+    await closeTestStores()
+    const store = createStore()
+    expect(readForkApfsCloneSettings()).toBeNull()
+
+    const stop = await installForkHeadlessHost(store, userData)
+
+    expect(readForkApfsCloneSettings()?.forkApfsCloneFolders).toEqual(['vendor/bundle'])
+    store.updateSettings({ forkApfsCloneCheckout: true, forkApfsCloneFolders: [] })
+    expect(readForkApfsCloneSettings()).toMatchObject({
+      forkApfsCloneCheckout: true,
+      forkApfsCloneFolders: []
+    })
+    await stop()
+    expect(readForkApfsCloneSettings()).toBeNull()
   })
 })

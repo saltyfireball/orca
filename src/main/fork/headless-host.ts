@@ -1,9 +1,11 @@
 // The fork's installs on a host that runs without the desktop app (orcad, behind `orca serve`),
 // called once from `src/main/backend/core-runtime-activation.ts` before the RPC server starts.
 // Keep electron out of this file.
+import type { ForkApfsCloneSettings } from '../../shared/fork/apfs-clone'
 import type { ForkGlobalSettings } from '../../shared/fork/fork-global-settings'
 import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import { installForkAgentQueue } from './agent-queue/agent-queue-service'
+import { installForkApfsCloneSettingsReader } from './apfs-clone/apfs-clone-settings-reader'
 import { forkAgentQueueRuntimeTerminals } from './agent-queue/agent-queue-runtime'
 import {
   startForkBoundaryCompactionService,
@@ -33,7 +35,8 @@ import {
 
 export type ForkHeadlessHostStore = Omit<ForkCommandGuardsHostStore, 'getSettings'> & {
   getSettings: () => NonNullable<ReturnType<BoundaryCompactionSettingsReader>> &
-    ForkProfilesHostSettings
+    ForkProfilesHostSettings &
+    ForkApfsCloneSettings
   onSettingsChanged: (listener: (updates: Partial<ForkGlobalSettings>) => void) => unknown
 }
 
@@ -51,6 +54,8 @@ export type ForkHeadlessHostStore = Omit<ForkCommandGuardsHostStore, 'getSetting
  * - Command guards answer from here on, before a chat can start (BAD-764).
  * - The PR babysitter acts on CI lines of this host's chats (SLRM-2386).
  * - PR nudges send this host's chats their pull requests' new review comments and conflicts (BAD-680).
+ * - New worktrees get APFS clones of ignored folders and the cached checkout by this host's own
+ *   settings (SLRM-2270, BAD-562); the hooks do nothing off macOS.
  * - Agent and MCP profiles apply to the launches that run here, from this host's own settings and
  *   `<userDataPath>/fork-mcp-profiles` (BAD-800). Resolves once they are loaded, before the RPC
  *   server starts, so no launch arrives ahead of them.
@@ -67,6 +72,7 @@ export async function installForkHeadlessHost(
     forkAgentQueueRuntimeTerminals(() => runtime)
   )
   installForkCommandGuards(store)
+  installForkApfsCloneSettingsReader(() => store.getSettings())
   const profiles = installForkProfilesOnHost({
     readSettings: () => store.getSettings(),
     userDataPath
@@ -93,6 +99,7 @@ export async function installForkHeadlessHost(
   const stopPrNudge = installForkPrNudge(store)
   await profiles.ready
   return async () => {
+    installForkApfsCloneSettingsReader(null)
     stopPrBabysit()
     stopPrNudge()
     stopForkBoundaryCompactionService()

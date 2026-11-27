@@ -1988,6 +1988,10 @@ ones `SLRM-123 `).
     a sparse checkout, a `filter=` in .gitattributes or any `filter.*` in Git config (which
     `git lfs install` adds globally), a busy cache lock or any failure fall back to
     `git reset --hard HEAD`, a plain checkout.
+  - Both features read the host's own settings through a reader installed at startup: the
+    desktop app in `src/main/index.ts`, a headless `orca serve` host (orcad) in
+    `src/main/fork/headless-host.ts` (BAD-562; before it the reader stayed unset there and
+    worktrees created through the server cloned nothing).
   - Code is in `src/main/fork/apfs-clone/`; clonefile is called through
     `/usr/bin/osascript -l JavaScript` because Node has no binding for it.
 
@@ -4024,7 +4028,7 @@ Apply these in this order. Each one is a single commit.
 89. `SLRM-2267 Endpoint failover: try a saved server's routes in order and move back to the better one`
 90. `SLRM-2265 Worktree move: move a workspace and its chats to another host`
 91. `SLRM-2264 Pairing on a pinned bind: pair a server bound to a Tailscale or LAN address, and release the Linux server tarballs`
-92. `SLRM-2270 APFS clone: fast new worktrees on macOS with copy-on-write clones of node_modules and, opt-in, the checkout`
+92. `SLRM-2270 APFS clone: fast new worktrees on macOS with copy-on-write clones of node_modules and, opt-in, the checkout, on the desktop app and on a headless orca serve host (BAD-562)`
 93. `SLRM-2271 Device approval and webhook automations: approve new paired devices, start automations from signed webhooks`
 94. `SLRM-2278 Follow upstream 1.4.261's moved modules and APIs in fork code`
 95. `SLRM-2269 Snooze: hide a workspace or chat until a time, its merge or idle days, waking early when it needs you`
