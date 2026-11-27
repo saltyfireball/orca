@@ -594,7 +594,8 @@ ones `SLRM-123 `).
   - **`orca agent close <id> [--environment <name>]`** closes one chat by its Orca session ID
     through the same close (`fork.agent.close`): it refuses a chat that is in a turn or waiting on a
     person, and a terminal agent. A chat closed this way is not Orca's own close, so mail does not
-    reopen it.
+    reopen it. It is a close a person asks for, so a goal on that chat ends quietly as `gone` with
+    no inbox row (BAD-822); the automation run sweep notes no close.
   - Code is in `src/shared/fork/automation-run-auto-close.ts` (the rule and settings),
     `src/shared/fork/agent-chat-close.ts`, `src/main/fork/automation-run-close/` and
     `src/cli/fork/agent-close-handlers.ts`. Tests: `automation-run-auto-close.test.ts` puts runs in a
@@ -4144,7 +4145,7 @@ Apply these in this order. Each one is a single commit.
 204. `BAD-800 Launches over the paired WebSocket and the renderer's ipc subscribe run in the launch scope, so a profile's MCP limit, mode, account and preamble apply and refusals reach the caller; the CLI and the dialog's move refuse and remove an automation saved without its MCP profile; a Claude terminal's MCP config is one --mcp-config=<file> word, so the prompt after it is a prompt; a new workspace's startup agent gets the profile's mode and MCP profile`
 205. `BAD-817 Agent profile import keeps a definition's limits or names them: permissionMode maps to the profile mode (narrowest when unreadable), tools, disallowedTools, MCP servers, hooks and Codex sandbox, approval and tables are stored as not kept, shown by import, list and show, and held for orca profiles confirm; a definition that does not parse is refused`
 206. `BAD-820 With forkReviewerGateAllTasks on, a start on a paired server sends the setting's review as the Task's own (both protocols, retries, best-of attempts), a server that cannot take it is refused before any effect naming the setting, and with the setting off nothing changes`
-207. `BAD-822 A goal whose agent died says so: it ends as agent-lost with a Decision inbox row and the notify targets, once; only a chat or terminal a person closed, or a worker that reported done, ends quietly, and after a restart the missing window starts once the restore has finished`
+207. `BAD-822 A goal whose agent died says so: it ends as agent-lost with a Decision inbox row and the notify targets, once; only a chat or terminal a person closed (also with orca agent close), or a worker that reported done, ends quietly, and after a restart the missing window starts once the restore has finished`
 208. `BAD-819 Own pull request loop limit: a from=me pr_opened run started by a pull request another run of the same automation opened is one hop deeper and stops past forkAutomationChainMaxDepth, at most 5 own pull request starts per automation in 15 minutes, each stop a skipped run with the reason and one Decision inbox row`
 209. `BAD-800 orcad loads agent and MCP profiles from its own settings and user data folder, so --profile and --mcp-profile apply on a server, and a host that has not loaded them says so instead of calling a profile unknown`
 210. `BAD-815 A profile's Claude account pins a new workspace's startup agent (worktree create, an automation run in a new workspace, a terminal worker in a new worktree), or the start is refused naming the account`
@@ -5407,7 +5408,8 @@ Upstream files only get short hooks, which keeps merges small:
   BAD-822 adds one-line `noteForkGoalAgentsClosed` calls (`goal-close-notes.ts`, which imports
   nothing) in `pty-exit-lifecycle.ts` (an `operator_close` exit beside the coordinator Run
   retirement), `structured-agent-session-close-method.ts` and `structured-agent-session-close.ts`
-  (a `user-close`), `orca-chat-delete.ts` and `structured-session-worktree-teardown.ts`.
+  (a `user-close`), `orca-chat-delete.ts` and `structured-session-worktree-teardown.ts`; the
+  fork file `agent-chat-close.ts` notes the `orca agent close` of a chat.
 - Mobile page imports of zod (BAD-681): the mobile web bundle fails ("63 zod locale tables reached the
   page") when a file the page reaches has `import { z } from 'zod'`; fork files it reaches use
   `import * as z from 'zod'`. `src/shared/fork/zod-page-imports.test.ts` follows the imports from
