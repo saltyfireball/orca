@@ -40,6 +40,28 @@ ones `SLRM-123 `).
 
 ## What the fork changes
 
+- **agy skip-permissions guard: tests only (BAD-877).** An Antigravity chat on the host's agy
+  launches `agy acp`, and adds `--dangerously-skip-permissions` (approves tools, not plans) only in
+  Full access, since agy has no Full access session mode (upstream #39471). In every other mode agy
+  asks through `session/request_permission`, and Orca never answers those itself: each one opens as
+  an approval in the chat for the person (the spec's `permissionModeConfig` has no
+  `fullAccessAnswersRequests`). The readiness check is the one launch that always has the flag, so
+  it only initializes and lists sessions. Upstream later deleted the tests that held this (#41177,
+  #42521); the fork adds them back in `src/main/fork/agy-permission-guard/`, with no change to code:
+  - `agy-chat-permission.test.ts` reads the launch mode from the chat record as the host does
+    (`structuredAgentSessionLaunchPermission`), builds agy's argv with the real launch resolver and
+    opens the chat through the real acquire on a scripted agy. argv is `[acp]` for no saved mode,
+    Ask, Accept edits, own and Auto (agy chats have no Auto, so it asks), and
+    `[acp, --dangerously-skip-permissions]` only for Full access; Orca sets agy's `default` or
+    `accept-edits` session mode (none for own). A permission request agy sends then stays
+    unanswered by Orca and opens a pending approval, in all six cases.
+  - `agy-host-probe.test.ts` runs `checkAntigravityHostAcp` and `checkAntigravityHostAcpCompatible`
+    on a scripted agy (the connection is the only stand-in): both launch with the flag, the first
+    sends only `initialize` and `session/list`, the second only `initialize`.
+  - Each test fails with its guard undone: the flag passed always or never, `fullAccess` forced on,
+    `fullAccessAnswersRequests` set on agy's spec, the handler answering every request, or the
+    check opening a session, prompting, or listing sessions in the compatibility check.
+
 - **A failed look or tidy-up says why (BAD-838).** A bot's Look around and Tidy-up recorded only
   "The last look didn't finish." (or "The last tidy-up didn't finish.") when their turn failed,
   though the run already held the reason: when the bots' Claude account was signed out, every look
@@ -4169,6 +4191,7 @@ Apply these in this order. Each one is a single commit.
 228. `BAD-844 Bot room hops: only a person post starts a new count or makes a held entry moot (an item-change or late worker-report line carries on the chain), and forkBotRoomTurnCap (default 24, 0 none, up to 500) holds a hand-off past that many woken turns under one post, in the same entry, which says which limit held it`
 229. `BAD-847 mobile/src/bots/use-open-bot-home.ts: the useCallback parameters are typed (upstream e8819c3e21f left homeDraft and current implicitly any, which failed the mobile typecheck of Fork sync run 46027770648); one upstream file touched, a type annotation only, no behaviour change`
 230. `BAD-848 A finished fresh-session automation run's chat tab closes by itself after forkAutomationRunAutoCloseGraceMinutes (default 60; forkAutomationRunAutoClose turns it off) with its history kept, never a running, reuseSession, typed-into, pinned, Home Chat or person-started chat; orca agent close <id> closes one finished chat through the same close`
+231. `BAD-877 Tests hold the agy skip-permissions flag to Full access (real launch resolver and acquire: argv is [acp] for none, Ask, Accept edits, own and Auto), keep every agy permission request with the person in every mode, and keep the always-flagged readiness check to initialize and session/list; tests only, no code change`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
