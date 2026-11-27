@@ -42,6 +42,9 @@ export const FORK_CHAT_FLAG_HELP: ForkFlagHelp = {
     session: ['<id>', 'Chat session id (inside a chat, defaults to that chat)'],
     now: ['', 'Stop a running turn instead of waiting for it to end']
   },
+  'agent close': {
+    id: ['<id>', 'Orca session ID of the chat (orca_session_id:...)']
+  },
   'bot chats-cleanup': {
     bot: ['<name>', "Only this bot's chats (its name or id)"],
     'dry-run': ['', 'List what would close and why; close nothing'],

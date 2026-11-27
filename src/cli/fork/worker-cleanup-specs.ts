@@ -41,5 +41,22 @@ export const FORK_WORKER_CLEANUP_COMMAND_SPECS: CommandSpec[] = [
       'orca bot chats-cleanup --bot builder',
       'orca bot chats-cleanup --include-remote --dry-run --json'
     ]
+  },
+  {
+    path: ['agent', 'close'],
+    summary: "Close a finished chat's tab, keeping its history",
+    usage: 'orca agent close <id> [--environment <name>] [--json]',
+    allowedFlags: [...GLOBAL_FLAGS, 'id'],
+    positionalArgs: ['id'],
+    notes: [
+      "<id> is the chat's `orca_session_id:` ID from `orca agent list` or Copy Orca Session ID.",
+      'Closes the chat the way an ended session closes: its agent stops and its tab closes, and its history is kept, so it reopens from Session History or the automation run that opened it.',
+      'A chat that is in a turn or waiting on you is refused and left open. A terminal agent is refused too; close its terminal with `orca terminal close`.',
+      '--environment closes a chat on that paired server.'
+    ],
+    examples: [
+      'orca agent close orca_session_id:3540ecf3-47c3-4876-b825-81bf5d6b3595',
+      'orca agent close orca_session_id:3540ecf3-47c3-4876-b825-81bf5d6b3595 --environment lab-server --json'
+    ]
   }
 ]

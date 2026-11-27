@@ -20,13 +20,15 @@ export const FORK_BOT_CHAT_AUTO_CLOSE_GRACE_CHOICES: readonly number[] = [1, 5, 
 const MAX_HOURS = 24 * 365
 const MAX_MINUTES = 24 * 60
 
-function read(value: unknown, key: keyof ForkBotChatAutoCloseSettings): unknown {
+/** One key of a settings object, or undefined; shared with the other fork auto-close settings. */
+export function readForkSetting(value: unknown, key: string): unknown {
   return typeof value === 'object' && value !== null && key in value
     ? (value as Record<string, unknown>)[key]
     : undefined
 }
 
-function whole(value: unknown, max: number, fallback: number): number {
+/** A whole number from 1 to `max`, else `fallback`. */
+export function wholeForkSetting(value: unknown, max: number, fallback: number): number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= max
     ? value
     : fallback
@@ -34,13 +36,13 @@ function whole(value: unknown, max: number, fallback: number): number {
 
 /** On unless set false. */
 export function forkBotChatAutoCloseEnabled(settings: unknown): boolean {
-  return read(settings, 'forkBotChatAutoClose') !== false
+  return readForkSetting(settings, 'forkBotChatAutoClose') !== false
 }
 
 export function forkBotChatAutoCloseIdleMs(settings: unknown): number {
   return (
-    whole(
-      read(settings, 'forkBotChatAutoCloseIdleHours'),
+    wholeForkSetting(
+      readForkSetting(settings, 'forkBotChatAutoCloseIdleHours'),
       MAX_HOURS,
       FORK_BOT_CHAT_AUTO_CLOSE_DEFAULT_IDLE_HOURS
     ) * 3_600_000
@@ -49,8 +51,8 @@ export function forkBotChatAutoCloseIdleMs(settings: unknown): number {
 
 export function forkBotChatAutoCloseGraceMs(settings: unknown): number {
   return (
-    whole(
-      read(settings, 'forkBotChatAutoCloseGraceMinutes'),
+    wholeForkSetting(
+      readForkSetting(settings, 'forkBotChatAutoCloseGraceMinutes'),
       MAX_MINUTES,
       FORK_BOT_CHAT_AUTO_CLOSE_DEFAULT_GRACE_MINUTES
     ) * 60_000

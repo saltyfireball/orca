@@ -11,6 +11,7 @@ import {
 } from '../../shared/fork/worker-archive'
 import { workerArchiveReasonText } from '../../shared/fork/worker-archive-text'
 import { FORK_BOT_CHAT_CLEANUP_HANDLERS } from './bot-chat-cleanup-handlers'
+import { FORK_AGENT_CLOSE_HANDLERS } from './agent-close-handlers'
 
 function where(row: ForkWorkerCleanupRow): string {
   return row.server ? `${row.server}: ${row.path}` : row.path
@@ -64,6 +65,7 @@ export function formatWorkerCleanup(result: ForkWorkerCleanupResult): string {
 
 export const FORK_WORKER_CLEANUP_HANDLERS: Record<string, CommandHandler> = {
   ...FORK_BOT_CHAT_CLEANUP_HANDLERS,
+  ...FORK_AGENT_CLOSE_HANDLERS,
   'orchestration worker-cleanup': async (ctx) => {
     const bot = getOptionalStringFlag(ctx.flags, 'bot')
     const result = await ctx.client

@@ -24,6 +24,11 @@ import {
   FORK_BOT_CHAT_AUTO_CLOSE_IDLE_CHOICES,
   forkBotChatAutoCloseEnabled
 } from '../../../../shared/fork/bot-chat-auto-close'
+import {
+  FORK_AUTOMATION_RUN_AUTO_CLOSE_DEFAULT_GRACE_MINUTES,
+  FORK_AUTOMATION_RUN_AUTO_CLOSE_GRACE_CHOICES,
+  forkAutomationRunAutoCloseEnabled
+} from '../../../../shared/fork/automation-run-auto-close'
 import { formatMinutesDuration } from '@/i18n/ui-intl-formatters'
 import { useIntlLocale, useTranslate } from '@/i18n/use-translate'
 
@@ -50,6 +55,11 @@ export function ForkBotRowBadgesSetting({ settings, updateSettings }: Props): Re
     settings.forkBotChatAutoCloseGraceMinutes ?? FORK_BOT_CHAT_AUTO_CLOSE_DEFAULT_GRACE_MINUTES
   const idleId = useId()
   const graceId = useId()
+  const runClose = forkAutomationRunAutoCloseEnabled(settings)
+  const runGrace =
+    settings.forkAutomationRunAutoCloseGraceMinutes ??
+    FORK_AUTOMATION_RUN_AUTO_CLOSE_DEFAULT_GRACE_MINUTES
+  const runGraceId = useId()
   const withCurrent = (choices: readonly number[], current: number): readonly number[] =>
     choices.includes(current) ? choices : [...choices, current].sort((a, b) => a - b)
   const colored = Object.keys(settings.forkBotRowColors ?? {}).length
@@ -166,6 +176,40 @@ export function ForkBotRowBadgesSetting({ settings, updateSettings }: Props): Re
             </SelectTrigger>
             <SelectContent>
               {withCurrent(FORK_BOT_CHAT_AUTO_CLOSE_GRACE_CHOICES, graceMinutes).map((choice) => (
+                <SelectItem key={choice} value={String(choice)}>
+                  {formatMinutesDuration(choice, intlLocale)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
+      <SettingsSwitchRow
+        label={t('fork.automationRunAutoClose.label', 'Close finished automation run chats')}
+        description={t(
+          'fork.automationRunAutoClose.help',
+          'A chat an automation run opened closes by itself once the run has ended and the wait below has passed, with its history kept: open it again from the run. Never a run that is still working, one you typed into after it ended, a pinned tab, an automation that reuses one chat, a Home Chat or a chat you started.'
+        )}
+        checked={runClose}
+        onChange={() => updateSettings({ forkAutomationRunAutoClose: !runClose })}
+      />
+      <SettingsRow
+        label={t('fork.automationRunAutoClose.graceLabel', 'Keep a finished run chat open for')}
+        description={t('fork.automationRunAutoClose.graceHelp', 'Time since the run ended.')}
+        labelId={runGraceId}
+        control={
+          <Select
+            value={String(runGrace)}
+            disabled={!runClose}
+            onValueChange={(value) =>
+              updateSettings({ forkAutomationRunAutoCloseGraceMinutes: Number(value) })
+            }
+          >
+            <SelectTrigger size="sm" className="min-w-32" aria-labelledby={runGraceId}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {withCurrent(FORK_AUTOMATION_RUN_AUTO_CLOSE_GRACE_CHOICES, runGrace).map((choice) => (
                 <SelectItem key={choice} value={String(choice)}>
                   {formatMinutesDuration(choice, intlLocale)}
                 </SelectItem>

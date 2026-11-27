@@ -51,6 +51,10 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"number"},"d":"The longest chain of automation-started runs (1 to 10); a run that would be deeper is recorded as skipped. Unset is 3.","o":true}',
   forkAutomationChaining:
     '{"t":{"k":"boolean"},"d":"Automations can start on another automation\'s run finishing or failing; false stops every chained start on this host. Unset is true.","o":true}',
+  forkAutomationRunAutoClose:
+    '{"t":{"k":"boolean"},"d":"Close a finished automation run\'s chat tab by itself after a grace, with its history kept; unset is on.","o":true}',
+  forkAutomationRunAutoCloseGraceMinutes:
+    '{"t":{"k":"number"},"d":"Minutes a finished automation run\'s chat stays open after the run ended; unset is 60.","o":true}',
   forkBatchStart:
     '{"t":{"k":"boolean"},"d":"A Batch switch in the new-workspace composer for rapid prompts; unset is on.","o":true}',
   forkBatchStartAutoHost:

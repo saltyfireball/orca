@@ -46,6 +46,7 @@ import {
   DesktopBrowserBridgeResultChunkParams,
   DesktopBrowserBridgeResultParams
 } from '../browser/client-hosting/desktop-browser-bridge-protocol'
+import { ForkAgentCloseParams } from '../fork/agent-chat-close'
 import {
   ForkGuardsAutomationCapParams,
   ForkGuardsCapParams,
@@ -1807,6 +1808,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'folderWorkspace.getPathStatus': FolderWorkspacePathStatus,
   'folderWorkspace.list': null,
   'folderWorkspace.update': FolderWorkspaceUpdate,
+  'fork.agent.close': ForkAgentCloseParams,
   'fork.agentProfiles.list': ForkAgentProfilesListParams,
   'fork.agentProfiles.resolve': ForkAgentProfileResolveParams,
   'fork.agentQueue.cancel': ForkAgentQueueTicketParams,

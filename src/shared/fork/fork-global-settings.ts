@@ -41,6 +41,7 @@ import type { ForkBotOwnerStepsSettings } from './bot-owner-steps'
 import type { ForkBotRowBadgeSettings } from './bot-row-badges'
 import type { ForkBotChatListingSettings } from './bot-chat-listing'
 import type { ForkBotChatAutoCloseSettings } from './bot-chat-auto-close'
+import type { ForkAutomationRunAutoCloseSettings } from './automation-run-auto-close'
 import type { ForkCardRoutingSettings } from './card-routing'
 import type { ForkCompletionContractSettings } from './completion-contract'
 import type { ForkReviewerGateSettings } from './reviewer-gate'
@@ -114,6 +115,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   /** Fork (BAD-658): bot chats with no open tab that still list under their bot. */
   ForkBotChatListingSettings &
   ForkBotChatAutoCloseSettings &
+  /** Fork (BAD-848): finished automation run chats close by themselves after a grace. */
+  ForkAutomationRunAutoCloseSettings &
   /** Fork (SLRM-2428): the quick task box, its shortcut and the router bot. */
   ForkQuickTaskSettings &
   /** Fork (SLRM-2459): the rules a new bot's SOUL.md starts with. */

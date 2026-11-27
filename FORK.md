@@ -567,6 +567,42 @@ ones `SLRM-123 `).
   - Code is in `src/shared/fork/bot-chat-auto-close.ts` (the rule and settings),
     `src/shared/fork/bot-chat-list-filter.ts`, `src/shared/fork/bot-chat-cleanup.ts`,
     `src/main/fork/bot-chat-close/` and `src/renderer/src/fork/bot-chat-closed/`.
+- **Auto-close finished automation run chats (BAD-848).** An automation that runs with a fresh
+  session opens a new chat tab every run, and nothing closed it: bot chat auto-close (BAD-734) and
+  worker cleanup cover neither, so the tabs of runs from days ago piled up in the workspace. A
+  finished run's chat now closes by itself, the way a finished worker's does:
+  - **When.** The chat's newest run has ended (a final status), its agent is idle (no open turn,
+    nothing waiting on a person), nobody typed in it since the run ended (its last turn settled
+    no later than 30 seconds after the run's output was captured; a run with no output and a later
+    turn is kept), its tab is open and not pinned, and `forkAutomationRunAutoCloseGraceMinutes`
+    (unset 60) have passed since the run ended. `forkAutomationRunAutoClose` (unset is on) turns it
+    off. Both are rows in Settings > Blackfish beside the bot chat auto-close rows, with search
+    keywords.
+  - **Never.** A `reuseSession` automation's chat, a bot's Home Chat, a chat two runs share, a chat
+    older than its run (one a person started that the run was sent into), and a chat Orca closed
+    before that someone opened again.
+  - **Closing keeps the history.** The close is the one an ended session gets
+    (`closeStructuredAgentSessionChild`): the agent stops, the tab is retired, the journal stays,
+    so the run's Open in the automation's history opens the chat again. The chat is listed in
+    `fork-bot-chats-auto-closed.json` (BAD-734's list), so mail for it reopens it before it is
+    routed; the run's own key (`automation-run:<runId>`) stays there, so a chat opened again is
+    not closed a second time.
+  - **The first sweep.** The grace counts from times the run store and the chat record already hold
+    (the run output's capture time, the last turn's time), so runs open from before the update
+    close on the first pass when they meet the rule. Each host runs the pass for its own run store
+    every 2 minutes, backing off to 10 when nothing closed.
+  - **`orca agent close <id> [--environment <name>]`** closes one chat by its Orca session ID
+    through the same close (`fork.agent.close`): it refuses a chat that is in a turn or waiting on a
+    person, and a terminal agent. A chat closed this way is not Orca's own close, so mail does not
+    reopen it.
+  - Code is in `src/shared/fork/automation-run-auto-close.ts` (the rule and settings),
+    `src/shared/fork/agent-chat-close.ts`, `src/main/fork/automation-run-close/` and
+    `src/cli/fork/agent-close-handlers.ts`. Tests: `automation-run-auto-close.test.ts` puts runs in a
+    real store's run history and their chat in a real structured chat host, and closes through the
+    real close: a finished run closes after the grace with its history kept and mail reopens it, a
+    run that ended days before closes on the first pass, a running, reuseSession, typed-into, pinned,
+    Home Chat or person's chat stays open, the setting turns it off, and `orca agent close` refuses a
+    working chat and closes a finished one.
 - **Lost work (SLRM-2096).** A Lost work button in the workspace cleanup dialog opens a scan of
   every local git project for work an agent worktree could lose. Nothing runs until you press
   Scan; the scan only reads git and can be stopped.
@@ -4127,6 +4163,7 @@ Apply these in this order. Each one is a single commit.
 227. `BAD-820 The Decision inbox row of an escalated review or done check resolves once its Task settles on the host that holds it (completed, failed, worker stopped or Run cancelled), and rows left for settled Tasks are swept at start; a review result the worker's chat or terminal would not take is filed in its orchestration mailbox, and the reviewer-error row says how the worker was told`
 228. `BAD-844 Bot room hops: only a person post starts a new count or makes a held entry moot (an item-change or late worker-report line carries on the chain), and forkBotRoomTurnCap (default 24, 0 none, up to 500) holds a hand-off past that many woken turns under one post, in the same entry, which says which limit held it`
 229. `BAD-847 mobile/src/bots/use-open-bot-home.ts: the useCallback parameters are typed (upstream e8819c3e21f left homeDraft and current implicitly any, which failed the mobile typecheck of Fork sync run 46027770648); one upstream file touched, a type annotation only, no behaviour change`
+230. `BAD-848 A finished fresh-session automation run's chat tab closes by itself after forkAutomationRunAutoCloseGraceMinutes (default 60; forkAutomationRunAutoClose turns it off) with its history kept, never a running, reuseSession, typed-into, pinned, Home Chat or person-started chat; orca agent close <id> closes one finished chat through the same close`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5290,6 +5327,12 @@ Upstream files only get short hooks, which keeps merges small:
   - The tests are `github-source-deadline.test.ts` and
     `github-work-items-hung-source.test.ts` (a source that never resolves).
 
+- Auto-close finished automation run chats (BAD-848): no stock file. `installForkWorkerArchive`
+  (a fork file) also calls `installForkAutomationRunAutoClose`; `FORK_WORKER_ARCHIVE_METHODS` also
+  spreads `FORK_AGENT_CLOSE_METHODS` and `FORK_WORKER_CLEANUP_COMMAND_SPECS` lists `agent close`, in
+  the `fork-worker-cleanup` handler group. `bot-chat-auto-close.ts` exports its setting readers
+  (`readForkSetting`, `wholeForkSetting`) for the new settings, which are intersected in
+  `fork-global-settings.ts`; the settings and RPC params catalogs are regenerated.
 - Auto-close finished bot chats (BAD-734), small edits in stock files:
   - `bots-chat-tree.ts` serves `forkOpenBotChatTree` for a read with no `chatId`; `BotChatTreeRead`
     (`bot-chat-tree.ts`) gains an optional `closedTotal`.
