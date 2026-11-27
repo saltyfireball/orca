@@ -33,7 +33,6 @@ function state(overrides: Partial<RateLimitState>): RateLimitState {
     codex: null,
     opencodeGo: null,
     kimi: null,
-    antigravity: null,
     minimax: null,
     grok: null,
     cursor: null,

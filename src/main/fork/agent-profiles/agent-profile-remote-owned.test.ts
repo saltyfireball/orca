@@ -14,7 +14,8 @@ import { installForkAgentProfileLaunch } from './agent-profile-launch-scope'
 const sent: unknown[] = []
 const placed = vi.fn()
 vi.mock('../../runtime/rpc/methods/orchestration/worker/worker-start-method', () => ({
-  prepareWorkerStart: async () => ({
+  prepareWorkerStart: async (params: unknown) => ({
+    params,
     coordinator: null,
     bindRun: () => ({ run: { id: 'run_1', consumer_generation: 1 }, created: false }),
     helperCreator: undefined,

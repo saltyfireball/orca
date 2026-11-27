@@ -163,6 +163,7 @@ export function rig(options: RigOptions = {}) {
       {
         runtime: hostRuntime,
         db: hostDb,
+        bindRun: () => hostRun,
         taskDeps: undefined,
         coordinator: null,
         callerSession: undefined,
@@ -176,7 +177,6 @@ export function rig(options: RigOptions = {}) {
       // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the start step reads only these members of its plan.
       {
         params,
-        run: hostRun,
         requestedWorktree: 'new-top-level',
         createsWorktree: false,
         mode: 'terminal',
@@ -189,8 +189,8 @@ export function rig(options: RigOptions = {}) {
     // The launch step binds the worker to its workspace; the checks run there.
     hostDb.db
       .prepare('UPDATE worker_dispatches SET worktree_id = ? WHERE dispatch_id = ?')
-      .run('folder:ws_1', started.dispatch.id)
-    return { dispatchId: started.dispatch.id, run: { id: hostRun.id }, state: 'ready' }
+      .run('folder:ws_1', started.started.dispatch.id)
+    return { dispatchId: started.started.dispatch.id, run: { id: hostRun.id }, state: 'ready' }
   }
 
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the home's start reads only these members.

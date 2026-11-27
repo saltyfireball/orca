@@ -38,8 +38,7 @@ export const BOT_ITEM_OWNER_COMMENT_METHOD = defineMethod({
   name: 'bots.items.owner.comment',
   permission: 'workspace',
   params: BotItemsOwnerComment,
-  handler: async (params, context) =>
-    ownerItemComment(params, context, botItemOwnerActor(context))
+  handler: async (params, context) => ownerItemComment(params, context, botItemOwnerActor(context))
 })
 
 async function postOwnerComment(

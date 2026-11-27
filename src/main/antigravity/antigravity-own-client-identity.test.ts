@@ -19,12 +19,10 @@ afterEach(async () => {
 
 describe('Antigravity handshakes name Orca', () => {
   it.each([
-    ['agy 1.6.0', AGY, '1.6.0'],
-    ['agy, version unknown', AGY, null],
-    ['agy 1.5.0', AGY, '1.5.0'],
-    ['agy on Orca home', AGY_ORCA_HOME, '1.5.5']
-  ])('%s', (_name, spec, version) => {
-    expect(acpClientInfo(spec, version).name).toBe('orca')
+    ['agy', AGY],
+    ['agy on Orca home', AGY_ORCA_HOME]
+  ])('%s', (_name, spec) => {
+    expect(acpClientInfo(spec).name).toBe('orca')
   })
 })
 
