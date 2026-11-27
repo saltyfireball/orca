@@ -1,8 +1,4 @@
 import type { WebSocket } from 'ws'
-import type {
-  PairingGetEndpointsParams,
-  PairingProvisionRelayParams
-} from '../../../../shared/remote-runtime/relay/mobile-relay-credential-contract'
 import { callerScopeOf, devicePrincipalOf } from './pairing/device-principal'
 import { registerSocketDeviceKey } from './runtime-rpc-device-key-registration'
 import { exchangeSocketPairingTicket } from './runtime-rpc-pairing-ticket-exchange'
@@ -21,9 +17,14 @@ import { isUntaggedTrackerCall, withDefaultScopeServer } from './runtime-rpc-mob
 import { parseExecutionHostId } from '../../../../shared/execution-host/execution-host'
 import { WorktreeRemove } from '../../../../shared/rpc-contract/workspaces/worktree-params'
 import { forkDeviceApprovalRefusal } from '../../../fork/device-approval/device-approval-service'
+import { createPairingDirectEndpointsReader } from './pairing/network/pairing-direct-endpoints'
+import { socketPairingRpcContext } from './runtime-rpc-socket-pairing-context'
 
 export class RuntimeRpcWebSocketDispatch extends RuntimeRpcMobileDevices {
   private readonly stagedReplies = new RuntimeRpcStagedReplies(() => this.runtime.getRuntimeId())
+  private readonly readPairingDirectEndpoints = createPairingDirectEndpointsReader(
+    () => this.transports.find((transport) => transport.kind === 'websocket')?.endpoint ?? null
+  )
 
   // Relay only to configured execution hosts; unreachable targets fail, never run locally. Return null after relay/reply.
   private relayMobileRequest(
@@ -222,30 +223,6 @@ export class RuntimeRpcWebSocketDispatch extends RuntimeRpcMobileDevices {
         : boundedReply
 
     const connectionId = ws ? this.mobileSocketWiring?.getConnectionId(ws) : undefined
-    const pairingProvider = this.mobileRelayPairingProvider
-    const pairingContext =
-      pairingProvider && authenticatedSocket
-        ? {
-            getEndpoints: (params: PairingGetEndpointsParams) =>
-              pairingProvider.getEndpoints(
-                {
-                  deviceId: authenticatedSocket.device.deviceId,
-                  connectionId: authenticatedSocket.connectionId,
-                  transport: authenticatedSocket.transport
-                },
-                params
-              ),
-            provisionRelay: (params: PairingProvisionRelayParams) =>
-              pairingProvider.provisionRelay(
-                {
-                  deviceId: authenticatedSocket.device.deviceId,
-                  connectionId: authenticatedSocket.connectionId,
-                  transport: authenticatedSocket.transport
-                },
-                params
-              )
-          }
-        : undefined
     try {
       await this.dispatcher.dispatchStreaming(request, replyForRequest, {
         // Validated credentials preserve federation ownership without trusting request fields.
@@ -265,7 +242,11 @@ export class RuntimeRpcWebSocketDispatch extends RuntimeRpcMobileDevices {
                 authenticatedSocket.clientCapabilities = clientCapabilities
               }
             : undefined,
-        pairing: pairingContext,
+        pairing: socketPairingRpcContext(this.mobileRelayPairingProvider, authenticatedSocket),
+        pairingDirectEndpoints:
+          authenticatedSocket && device.scope === 'mobile'
+            ? this.readPairingDirectEndpoints
+            : undefined,
         deviceSelf:
           authenticatedSocket && this.deviceRegistry
             ? {

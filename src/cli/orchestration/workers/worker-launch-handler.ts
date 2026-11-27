@@ -30,10 +30,14 @@ import { printForkQueuedLaunch, readForkQueuedLaunch } from '../../fork/agent-qu
 import { readForkMcpProfileFlag } from '../../fork/mcp-profile-flag'
 import { readForkCardFlag } from '../../fork/card-route-flag'
 import { readForkDoneContractFlags } from '../../fork/completion-contract-flag'
+import { readWorkerStartWakeNote } from './worker-start-wake-note'
 
 export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler> = {
   'orchestration worker-start': async (ctx) => {
     const { flags, client, cwd, json } = ctx
+    // Read first, while the starting turn still runs, so a later turn this start wakes is told where
+    // it came from.
+    const wakeNote = await readWorkerStartWakeNote(client)
     await refuseAgentServerRoute('worker-start', ctx)
     const terminal = getPresentStringFlag(flags, 'terminal')
     const model = getOptionalStringFlag(flags, 'model')
@@ -91,20 +95,27 @@ export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler>
       // Fork (BAD-676): --done-check, --require-pr-checks, --done-max-rounds.
       ...readForkDoneContractFlags(flags, cwd)
     }
+    // Once a start was sent, the note prints however it ends: started, recovered or thrown.
     const result = await callOrchestrationMutation<WorkerStartAgentReceipt>(
       client,
       flags,
       'orchestration.workerStart',
       params
-    ).catch(async (error: unknown) => {
-      if (!flags.has('retry-request')) {
-        const recovered = await reconcileWorkerStartTimeout(client, error)
-        if (recovered) {
-          return recovered
+    )
+      .catch(async (error: unknown) => {
+        if (!flags.has('retry-request')) {
+          const recovered = await reconcileWorkerStartTimeout(client, error)
+          if (recovered) {
+            return recovered
+          }
         }
-      }
-      throw await explainOlderRuntimeRunRequired(client, error)
-    })
+        throw await explainOlderRuntimeRunRequired(client, error)
+      })
+      .finally(() => {
+        if (wakeNote) {
+          process.stderr.write(`${wakeNote}\n`)
+        }
+      })
     // Fork (SLRM-2098): a worker waiting in the agent queue is started, not failed (FORK.md).
     const forkQueued =
       result.result.state === 'ready'

@@ -10,7 +10,7 @@ export const FORK_SETTINGS_ROWS_GENERAL = {
   automaticUpdates:
     '{"t":{"k":"boolean"},"d":"Download and install updates on their own; off by default.","o":true}',
   avatarGenerationAgent:
-    '{"t":{"k":"enum","values":["antigravity","codex","grok"]},"d":"The agent the avatar Generate tab used last; it opens on that agent while it can still run.","o":true}',
+    '{"t":{"k":"enum","values":["codex","grok"]},"d":"The agent the avatar Generate tab used last; it opens on that agent while it can still run.","o":true}',
   botsEnabled:
     '{"t":{"k":"boolean"},"d":"Bots (Settings Bots), on unless turned off. Off hides every bot surface and skips bot runs; bot folders stay on disk.","o":true}',
   deleteChatHistoryWithWorkspace:
@@ -33,6 +33,8 @@ export const FORK_SETTINGS_ROWS_GENERAL = {
     '{"t":{"k":"array","of":{"k":"string"}},"d":"Notices turned off with Don\'t show again; Settings > Notifications turns each back on. Ids this build doesn\'t know are kept, so a newer build\'s opt-outs survive a downgrade.","o":true}',
   prAutoRefresh:
     '{"t":{"k":"enum","values":["default","minimal","off","reduced"]},"d":"Timed PR/review/checks refresh cadence on this host; absent means \'default\'.","o":true}',
+  runtimePairingInterface:
+    '{"t":{"k":"object","fields":{"name":{"k":"string"},"address":{"k":"string"}},"nullable":true},"d":"Share this computer: interface picked for \\"Another device\\", kept while it is briefly disconnected.","o":true}',
   searchKeybindingSeed:
     '{"t":{"k":"enum","values":["done","legacy","pending"]},"d":"The original Mac search/clear rollout cohort.","o":true}',
   skipNewHomeChatConfirm:

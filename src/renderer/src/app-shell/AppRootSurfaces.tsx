@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Why: upstream keeps this file at the 400-line limit, and the fork's ForkRootHosts mount (FORK.md) adds two lines. */
 import { useTranslation } from 'react-i18next'
 import { ModalBoundary, OverlayBoundary } from './root-surfaces/app-root-surface-boundaries'
 import { OnboardingLanguageLoading } from '../components/onboarding/OnboardingLanguageLoading'
@@ -11,12 +12,13 @@ import NewWorkspaceComposerModal from '../components/new-workspace/composer/NewW
 import { CrashReportDialog } from '../components/crash-report/CrashReportDialog'
 import { MarkdownTemplatePicker } from '../components/editor/markdown/documents/MarkdownTemplatePicker'
 import RecentTabSwitcher from '../components/tab-bar/recent-switcher/RecentTabSwitcher'
-import { SkillFreshnessUpdateDialog } from '../components/skills/freshness/SkillFreshnessUpdateDialog'
+import { SkillFreshnessUpdateDialogHost } from '../components/skills/freshness/SkillFreshnessUpdateDialogHost'
 import { StarNagAgentValueMomentObserver } from '../components/star-nag/StarNagAgentValueMomentObserver'
 import { NativeChatResumeToasts } from '../components/native-chat-recovery/toast/NativeChatResumeToastHost'
+import { McpStaleTerminalsStartupOffer } from '../components/settings/mcp-servers/McpStaleTerminalsStartupOffer'
 import { StarNagToastHost } from '../components/star-nag/StarNagToastHost'
 import { LanguagePackDiscoveryHost } from '../components/languages/LanguagePackDiscoveryHost'
-import { PluginInstallTrustDialogHost } from '../components/plugins/dialogs/PluginInstallTrustDialog'
+import { PluginInstallTrustDialogHost } from '../components/plugins/dialogs/PluginInstallTrustDialogHost'
 import { TelemetryFirstLaunchSurface } from '../components/onboarding/telemetry/TelemetryFirstLaunchSurface'
 import { ZoomOverlay } from './chrome/ZoomOverlay'
 import { WslMoveDialogHost } from '../components/wsl-move/WslMoveDialog'
@@ -305,6 +307,7 @@ export const AppRootSurfaces = memo(function AppRootSurfaces(props: {
       />
       <OverlayBoundary boundaryId="overlay.native-chat-resume-on-restart" resetKey={activeView}>
         <NativeChatResumeToasts />
+        <McpStaleTerminalsStartupOffer />
       </OverlayBoundary>
       <OverlayBoundary boundaryId="overlay.star-nag-toast" resetKey={activeView}>
         <StarNagToastHost />
@@ -396,7 +399,7 @@ export const AppRootSurfaces = memo(function AppRootSurfaces(props: {
       </OverlayBoundary>
       {/* Its live terminal requires the link-routing preference context. */}
       <OverlayBoundary boundaryId="overlay.skill-freshness-update-dialog">
-        <SkillFreshnessUpdateDialog />
+        <SkillFreshnessUpdateDialogHost />
       </OverlayBoundary>
       <Suspense fallback={null}>
         <OverlayBoundary boundaryId="overlay.remote-server-update-dialog">

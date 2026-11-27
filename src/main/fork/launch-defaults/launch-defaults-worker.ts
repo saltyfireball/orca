@@ -11,6 +11,7 @@ type WorkerPreferencesArgs = {
   createsWorktree?: boolean
   model?: string
   effort?: string
+  inheritedLaunchPreferences?: boolean
 }
 
 /** Wrap upstream's worker preference check: with no --model/--effort the kind's default fills in,

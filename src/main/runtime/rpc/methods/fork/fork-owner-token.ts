@@ -16,7 +16,7 @@ import { OwnerTokenStore } from '../../../../fork/owner-token/owner-token-store'
 import { BotItemError } from '../../../../bots/bot-item-error'
 import { defineMethod, InvalidArgumentError } from '../../core'
 import { ownerOnly } from '../bots-caller-gates'
-import { ownerItemComment } from '../bots-items-owner-methods'
+import { ownerItemComment } from '../bots-items-owner-comment'
 import { resolveItem } from '../bots-items-write-support'
 
 const REFUSAL = 'Only your owner mints or revokes the owner token, in Settings > Blackfish.'

@@ -7,9 +7,20 @@ import {
   createAcpAgentConnection,
   type AcpAgentConnection
 } from '../acp/process/acp-agent-connection'
-import type { InitializeResponse } from '../acp/generated/acp-protocol.generated'
+import type { Implementation, InitializeResponse } from '../acp/generated/acp-protocol.generated'
 import { runAgentModelCatalogSession } from '../native-chat/agent-model-catalog/agent-model-catalog-probe-runner'
+import { ORCA_ACP_CLIENT_INFO } from '../acp/launch/acp-client-info'
 import { waitForProviderExitUntil } from '../provider-process/provider-process-exit-deadline'
+
+// Fork (BAD-836): every handshake names Orca, the probe's and a chat's. Posing as an allowlisted
+// editor (upstream #47607) risks the Google account; agy before 1.5.1 then offers Gemini models only,
+// and a chat saved on another model is refused before the session opens (refuseModel).
+export function agyAcpClientInfo(): Implementation {
+  return {
+    name: ORCA_ACP_CLIENT_INFO.name,
+    version: process.env.ORCA_APP_VERSION?.trim() || '0.0.0-dev'
+  }
+}
 
 // A close can return before agy's exit is seen; a check that answered still waits for that proof.
 const EXIT_PROOF_WAIT_MS = 5_000
@@ -46,7 +57,10 @@ async function initializeFromDisposableFolder(
   try {
     outcome.initialized = await runAgentModelCatalogSession(
       () => {
-        connection = createAcpAgentConnection({ ...launch(folder), cwd: folder })
+        connection = createAcpAgentConnection(
+          { ...launch(folder), cwd: folder },
+          { clientInfo: agyAcpClientInfo() }
+        )
         return connection
       },
       async (started) => {

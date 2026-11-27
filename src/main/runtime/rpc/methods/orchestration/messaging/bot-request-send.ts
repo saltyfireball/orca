@@ -10,6 +10,7 @@ import { forkPauseAllSentNext } from '../../../../../fork/pause-all/pause-all-bo
 import { admitInNewChat, sessionAddress } from './bot-request-conversation'
 import { ownerChatCard } from './bot-request-owner-card'
 import { botRequestPayload, type BotRequestRecord } from '../../../../../bots/bot-request-view'
+import { requestAskersOf } from '../../../../../bots/bot-request-askers-of'
 import type { BotRequestAdmission } from '../../../../orchestration/db/bot-requests/bot-request-store'
 import {
   BOT_REQUEST_TYPE_REFUSAL,
@@ -31,6 +32,7 @@ import {
   receivingBot,
   refuse,
   toOtherChat,
+  type ActingMail,
   type ActingSender,
   type ReceivingBot
 } from './bot-recipient'
@@ -59,11 +61,10 @@ export function mayReachBot(
 /** Mail that reaches a bot, by any address, is held to who the sending turn is for; null for other mail. */
 export async function sendToBot(
   context: Pick<RpcContext, 'runtime' | 'orchestrationCaller' | 'recordMutationReceipt'>,
-  mail: {
+  mail: ActingMail & {
     params: SendParamsInput
     from: string
     to: string
-    sender: OrchestrationCallerIdentity
     routing: { run: RunRow | undefined }
     /** `--chat new`: the request opens a new chat on the receiving bot. */
     newChat?: boolean
@@ -88,7 +89,7 @@ export async function sendToBot(
       'Group bot sessions accept peer requests only from current members of their own group.'
     )
   }
-  const acting = await readActingSender(runtime, db, callerSessionId, mail.sender, receiving)
+  const acting = await readActingSender(runtime, db, callerSessionId, mail, receiving)
   if (!acting) {
     return null
   }
@@ -196,7 +197,7 @@ async function admitBotRequestMail(
     toBotName: target.name,
     purpose,
     depth: chain.depth,
-    askers: acting.turn.askers,
+    askers: requestAskersOf(acting.turn),
     askedBy: acting.turn.askedBy,
     request: groupScope?.originalHumanInstruction ?? acting.turn.request,
     conversation: acting.conversation,

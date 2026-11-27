@@ -35,6 +35,8 @@ export async function sendRemoteMessage(args: {
   remoteAttachment: RemoteAttachment
   processIncarnation?: string | null
   signal?: AbortSignal
+  /** A reply's answered message, which its Run home records. */
+  replyTo?: string
 }) {
   const { runtime, db, from, senderPaneKey, remoteAttachment } = args
   let { params } = args
@@ -94,6 +96,7 @@ export async function sendRemoteMessage(args: {
       type,
       priority: params.priority ?? 'normal',
       threadId: params.threadId ?? null,
+      ...(args.replyTo ? { replyTo: args.replyTo } : {}),
       payload: bindCoordinatorMutationPayload(type, params.payload, remoteAttachment.dispatch_id)
     }),
     ...(!supportsLifecycleSettlement && outcome ? { settleRemoteOutcome: outcome } : {})

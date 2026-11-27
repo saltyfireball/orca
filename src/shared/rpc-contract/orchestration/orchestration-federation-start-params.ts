@@ -1,43 +1,46 @@
 import { z } from 'zod'
+import { lazyZodSchema } from '../../schema/lazy-zod-schema'
 import { OptionalFiniteNumber, OptionalString, requiredString } from '../rpc-param-primitives'
 import { OptionalWorkerLaunchPreference } from './orchestration-worker-start-params'
 import { ForkDoneContractShape } from '../../fork/completion-contract'
 import { ForkReviewGateShape } from '../../fork/reviewer-gate'
 import { CrossStoreParentRefSchema } from '../workspaces/cross-store-parent-params'
 
-export const FederationAttachStartParams = z.object({
-  /** Omitted by v1.4.198 coordinators; the worker host then mints a stub home Run. */
-  runId: OptionalString,
-  dispatchId: requiredString('Missing Dispatch ID'),
-  taskId: requiredString('Missing Task ID'),
-  taskSpec: requiredString('Missing Task spec'),
-  /** Depth stamped by the Run home; omitted by older clients and defaults to 1. */
-  depth: z.number().int().min(1).optional(),
-  protocolVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-  worktree: requiredString('Missing remote worktree selector'),
-  name: OptionalString,
-  repo: OptionalString,
-  baseBranch: OptionalString,
-  displayName: OptionalString,
-  displayNameKind: z.enum(['generated', 'user']).optional(),
-  comment: OptionalString,
-  setup: z.enum(['run', 'skip', 'inherit']).optional(),
-  setupSource: z.enum(['explicit_request', 'orchestration_default']).optional(),
-  terminal: OptionalString,
-  agent: OptionalString,
-  model: OptionalWorkerLaunchPreference,
-  effort: OptionalWorkerLaunchPreference,
-  timeoutMs: OptionalFiniteNumber,
-  devMode: z.boolean().optional(),
-  /** The coordinator's workspace, for `--on <server> --worktree new-child`; sent only to servers
-   * advertising worktree.lineage.crossMachine. The new worktree nests under it. */
-  crossStoreParent: CrossStoreParentRefSchema.optional(),
-  /** Orchestration picked the parent; omitted by older coordinators, whose children record `cli`. */
-  crossStoreParentInferredFrom: z.literal('orchestration-context').optional(),
-  /** Fork (BAD-763): the Task's done checks and review request, carried so this host gates the
-   * worker's done; sent only to servers advertising orchestration.fork-contract-carry.v1. */
-  ...ForkDoneContractShape,
-  ...ForkReviewGateShape
-})
+export const FederationAttachStartParams = lazyZodSchema(() =>
+  z.object({
+    /** Omitted by v1.4.198 coordinators; the worker host then mints a stub home Run. */
+    runId: OptionalString,
+    dispatchId: requiredString('Missing Dispatch ID'),
+    taskId: requiredString('Missing Task ID'),
+    taskSpec: requiredString('Missing Task spec'),
+    /** Depth stamped by the Run home; omitted by older clients and defaults to 1. */
+    depth: z.number().int().min(1).optional(),
+    protocolVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    worktree: requiredString('Missing remote worktree selector'),
+    name: OptionalString,
+    repo: OptionalString,
+    baseBranch: OptionalString,
+    displayName: OptionalString,
+    displayNameKind: z.enum(['generated', 'user']).optional(),
+    comment: OptionalString,
+    setup: z.enum(['run', 'skip', 'inherit']).optional(),
+    setupSource: z.enum(['explicit_request', 'orchestration_default']).optional(),
+    terminal: OptionalString,
+    agent: OptionalString,
+    model: OptionalWorkerLaunchPreference,
+    effort: OptionalWorkerLaunchPreference,
+    timeoutMs: OptionalFiniteNumber,
+    devMode: z.boolean().optional(),
+    /** The coordinator's workspace, for `--on <server> --worktree new-child`; sent only to servers
+     * advertising worktree.lineage.crossMachine. The new worktree nests under it. */
+    crossStoreParent: CrossStoreParentRefSchema.optional(),
+    /** Orchestration picked the parent; omitted by older coordinators, whose children record `cli`. */
+    crossStoreParentInferredFrom: z.literal('orchestration-context').optional(),
+    /** Fork (BAD-763): the Task's done checks and review request, carried so this host gates the
+     * worker's done; sent only to servers advertising orchestration.fork-contract-carry.v1. */
+    ...ForkDoneContractShape,
+    ...ForkReviewGateShape
+  })
+)
 
 export type FederationAttachStartInput = z.infer<typeof FederationAttachStartParams>

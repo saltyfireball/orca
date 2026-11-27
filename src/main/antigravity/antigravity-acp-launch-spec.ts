@@ -10,9 +10,7 @@ import {
   antigravityChatRunsOnAgyHome,
   onAntigravityAgyOrcaHomeChanged
 } from './antigravity-chat-route'
-import { ORCA_ACP_CLIENT_INFO } from '../acp/launch/acp-client-info'
 import { windowsLocalAppDataBinDirectories } from '../acp/launch/acp-windows-install-directories'
-import type { Implementation } from '../acp/generated/acp-protocol.generated'
 import {
   ANTIGRAVITY_ACP_DIALECT,
   ANTIGRAVITY_AGY_ORCA_HOME_DIALECT
@@ -37,6 +35,7 @@ import { deliverAntigravityInstructions } from '../acp/launch/acp-instructions'
 import { scrubAgyOrcaHomeEnvironment } from './antigravity-agy-orca-home-environment'
 import { ANTIGRAVITY_LAUNCH_GATE } from './antigravity-chat-account'
 import { discardAgyListingSession } from './agy-listing-session-discard'
+import { agyAcpClientInfo } from './antigravity-acp-runtime-probe'
 import {
   AGY_SKIP_PERMISSIONS_FLAG,
   ANTIGRAVITY_HOST_ACP_MINIMUM_VERSION,
@@ -55,16 +54,6 @@ const ANTIGRAVITY_SESSION_HISTORY: StructuredAgentSessionHistory = {
       targetless: [],
       markers: ['--conversation', '-conversation']
     })
-}
-
-// Fork (BAD-836): every handshake names Orca. Posing as an allowlisted editor (upstream #47607)
-// risks the Google account; agy before 1.5.1 then offers Gemini models only, and a chat saved on
-// another model is refused before the session opens (refuseModel).
-function antigravityClientInfo(): Implementation {
-  return {
-    name: ORCA_ACP_CLIENT_INFO.name,
-    version: process.env.ORCA_APP_VERSION?.trim() || '0.0.0-dev'
-  }
 }
 
 // An alternate-case updater flag on Windows would shadow the configured uppercase entry. A
@@ -94,7 +83,9 @@ const AGY_SESSION_MODEL_DISCOVERY: AcpSessionModelDiscovery = {
   listingNamesConfiguredModel: false,
   inPrivateFolder: true,
   listsOnDemand: true,
-  discardSession: discardAgyListingSession
+  discardSession: discardAgyListingSession,
+  // Its commands and skills differ per folder (`.agents/skills`), unlike its models.
+  listsCommandsInChatFolder: true
 }
 
 // agy on its own home uses agy's own sign-in and history; Orca neither signs it in nor out there.
@@ -106,7 +97,10 @@ const ANTIGRAVITY_AGY_LAUNCH_SPEC = {
   // without one they get launch's cliMissing refusal.
   managedCopyAllowed: (settings) => settings.antigravityManagedAgyEnabled !== false,
   args: ({ fullAccess }) => ['acp', ...(fullAccess ? [AGY_SKIP_PERMISSIONS_FLAG] : [])],
-  clientInfo: antigravityClientInfo,
+  // Fork (BAD-836): read at each handshake, as ORCA_APP_VERSION is set after this module loads.
+  get clientInfo() {
+    return agyAcpClientInfo()
+  },
   refuseModel: agyRefusesModel,
   // Match terminal and quota launches: a background updater steals focus on Windows (#27390)
   // and can replace agy mid-probe.

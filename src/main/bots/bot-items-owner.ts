@@ -134,7 +134,7 @@ export class BotItemsOwner extends BotItemsOwnerWrites {
     })
   }
 
-  private ownerCommentByRequest(uid: string, requestId: string): number | null {
+  ownerCommentByRequest(uid: string, requestId: string): number | null {
     const row: unknown = this.db
       .prepare(
         `SELECT id FROM item_events WHERE item_uid = ? AND kind = 'commented'

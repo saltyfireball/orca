@@ -3,7 +3,7 @@
 // Any other language keeps chat's block, whose header carries Copy.
 import React from 'react'
 import { isRunnableShellFence } from '../../../../../shared/fork/shell-fence'
-import { NativeChatCodeBlock } from '../../native-chat/markdown/code/NativeChatCodeBlock'
+import { NativeChatDeferredCodeBlock } from '../../native-chat/markdown/code/NativeChatCodeBlock'
 import { BotItemCommandBlock } from './BotItemCommandBlock'
 
 function codeText(node: React.ReactNode): string {
@@ -32,8 +32,8 @@ export function BotItemCodeBlock({
     return <BotItemCommandBlock command={code} className="my-2" />
   }
   return (
-    <NativeChatCodeBlock language={language} sourceLine={sourceLine}>
+    <NativeChatDeferredCodeBlock language={language} sourceLine={sourceLine}>
       {children}
-    </NativeChatCodeBlock>
+    </NativeChatDeferredCodeBlock>
   )
 }

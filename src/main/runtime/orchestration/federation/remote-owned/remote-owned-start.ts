@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Why: upstream keeps this file near the 300-line limit, and the fork's contract and profile hooks (FORK.md) add lines to the one remote-owned start. */
 import { coordinatorKeepOpenByDefault } from '../../../rpc/methods/orchestration/worker/start/worker-keep-open-default'
 import { botOfSession } from '../../../../bots/bot-session-tabs'
 import { createHash, randomUUID } from 'node:crypto'
@@ -5,7 +6,8 @@ import { z } from 'zod'
 import type { WorkerStartParams } from '../../../../../shared/rpc-contract/orchestration/orchestration-worker-start-params'
 import {
   ORCHESTRATION_CHAT_LINEAGE_RUNTIME_CAPABILITY,
-  ORCHESTRATION_REMOTE_OWNED_WORKERS_RUNTIME_CAPABILITY
+  ORCHESTRATION_REMOTE_OWNED_WORKERS_RUNTIME_CAPABILITY,
+  ORCHESTRATION_WORKER_LAUNCH_PREFERENCES_RUNTIME_CAPABILITY
 } from '../../../../../shared/orchestration/orchestration-runtime-capabilities'
 import { startsInChatLineage } from '../../../rpc/methods/orchestration/worker/start/worker-chat-lineage'
 import { ORCHESTRATION_CONTRACT_PREFLIGHT_TIMEOUT_MS } from '../../../../../shared/orchestration/orchestration-timing-budgets'
@@ -13,6 +15,12 @@ import type { RuntimeStatus } from '../../../../../shared/remote-runtime/session
 import type { OrcaRuntimeService } from '../../../orca-runtime'
 import type { RpcContext } from '../../../rpc/core'
 import { prepareWorkerStart } from '../../../rpc/methods/orchestration/worker/worker-start-method'
+import type { WorkerStartInput } from '../../../rpc/methods/orchestration/worker/start/worker-start-input'
+import {
+  callRemoteStartWithRetryLaunchFallback,
+  prepareRemoteOwnedRetryLaunch,
+  withRemoteStartWarning
+} from '../../../rpc/methods/orchestration/worker/start/worker-retry-launch-defaults'
 import { resolveFederatedWorkerStartBudgets } from '../../../rpc/methods/orchestration/worker/start/launch/worker-start-budgets'
 import { OrchestrationError } from '../../orchestration-error'
 import { nameRefusingComputer } from '../../../rpc/methods/orchestration/worker/start/launch/worker-agent-host-preflight'
@@ -38,9 +46,11 @@ import {
   forkRemoteOwnedContractPreflight,
   forkRemoteOwnedContractWire
 } from '../../../../fork/completion-contract/contract-carry-start'
+import { resolveDispatchCreator } from '../../../rpc/methods/orchestration/runs/dispatch-creator'
 import {
   errorData,
   failedBeforeSending,
+  answeredWorktreeId,
   inServerTerms,
   serverNeverAnswered
 } from './remote-owned-answers'
@@ -99,7 +109,7 @@ export async function forwardedChatLineage(
 
 /** The caller's options a server's start takes; this Orca's own fields, and a lineage claim the
  *  caller made itself, stay here. */
-export function serverStartOptions(params: StartParams) {
+export function serverStartOptions(params: WorkerStartInput) {
   const {
     from: _from,
     run: _run,
@@ -108,6 +118,7 @@ export function serverStartOptions(params: StartParams) {
     deps: _deps,
     parent: _parent,
     chatLineage: _chatLineage,
+    inheritedLaunchPreferences: _inheritedLaunchPreferences,
     ...options
   } = params
   return options
@@ -133,19 +144,19 @@ const StartedOnServer = z.object({
  */
 export async function startRemoteOwnedWorker(
   runtime: OrcaRuntimeService,
-  params: StartParams,
+  startParams: StartParams,
   ctx: StartContext,
   callerRequestId: string | undefined
 ): Promise<unknown> {
-  if (params.terminal) {
+  if (startParams.terminal) {
     throw new OrchestrationError(
       'invalid_argument',
       '--terminal names a terminal on this Orca, so it cannot be used with --on. No effects were applied.',
       { effectsApplied: false }
     )
   }
-  const { coordinator, bindRun, helperCreator, taskDeps, existingTask, withRun } =
-    await prepareWorkerStart(params, ctx)
+  const { params, coordinator, bindRun, helperCreator, taskDeps, existingTask, withRun } =
+    await prepareWorkerStart(startParams, ctx)
   const db = runtime.getOrchestrationDb()
   const server = await runtime.resolveOrchestrationWorkerServer(params.on!)
   // Fork (BAD-798): a server that cannot gate the Task's checks or review is refused here.
@@ -156,6 +167,9 @@ export async function startRemoteOwnedWorker(
     existingTask?.id,
     server.name,
     (capability) => serverSupports(runtime, server, capability)
+  )
+  const launch = await prepareRemoteOwnedRetryLaunch(params, server.name, () =>
+    serverSupports(runtime, server, ORCHESTRATION_WORKER_LAUNCH_PREFERENCES_RUNTIME_CAPABILITY)
   )
   // This caller's workspace is here, so a server's new-child nests under it across machines.
   const crossStoreParent =
@@ -182,6 +196,7 @@ export async function startRemoteOwnedWorker(
     taskId,
     requestKey: forward.key,
     retryOf: params.retryOf,
+    creator: resolveDispatchCreator(runtime, params.from, ctx.orchestrationCaller),
     create: existingTask
       ? undefined
       : {
@@ -198,7 +213,7 @@ export async function startRemoteOwnedWorker(
   const contractWire = forkRemoteOwnedContractWire(runtime, db, task.id, params)
   // Its queue has a reader from the start, so mail sent before the answer still comes home.
   runtime.ensureOrchestrationFederationRelay(run.id)
-  const options = serverStartOptions(params)
+  const options = serverStartOptions(launch.params)
   // Read before the wait: the server cannot tell a bot's worker from a person's, and the
   // coordinator's own Dispatch may settle while the server starts this one.
   const keepOpenByDefault = coordinatorKeepOpenByDefault(
@@ -211,25 +226,35 @@ export async function startRemoteOwnedWorker(
     (sessionId) => botOfSession(runtime.bots, sessionId) !== null
   )
   const startCard = prepareWorkerStartCard(runtime, ctx.orchestrationCaller)
+  const baseParams = {
+    ...options,
+    // A retry names the server's existing Task, whose ordinary retry checks refuse a spec.
+    ...(params.retryOf
+      ? { task: task.id }
+      : { spec: task.spec, ...(task.task_title ? { taskTitle: task.task_title } : {}) }),
+    ...contractWire,
+    adoptTaskId: task.id,
+    ...(crossStoreParent ? { crossStoreParent } : {}),
+    ...lineage
+  }
+  let retryWarning = launch.warning
   let receipt: unknown
   try {
-    receipt = await callRemoteOwnedServer(runtime, link, {
-      method: 'orchestration.workerStart',
-      params: {
-        ...options,
-        // A retry names the server's existing Task, whose ordinary retry checks refuse a spec.
-        ...(params.retryOf
-          ? { task: task.id }
-          : { spec: task.spec, ...(task.task_title ? { taskTitle: task.task_title } : {}) }),
-        ...contractWire,
-        adoptTaskId: task.id,
-        ...(crossStoreParent ? { crossStoreParent } : {}),
-        ...lineage
-      },
-      timeoutMs: budgets.attachDeadlineMs,
-      requestId: forward.key,
-      whileLink: ['open']
+    const called = await callRemoteStartWithRetryLaunchFallback({
+      inherited: params.inheritedLaunchPreferences,
+      model: options.model,
+      effort: options.effort,
+      send: ({ model, effort }) =>
+        callRemoteOwnedServer(runtime, link, {
+          method: 'orchestration.workerStart',
+          params: { ...baseParams, model, effort },
+          timeoutMs: budgets.attachDeadlineMs,
+          requestId: forward.key,
+          whileLink: ['open']
+        })
     })
+    receipt = called.result
+    retryWarning = called.droppedWarning ?? retryWarning
   } catch (error) {
     settleUnansweredStart(runtime, {
       conversationId: link.conversation_id,
@@ -251,7 +276,8 @@ export async function startRemoteOwnedWorker(
       dispatchId: started.data.dispatchId,
       requestKey: forward.key,
       peerRunId: started.data.run?.id,
-      agent
+      agent,
+      worktreeId: answeredWorktreeId(receipt)
     })
     if (!recorded) {
       // A reset already removed the reservation; a re-made pairing keeps it, so a later start of the Task there is refused here.
@@ -270,7 +296,10 @@ export async function startRemoteOwnedWorker(
       task: task.spec
     })
   }
-  const answer = inServerTerms(receipt, { server: server.name, forward })
+  const answer = withRemoteStartWarning(
+    inServerTerms(receipt, { server: server.name, forward }),
+    retryWarning
+  )
   return withRun(
     answer && typeof answer === 'object'
       ? {

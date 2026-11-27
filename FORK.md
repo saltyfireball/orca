@@ -3875,7 +3875,7 @@ ones `SLRM-123 `).
     `src/main/rate-limits/providers/antigravity` calls cloudcode-pa or another internal Google
     endpoint; usage comes from agy's own `/usage` command. A test reads both folders and fails if one
     appears.
-  - Code is in `antigravity-acp-launch-spec.ts` (`antigravityClientInfo`),
+  - Code is in `antigravity-acp-launch-spec.ts` (`agyAcpClientInfo`, in `antigravity-acp-runtime-probe.ts`),
     `antigravity-agy-model-gate.ts` (also `isAntigravityGeminiModel`), `acp-launch-model-refusal.ts`
     and the test `antigravity-own-client-identity.test.ts`.
 
@@ -5593,8 +5593,8 @@ Upstream files only get short hooks, which keeps merges small:
   intersected in `fork-global-settings.ts`; the settings and RPC params catalogs are regenerated.
 
 - Card routing dedupe and owner token (BAD-737), small edits in stock files:
-  `bots-items-owner-methods.ts` moves the body of `bots.items.owner.comment` into an exported
-  `ownerItemComment(params, context, actor)` that the method calls with `ownerActor(context)`, so
+  `bots-items-owner-comment.ts` (upstream's own file for `bots.items.owner.comment` since v1.4.280)
+  exports `ownerItemComment(params, context, actor)`, which the method calls with its owner actor, so
   the owner-token answer runs the same code. `src/cli/bots/bot-items.ts` and
   `src/cli/specs/bot-items.ts` add `--bot` to `bot item show`. `fork.cardRoute.claims` and the
   owner-token methods are spread into `FORK_QUICK_TASK_METHODS`, the `bot item answer` spec into
@@ -5680,9 +5680,10 @@ Upstream files only get short hooks, which keeps merges small:
   `ForkDecisionInboxRow.tsx` gives it Continue and Dismiss, `decision-inbox-store.ts` keeps the
   inbox on while the limit is, `inbox-format.ts` labels it, and `fork-global-settings.ts`
   intersects the setting; the settings catalog is regenerated.
-- Antigravity names Orca (BAD-836), small edits in stock files: `antigravity-acp-launch-spec.ts`
-  drops `ZED_CLIENT_INFO` and `agyClientInfo`, sends `antigravityClientInfo` from the agy specs and
-  gives the host agy spec `refuseModel`; `acp-dialect.ts` adds the optional `modelListNote`, which
+- Antigravity names Orca (BAD-836), small edits in stock files: `antigravity-acp-runtime-probe.ts`
+  replaces upstream's fixed `zed` `AGY_ACP_CLIENT_INFO` with `agyAcpClientInfo()`, which the probe and
+  the agy spec (`antigravity-acp-launch-spec.ts`, through a `clientInfo` getter) both send, and the
+  host agy spec gets `refuseModel`; `acp-dialect.ts` adds the optional `modelListNote`, which
   `acp-model-menu.ts` (`acpModelMenuModels`) puts on the first row; `acp-launch-contract.ts` adds
   the optional `refuseModel`, which `acp-structured-launch-resolution.ts` (`acpStructuredLaunchPart`)
   checks after the version check through the fork file `acp-launch-model-refusal.ts`. A sync that
@@ -6176,3 +6177,30 @@ Choices where both sides changed:
 
 Line limits: `send-methods.ts`, `local-worker-start.ts`, `federation.ts`, `federated-worker-start.ts` and
 `task-page-github-landing-refresh-run.tsx` carry a `max-lines` disable naming the fork hooks that need it.
+
+## Merge notes: upstream v1.4.280 (BAD-845)
+
+Upstream cuts each tag on a release branch, so v1.4.279 is not an ancestor of v1.4.280 and the plain
+`git merge v1.4.280` conflicted in 84 files, mostly work both sides already had. This merge used the
+previous tag as the base (`git read-tree -m v1.4.279 HEAD v1.4.280` plus `git merge-index
+git-merge-one-file -a` on a `--no-commit` merge of v1.4.280), which left 40 real conflicts.
+
+Choices where both sides changed:
+
+- Owner comment: upstream moved `bots.items.owner.comment` into `bots-items-owner-comment.ts`; the fork's
+  exported `ownerItemComment` now lives there, and `fork-owner-token.ts` imports it from there.
+  `bots-items-owner.ts` keeps the fork's `BotItemsOwnerWrites` base and makes `ownerCommentByRequest`
+  public, which upstream's comment code calls.
+- Antigravity: upstream fixed the agy client identity to `zed` in the runtime probe; the fork's Orca
+  identity is `agyAcpClientInfo()` there (see the Antigravity section).
+- Remote-owned start: the fork's contract preflight and `contractWire` sit beside upstream's
+  retry-launch fallback (`prepareRemoteOwnedRetryLaunch`, `callRemoteStartWithRetryLaunchFallback`);
+  `resolveForkWorkerLaunch` passes `inheritedLaunchPreferences` through.
+- Journal open: `JournalOpenRecovery` is the fork's `JournalOpenRecover` or upstream's `'keptWriter'`.
+- Chat survive: a Claude chat handed to its broker (`forkChatSurviveQuit`) is checked before upstream's
+  provider-relay `detachKeptAgentUnderSerialize`.
+- Zod schemas: upstream wrapped most params and item schemas in `lazyZodSchema`; the fork's fields
+  (done contract and review shapes, `forkCard`, steps, `forkRetry`) are inside those wrappers.
+- Mobile bundle fence: the fork keeps 11 MiB + 128 KiB (upstream raised its own to 11 MiB + 16 KiB).
+- Fork tests that fake `prepareWorkerStart` return `params` now; the contract rig's local start passes
+  `bindRun`, as `createLocalWorkerStartDispatch` binds the Run itself.

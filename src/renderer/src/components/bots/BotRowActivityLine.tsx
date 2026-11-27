@@ -11,7 +11,7 @@ import { usePublishedBotNeedsYou } from './bot-needs-you-published'
 import { useStructuredAgentSessionsStarting } from '@/components/native-chat/session/status/structured-agent-session-status-hooks'
 import { formatShortTimeAgo } from '@/lib/time-format/short-time-ago'
 import { formatUiRelativeTime } from '@/i18n/relative-time-format'
-import { stripInlineMarkdownForToc } from '@/components/editor/markdown/navigation/markdown-table-of-contents'
+import { stripInlineMarkdownForToc } from '@/components/editor/markdown/navigation/markdown-toc-text'
 import { cn } from '@/lib/class-names'
 import { useAppStore } from '@/store'
 import { structuredAgentSessionStatusPaneKey } from '../../../../shared/agent-session/view/structured-agent-session-tab'
@@ -33,6 +33,7 @@ import {
 } from '../../../../shared/bots/bot-usage-limit-stop'
 import { useBotUsageLimitStops } from './use-bot-usage-limit-stops'
 import { forkBotRowCounts, type ForkBotRowCounts } from '../../../../shared/fork/bot-row-badges'
+import { formatUsageLimitResetShort } from '../../../../shared/agent-session/failures/agent-session-usage-limit'
 
 const NO_LINKS: NonNullable<FolderWorkspace['externalConversations']> = []
 const NO_ENTRIES: AgentStatusEntry[] = []
@@ -202,20 +203,31 @@ export function BotRowLineView({
   /** Fork (BAD-658): opens the chat a place names. */
   onOpenPlace?: (paneKey: string) => void
 }): React.JSX.Element {
+  const t = useTranslate()
+  const intlLocale = useIntlLocale()
   return (
     <div className="flex min-w-0 items-center gap-1.5 text-xs leading-4 text-muted-foreground">
       {leading}
-      {/* No title: the row's hover card shows the whole line. */}
-      <span className={cn('min-w-0 flex-1 truncate', unread && 'text-foreground')}>
-        <BotRowLineText
-          line={line}
-          limit={limit}
-          fallback={fallback}
-          now={now}
-          disconnected={disconnected}
-          onOpenPlace={onOpenPlace}
-        />
-      </span>
+      {limit && !disconnected ? (
+        // Amber like the badge; the badge's tooltip says whose limit and if it continues.
+        <span className="min-w-0 flex-1 truncate text-status-warning-text tabular-nums">
+          {t('bots.usageLimit.rowLine', 'Usage limit · {{time}}', {
+            time: formatUsageLimitResetShort(limit.stop.at, now, intlLocale)
+          })}
+        </span>
+      ) : (
+        // No title: the row's hover card shows the whole line.
+        <span className={cn('min-w-0 flex-1 truncate', unread && 'text-foreground')}>
+          <BotRowLineText
+            line={line}
+            limit={limit}
+            fallback={fallback}
+            now={now}
+            disconnected={disconnected}
+            onOpenPlace={onOpenPlace}
+          />
+        </span>
+      )}
       {trailing}
     </div>
   )

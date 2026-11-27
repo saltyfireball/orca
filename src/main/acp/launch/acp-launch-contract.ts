@@ -43,9 +43,8 @@ export type AcpLaunchSpec = {
     antigravityChatAuth?: AntigravityChatAuthConfig
   ): string[]
   dialect: AcpDialect
-  /** Initialize's identity for the launched version (null when unknown), for agents that grant
-   *  features by client name; absent sends Orca's. */
-  clientInfo?(version: string | null): Implementation
+  /** Initialize's fixed identity for an agent that needs one; absent sends Orca's. */
+  clientInfo?: Implementation
   /** Why this release cannot run the chat's saved model, refused before the session opens. */
   refuseModel?(model: string, version: string | null): string | null
   loginCommand: readonly string[]

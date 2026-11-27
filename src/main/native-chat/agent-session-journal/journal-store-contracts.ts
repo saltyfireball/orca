@@ -76,6 +76,8 @@ export type AgentSessionJournalOptions = {
   now?: () => number
   mintEpoch?: () => string
   recover?: JournalOpenRecover
+  /** The last run's writer is still running (kept by the terminal host), so its live work is too. */
+  keptWriter?: true
   onRecoveryFailure?: (failure: JournalOpenRecoveryResult['failures'][number]) => void
   /** Saves a person's Stop of limited work in the same commit as the rows that reveal it. */
   withdrawStoppedCut?: (cut: UsageLimitContinueIdentity) => JournalOperationReceipt | undefined

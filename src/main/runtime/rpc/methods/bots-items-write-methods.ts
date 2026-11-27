@@ -22,7 +22,7 @@ import { defineMethod } from '../core'
 import { addItem } from './bots-items-add'
 import { admitBotItemFiles } from './bots-items-bot-files'
 import { BotItemError } from '../../../bots/bot-item-error'
-import { assertBotItemSetInput } from '../../../bots/bot-items-edits'
+import { assertBotItemSetInput, assertBotItemVersion } from '../../../bots/bot-items-edits'
 import { assertBotItemAttach, assertBotItemOwnerWrite } from '../../../bots/bot-items-tables'
 import {
   assertBotItemLinkRoom,
@@ -51,7 +51,7 @@ const SET = defineMethod({
     const writer = writerOf(params, context)
     const store = context.runtime.botItems.store()
     const item = await resolveItem(store, params.item)
-    const { title, description, doneMeans, status, note, reason } = params
+    const { expectedVersion, title, description, doneMeans, status, note, reason } = params
     let { comment, ask } = params
     // Fork BAD-747: steps for the owner; with the setting off they join the comment as a numbered list.
     const resolved = resolveItemSteps(context.runtime, params.steps)
@@ -65,10 +65,11 @@ const SET = defineMethod({
     if (params.files?.length && !comment?.trim() && !ask) {
       throw new BotItemError('invalid_argument', '--file goes with --comment. Nothing was posted.')
     }
-    if (params.files?.length) {
-      // What the write would refuse anyway is refused before any file is copied and claimed.
+    if (params.files?.length || expectedVersion !== undefined) {
+      // Refuse stale writes before admitting files. The transaction checks again.
       assertBotItemSetInput({ title, description, doneMeans, status, note, reason, comment, ask })
       assertBotItemOwnerWrite(item, writer.actor, status)
+      assertBotItemVersion(item, expectedVersion)
     }
     // With an ask, the files go under its own context; its comment is the host's rendering of it.
     const words = ask ? (ask.context ?? '') : (comment ?? '')
@@ -94,6 +95,7 @@ const SET = defineMethod({
     const closing = status === 'done' || status === 'canceled'
     const changes = {
       ...(closing ? { closedFor: await closingChatActsFor(context, writer) } : {}),
+      expectedVersion,
       title,
       description,
       doneMeans,

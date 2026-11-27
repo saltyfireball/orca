@@ -1,6 +1,5 @@
 // `bots.items.owner.*`: the owner's panel, on the desktop or a paired phone; an agent's CLI is refused.
 // Every comment and status change mails the item's chat, one mail per action and chat; a snooze mails none.
-import type * as z from 'zod'
 import {
   BOT_ITEM_LIMITS,
   BOT_ITEM_OPEN_STATUSES,
@@ -9,26 +8,18 @@ import {
   parseBotItemEventId
 } from '../../../../shared/bots/bot-items'
 import {
-  BotItemsOwnerComment,
   BotItemsOwnerList,
   BotItemsOwnerOpened,
   BotItemsOwnerShow,
   BotItemsOwnerSnooze,
   BotItemsOwnerStatus
 } from '../../../../shared/rpc-contract/bots-items-params'
-import { AGENT_SESSION_ATTACHMENTS_DIR_NAME } from '../../../../shared/agent-session/agent-session-attachments'
 import { BotItemError } from '../../../bots/bot-item-error'
-import { admitBotItemCommentAttachments } from '../../../bots/bot-item-comment-attachments'
-import {
-  getAgentSessionAttachmentClaimer,
-  getAgentSessionAttachmentStore
-} from '../../../native-chat/agent-session-attachments/agent-session-attachment-store-registry'
-import { botChatTakingMail } from './bots-chats'
-import type { BotItemOwnerActor } from '../../../bots/bot-items-input'
 import type { BotItemRecord } from '../../../bots/bot-items-schema'
 import type { BotItemsRemote } from '../../../bots/bot-items-ops'
-import { defineMethod, type RpcContext } from '../core'
-import { ownerActor } from './bots-items-owner-actor'
+import { defineMethod } from '../core'
+import { botItemOwnerActor } from './bots-caller-gates'
+import { BOT_ITEM_OWNER_COMMENT_METHOD } from './bots-items-owner-comment'
 import { STEP } from './bots-items-owner-step-method'
 import { parseCursor, resolveItem } from './bots-items-write-support'
 import {
@@ -67,7 +58,7 @@ const LIST = defineMethod({
   permission: 'workspace',
   params: BotItemsOwnerList,
   handler: async (params, context) => {
-    ownerActor(context)
+    botItemOwnerActor(context)
     const { botItems } = context.runtime
     const store = botItems.store()
     // An older client names one chat; a group's panel names its rooms' member sessions.
@@ -129,7 +120,7 @@ const SHOW = defineMethod({
   permission: 'workspace',
   params: BotItemsOwnerShow,
   handler: async (params, context) => {
-    ownerActor(context)
+    botItemOwnerActor(context)
     const { botItems } = context.runtime
     const record = await resolveItem(botItems.store(), params.item)
     const after = params.after !== undefined ? parseBotItemEventId(params.after) : 0
@@ -161,66 +152,12 @@ const SHOW = defineMethod({
   }
 })
 
-/** The owner's comment, as the panel posts it; also the fork's owner-token answer (BAD-737). */
-export async function ownerItemComment(
-  params: z.infer<typeof BotItemsOwnerComment>,
-  context: RpcContext,
-  actor: BotItemOwnerActor
-): Promise<{ eventId: string | null }> {
-  const { botItems } = context.runtime
-  const store = botItems.store()
-  const item = await resolveItem(store, params.item)
-  const bot = context.runtime.bots.list().find((entry) => entry.id === item.ownerBotId)
-  if (params.images?.length || params.text.includes(AGENT_SESSION_ATTACHMENTS_DIR_NAME)) {
-    // The attachment store and its claims come up with the structured chat host.
-    await context.runtime.ensureStructuredAgentSessionHost().catch(() => undefined)
-  }
-  // Admitted and claimed for the item's chat before the event: a failed write leaves only a claim
-  // that chat already prunes, and a retry re-claims the same uploads.
-  const { images } = await admitBotItemCommentAttachments(
-    {
-      store: getAgentSessionAttachmentStore(),
-      // This host's own window: a dropped on-disk image is copied in; a paired client sends store paths.
-      local: context.caller?.kind === 'desktop',
-      claim: getAgentSessionAttachmentClaimer(),
-      chat: async () => (bot ? botChatTakingMail(context.runtime, bot, item.chatId) : null)
-    },
-    params.text,
-    params.images ?? []
-  )
-  const outcome = await store.ownerComment(
-    item.uid,
-    params.text,
-    actor,
-    images,
-    undefined,
-    params.requestId,
-    params.questionId === undefined ? undefined : (parseBotItemEventId(params.questionId) ?? -1),
-    params.plain === true,
-    params.skills,
-    params.skipped
-  )
-  botItems.changed([item])
-  // The comment is stored and its mail owed: the reply never waits on the chat taking it.
-  void botItems
-    .sendOwedMail()
-    .catch((error: unknown) => console.warn('[bots] items: mailing a comment failed', error))
-  return { eventId: outcome.eventId === null ? null : botItemEventId(outcome.eventId) }
-}
-
-const COMMENT = defineMethod({
-  name: 'bots.items.owner.comment',
-  permission: 'workspace',
-  params: BotItemsOwnerComment,
-  handler: async (params, context) => ownerItemComment(params, context, ownerActor(context))
-})
-
 const STATUS = defineMethod({
   name: 'bots.items.owner.status',
   permission: 'workspace',
   params: BotItemsOwnerStatus,
   handler: async (params, context) => {
-    const actor = ownerActor(context)
+    const actor = botItemOwnerActor(context)
     const { botItems } = context.runtime
     const store = botItems.store()
     const items = await Promise.all(params.items.map((ref) => resolveItem(store, ref)))
@@ -252,7 +189,7 @@ const SNOOZE = defineMethod({
   permission: 'workspace',
   params: BotItemsOwnerSnooze,
   handler: async (params, context) => {
-    const actor = ownerActor(context)
+    const actor = botItemOwnerActor(context)
     const { botItems } = context.runtime
     const store = botItems.store()
     const items = await Promise.all(params.items.map((entry) => resolveItem(store, entry.item)))
@@ -281,7 +218,7 @@ const OPENED = defineMethod({
   permission: 'workspace',
   params: BotItemsOwnerOpened,
   handler: async (params, context) => {
-    ownerActor(context)
+    botItemOwnerActor(context)
     const { runtime } = context
     const latest = await runtime.botItems.store().latestEventId(params.botId)
     const saved = runtime.bots.list().find((bot) => bot.id === params.botId)?.itemsSeen ?? 0
@@ -298,4 +235,12 @@ const OPENED = defineMethod({
   }
 })
 
-export const BOT_ITEMS_OWNER_METHODS = [LIST, SHOW, COMMENT, STATUS, STEP, SNOOZE, OPENED]
+export const BOT_ITEMS_OWNER_METHODS = [
+  LIST,
+  SHOW,
+  BOT_ITEM_OWNER_COMMENT_METHOD,
+  STATUS,
+  STEP,
+  SNOOZE,
+  OPENED
+]

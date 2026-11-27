@@ -45,6 +45,9 @@ import type { AgentSessionRewindRecord } from '../../../shared/agent-session/lif
 import type { JournalRewindCut } from './journal-domain-rewind-cut'
 
 /** The writer chooses the projection epoch; callers identify only their live open handle. */
+/** A fence recovers the last run's obligations; `keptWriter`: its writer still runs, so nothing is settled. */
+export type JournalOpenRecovery = JournalOpenRecover | 'keptWriter'
+
 export type JournalWriterTarget = { sessionId: string; epoch: string; ownerToken: string }
 
 export type JournalWriterCoreOperation =
@@ -145,7 +148,7 @@ export type JournalWriterInputOperation =
       body: AgentJournalMessageItem
       options: JournalItemAppendOptions
     }
-  | { kind: 'open'; recover?: JournalOpenRecover }
+  | { kind: 'open'; recover?: JournalOpenRecovery }
   | JournalWriterContextOperation
   | JournalWriterSettlementOperation
 
