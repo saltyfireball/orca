@@ -22,6 +22,10 @@ import { forkReopenAutoClosedChat } from '../bot-chat-close/bot-chat-reopen'
 import { automationRunAutoCloseDeps } from './automation-run-auto-close-service'
 import { runAutomationRunAutoClosePass } from './automation-run-auto-close'
 import { closeAgentChat } from './agent-chat-close'
+import { sweepAutomationRunAutoCloseWith } from './automation-run-auto-close-service'
+import { resetAutomationRunCloseDecisionsForTest } from './automation-run-close-decisions'
+import { AUTOMATION_METHODS } from '../../runtime/rpc/methods/automations/automations'
+import { formatAutomationRuns } from '../../../cli/automations/automation-format'
 
 vi.mock('electron', () => ({
   app: { getPath: () => testState.dir },
@@ -94,9 +98,20 @@ async function turnSettledAt(at: number) {
   })
 }
 
-function deps(now: number, homes: string[] = []) {
+/** A message sent into the chat through the real host, recorded in its journal. */
+async function personSendsAt(at: number) {
+  vi.setSystemTime(at)
+  expect(await rig.send('Also look at last week').result).toMatchObject({ ok: true })
+}
+
+function deps(now: number, homes: string[] = [], overrides: { working?: boolean } = {}) {
   const value = automationRunAutoCloseDeps(store, rig.store, () => new Set(homes))
-  return { ...value, now: () => now }
+  return {
+    ...value,
+    now: () => now,
+    // The rig's provider never answers a send, so a case that sent says the agent finished it.
+    ...(overrides.working === false ? { working: async () => false } : {})
+  }
 }
 
 const tabOpen = () => rig.store.isSessionTabVisible(CHAT)
@@ -108,6 +123,7 @@ describe('auto-close of finished automation run chats', () => {
     vi.setSystemTime(RUN_AT)
     store = createStore()
     resetAutoClosedRegistryForTest()
+    resetAutomationRunCloseDecisionsForTest()
     rig = await createQueuedMessageTestRig({ sessionId: CHAT })
     setStructuredAgentSessionHost(rig.host)
     await rig.host.setSessionTabVisibility(CHAT, true)
@@ -161,7 +177,8 @@ describe('auto-close of finished automation run chats', () => {
       'was typed into after the run ended',
       async () => {
         runInto(research())
-        await turnSettledAt(ENDED_AT + 20 * MIN)
+        await personSendsAt(ENDED_AT + 20 * MIN)
+        await turnSettledAt(ENDED_AT + 21 * MIN)
       },
       'typed'
     ],
@@ -209,7 +226,7 @@ describe('auto-close of finished automation run chats', () => {
     const homes = await arrange()
     const later = ENDED_AT + 5 * 24 * 60 * MIN
     const rows = await runAutomationRunAutoClosePass(
-      deps(later, Array.isArray(homes) ? homes : []),
+      deps(later, Array.isArray(homes) ? homes : [], keep === 'typed' ? { working: false } : {}),
       {
         dryRun: false,
         includeKept: true
@@ -217,6 +234,49 @@ describe('auto-close of finished automation run chats', () => {
     )
     expect(rows).toMatchObject([{ outcome: 'kept', keep }])
     expect(tabOpen()).toBe(true)
+  })
+
+  // The live keep (BAD-848 follow-up): a research run's background tasks woke the agent into turns
+  // of its own after the run's turn ended. Those moved the chat's last turn past the run's end, and
+  // the sweep read that as a person typing, so the tab never closed.
+  it('closes a run whose agent ran on in turns of its own after the run ended', async () => {
+    runInto(research())
+    await turnSettledAt(ENDED_AT + 20 * MIN)
+    const rows = await runAutomationRunAutoClosePass(deps(ENDED_AT + 3 * 24 * 60 * MIN), {
+      dryRun: false,
+      includeKept: true
+    })
+    expect(rows).toMatchObject([{ outcome: 'closed' }])
+    expect(tabOpen()).toBe(false)
+  })
+
+  it('shows each run the sweep kept, and why, in automation.runs and orca automations runs', async () => {
+    const automation = research()
+    const run = runInto(automation)
+    await personSendsAt(ENDED_AT + 20 * MIN)
+    const value = { ...deps(ENDED_AT + 3 * 24 * 60 * MIN), working: async () => false }
+    expect(await sweepAutomationRunAutoCloseWith(value)).toBe(false)
+    const method = AUTOMATION_METHODS.find((entry) => entry.name === 'automation.runs')!
+    const runtime = {
+      listAutomationRuns: () => store.listAutomationRuns(),
+      listAutomationRunsPage: () => ({ runs: store.listAutomationRuns(), nextCursor: null }),
+      showAutomationRun: () => store.listAutomationRuns()[0]
+    }
+    const listed = (await method.handler({}, { runtime } as never)) as {
+      runs: ReturnType<Store['listAutomationRuns']>
+    }
+    expect(listed.runs).toMatchObject([
+      { id: run.id, forkTabClose: { outcome: 'kept', keep: 'typed' } }
+    ])
+    const paged = (await method.handler({ limit: 10 }, { runtime } as never)) as typeof listed
+    expect(paged.runs[0]?.forkTabClose).toMatchObject({ outcome: 'kept', keep: 'typed' })
+    expect(formatAutomationRuns(listed)).toContain('tab kept: typed')
+    expect(tabOpen()).toBe(true)
+    // The person's chat closes by hand; the next sweep says so.
+    await rig.host.setSessionTabVisibility(CHAT, false)
+    await sweepAutomationRunAutoCloseWith(value)
+    const after = (await method.handler({}, { runtime } as never)) as typeof listed
+    expect(formatAutomationRuns(after)).toContain('tab closed')
   })
 
   it('is off when forkAutomationRunAutoClose is false', async () => {

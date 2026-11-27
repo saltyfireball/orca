@@ -594,12 +594,28 @@ ones `SLRM-123 `).
   worker cleanup cover neither, so the tabs of runs from days ago piled up in the workspace. A
   finished run's chat now closes by itself, the way a finished worker's does:
   - **When.** The chat's newest run has ended (a final status), its agent is idle (no open turn,
-    nothing waiting on a person), nobody typed in it since the run ended (its last turn settled
-    no later than 30 seconds after the run's output was captured; a run with no output and a later
-    turn is kept), its tab is open and not pinned, and `forkAutomationRunAutoCloseGraceMinutes`
+    nothing waiting on a person), nobody typed in it since the run ended (the chat's journal holds
+    no message sent more than 30 seconds after the run's output was captured; a run with no output
+    and a later turn is kept), its tab is open and not pinned, and `forkAutomationRunAutoCloseGraceMinutes`
     (unset 60) have passed since the run ended. `forkAutomationRunAutoClose` (unset is on) turns it
     off. Both are rows in Settings > Blackfish beside the bot chat auto-close rows, with search
     keywords.
+  - **Typed means a message, not a turn (BAD-848 follow-up).** The first build read "typed" from the
+    chat's last turn: one that settled after the run ended counted as a person's. A run whose agent
+    started background tasks went on in turns of its own after the run's turn ended (the agent is
+    woken by each task's end, with no message from anyone), so its tab was kept as typed-into
+    though nobody touched it: two of six finished research runs stayed open that way. The rule now
+    asks the chat's journal for a message sent after the run ended (the record store's
+    `firstSubmittedUserPrompt`, one indexed read, only for a chat that passed every cheaper rule);
+    a journal it cannot read keeps the chat as `unreadable`. A slash command is not a message, as
+    before.
+  - **Why a tab is still open.** Each sweep records its decision for every chat run it judged (in
+    memory; a restart refills it on the first sweep) and writes one log line when a run's decision
+    changes. `automation.runs` returns it on each run as `forkTabClose` (`outcome` kept, closed or
+    failed, `keep` the reason, `error`, `at`), and `orca automations runs` prints it under the run:
+    `tab kept: typed` (or `running`, `grace`, `pinned`, `reopened`, `working`, `unreadable`,
+    `person-chat`, `reuse-session`, `home`, `shared-chat`, `no-chat`), `tab closed by Orca`, `tab
+    closed`, or `tab close failed: <reason>`.
   - **Never.** A `reuseSession` automation's chat, a bot's Home Chat, a chat two runs share, a chat
     older than its run (one a person started that the run was sent into), and a chat Orca closed
     before that someone opened again.
@@ -610,7 +626,7 @@ ones `SLRM-123 `).
     routed; the run's own key (`automation-run:<runId>`) stays there, so a chat opened again is
     not closed a second time.
   - **The first sweep.** The grace counts from times the run store and the chat record already hold
-    (the run output's capture time, the last turn's time), so runs open from before the update
+    (the run output's capture time, the journal's send times), so runs open from before the update
     close on the first pass when they meet the rule. Each host runs the pass for its own run store
     every 2 minutes, backing off to 10 when nothing closed.
   - **`orca agent close <id> [--environment <name>]`** closes one chat by its Orca session ID
@@ -625,7 +641,11 @@ ones `SLRM-123 `).
     real close: a finished run closes after the grace with its history kept and mail reopens it, a
     run that ended days before closes on the first pass, a running, reuseSession, typed-into, pinned,
     Home Chat or person's chat stays open, the setting turns it off, and `orca agent close` refuses a
-    working chat and closes a finished one.
+    working chat and closes a finished one. A message sent through the real host after the run ended
+    keeps the chat as `typed`; a later turn with no message (the agent's own) does not, and fails
+    with the old last-turn rule back. The sweep's decision shows through the real `automation.runs`
+    handler and `orca automations runs`'s formatter, and fails with either the record or the handler
+    hook undone.
 - **Lost work (SLRM-2096).** A Lost work button in the workspace cleanup dialog opens a scan of
   every local git project for work an agent worktree could lose. Nothing runs until you press
   Scan; the scan only reads git and can be stopped.
@@ -4192,6 +4212,7 @@ Apply these in this order. Each one is a single commit.
 229. `BAD-847 mobile/src/bots/use-open-bot-home.ts: the useCallback parameters are typed (upstream e8819c3e21f left homeDraft and current implicitly any, which failed the mobile typecheck of Fork sync run 46027770648); one upstream file touched, a type annotation only, no behaviour change`
 230. `BAD-848 A finished fresh-session automation run's chat tab closes by itself after forkAutomationRunAutoCloseGraceMinutes (default 60; forkAutomationRunAutoClose turns it off) with its history kept, never a running, reuseSession, typed-into, pinned, Home Chat or person-started chat; orca agent close <id> closes one finished chat through the same close`
 231. `BAD-877 Tests hold the agy skip-permissions flag to Full access (real launch resolver and acquire: argv is [acp] for none, Ask, Accept edits, own and Auto), keep every agy permission request with the person in every mode, and keep the always-flagged readiness check to initialize and session/list; tests only, no code change`
+232. `BAD-848 Automation run tab auto-close: typed means a message sent after the run ended (from the chat's journal), not a later turn, so a run whose agent went on in turns of its own (woken by background tasks) closes; each sweep's decision shows as forkTabClose in automation.runs and as "tab kept: <reason>" in orca automations runs`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5355,12 +5376,16 @@ Upstream files only get short hooks, which keeps merges small:
   - The tests are `github-source-deadline.test.ts` and
     `github-work-items-hung-source.test.ts` (a source that never resolves).
 
-- Auto-close finished automation run chats (BAD-848): no stock file. `installForkWorkerArchive`
+- Auto-close finished automation run chats (BAD-848): `installForkWorkerArchive`
   (a fork file) also calls `installForkAutomationRunAutoClose`; `FORK_WORKER_ARCHIVE_METHODS` also
   spreads `FORK_AGENT_CLOSE_METHODS` and `FORK_WORKER_CLEANUP_COMMAND_SPECS` lists `agent close`, in
   the `fork-worker-cleanup` handler group. `bot-chat-auto-close.ts` exports its setting readers
   (`readForkSetting`, `wholeForkSetting`) for the new settings, which are intersected in
-  `fork-global-settings.ts`; the settings and RPC params catalogs are regenerated.
+  `fork-global-settings.ts`; the settings and RPC params catalogs are regenerated. Stock edits
+  (keep reasons): `AutomationRun` (`automation-run.ts`) gains an optional `forkTabClose`; the
+  `automation.runs` handler (`rpc/methods/automations/automations.ts`) passes each of its four
+  replies through `withAutomationRunCloseDecisions`; `automation-format.ts` prints the decision in
+  `formatAutomationRun` and `formatAutomationRuns`.
 - Auto-close finished bot chats (BAD-734), small edits in stock files:
   - `bots-chat-tree.ts` serves `forkOpenBotChatTree` for a read with no `chatId`; `BotChatTreeRead`
     (`bot-chat-tree.ts`) gains an optional `closedTotal`.

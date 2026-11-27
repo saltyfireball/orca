@@ -11,9 +11,11 @@ import {
   forkAutomationRunAutoCloseEnabled,
   forkAutomationRunAutoCloseGraceMs,
   forkAutomationRunCloseVerdict,
+  FORK_AUTOMATION_RUN_TURN_SLACK_MS,
   type ForkAutomationRunCloseFacts,
   type ForkAutomationRunKeepReason
 } from '../../../shared/fork/automation-run-auto-close'
+import type { AgentSessionRecordStore } from '../../runtime/agent-session/records/agent-session-record-store'
 import {
   closeFinishedChat,
   type FinishedChatCloseDeps,
@@ -23,6 +25,8 @@ import {
 export type RunChat = AutomationRun & { chatSessionId: string }
 
 export type AutomationRunAutoCloseDeps = FinishedChatCloseDeps & {
+  records: FinishedChatCloseDeps['records'] &
+    Pick<AgentSessionRecordStore, 'firstSubmittedUserPrompt'>
   now: () => number
   settings: unknown
   runs: () => readonly AutomationRun[]
@@ -59,6 +63,24 @@ function ownChats(runs: readonly AutomationRun[]): { run: RunChat; shared: boole
   }))
 }
 
+/** A person's (or anyone's) message after the run ended; the chat's last turn is not proof of one,
+ *  since a background task can wake the agent into a turn of its own. */
+async function sentAfter(
+  deps: AutomationRunAutoCloseDeps,
+  chatSessionId: string,
+  endedAt: number
+): Promise<boolean | null> {
+  try {
+    const first = await deps.records.firstSubmittedUserPrompt(
+      chatSessionId,
+      endedAt + FORK_AUTOMATION_RUN_TURN_SLACK_MS
+    )
+    return first.kind !== 'none'
+  } catch {
+    return null
+  }
+}
+
 export async function runAutomationRunAutoClosePass(
   deps: AutomationRunAutoCloseDeps,
   options: { dryRun: boolean; includeKept?: boolean }
@@ -80,7 +102,10 @@ export async function runAutomationRunAutoClosePass(
           ...(record.lastTurn ? { lastTurn: record.lastTurn } : {})
         }
       : null
-    const facts: Omit<ForkAutomationRunCloseFacts, 'pinned' | 'reopened' | 'working'> = {
+    const facts: Omit<
+      ForkAutomationRunCloseFacts,
+      'pinned' | 'reopened' | 'working' | 'sentAfterEnd'
+    > = {
       finished: isFinalAutomationRunStatus(run.status),
       reuseSession: reuse.get(run.automationId) ?? false,
       homeChat: homes.has(run.chatSessionId),
@@ -92,7 +117,7 @@ export async function runAutomationRunAutoClosePass(
     }
     // The cheap facts first: most runs are kept before any chat host is asked.
     let verdict = forkAutomationRunCloseVerdict(
-      { ...facts, pinned: false, reopened: false, working: false },
+      { ...facts, pinned: false, reopened: false, working: false, sentAfterEnd: false },
       { now, graceMs }
     )
     if (verdict.close) {
@@ -101,7 +126,10 @@ export async function runAutomationRunAutoClosePass(
           ...facts,
           pinned: deps.pinned(run),
           reopened: await deps.wasAutoClosed(run),
-          working: await deps.working(run.chatSessionId)
+          working: await deps.working(run.chatSessionId),
+          sentAfterEnd: facts.endKnown
+            ? await sentAfter(deps, run.chatSessionId, facts.endedAt)
+            : false
         },
         { now, graceMs }
       )

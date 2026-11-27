@@ -12,6 +12,7 @@ import {
   rememberAutoClosedChat
 } from '../bot-chat-close/bot-chat-auto-closed-registry'
 import { runtimeFinishedChatCloseDeps } from './finished-chat-close'
+import { recordAutomationRunCloseDecisions } from './automation-run-close-decisions'
 import {
   runAutomationRunAutoClosePass,
   type AutomationRunAutoCloseDeps,
@@ -65,6 +66,7 @@ export function automationRunAutoCloseDeps(
 ): AutomationRunAutoCloseDeps {
   return {
     ...runtimeFinishedChatCloseDeps(records, surfaceRuntime),
+    records,
     now: () => Date.now(),
     settings: store.getSettings(),
     runs: () => store.listAutomationRuns?.() ?? [],
@@ -125,6 +127,25 @@ export function installForkAutomationRunAutoClose(runtime: unknown): void {
   })
 }
 
+/** One sweep with these deps: close what the rule ends and record every decision for the run list. */
+export async function sweepAutomationRunAutoCloseWith(
+  deps: AutomationRunAutoCloseDeps
+): Promise<boolean> {
+  const rows: AutomationRunAutoCloseRow[] = await runAutomationRunAutoClosePass(deps, {
+    dryRun: false,
+    includeKept: true
+  })
+  recordAutomationRunCloseDecisions(rows, deps.now())
+  const failed = rows.filter((row) => row.outcome === 'failed')
+  if (failed.length > 0) {
+    console.warn(
+      '[fork automation run auto-close] could not close',
+      failed.map((row) => `${row.runId}:${row.error ?? ''}`).join(', ')
+    )
+  }
+  return rows.some((row) => row.outcome === 'closed')
+}
+
 /** One timer tick; false while the setting is off or nothing closed, so the timer backs off. */
 export async function sweepForkAutomationRunAutoClose(): Promise<boolean> {
   const state = installed
@@ -133,18 +154,7 @@ export async function sweepForkAutomationRunAutoClose(): Promise<boolean> {
   }
   state.running = true
   try {
-    const deps = await runtimeDeps(state.runtime)
-    const rows: AutomationRunAutoCloseRow[] = await runAutomationRunAutoClosePass(deps, {
-      dryRun: false
-    })
-    const failed = rows.filter((row) => row.outcome === 'failed')
-    if (failed.length > 0) {
-      console.warn(
-        '[fork automation run auto-close] could not close',
-        failed.map((row) => `${row.runId}:${row.error ?? ''}`).join(', ')
-      )
-    }
-    return rows.some((row) => row.outcome === 'closed')
+    return await sweepAutomationRunAutoCloseWith(await runtimeDeps(state.runtime))
   } catch (error) {
     console.warn('[fork automation run auto-close] pass failed', error)
     return false

@@ -1,4 +1,5 @@
 import type { SetupTrustMismatch } from '../../worktree/create-types'
+import type { ForkAutomationRunTabClose } from '../../fork/automation-run-auto-close'
 import type { TaskSourceContext, WorkspaceRunContext } from '../../work-items/task-source-context'
 import type { AutomationRunEvent } from '../../automation-event-triggers'
 import type { AutomationTriggeredBy } from '../../bots/bot-acts-for'
@@ -165,6 +166,8 @@ export type AutomationRun = {
   setupSkippedReason?: AutomationRunSetupSkippedReason
   /** The skipped setup content, so it can be reviewed and approved for later runs. Older hosts omit it. */
   setupSkippedContent?: SetupTrustMismatch
+  /** Fork (BAD-848): the chat tab auto-close sweep's last decision on this run, when it judged it. */
+  forkTabClose?: ForkAutomationRunTabClose
 }
 
 export type AutomationRunSetupSkippedReason = 'setup-changed'

@@ -4,6 +4,7 @@ import type { AutomationOwnerPrecondition } from '../../../../../shared/automati
 import { remoteRpcContentBudget } from '../../../../../shared/remote-runtime/rpc/remote-rpc-content-budget'
 import { defineMethod, type RpcContext, InvalidArgumentError } from '../../core'
 import { previewAutomationRunsPage } from './automation-runs-preview-page'
+import { withAutomationRunCloseDecisions } from '../../../../fork/automation-run-close/automation-run-close-decisions'
 import {
   AutomationCreate,
   AutomationId,
@@ -172,35 +173,42 @@ export const AUTOMATION_METHODS = [
     name: 'automation.runs',
     permission: 'workspace',
     params: AutomationRuns,
+    // Fork (BAD-848): each run carries the chat tab auto-close sweep's last decision.
     handler: (params, { runtime, requestId }) => {
       if (params.runId !== undefined) {
         if (!params.automationId) {
           throw new Error('A run id requires an automation id.')
         }
-        return {
+        return withAutomationRunCloseDecisions({
           run: runtime.showAutomationRun(params.automationId, params.runId, params.expectedOwner)
-        }
+        })
       }
       if (params.preview) {
-        return previewAutomationRunsPage(
+        return withAutomationRunCloseDecisions(
+          previewAutomationRunsPage(
+            runtime.listAutomationRunsPage(
+              params.automationId,
+              params.expectedOwner,
+              params.limit,
+              params.cursor
+            ),
+            remoteRpcContentBudget(requestId ?? '')
+          )
+        )
+      }
+      if (params.limit !== undefined || params.cursor !== undefined) {
+        return withAutomationRunCloseDecisions(
           runtime.listAutomationRunsPage(
             params.automationId,
             params.expectedOwner,
             params.limit,
             params.cursor
-          ),
-          remoteRpcContentBudget(requestId ?? '')
+          )
         )
       }
-      if (params.limit !== undefined || params.cursor !== undefined) {
-        return runtime.listAutomationRunsPage(
-          params.automationId,
-          params.expectedOwner,
-          params.limit,
-          params.cursor
-        )
-      }
-      return { runs: runtime.listAutomationRuns(params.automationId, params.expectedOwner) }
+      return withAutomationRunCloseDecisions({
+        runs: runtime.listAutomationRuns(params.automationId, params.expectedOwner)
+      })
     }
   })
 ]

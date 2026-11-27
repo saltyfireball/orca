@@ -1,5 +1,6 @@
 // Use authority-projected owners: stored target fields survive host removal and re-registration.
 
+import { formatForkAutomationRunTabClose } from '../../shared/fork/automation-run-auto-close'
 import {
   automationModelEffort,
   formatAutomationModelEffort
@@ -296,6 +297,7 @@ export function formatAutomationRun(
     ...(result.run.terminalPtyId ? [`terminalPtyId: ${result.run.terminalPtyId}`] : []),
     ...(result.run.precheckResult ? [`precheck: ${formatAutomationRunPrecheck(result.run)}`] : []),
     ...(result.run.error ? [`error: ${result.run.error}`] : []),
+    ...(result.run.forkTabClose ? [formatForkAutomationRunTabClose(result.run.forkTabClose)] : []),
     formatAutomationRunFollowUp(result.run.automationId, target)
   ].join('\n')
 }
@@ -329,7 +331,7 @@ export function formatAutomationRuns(result: { runs: AutomationRun[] }): string 
   return result.runs
     .map(
       (run) =>
-        `${run.id}  ${run.automationId}  ${run.status}  ${run.trigger}  ${new Date(run.scheduledFor).toISOString()}\n${run.title}${run.precheckResult ? `\nprecheck: ${formatAutomationRunPrecheck(run)}` : ''}${run.error ? `\nerror: ${run.error}` : ''}`
+        `${run.id}  ${run.automationId}  ${run.status}  ${run.trigger}  ${new Date(run.scheduledFor).toISOString()}\n${run.title}${run.precheckResult ? `\nprecheck: ${formatAutomationRunPrecheck(run)}` : ''}${run.error ? `\nerror: ${run.error}` : ''}${run.forkTabClose ? `\n${formatForkAutomationRunTabClose(run.forkTabClose)}` : ''}`
     )
     .join('\n\n')
 }

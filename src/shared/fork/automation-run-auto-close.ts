@@ -14,7 +14,7 @@ export const FORK_AUTOMATION_RUN_AUTO_CLOSE_DEFAULT_GRACE_MINUTES = 60
 export const FORK_AUTOMATION_RUN_AUTO_CLOSE_GRACE_CHOICES: readonly number[] = [
   5, 15, 30, 60, 240, 1440
 ]
-/** A turn that settled this long after the run ended is someone else's, not the run's. */
+/** A message sent this long after the run ended is someone else's, not the run's. */
 export const FORK_AUTOMATION_RUN_TURN_SLACK_MS = 30_000
 
 export function forkAutomationRunAutoCloseEnabled(settings: unknown): boolean {
@@ -57,6 +57,9 @@ export type ForkAutomationRunCloseFacts = {
   reopened: boolean
   /** Its agent is in a turn or waiting on a person; null when that cannot be read. */
   working: boolean | null
+  /** Someone sent the chat a message after the run ended (a turn the agent started itself, woken by
+   *  a background task, is not one); null when the journal cannot be read. */
+  sentAfterEnd: boolean | null
 }
 
 export type ForkAutomationRunKeepReason =
@@ -73,6 +76,26 @@ export type ForkAutomationRunKeepReason =
   | 'unreadable'
   | 'typed'
   | 'grace'
+
+/** The sweep's last decision on a run's chat tab, shown by `orca automations runs`. */
+export type ForkAutomationRunTabClose = {
+  outcome: 'kept' | 'closed' | 'failed'
+  keep?: ForkAutomationRunKeepReason
+  error?: string
+  at: number
+}
+
+export function formatForkAutomationRunTabClose(decision: ForkAutomationRunTabClose): string {
+  if (decision.outcome === 'closed') {
+    return 'tab closed by Orca'
+  }
+  if (decision.outcome === 'failed') {
+    return `tab close failed: ${decision.error ?? 'unknown'}`
+  }
+  return decision.keep === 'already-closed'
+    ? 'tab closed'
+    : `tab kept: ${decision.keep ?? 'unknown'}`
+}
 
 export type ForkAutomationRunVerdict =
   | { close: true }
@@ -118,14 +141,11 @@ export function forkAutomationRunCloseVerdict(
   if (chat.lastTurn?.state === 'open' || facts.working === true) {
     return keep('working')
   }
-  if (facts.working === null) {
+  if (facts.working === null || (facts.endKnown && facts.sentAfterEnd === null)) {
     return keep('unreadable')
   }
-  const turn = chat.lastTurn
-  const typed =
-    turn !== undefined &&
-    (!facts.endKnown || turn.at > facts.endedAt + FORK_AUTOMATION_RUN_TURN_SLACK_MS)
-  if (typed) {
+  // With no end time, any turn may be someone else's.
+  if (facts.endKnown ? facts.sentAfterEnd : chat.lastTurn !== undefined) {
     return keep('typed')
   }
   return times.now - facts.endedAt >= times.graceMs ? { close: true } : keep('grace')
