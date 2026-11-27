@@ -1,6 +1,7 @@
 import { clampUtf8TextPrefix } from '../../../src/shared/text/utf8-byte-limits'
+import { FORK_FEEDBACK_OFF_ERROR } from '../../../src/shared/fork/feedback-endpoint'
+import { MOBILE_FEEDBACK_ENDPOINT } from './feedback-endpoint-config'
 
-const CONNECTION_DIAGNOSTICS_ENDPOINT = 'https://orca.dev/v1/feedback'
 const SUBMISSION_TIMEOUT_MS = 10_000
 const MAX_SUBMISSION_BYTES = 64 * 1024
 
@@ -15,13 +16,17 @@ export type ConnectionDiagnosticsSubmissionResult = { ok: true } | { ok: false; 
 /** Sends only the already-redacted, bounded report after an explicit user tap. */
 export async function submitConnectionDiagnostics(
   submission: ConnectionDiagnosticsSubmission,
-  fetchImpl: (url: string, init: RequestInit) => Promise<Response> = fetch
+  fetchImpl: (url: string, init: RequestInit) => Promise<Response> = fetch,
+  endpoint: string | null = MOBILE_FEEDBACK_ENDPOINT
 ): Promise<ConnectionDiagnosticsSubmissionResult> {
+  if (!endpoint) {
+    return { ok: false, error: FORK_FEEDBACK_OFF_ERROR }
+  }
   const report = boundConnectionDiagnosticsReport(submission.report)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), SUBMISSION_TIMEOUT_MS)
   try {
-    const response = await fetchImpl(CONNECTION_DIAGNOSTICS_ENDPOINT, {
+    const response = await fetchImpl(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

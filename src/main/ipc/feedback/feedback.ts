@@ -9,7 +9,6 @@ import type {
 } from '../../../shared/feedback/feedback-submit-contract'
 import {
   errorFailure,
-  FEEDBACK_API_URL,
   messageFromError,
   postFeedback,
   responseFailure,
@@ -17,10 +16,21 @@ import {
   type FeedbackSubmissionType,
   type FeedbackSubmitBody
 } from './feedback-request'
+import { FORK_FEEDBACK_OFF_ERROR } from '../../../shared/fork/feedback-endpoint'
+import { currentForkFeedbackEndpoint } from '../../fork/feedback-endpoint/feedback-endpoint-source'
 
 const FEEDBACK_ATTACHMENT_REQUEST_TIMEOUT_MS = 60_000
 // Content-shaped rejections may still accept small JSON after dropping attachments (corporate filters/body caps).
 const ATTACHMENT_JSON_RETRY_STATUSES = new Set([400, 403, 408, 413, 415, 422])
+
+// Fork (BAD-895): the saved address, read per send; no address means nothing is posted.
+function feedbackUrl(): string {
+  const url = currentForkFeedbackEndpoint()
+  if (!url) {
+    throw new Error(FORK_FEEDBACK_OFF_ERROR)
+  }
+  return url
+}
 
 type InternalFeedbackSubmitArgs = FeedbackSubmitArgs & {
   submissionType?: FeedbackSubmissionType
@@ -56,7 +66,7 @@ async function retryFeedbackOnPrimary(
   primaryError?: unknown
 ): Promise<FeedbackSubmitResult> {
   try {
-    const retry = await postFeedback(FEEDBACK_API_URL, body)
+    const retry = await postFeedback(feedbackUrl(), body)
     if (retry.ok) {
       return { ok: true }
     }
@@ -92,7 +102,7 @@ async function postFeedbackWithoutAttachment(
   body: FeedbackSubmitBody
 ): Promise<FeedbackRequestFailure | null> {
   try {
-    const response = await postFeedback(FEEDBACK_API_URL, body)
+    const response = await postFeedback(feedbackUrl(), body)
     return response.ok ? null : responseFailure(response)
   } catch (error) {
     return errorFailure(error)
@@ -116,7 +126,7 @@ async function submitFeedbackWithImages(
   try {
     let imagesDelivered = true
     const response = await postFeedback(
-      FEEDBACK_API_URL,
+      feedbackUrl(),
       body,
       FEEDBACK_ATTACHMENT_REQUEST_TIMEOUT_MS,
       async (nextResponse) => {
@@ -150,11 +160,7 @@ async function submitFeedbackWithDiagnosticBundle(
 ): Promise<FeedbackSubmitResult> {
   try {
     // Large diagnostic bundles need longer upload deadlines than small JSON reports.
-    const response = await postFeedback(
-      FEEDBACK_API_URL,
-      body,
-      FEEDBACK_ATTACHMENT_REQUEST_TIMEOUT_MS
-    )
+    const response = await postFeedback(feedbackUrl(), body, FEEDBACK_ATTACHMENT_REQUEST_TIMEOUT_MS)
     if (response.ok) {
       return { ok: true }
     }
@@ -174,6 +180,9 @@ async function submitFeedbackWithDiagnosticBundle(
 export async function submitFeedback(
   args: InternalFeedbackSubmitArgs
 ): Promise<FeedbackSubmitResult> {
+  if (!currentForkFeedbackEndpoint()) {
+    return { ok: false, status: null, error: FORK_FEEDBACK_OFF_ERROR }
+  }
   // Ignore discarded crash-lane images instead of rejecting over unused attachments.
   if (args.submissionType !== 'crash' && args.images !== undefined) {
     const imageError = validateFeedbackImages(args.images)
@@ -197,7 +206,7 @@ export async function submitFeedback(
     return submitFeedbackWithDiagnosticBundle(body, bodyWithoutDiagnosticBundle)
   }
   try {
-    const res = await postFeedback(FEEDBACK_API_URL, body)
+    const res = await postFeedback(feedbackUrl(), body)
     if (res.ok) {
       return { ok: true }
     }

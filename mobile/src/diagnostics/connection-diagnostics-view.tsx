@@ -11,6 +11,7 @@ import type { ConnectionState } from '../transport/connection/connection-state'
 import type { ConnectionDiagnosis } from './connection-diagnostics-analysis'
 import type { DiagnosticsSubmissionState } from './connection-diagnostics-screen-data'
 import { useMobileTranslation } from '../i18n/use-mobile-translation'
+import { MOBILE_FEEDBACK_ENDPOINT } from './feedback-endpoint-config'
 import { SettingsNavBar, settingsScreenStyles } from '../settings/settings-screen-frame'
 
 export function ConnectionDiagnosticsView({
@@ -106,7 +107,7 @@ export function ConnectionDiagnosticsView({
                 </Text>
                 <Text style={styles.diagnosisText}>{diagnosis.likelyCause}</Text>
                 <Text style={styles.diagnosisNext}>{diagnosis.nextStep}</Text>
-                {diagnosis.reportability === 'orca-relay' && (
+                {diagnosis.reportability === 'orca-relay' && MOBILE_FEEDBACK_ENDPOINT !== null && (
                   <>
                     <Text style={styles.privacyHint}>
                       {t(

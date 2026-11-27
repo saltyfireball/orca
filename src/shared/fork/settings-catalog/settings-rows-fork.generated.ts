@@ -183,6 +183,8 @@ export const FORK_SETTINGS_ROWS_FORK = {
     '{"t":{"k":"boolean"},"d":"Endpoint failover: ask a Blackfish server for its current LAN and Tailscale addresses; unset is on.","o":true}',
   forkEndpointLearnSameSubnetOnly:
     '{"t":{"k":"boolean"},"d":"Endpoint failover: use a learned address only when it is in a saved endpoint\'s /24 or is a Tailscale address; unset is on.","o":true}',
+  forkFeedbackEndpointUrl:
+    '{"t":{"k":"string"},"d":"The http(s) address Send Feedback and crash reports are posted to; unset is none, which turns both off and keeps crash reports on this machine.","o":true}',
   forkGoalJudgeCommand:
     '{"t":{"k":"string"},"d":"Goal loop: the judge command for `--until-judge`. It is one shell line that reads a JSON object (criteria, agent_output) on stdin and prints met or not met with a reason. Unset is none, and `--until-judge` is refused. Set it in the Settings screen.","o":true}',
   forkGoalLoop:

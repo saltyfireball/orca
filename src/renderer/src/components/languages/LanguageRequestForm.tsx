@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useTranslate } from '@/i18n/use-translate'
+import { useAppStore } from '@/store'
+import { forkFeedbackEndpoint } from '../../../../shared/fork/feedback-endpoint'
 import { track } from '@/diagnostics/telemetry/telemetry'
 import { onboardingLanguageMetadata } from '../onboarding/onboarding-language-telemetry'
 
@@ -24,6 +26,8 @@ export function LanguageRequestForm({
   initialDraft?: string
 }): React.JSX.Element {
   const t = useTranslate()
+  // Fork (BAD-895): a language request is feedback, so it needs the feedback address.
+  const feedbackOn = useAppStore((s) => forkFeedbackEndpoint(s.settings) !== null)
   const [draft, setDraft] = useState(initialDraft)
   const [status, setStatus] = useState<'idle' | 'pending' | 'error' | 'success'>('idle')
   const pending = useRef(false)
@@ -81,6 +85,14 @@ export function LanguageRequestForm({
             setStatus('idle')
           }}
         />
+        {feedbackOn ? null : (
+          <p role="status" className="text-xs text-muted-foreground">
+            {t(
+              'fork.feedbackEndpoint.languageOff',
+              'Feedback is off, so a language request cannot be sent from here.'
+            )}
+          </p>
+        )}
         {status === 'success' && (
           <p role="status" className="text-xs text-muted-foreground">
             {t('languages.requestRecorded', 'Language request recorded.')}
@@ -102,7 +114,7 @@ export function LanguageRequestForm({
             {t('languages.done', 'Done')}
           </Button>
         ) : (
-          <Button type="submit" size="sm" disabled={status === 'pending'}>
+          <Button type="submit" size="sm" disabled={status === 'pending' || !feedbackOn}>
             {t('onboarding.language.requestAction', 'Request language')}
           </Button>
         )}

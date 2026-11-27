@@ -56,6 +56,7 @@ import { ForkOwnerTokenSetting } from '../owner-token/ForkOwnerTokenSetting'
 import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
 import { ForkServerHealthSetting } from '../server-health/ForkServerHealthSetting'
 import { ForkServerHeartbeatSetting } from '../server-health/ForkServerHeartbeatSetting'
+import { ForkFeedbackEndpointSetting } from '../feedback-endpoint/ForkFeedbackEndpointSetting'
 import { ForkServerUpdateSetting } from '../server-update/ForkServerUpdateSetting'
 import { ForkApprovalTriageSetting } from '../approval-triage/ForkApprovalTriageSetting'
 import { ForkPromptStashSetting } from '../prompt-stash/ForkPromptStashSetting'
@@ -142,7 +143,8 @@ const SECTION_CARDS: Record<
     ['device-approval', ForkDeviceApprovalSetting],
     ['owner-token', ForkOwnerTokenSetting],
     ['webhooks', ForkWebhooksSetting],
-    ['server-update', ForkServerUpdateSetting]
+    ['server-update', ForkServerUpdateSetting],
+    ['feedback-endpoint', ForkFeedbackEndpointSetting]
   ],
   sync: [['sync-notice', ForkSyncNoticeSetting]]
 }

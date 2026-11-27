@@ -5,6 +5,8 @@ import {
   REACT_ERROR_BOUNDARY_REPORT_AVAILABLE_EVENT,
   takePendingReactErrorBoundaryReport
 } from '@/diagnostics/crash-reporting/react-error-boundary-reporting'
+import { useAppStore } from '@/store'
+import { forkFeedbackEndpoint } from '../../../../shared/fork/feedback-endpoint'
 import type { CrashReportRecord } from '../../../../shared/crash-reporting/crash-reporting'
 
 const CrashReportDialogSurface = lazy(() =>
@@ -19,6 +21,9 @@ export function CrashReportDialog(): React.JSX.Element | null {
   const [open, setOpen] = useState(false)
   const [report, setReport] = useState<CrashReportRecord | null>(null)
   const [loading, setLoading] = useState(false)
+  // Fork (BAD-895): with no feedback address a crash report stays local, so startup does not prompt to send it.
+  const settingsLoaded = useAppStore((s) => s.settings !== null)
+  const feedbackOn = useAppStore((s) => forkFeedbackEndpoint(s.settings) !== null)
 
   const openCrashReport = useCallback((nextReport: CrashReportRecord): void => {
     setReport(nextReport)
@@ -61,12 +66,14 @@ export function CrashReportDialog(): React.JSX.Element | null {
   )
 
   useEffect(() => {
-    if (promptedThisLaunch.current) {
+    if (promptedThisLaunch.current || !settingsLoaded) {
       return
     }
     promptedThisLaunch.current = true
-    void loadCrashReport(true)
-  }, [loadCrashReport])
+    if (feedbackOn) {
+      void loadCrashReport(true)
+    }
+  }, [loadCrashReport, settingsLoaded, feedbackOn])
 
   useEffect(() => {
     return window.api.ui.onOpenCrashReport(() => {

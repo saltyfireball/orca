@@ -22,6 +22,7 @@ import { SetupGuideProgressRing } from '../../setup-guide/SetupGuideProgressRing
 import { lazyWithRetry } from '@/app-shell/startup/lazy-with-retry'
 import type * as SidebarFeedbackDialogModule from '../sidebar-feedback/SidebarFeedbackDialog'
 import { useTranslate } from '@/i18n/use-translate'
+import { forkFeedbackEndpoint } from '../../../../../shared/fork/feedback-endpoint'
 import { handleForkRestartHeld } from '@/fork/restart-guard-held-toast'
 import {
   getUpdateCheckClickOptions,
@@ -134,6 +135,7 @@ export function useHelpMenuController(
   const openSettingsPage = useAppStore((s) => s.openSettingsPage)
   const openSettingsTarget = useAppStore((s) => s.openSettingsTarget)
   const updateStatus = useAppStore((s) => s.updateStatus)
+  const feedbackOn = useAppStore((s) => forkFeedbackEndpoint(s.settings) !== null)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   // Retain the mounted dialog through its closing animation.
   const [feedbackDialogMounted, setFeedbackDialogMounted] = useState(false)
@@ -225,10 +227,12 @@ export function useHelpMenuController(
           {t('auto.components.sidebar.SidebarSettingsHelpMenu.e565171a7c', 'Keyboard Shortcuts')}
         </DropdownMenuItem>
         {innerSeparator}
-        <DropdownMenuItem onSelect={handleOpenFeedback}>
-          <MessageSquareText className="size-3.5" />
-          {t('auto.components.sidebar.SidebarSettingsHelpMenu.4cf5b868d7', 'Send Feedback')}
-        </DropdownMenuItem>
+        {feedbackOn ? (
+          <DropdownMenuItem onSelect={handleOpenFeedback}>
+            <MessageSquareText className="size-3.5" />
+            {t('auto.components.sidebar.SidebarSettingsHelpMenu.4cf5b868d7', 'Send Feedback')}
+          </DropdownMenuItem>
+        ) : null}
         {milestones ? <MilestonesMenuItem milestones={milestones} /> : null}
         <DropdownMenuItem
           className="whitespace-nowrap"

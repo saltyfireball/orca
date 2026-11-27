@@ -40,6 +40,32 @@ ones `SLRM-123 `).
 
 ## What the fork changes
 
+- **Feedback and crash reports stay local (BAD-895).** Upstream posts Send Feedback, crash and
+  freeze reports, language requests and the phone's connection diagnostics to its own service
+  (`orca.dev/v1/feedback`). A fork build posts nothing there: the address is the setting
+  `forkFeedbackEndpointUrl`, empty by default, and an http or https address (no user or password) is
+  the only thing that turns it on.
+  - **Desktop and orcad.** `submitFeedback` (`src/main/ipc/feedback/feedback.ts`, the one path for
+    the feedback dialog, crash and freeze reports and language requests) reads the saved address on
+    every send, so a change needs no restart. With none it returns the failure
+    `Feedback is off: no feedback address is set (forkFeedbackEndpointUrl).` before any request, and
+    every retry goes to the same saved address only. The upstream `FEEDBACK_API_URL` constant is gone.
+  - **What the person sees.** Help > Send Feedback is hidden; no crash prompt opens at startup (the
+    report stays in the local store, and Help > Report a crash still opens it); the crash dialog says
+    the report stays on this machine and offers only Copy details; the language request form says
+    feedback is off and its button is disabled. Settings > Blackfish > Remote servers has the
+    Feedback address card (a server: `orca settings set forkFeedbackEndpointUrl <url> --environment <name>`).
+  - **Mobile.** The phone app has no desktop settings to read, so its address is a build setting,
+    `EXPO_PUBLIC_FEEDBACK_ENDPOINT_URL`, unset by default: Send diagnostics is hidden and
+    `submitConnectionDiagnostics` posts nothing.
+  - **Tests.** `feedback-endpoint.test.ts` drives the real `submitFeedback` -> `postFeedback` ->
+    `net.fetch` (only `electron` is stood in): nothing is fetched with no, empty, blank, non-http or
+    credentialed addresses, for feedback, a crash report and a crash report with a diagnostic bundle;
+    a saved address is the only URL fetched, retries included; the setting is read per send. Mobile:
+    `connection-diagnostics-submission.test.ts`. Each fails with the fix undone.
+  - Code is in `src/shared/fork/feedback-endpoint.ts` (the reader), `src/main/fork/feedback-endpoint/`
+    (the source the main process reads), `src/renderer/src/fork/feedback-endpoint/` (the card and its
+    search entry) and `mobile/src/diagnostics/feedback-endpoint-config.ts`.
 - **agy skip-permissions guard: tests only (BAD-877).** An Antigravity chat on the host's agy
   launches `agy acp`, and adds `--dangerously-skip-permissions` (approves tools, not plans) only in
   Full access, since agy has no Full access session mode (upstream #39471). In every other mode agy
@@ -4242,6 +4268,7 @@ Apply these in this order. Each one is a single commit.
 231. `BAD-877 Tests hold the agy skip-permissions flag to Full access (real launch resolver and acquire: argv is [acp] for none, Ask, Accept edits, own and Auto), keep every agy permission request with the person in every mode, and keep the always-flagged readiness check to initialize and session/list; tests only, no code change`
 232. `BAD-848 Automation run tab auto-close: typed means a message sent after the run ended (from the chat's journal), not a later turn, so a run whose agent went on in turns of its own (woken by background tasks) closes; each sweep's decision shows as forkTabClose in automation.runs and as "tab kept: <reason>" in orca automations runs`
 233. `BAD-892 Command guards let a bot's agent remove its own finished workspace with orca worktree rm (the bot owns it, no agent is open in it, the tree is clean, and with --delete-branch the branch is merged); every allow is audited, every other removal stays blocked; setting forkCommandGuardBotOwnWorktreeRemoval, on by default`
+234. `BAD-895 Fork builds post feedback, crash reports, language requests and mobile connection diagnostics only to the address in forkFeedbackEndpointUrl (empty by default, so nothing goes to Stably's orca.dev/v1/feedback); Send Feedback and the startup crash prompt hide when it is empty, and mobile reads EXPO_PUBLIC_FEEDBACK_ENDPOINT_URL`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5837,6 +5864,18 @@ Upstream files only get short hooks, which keeps merges small:
   passes `bot.agent` to `failureOf`, which wraps `LOOK_FAILURES.unfinished` in
   `forkBackgroundRunFailure`; `bot-memory-tidy-up-runner.ts` passes `bot.agent` to `reply`, which
   wraps `TIDY_UP_FAILURES.unfinished` the same way.
+- Feedback stays local (BAD-895), small edits in stock files: `feedback-request.ts` drops the
+  `FEEDBACK_API_URL` constant; `feedback.ts` reads the address through `feedbackUrl()` (the fork's
+  `currentForkFeedbackEndpoint`) at each post and returns the off failure first thing in
+  `submitFeedback`; `lazy-rare-ipc-handlers.ts` installs the settings source in
+  `registerLazyRareIpcHandlers`; `help-menu-controller.tsx` hides the Send Feedback item,
+  `CrashReportDialog.tsx` skips the startup prompt and `CrashReportDialogSurface.tsx` hides Send
+  report and says why, `LanguageRequestForm.tsx` disables its button, each behind `feedbackOn`;
+  on mobile `connection-diagnostics-submission.ts` takes the address from
+  `feedback-endpoint-config.ts` and `connection-diagnostics-view.tsx` hides Send diagnostics
+  without it. `ForkTextSetting.tsx` takes the key, `ForkSettingsPane.tsx` and
+  `endpoint-failover-search.ts` list the card, `fork-global-settings.ts` intersects the setting;
+  the settings catalog is regenerated.
 
 `config/electron-builder.config.cjs` is upstream's. Commit 1 edited it and commit 7 restores
 it, so the series leaves it as upstream has it. The fork identity is in

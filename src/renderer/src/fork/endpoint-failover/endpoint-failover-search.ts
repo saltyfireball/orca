@@ -3,6 +3,7 @@
 // spreads it. The entry title is the card's own heading text (ForkEndpointFailoverSetting.tsx).
 import type { SettingsSearchEntry } from '@/components/settings/search/settings-search'
 import type { Translate } from '@/i18n/use-translate'
+import { feedbackEndpointSearchEntry } from '../feedback-endpoint/feedback-endpoint-search-entry'
 
 export function getForkRemoteSettingsSectionParts(
   t: Translate
@@ -74,7 +75,9 @@ export function getForkRemoteSettingsSectionParts(
           'Start an automation when a signed webhook arrives, such as a failed CI run.'
         ),
         keywords: ['webhook', 'automation', 'ci', 'github', 'trigger', 'forkWebhooks']
-      }
+      },
+      // BAD-895: the Feedback address card.
+      feedbackEndpointSearchEntry(t)
     ]
   ]
 }
