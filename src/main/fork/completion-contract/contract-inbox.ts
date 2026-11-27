@@ -1,7 +1,8 @@
 // Completion contract (BAD-676, FORK.md): Tasks whose done checks failed past their rounds, as
 // Decision inbox rows. Installed from the one hook where the orchestration database opens, so the
-// rows return after a restart. A row leaves when its Task completes or when it is dismissed. A
-// later push that went red after the Task settled is a row too, until it is dismissed.
+// rows return after a restart. A row leaves when its Task settles on this host (completed, failed,
+// or its worker stopped or cancelled, BAD-820) or when it is dismissed. A later push that went red
+// after the Task settled is a row too, until it is dismissed.
 import type { OrchestrationDb } from '../../runtime/orchestration/db/orchestration-db'
 import type { ForkIdleRecoveryInboxItem } from '../../../shared/fork/idle-recovery-wire'
 import { RESULT_CHECK } from '../../../shared/fork/completion-contract'
@@ -14,15 +15,59 @@ import { listInboxWatches, updateWatch } from './later-push-store'
 import {
   listReviewEscalated,
   listReviewRuns,
-  setReviewEscalated
+  readReviewWorkerTold,
+  setReviewEscalated,
+  type ReviewWorkerTold
 } from '../reviewer-gate/reviewer-store'
 import { forkResultSchemaUseDb } from './result-schema-live'
+import { getActiveDispatchForTask } from '../../runtime/orchestration/db/dispatch-context/task-dispatch-reconciliation'
+import { remoteHoldOnTask } from '../../runtime/orchestration/db/remote-owned/remote-placements'
 
 const ROW_PREFIX = 'contract:'
 const PUSH_ROW_PREFIX = 'contract-push:'
 const REVIEW_ROW_PREFIX = 'contract-review:'
 
-type TaskReader = { db: OrchestrationDb['db']; taskStatus: (taskId: string) => string | null }
+type TaskReader = {
+  db: OrchestrationDb['db']
+  taskStatus: (taskId: string) => string | null
+  /** A worker still holds the Task on this host: an open Dispatch here, or an attempt on a server. */
+  taskHeld: (taskId: string) => boolean
+}
+
+/**
+ * BAD-820: an escalation row is a decision about a waiting worker. Once the Task this host holds
+ * has settled (task-update completed or failed, its worker stopped, its Run cancelled) there is
+ * none left to make. A Task this host does not know is not touched: its row is simply not shown.
+ */
+function settledHere(db: TaskReader, taskId: string): boolean {
+  const status = db.taskStatus(taskId)
+  if (status === null) {
+    return false
+  }
+  return status === 'completed' || status === 'failed' || !db.taskHeld(taskId)
+}
+
+/**
+ * BAD-820: resolves the rows of settled Tasks for good, so a later attempt of the Task does not
+ * inherit them. Runs on every read and once when the source is installed (rows left by an older
+ * build are swept at start). Returns how many it resolved.
+ */
+export function resolveSettledContractRows(db: TaskReader): number {
+  let resolved = 0
+  for (const taskId of listReviewEscalated(db)) {
+    if (settledHere(db, taskId)) {
+      setReviewEscalated(db, taskId, false)
+      resolved += 1
+    }
+  }
+  for (const taskId of listEscalated(db)) {
+    if (settledHere(db, taskId)) {
+      clearEscalation(db, taskId)
+      resolved += 1
+    }
+  }
+  return resolved
+}
 
 /** A settled Task whose pull request went red on a later push (later-push-watch.ts). */
 function laterPushItems(db: TaskReader): ForkIdleRecoveryInboxItem[] {
@@ -48,6 +93,7 @@ function laterPushItems(db: TaskReader): ForkIdleRecoveryInboxItem[] {
 }
 
 export function contractInboxItems(db: TaskReader): ForkIdleRecoveryInboxItem[] {
+  resolveSettledContractRows(db)
   return [...escalatedItems(db), ...reviewEscalatedItems(db), ...laterPushItems(db)]
 }
 
@@ -59,10 +105,13 @@ function reviewEscalatedItems(db: TaskReader): ForkIdleRecoveryInboxItem[] {
       return []
     }
     const last = listReviewRuns(db, taskId).at(-1)
-    const why =
-      last?.status === 'error'
-        ? `reviewer could not run: ${last.output.split('\n')[0]?.trim() || 'it gave no verdict'}`
-        : 'the review still has findings after its rounds'
+    const errored = last?.status === 'error'
+    const why = errored
+      ? `reviewer could not run: ${last.output.split('\n')[0]?.trim() || 'it gave no verdict'}`
+      : 'the review still has findings after its rounds'
+    const open = errored
+      ? `The Task is still open and ${toldText(readReviewWorkerTold(db, taskId))}`
+      : 'The Task is still open'
     return [
       {
         chatId: `${REVIEW_ROW_PREFIX}${taskId}`,
@@ -73,7 +122,7 @@ function reviewEscalatedItems(db: TaskReader): ForkIdleRecoveryInboxItem[] {
         worktreeId: null,
         verdict: 'stalled',
         question: '',
-        reason: `The worker is done but ${why}. The Task is still open and its worker was told to wait: accept it with task-update or re-dispatch it. Details: orca contract show ${taskId}`,
+        reason: `The worker is done but ${why}. ${open}: accept it with task-update or re-dispatch it. Details: orca contract show ${taskId}`,
         since: last
           ? Date.parse(`${(last.finishedAt ?? last.startedAt).replace(' ', 'T')}Z`) || Date.now()
           : Date.now(),
@@ -84,6 +133,20 @@ function reviewEscalatedItems(db: TaskReader): ForkIdleRecoveryInboxItem[] {
       }
     ]
   })
+}
+
+/** BAD-820: what the row says of the worker, as it happened. */
+function toldText(told: ReviewWorkerTold | null): string {
+  switch (told) {
+    case 'sent':
+      return 'its worker was told to wait'
+    case 'mailed':
+      return 'its worker could not be reached directly, so the message telling it to wait is in its orchestration mailbox'
+    case 'not-told':
+      return 'its worker could not be told to wait (it may still be waiting for the review result)'
+    case null:
+      return 'Orca is still telling its worker to wait'
+  }
 }
 
 function escalatedItems(db: TaskReader): ForkIdleRecoveryInboxItem[] {
@@ -119,10 +182,20 @@ function escalatedItems(db: TaskReader): ForkIdleRecoveryInboxItem[] {
 /** Idempotent; the newest database wins (there is one per runtime). */
 export function installForkContractInboxSource(db: OrchestrationDb): void {
   forkResultSchemaUseDb(db)
+  const reader: TaskReader = {
+    db: db.db,
+    taskStatus: (id) => db.getTask(id)?.status ?? null,
+    taskHeld: (id) =>
+      getActiveDispatchForTask(db, id) !== undefined || remoteHoldOnTask(db, id)?.active === true
+  }
+  try {
+    resolveSettledContractRows(reader)
+  } catch (error) {
+    console.warn('[fork completion contract] could not sweep settled inbox rows', error)
+  }
   registerForkInboxSource({
     id: 'contract',
-    items: async () =>
-      contractInboxItems({ db: db.db, taskStatus: (id) => db.getTask(id)?.status ?? null }),
+    items: async () => contractInboxItems(reader),
     // A row is not a chat: nothing is sent anywhere from it.
     answer: async () => null,
     dismiss: async (chatId) => {

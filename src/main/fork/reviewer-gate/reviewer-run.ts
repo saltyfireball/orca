@@ -16,7 +16,13 @@ import {
 } from '../../../shared/fork/reviewer-gate'
 import { reviewerFailureReason } from '../../../shared/fork/reviewer-gate-failure'
 import { tailLines } from '../../../shared/fork/completion-contract'
-import { finishReviewRun, setReviewEscalated } from './reviewer-store'
+import { notifyForkInboxSourceChanged } from '../idle-recovery/idle-recovery-sources'
+import {
+  finishReviewRun,
+  setReviewEscalated,
+  setReviewWorkerTold,
+  type ReviewWorkerTold
+} from './reviewer-store'
 import type { ReviewGateDeps, ReviewGateRequest, ReviewWorkspace } from './reviewer-gate'
 
 const HEAD_COMMAND =
@@ -55,17 +61,46 @@ async function deliverWithRetry(
   deps: ReviewGateDeps,
   dispatchId: string,
   text: string
-): Promise<void> {
+): Promise<boolean> {
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((done) => setTimeout(done, ms)))
   for (let attempt = 0; attempt <= DELIVERY_ATTEMPT_DELAYS_MS.length; attempt += 1) {
-    if (await deps.deliver(dispatchId, text).catch(() => false)) {
-      return
+    const delivered = await deps.deliver(dispatchId, text).catch(() => false)
+    if (delivered === 'unreachable') {
+      return false
+    }
+    if (delivered) {
+      return true
     }
     const delay = DELIVERY_ATTEMPT_DELAYS_MS[attempt]
     if (delay === undefined) {
-      return
+      return false
     }
     await sleep(delay)
+  }
+  return false
+}
+
+/**
+ * BAD-820: tells the worker the result and records how. A worker whose chat or terminal would not
+ * take the text (an idle terminal worker on a host that cannot prove its prompt is empty) still
+ * gets it in its orchestration mailbox, so a result is never dropped in silence.
+ */
+async function tellWorker(
+  deps: ReviewGateDeps,
+  request: ReviewGateRequest,
+  text: string
+): Promise<void> {
+  let told: ReviewWorkerTold = 'not-told'
+  if (await deliverWithRetry(deps, request.dispatchId, text)) {
+    told = 'sent'
+  } else if (deps.mail && (await deps.mail(request.dispatchId, text).catch(() => false))) {
+    told = 'mailed'
+  }
+  try {
+    setReviewWorkerTold(deps.db, request.taskId, told)
+    notifyForkInboxSourceChanged()
+  } catch {
+    // The record only words the inbox row; the worker was already told (or not) above.
   }
 }
 
@@ -184,5 +219,5 @@ export async function runReview(deps: ReviewGateDeps, input: ReviewInput): Promi
       // The Decision inbox row and the next done still carry it.
     }
   }
-  await deliverWithRetry(deps, request.dispatchId, letterFor(record, input.maxRounds))
+  await tellWorker(deps, request, letterFor(record, input.maxRounds))
 }

@@ -3101,7 +3101,8 @@ ones `SLRM-123 `).
     own handle and counts as failed), `forkCompletionContractOutputLines` (40),
     `forkCompletionContractLaterPushHours` (24, 0 to 168; 0 turns the later-push watch off).
   - **Decision inbox.** An escalated Task is a row "Task <id>" (`orca inbox list` shows it as
-    `done-checks`) until the Task completes or you dismiss it. It has no chat to answer: the
+    `done-checks`) until the Task settles on that host (completed, failed, or its worker stopped
+    or its Run cancelled, BAD-820) or you dismiss it. It has no chat to answer: the
     reason names `orca contract show`. The inbox source is installed where the orchestration
     database opens, so it lists after a restart once orchestration has been used.
   - **Deadline.** A check runs in its own process group (Windows: `taskkill /t`), so at the
@@ -3157,6 +3158,11 @@ ones `SLRM-123 `).
     it leaves with the Task or a clean head), and the worker is told its done is held because the
     reviewer failed and to wait, not to commit. The message is best effort (a coordinator reached
     only over a paired computer may not get it); the row and the next report still carry it.
+    The row is on the host that runs the worker and resolves for good once the Task settles
+    there: completed or failed, or its worker no longer holds it (stopped, Run cancelled). Rows an
+    older build left for settled Tasks are swept when the source is installed at start. The row
+    says how the worker heard (BAD-820): told to wait, the wait message in its orchestration
+    mailbox, not told, or still being told.
   - **Evidence.** `orca contract show <task_id>` also lists the review request and every run:
     reviewer, model, head, round, status, findings count and the findings text.
   - **Settings** (Settings > Blackfish, `orca settings`): `forkReviewerGate` (on; off makes every
@@ -3171,8 +3177,11 @@ ones `SLRM-123 `).
     wrong verdict: a clean verdict is evidence, not proof.
   - **Limits.** Folder (non-git) workspaces have no commit, so they are not reviewed. The gate runs
     on the host that holds the Task's database. The result message is sent when the worker is idle
-    (retried for about 8 minutes); a worker that never receives it is not stopped, but nothing
-    wakes it. The review does not use the agent launch queue (BAD-518); `forkReviewerGateMaxConcurrent`
+    (retried for about 5 minutes); one its chat or terminal never took (an idle terminal worker
+    whose empty prompt the host cannot prove, as on a headless server) is filed in the worker's
+    orchestration mailbox (`dispatch:<id>`) instead, where Orca's mail delivery types it in once
+    the terminal can take it and `orca orchestration check` shows it. A worker with neither a chat
+    nor a pane here goes to the mailbox at once. Nothing else wakes a worker that reads neither. The review does not use the agent launch queue (BAD-518); `forkReviewerGateMaxConcurrent`
     bounds it. An escalated review (reviewer could not run, or findings past the rounds) is a Decision inbox row too (BAD-820).
   - Code is in `src/main/fork/reviewer-gate/` (`reviewer-gate.ts` the engine over the store,
     `reviewer-store.ts`, `reviewer-gate-live.ts` the hooks), `src/shared/fork/reviewer-gate.ts`
@@ -4101,6 +4110,7 @@ Apply these in this order. Each one is a single commit.
 224. `BAD-818 Idle recovery's guarded send ports are start primitives of the pause-all starter table: boundary compaction asks no chat to compact while paused and sweeps at resume-all; an agent guard's loop note that would start a turn waits for resume-all, one into a running turn and every stop still go`
 225. `BAD-818 The host words a letter's receipt and pause-status's held line and the CLI prints them, so a sender's older CLI no longer says "queued" of a letter Pause all holds; pause-status counts the letters queued here and prints its held line whenever paused, also with nothing held`
 226. `BAD-840 The hop-limit inbox entry names each held exchange (or says two bots kept naming each other) and says Continue once, and orca inbox pause on a source's row prints dismissed instead of resumed`
+227. `BAD-820 The Decision inbox row of an escalated review or done check resolves once its Task settles on the host that holds it (completed, failed, worker stopped or Run cancelled), and rows left for settled Tasks are swept at start; a review result the worker's chat or terminal would not take is filed in its orchestration mailbox, and the reviewer-error row says how the worker was told`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`

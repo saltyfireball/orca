@@ -26,6 +26,7 @@ import {
   saveReviewGate,
   setRepeatReports,
   setReviewEscalated,
+  setReviewWorkerTold,
   startReviewRun,
   type ReviewDbHandle
 } from './reviewer-store'
@@ -43,8 +44,16 @@ export type ReviewGateDeps = {
   workspace: (worktreeId: string | null) => Promise<ReviewWorkspace | null>
   /** The agent kind the worker runs, from how it was started. */
   workerAgent: (dispatchId: string) => string | null
-  /** Tells the worker a result; false when it could not be delivered. */
-  deliver: (dispatchId: string, text: string) => Promise<boolean>
+  /**
+   * Tells the worker a result; false when it could not be delivered now, 'unreachable' when it
+   * never can be here (no chat session and no terminal pane), so no retry is worth waiting for.
+   */
+  deliver: (dispatchId: string, text: string) => Promise<boolean | 'unreachable'>
+  /**
+   * BAD-820: files a result `deliver` could not hand over in the worker's orchestration mailbox,
+   * where Orca's own mail delivery and `check` reach it; false when the worker has no mailbox here.
+   */
+  mail?: (dispatchId: string, text: string) => Promise<boolean>
   platform?: NodeJS.Platform
   /** The name of this host, for the line a skipped review leaves. */
   host?: () => string
@@ -174,6 +183,7 @@ export function runReviewGate(
         const runId = startRun()
         setRepeatReports(deps.db, request.taskId, 0)
         setReviewEscalated(deps.db, request.taskId, false)
+        setReviewWorkerTold(deps.db, request.taskId, null)
         void runReview(deps, {
           runId,
           request,

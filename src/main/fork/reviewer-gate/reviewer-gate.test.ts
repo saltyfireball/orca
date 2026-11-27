@@ -3,7 +3,12 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { readReviewerGateSettings } from '../../../shared/fork/reviewer-gate'
 import type { CheckRunner } from '../completion-contract/check-runner'
 import { runReviewGate, type ReviewGateDeps, type ReviewGateRequest } from './reviewer-gate'
-import { listReviewRuns, readReviewGate, saveReviewGate } from './reviewer-store'
+import {
+  listReviewRuns,
+  readReviewGate,
+  readReviewWorkerTold,
+  saveReviewGate
+} from './reviewer-store'
 
 const handles: Database.Database[] = []
 afterEach(() => {
@@ -237,6 +242,53 @@ describe('runReviewGate', () => {
         kind: 'hold',
         text: expect.stringContaining('has not changed')
       })
+    })
+  })
+
+  describe('a worker whose terminal will not take the text (BAD-820)', () => {
+    it('gets the wait letter in its mailbox after the direct tries, and the gate records it', async () => {
+      const f = fixture()
+      const tries: string[] = []
+      const mailed: string[] = []
+      const deps: ReviewGateDeps = {
+        ...f.deps,
+        deliver: async (_dispatchId, text) => {
+          tries.push(text)
+          return false
+        },
+        mail: async (dispatchId, text) => {
+          mailed.push(`${dispatchId}: ${text}`)
+          return true
+        }
+      }
+      f.state.replies.push('no verdict here', 'still nothing')
+      await runReviewGate(deps, f.request)
+      await f.settled()
+      expect(tries.length).toBeGreaterThan(1)
+      expect(mailed).toHaveLength(1)
+      expect(mailed[0]).toContain('ctx_1: Your done is held because the reviewer failed')
+      expect(readReviewWorkerTold({ db: f.db }, 'task_1')).toBe('mailed')
+    })
+
+    it('records that the worker was told when the direct send took it', async () => {
+      const f = fixture()
+      f.state.replies.push('no verdict here', 'still nothing')
+      await runReviewGate(f.deps, f.request)
+      await f.settled()
+      expect(readReviewWorkerTold({ db: f.db }, 'task_1')).toBe('sent')
+    })
+
+    it('records that nobody told the worker when it has no mailbox either', async () => {
+      const f = fixture()
+      const deps: ReviewGateDeps = {
+        ...f.deps,
+        deliver: async () => 'unreachable',
+        mail: async () => false
+      }
+      f.state.replies.push('no verdict here', 'still nothing')
+      await runReviewGate(deps, f.request)
+      await f.settled()
+      expect(readReviewWorkerTold({ db: f.db }, 'task_1')).toBe('not-told')
     })
   })
 

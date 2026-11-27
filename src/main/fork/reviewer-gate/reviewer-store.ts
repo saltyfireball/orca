@@ -53,6 +53,10 @@ function ensureTables(handle: ReviewDbHandle): Database.Database {
     if (!columns.some((column) => column.name === 'implicit')) {
       db.exec('ALTER TABLE fork_review_gates ADD COLUMN implicit INTEGER NOT NULL DEFAULT 0')
     }
+    // BAD-820: how the worker heard the last review result, so the Decision inbox row says what happened.
+    if (!columns.some((column) => column.name === 'worker_told')) {
+      db.exec('ALTER TABLE fork_review_gates ADD COLUMN worker_told TEXT')
+    }
     ready.add(db)
   }
   return db
@@ -109,7 +113,8 @@ export function saveReviewGate(
     .prepare(
       `INSERT INTO fork_review_gates (task_id, focus, agent, max_rounds, implicit) VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(task_id) DO UPDATE SET focus = excluded.focus, agent = excluded.agent,
-         max_rounds = excluded.max_rounds, implicit = excluded.implicit, repeat_reports = 0, escalated = 0`
+         max_rounds = excluded.max_rounds, implicit = excluded.implicit, repeat_reports = 0, escalated = 0,
+         worker_told = NULL`
     )
     .run(taskId, gate.focus, gate.agent, gate.maxRounds, implicit ? 1 : 0)
 }
@@ -145,6 +150,33 @@ export function setReviewEscalated(
   ensureTables(handle)
     .prepare('UPDATE fork_review_gates SET escalated = ? WHERE task_id = ?')
     .run(escalated ? 1 : 0, taskId)
+}
+
+/**
+ * BAD-820: how the last review result reached the worker. 'sent' into its chat or terminal,
+ * 'mailed' to its orchestration mailbox when that could not be done, 'not-told' when neither
+ * worked; null while Orca is still trying (or before any result).
+ */
+export type ReviewWorkerTold = 'sent' | 'mailed' | 'not-told'
+
+export function setReviewWorkerTold(
+  handle: ReviewDbHandle,
+  taskId: string,
+  told: ReviewWorkerTold | null
+): void {
+  ensureTables(handle)
+    .prepare('UPDATE fork_review_gates SET worker_told = ? WHERE task_id = ?')
+    .run(told, taskId)
+}
+
+export function readReviewWorkerTold(
+  handle: ReviewDbHandle,
+  taskId: string
+): ReviewWorkerTold | null {
+  const row = ensureTables(handle)
+    .prepare('SELECT worker_told FROM fork_review_gates WHERE task_id = ?')
+    .get(taskId) as { worker_told: ReviewWorkerTold | null } | undefined
+  return row?.worker_told ?? null
 }
 
 /** Tasks whose review escalated and is not yet answered, for the Decision inbox. */

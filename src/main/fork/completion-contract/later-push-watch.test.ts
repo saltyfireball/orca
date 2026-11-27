@@ -200,9 +200,9 @@ describe('a push after a --require-pr-checks Task settled', () => {
     expect(sent!.body).toContain('Orca did not reopen or change the settled Task')
     // The check name is GitHub's text: fenced longer than any backtick run in it.
     expect(sent!.body).toContain('``text\nlint `rm -rf`\n``')
-    expect(contractInboxItems({ db: db.db, taskStatus: () => 'completed' })).toMatchObject([
-      { chatId: `contract-push:${task.id}`, source: 'contract' }
-    ])
+    expect(
+      contractInboxItems({ db: db.db, taskStatus: () => 'completed', taskHeld: () => false })
+    ).toMatchObject([{ chatId: `contract-push:${task.id}`, source: 'contract' }])
 
     await vi.advanceTimersByTimeAsync(90 * MINUTE)
     expect(escalations(db)).toHaveLength(1)

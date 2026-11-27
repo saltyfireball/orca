@@ -55,7 +55,13 @@ export function forkReviewerGateSettings(runtime: OrcaRuntimeService): ReviewerG
 }
 
 /** A message into the worker's own chat (or terminal), the way a person's message is sent. */
-async function deliverToWorker(subject: GateSubject, text: string): Promise<boolean> {
+async function deliverToWorker(
+  subject: GateSubject,
+  text: string
+): Promise<boolean | 'unreachable'> {
+  if (!subject.sessionId && !subject.paneKey) {
+    return 'unreachable'
+  }
   const agent = subject.agent ?? ''
   if (subject.sessionId) {
     const outcome = await sendIdleRecoveryAnswer(subject.sessionId, text, { kind: 'chat', agent })
@@ -69,6 +75,41 @@ async function deliverToWorker(subject: GateSubject, text: string): Promise<bool
     )
   }
   return false
+}
+
+/**
+ * BAD-820: a result the worker's chat or terminal would not take goes to its orchestration
+ * mailbox (`dispatch:<id>`), as a coordinator's message would. Orca's mail delivery types it in
+ * when the terminal can take it, and `orca orchestration check` shows it either way.
+ */
+function mailToWorker(
+  runtime: OrcaRuntimeService,
+  db: OrchestrationDb,
+  taskId: string,
+  dispatchId: string,
+  text: string
+): boolean {
+  // A worker a paired computer attached here has its Run there; its mail goes home, not here.
+  const context = db.getDispatchContextById(dispatchId)
+  if (!context || (context.status !== 'pending' && context.status !== 'dispatched')) {
+    return false
+  }
+  const runId = context.run_id
+  const to = `dispatch:${dispatchId}`
+  const message = db.insertMessage({
+    from: db.getRun(runId)?.coordinator_handle ?? `run:${runId}`,
+    to,
+    subject: `Review gate: Task ${taskId}`,
+    body: text,
+    type: 'status',
+    runId
+  })
+  try {
+    runtime.notifyMessageArrived(message.to_handle, message.type)
+  } catch {
+    // The mail is stored: delivery's own recheck and the worker's next check still find it.
+  }
+  return true
 }
 
 function liveReviewDeps(
@@ -88,6 +129,7 @@ function liveReviewDeps(
     },
     workerAgent: () => subject.agent,
     deliver: (_dispatchId, text) => deliverToWorker(subject, text),
+    mail: async (dispatchId, text) => mailToWorker(runtime, db, subject.taskId, dispatchId, text),
     // BAD-820: a reviewer that could not run tells the Run's coordinator now; the worker is waiting.
     escalate: async ({ taskId, dispatchId, text }) => {
       const context = db.getDispatchContextById(dispatchId)
