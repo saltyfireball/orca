@@ -63,6 +63,7 @@ import { ForkApprovalTriageSetting } from '../approval-triage/ForkApprovalTriage
 import { ForkPromptStashSetting } from '../prompt-stash/ForkPromptStashSetting'
 import { ForkSavedPromptsSetting } from '../saved-prompts/ForkSavedPromptsSetting'
 import { ForkWorkspaceTagsSetting } from '../workspace-tags/ForkWorkspaceTagsSetting'
+import { ForkThirdPartyNoticesSetting } from '../third-party-notices/ForkThirdPartyNoticesSetting'
 import { ForkProjectSettingsList } from './ForkProjectSettingsList'
 import { ForkSettingsSectionLinks } from './ForkSettingsSectionLinks'
 import { getForkSettingsSections, type ForkSettingsSectionId } from './fork-settings-pane-catalog'
@@ -148,7 +149,8 @@ const SECTION_CARDS: Record<
     ['feedback-endpoint', ForkFeedbackEndpointSetting],
     ['stably-cloud', ForkStablyCloudSetting]
   ],
-  sync: [['sync-notice', ForkSyncNoticeSetting]]
+  sync: [['sync-notice', ForkSyncNoticeSetting]],
+  about: [['third-party-notices', ForkThirdPartyNoticesSetting]]
 }
 
 /** One feature's settings. The markers are what a Settings search jump lands on and tints. */

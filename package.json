@@ -50,6 +50,7 @@
     "check:max-lines-ratchet": "node config/scripts/static-analysis/ratchets/source-budget/check-max-lines-ratchet.mjs",
     "check:ts-nocheck-ratchet": "node config/scripts/static-analysis/ratchets/source-budget/check-ts-nocheck-ratchet.mjs",
     "check:private-names": "node config/scripts/fork/check-private-names.mjs",
+    "notices:generate": "node config/scripts/fork/third-party-notices.mjs && node config/scripts/fork/third-party-notices.mjs mobile --production",
     "check:injected-context-ratchet": "node config/scripts/static-analysis/ratchets/source-budget/check-injected-context-ratchet.mjs",
     "check:host-list-render-ratchet": "node config/scripts/static-analysis/ratchets/renderer-state/check-host-list-render-ratchet.mjs",
     "check:whole-hot-map-selector-ratchet": "node config/scripts/static-analysis/ratchets/renderer-state/check-whole-hot-map-selector-ratchet.mjs",

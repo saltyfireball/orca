@@ -3,6 +3,8 @@ import { View, Text } from 'react-native'
 import { Globe } from 'lucide-react-native'
 import Svg, { Path } from 'react-native-svg'
 import { OrcaLogo } from '../components/icons/OrcaLogo'
+import { MobileThirdPartyNoticesRow } from '../components/fork/third-party-notices/MobileThirdPartyNotices'
+import { thirdPartyNoticesShipped } from '../components/fork/third-party-notices/third-party-notices-file'
 import { LIST_LEADING_INSET, ListRow } from '../components/list/ListGroup'
 import { useMobileTranslation } from '../i18n/use-mobile-translation'
 import { colors, spacing, typography } from '../theme/mobile-theme'
@@ -77,6 +79,7 @@ export default function AboutScreen({
           accessibilityLabel={t('settings.aboutScreen.socialProfile', 'Orca on X')}
           onPress={() => openLink('https://x.com/orca_build')}
         />
+        {thirdPartyNoticesShipped() ? <MobileThirdPartyNoticesRow key="notices" /> : null}
       </SettingsSection>
 
       <Text style={styles.versionText}>{versionLabel}</Text>

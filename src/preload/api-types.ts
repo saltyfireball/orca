@@ -108,6 +108,7 @@ import type { ForkReviewGuideApi } from '../shared/fork/review-guide-wire'
 import type { ForkLettersApi } from '../shared/fork/letters-wire'
 import type { ForkQuickTaskApi } from '../shared/fork/quick-task'
 import type { ForkSyncStatusApi } from '../shared/fork/fork-sync-status'
+import type { ForkThirdPartyNoticesApi } from '../shared/fork/third-party-notices'
 import type { ForkWorkerCleanupApi } from '../shared/fork/worker-cleanup'
 import type { ForkMcpProfilesApi } from '../shared/fork/mcp-profiles'
 import type { ForkUsageLedgerApi } from '../shared/fork/usage-ledger'
@@ -200,6 +201,8 @@ export type PreloadApi = {
   forkUsageLedger?: ForkUsageLedgerApi
   /** Fork sync status; desktop only. */
   forkSyncStatus?: ForkSyncStatusApi
+  /** Fork third-party notices (BAD-897); desktop only. */
+  forkThirdPartyNotices?: ForkThirdPartyNoticesApi
   /** Fork idle recovery and the Decision inbox; desktop only. */
   forkIdleRecovery?: ForkIdleRecoveryApi
   /** Fork snooze (SLRM-2269); desktop only. */

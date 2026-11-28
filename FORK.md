@@ -40,6 +40,43 @@ ones `SLRM-123 `).
 
 ## What the fork changes
 
+- **Third-party notices (BAD-897).** The desktop and iOS apps ship a notices file:
+  `THIRD_PARTY_NOTICES.txt` at the repo root for the desktop and `mobile/THIRD_PARTY_NOTICES.txt`
+  for the iOS app. Each starts with the MIT notices of Orca (Lovecast Inc., the upstream this app
+  is built on) and T3 Code (T3 Tools Inc., whose designs several fork features port), written by
+  hand, then every package in that tree's `pnpm-lock.yaml` with the license files it ships.
+  - **Regenerating.** `pnpm run notices:generate` rewrites both files before a release; both trees
+    must be installed (it refuses a tree with no `node_modules`). The generator,
+    `config/scripts/fork/third-party-notices.mjs`, walks the lockfile from every importer through the
+    snapshots (peer variants included, `link:` and `workspace:` skipped), finds each package the way
+    Node does from its parent's folder, and checks that the installed version is the lockfile's.
+    Each distinct license text is printed once, under the packages that ship it (line endings
+    normalized). Then come the packages that ship no license file (with their `license` field), the
+    platform binary packages (any lockfile entry with `os`, `cpu` or `libc`, listed by name with the
+    package that pulls each in, never read, so the file is the same on every machine), and anything
+    the lockfile lists that is not installed. The desktop keeps devDependencies, because its
+    renderer bundles packages listed there; the iOS file is `--production` (Metro bundles the
+    app's dependencies only).
+  - **Desktop.** The builder overlay (`electron-builder.fork.config.cjs`) adds the file to the
+    resources folder of the mac, win and linux builds. Settings > Blackfish > About has the
+    Third-party notices card: Open runs `window.api.forkThirdPartyNotices.open`, and main
+    (`src/main/fork/third-party-notices/third-party-notices-bridge.ts`) opens
+    `<resources>/THIRD_PARTY_NOTICES.txt` with the system's text viewer (in a dev run, the repo
+    root's copy). A missing file or a failed open shows a toast with the reason. The bridge is
+    installed from `installForkReady`.
+  - **iOS.** The config plugin `mobile/plugins/fork/ios-third-party-notices.js` copies the file
+    into the app's folder at prebuild and adds it to the app target's Resources phase, once however
+    often prebuild runs. Settings > About has a Third-party notices row (iOS only; Android builds do
+    not ship the file) that opens the file read from the bundle (`expo-file-system`
+    `Paths.bundle`) in a full-screen list.
+  - **Tests.** `third-party-notices.test.mjs` runs the generator on a two-document fixture lockfile
+    and a pnpm-style folder tree: hand notices, grouping by text across CRLF, an alias, a platform
+    package, a version mismatch reported as not installed, a skipped workspace link, and
+    `--production`. `third-party-notices-packaged.test.ts` lays out the overlay's own mapping as
+    electron-builder copies it, for mac, win and linux, and checks that the path the About card
+    opens is that file. `ios-third-party-notices-plugin.test.ts` adds the resource twice to a
+    fixture Xcode project (one file reference, one Resources entry) and checks the shipped file.
+
 - **Feedback and crash reports stay local (BAD-895).** Upstream posts Send Feedback, crash and
   freeze reports, language requests and the phone's connection diagnostics to its own service
   (`orca.dev/v1/feedback`). A fork build posts nothing there: the address is the setting
@@ -4390,6 +4427,7 @@ Apply these in this order. Each one is a single commit.
 235. `BAD-899 The CLI typecheck project no longer pulls src/main/bots: the own-removal seam types botChatTreeIndex structurally instead of importing BotChatTreeIndex (a type import still adds the file and its imports to the program); behavior unchanged`
 236. `BAD-873 Custom ACP agents: orca agent custom add|list|remove saves a program that speaks ACP over stdio (env values in a private 0600 store, never settings or argv); a native chat starts on it from orca agent launch --agent <name> or the + menu, and a bot runs on it with orca bot set --agent <name>; SOUL.md and MEMORY.md reach it only as _meta.orca.systemPrompt when it advertises that capability, and an --owns-prompt agent gets the bot rules only, as _meta.orca.context`
 237. `BAD-896 One setting, forkStablyCloudEnabled, turns off every upstream-hosted cloud service (sign-in, phone relay, phone push, connector, share links, what's-new feeds, plugin install counts and safety list) so no request goes to an upstream host; unset follows the build default (ORCA_FORK_STABLY_CLOUD_DEFAULT=on, off when the build sets nothing); direct phone pairing is unaffected`
+238. `BAD-897 Third-party notices: pnpm run notices:generate writes THIRD_PARTY_NOTICES.txt (desktop) and mobile/THIRD_PARTY_NOTICES.txt (iOS) from each lockfile and the installed packages' license files, with the Orca and T3 Code MIT notices by hand; the builder overlay ships it in the mac, win and linux resources and an iOS config plugin in the app bundle; Settings > Blackfish > About and the phone's Settings > About open it`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5997,6 +6035,11 @@ Upstream files only get short hooks, which keeps merges small:
   without it. `ForkTextSetting.tsx` takes the key, `ForkSettingsPane.tsx` and
   `endpoint-failover-search.ts` list the card, `fork-global-settings.ts` intersects the setting;
   the settings catalog is regenerated.
+- Third-party notices (BAD-897), small edits in stock files: `src/preload/index.ts` and
+  `api-types.ts` add `forkThirdPartyNotices` (one import and one line each); `package.json` adds
+  the `notices:generate` script; on mobile `app.json` lists `ios-third-party-notices.js` and
+  `about-screen.tsx` renders `MobileThirdPartyNoticesRow` behind `thirdPartyNoticesShipped()`.
+  No setting, so no catalog change.
 
 - Upstream cloud switch (BAD-896), small edits in stock files, each a call to
   `src/main/fork/stably-cloud/stably-cloud-source.ts`: `profile-cloud-auth-config.ts` returns

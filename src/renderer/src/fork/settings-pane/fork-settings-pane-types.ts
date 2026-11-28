@@ -10,6 +10,7 @@ export type ForkSettingsSectionId =
   | 'projects'
   | 'remote'
   | 'sync'
+  | 'about'
 
 export type ForkSettingsSection = {
   id: ForkSettingsSectionId

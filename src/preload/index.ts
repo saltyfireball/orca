@@ -116,6 +116,7 @@ import { forkWorkerCleanupApi } from './fork/worker-cleanup-bridge'
 import { forkMcpProfilesApi } from './fork/mcp-profiles-bridge'
 import { forkUsageLedgerApi } from './fork/usage-ledger-bridge'
 import { forkSyncStatusApi } from './fork/sync-status-bridge'
+import { forkThirdPartyNoticesApi } from './fork/third-party-notices-bridge'
 import { forkIdleRecoveryApi } from './fork/idle-recovery-bridge'
 
 installBrowserFindListener()
@@ -216,6 +217,7 @@ const api = {
   forkMcpProfiles: forkMcpProfilesApi,
   forkUsageLedger: forkUsageLedgerApi,
   forkSyncStatus: forkSyncStatusApi,
+  forkThirdPartyNotices: forkThirdPartyNoticesApi,
   forkIdleRecovery: forkIdleRecoveryApi,
   forkSnooze: forkSnoozeApi,
   forkClashes: forkClashesApi,

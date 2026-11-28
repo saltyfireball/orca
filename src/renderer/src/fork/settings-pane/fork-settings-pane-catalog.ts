@@ -28,6 +28,7 @@ import { prNudgeSearchEntry } from '../pr-nudge/pr-nudge-search-entry'
 import { idleRecoverySearchEntry } from '../idle-recovery/idle-recovery-search-entry'
 import { mainSyncSearchEntry } from '../main-sync/main-sync-search-entry'
 import { rowStatusSearchEntry } from '../row-status/row-status-search-entry'
+import { getForkAboutSectionParts } from '../third-party-notices/third-party-notices-search-entry'
 import {
   forkChatExtrasSearchEntries,
   forkWorkspaceTagsSearchEntry
@@ -281,7 +282,8 @@ export function getForkSettingsSections(t: Translate = translate): ForkSettingsS
           keywords: words('upstream', 'behind', 'update', 'notice', 'forkSyncNotice')
         }
       ]
-    )
+    ),
+    section('about', ...getForkAboutSectionParts(t))
   ]
 }
 

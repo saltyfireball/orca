@@ -11,10 +11,18 @@ const FORK_PRODUCT_NAME = 'Blackfish'
 // The fork ships Apple Silicon only: an x64 slice must boot its terminal host under Rosetta,
 // which the fork's runners and Macs do not need.
 const FORK_MAC_ARCH = ['arm64']
+// Settings > Blackfish > About opens it from the resources folder (BAD-897). Keep the name in sync
+// with src/shared/fork/third-party-notices.ts.
+const NOTICES_RESOURCE = { from: 'THIRD_PARTY_NOTICES.txt', to: 'THIRD_PARTY_NOTICES.txt' }
 
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
   ...upstream,
+  win: { ...upstream.win, extraResources: [...upstream.win.extraResources, NOTICES_RESOURCE] },
+  linux: {
+    ...upstream.linux,
+    extraResources: [...upstream.linux.extraResources, NOTICES_RESOURCE]
+  },
   appId: 'com.saltyfireball.orca',
   productName: FORK_PRODUCT_NAME,
   extraMetadata: { ...upstream.extraMetadata, productName: FORK_PRODUCT_NAME },
@@ -25,6 +33,7 @@ module.exports = {
     // Upstream's release signer: one codesign call per group of files instead of one per file,
     // which took most of the fork's build time. Upstream sets it only for its own release builds.
     sign: resolve(__dirname, '../desktop-distribution/macos/sign-mac-app.mjs'),
+    extraResources: [...upstream.mac.extraResources, NOTICES_RESOURCE],
     target: upstream.mac.target.map((entry) =>
       typeof entry === 'string'
         ? { target: entry, arch: FORK_MAC_ARCH }

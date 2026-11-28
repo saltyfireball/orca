@@ -15,6 +15,7 @@ import {
 } from './command-guards/command-guards-install'
 import { installForkStablyCloudSource } from './stably-cloud/stably-cloud-source'
 import { installForkQuickTask } from './quick-task/quick-task-app'
+import { installForkThirdPartyNoticesBridge } from './third-party-notices/third-party-notices-bridge'
 
 export { forkPostReadyAppName } from './app-name'
 
@@ -38,5 +39,7 @@ export async function installForkReady(
   installForkPrNudge(store)
   // SLRM-2428: the quick task box and its global shortcut.
   installForkQuickTask(store)
+  // BAD-897: Settings > Blackfish > About opens the bundled third-party notices.
+  installForkThirdPartyNoticesBridge()
   await installForkChatSurvive(store)
 }
