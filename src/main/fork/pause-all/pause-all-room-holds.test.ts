@@ -14,6 +14,7 @@ vi.mock('../../../shared/app-lifecycle/app-environment', () => ({
 }))
 
 import { startBotGroupsSoon } from '../../bots/bot-group-runtime'
+import { resetForkInboxSourcesForTests } from '../idle-recovery/idle-recovery-sources'
 import { room } from '../bot-room-hops/bot-room-hops-test-room'
 import { countPauseAllRoomHolds } from './pause-all-room-hold-store'
 import { releaseForkPauseAllRoomHolds } from './pause-all-room-release'
@@ -28,6 +29,7 @@ beforeEach(() => {
   resetForkPauseAllCacheForTests()
 })
 afterEach(() => {
+  resetForkInboxSourcesForTests()
   rmSync(paths.userData, { recursive: true, force: true })
 })
 

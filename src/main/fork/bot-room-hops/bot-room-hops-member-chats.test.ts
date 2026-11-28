@@ -11,7 +11,10 @@ import { noteBotGroupMemberReply } from '../../bots/bot-group-latest'
 import { handOffGroupMentions } from '../../bots/bot-group-mention-handoffs'
 import { setStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import type { StructuredAgentSessionHost } from '../../native-chat/agent-session-wire/host/structured-agent-session-host'
-import { answerFromInboxSource } from '../idle-recovery/idle-recovery-sources'
+import {
+  answerFromInboxSource,
+  resetForkInboxSourcesForTests
+} from '../idle-recovery/idle-recovery-sources'
 import { readBotRoomHopHold, settleBotRoomHopHold } from './bot-room-hop-store'
 import { pingPong, room, type Room } from './bot-room-hops-test-room'
 
@@ -77,6 +80,7 @@ beforeEach(() => {
   setStructuredAgentSessionHost(host as unknown as StructuredAgentSessionHost)
 })
 afterEach(() => {
+  resetForkInboxSourcesForTests()
   setStructuredAgentSessionHost(null)
   journals.clear()
   rmSync(dir, { recursive: true, force: true })

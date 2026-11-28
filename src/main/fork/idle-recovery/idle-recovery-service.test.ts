@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ForkGlobalSettings } from '../../../shared/fork/fork-global-settings'
 import type { ForkBackoffTimerOptions } from '../fork-backoff-timer'
 import {
@@ -8,7 +8,7 @@ import {
   type IdleRecoveryStore
 } from './idle-recovery-service'
 import { emptyIdleRecoveryState, type IdleRecoveryStoredState } from './idle-recovery-state'
-import { registerForkInboxSource } from './idle-recovery-sources'
+import { registerForkInboxSource, resetForkInboxSourcesForTests } from './idle-recovery-sources'
 import { runIdleRecoverySweep } from './idle-recovery-sweep'
 import { fakeSweepWorld, testCandidate, testVerdict } from './idle-recovery-sweep-fixtures'
 
@@ -78,6 +78,11 @@ function harness(initial: Settings = { forkIdleSweepMode: 'wake' }) {
   ctx.service.start(ctx.store.getSettings, { store: () => ctx.store })
   return ctx
 }
+
+// A source another test file's runtime registered must not list rows here.
+beforeEach(() => {
+  resetForkInboxSourcesForTests()
+})
 
 const waiting = testVerdict({ verdict: 'waiting_user', question: 'Which one?' })
 

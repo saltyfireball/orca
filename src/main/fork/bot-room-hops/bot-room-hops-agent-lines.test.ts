@@ -1,9 +1,16 @@
 // Bot room hops (BAD-844): only a person's post starts a new count. A room line agents made (an
 // item change, a late worker report) carries on its chain, and a turn cap bounds fan-out.
-import { describe, expect, it } from 'vitest'
-import { answerFromInboxSource } from '../idle-recovery/idle-recovery-sources'
+import { afterEach, describe, expect, it } from 'vitest'
+import {
+  answerFromInboxSource,
+  resetForkInboxSourcesForTests
+} from '../idle-recovery/idle-recovery-sources'
 import { botRoomHandOffDepth } from './bot-room-hop-store'
 import { pingPong, room, type Room } from './bot-room-hops-test-room'
+
+afterEach(() => {
+  resetForkInboxSourcesForTests()
+})
 
 /** Ada and Bo name each other under post-1 until the limit of 3 holds the fourth hand-off. */
 async function heldAtLimit(): Promise<Room> {

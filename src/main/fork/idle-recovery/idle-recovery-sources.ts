@@ -63,6 +63,11 @@ export function registerForkInboxSource(source: ForkInboxSource): () => void {
   }
 }
 
+/** Drops every registered source: a test that installs a feature's source clears it when done. */
+export function resetForkInboxSourcesForTests(): void {
+  inboxSources.clear()
+}
+
 /** The source's answer; 'not-found' when it has no such row. */
 export async function answerFromInboxSource(
   id: ForkInboxSource['id'],

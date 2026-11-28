@@ -1,6 +1,7 @@
 // Bot room hop limit (BAD-801): bots naming each other in a group room (bot-room-hops-test-room.ts).
 // No native session host here, so each woken turn's send fails and the test writes each reply.
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { resetForkInboxSourcesForTests } from '../idle-recovery/idle-recovery-sources'
 import {
   answerFromInboxSource,
   onForkInboxSourceChanged,
@@ -13,6 +14,10 @@ import {
 import { FORK_INBOX_HANDLERS } from '../../../cli/fork/inbox-handlers'
 import type { HandlerContext } from '../../../cli/dispatch/dispatch'
 import { pingPong, room } from './bot-room-hops-test-room'
+
+afterEach(() => {
+  resetForkInboxSourcesForTests()
+})
 
 describe('bot room hop limit', () => {
   it('stops two bots naming each other at the limit with one entry, and Continue counts afresh once', async () => {
