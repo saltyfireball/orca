@@ -40,6 +40,9 @@ const ORCA_POSTHOG_WRITE_KEY_LITERAL =
   typeof orcaPostHogWriteKey === 'string' && orcaPostHogWriteKey.length > 0
     ? JSON.stringify(orcaPostHogWriteKey)
     : 'null'
+// Fork (BAD-896): ORCA_FORK_STABLY_CLOUD_DEFAULT=on builds with upstream's cloud services on until the setting says otherwise; anything else is off.
+const ORCA_FORK_STABLY_CLOUD_DEFAULT_LITERAL =
+  process.env.ORCA_FORK_STABLY_CLOUD_DEFAULT === 'on' ? 'true' : 'false'
 const orcaDiagnosticsTokenUrl = process.env.ORCA_DIAGNOSTICS_TOKEN_URL
 const ORCA_DIAGNOSTICS_TOKEN_URL_LITERAL =
   typeof orcaDiagnosticsTokenUrl === 'string' && orcaDiagnosticsTokenUrl.length > 0
@@ -231,6 +234,7 @@ export const electronViteConfig: UserConfig = {
       ORCA_POSTHOG_WRITE_KEY: ORCA_POSTHOG_WRITE_KEY_LITERAL,
       ORCA_DIAGNOSTICS_TOKEN_URL: ORCA_DIAGNOSTICS_TOKEN_URL_LITERAL,
       ORCA_BUILD_COMMIT: ORCA_BUILD_COMMIT_LITERAL,
+      ORCA_FORK_STABLY_CLOUD_DEFAULT: ORCA_FORK_STABLY_CLOUD_DEFAULT_LITERAL,
       ...DARK_BUILD_DEFINES
     },
     // @xterm/headless declares exports:null; point Vite directly at its published CJS main to permit inlining.
@@ -254,6 +258,7 @@ export const electronViteConfig: UserConfig = {
     cacheDir: resolve('.cache/vite/renderer'),
     define: {
       ORCA_BUILD_COMMIT: ORCA_BUILD_COMMIT_LITERAL,
+      ORCA_FORK_STABLY_CLOUD_DEFAULT: ORCA_FORK_STABLY_CLOUD_DEFAULT_LITERAL,
       ...DARK_BUILD_DEFINES
     },
     resolve: {

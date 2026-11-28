@@ -1,3 +1,7 @@
+import {
+  assertForkStablyCloudOn,
+  currentForkStablyCloudEnabled
+} from '../../fork/stably-cloud/stably-cloud-source'
 import { readFile, stat, mkdir } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import {
@@ -80,7 +84,12 @@ export class PluginInstallStatsService {
   }
 
   private refreshIfStale(): void {
-    if (this.inFlight || this.now() < this.nextFetchAt || !this.isFetchAllowed()) {
+    if (
+      this.inFlight ||
+      this.now() < this.nextFetchAt ||
+      !this.isFetchAllowed() ||
+      !currentForkStablyCloudEnabled() // Fork (BAD-896)
+    ) {
       return
     }
     this.inFlight = this.performRefresh()
@@ -155,6 +164,9 @@ export async function fetchPluginInstallStats(
   fetcher: typeof fetch = fetch,
   url = PLUGIN_INSTALL_STATS_URL
 ): Promise<PluginInstallStats> {
+  if (url === PLUGIN_INSTALL_STATS_URL) {
+    assertForkStablyCloudOn() // Fork (BAD-896)
+  }
   const json = await fetchBoundedJson(fetcher, url, {
     label: 'plugin install-stats',
     maxBytes: PLUGIN_INSTALL_STATS_MAX_BYTES,

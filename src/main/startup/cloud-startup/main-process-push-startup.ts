@@ -1,4 +1,5 @@
 import { getOrcaPushGatewayUrl } from '../../orca-profiles/cloud-auth/profile-cloud-auth-config'
+import { currentForkStablyCloudEnabled } from '../../fork/stably-cloud/stably-cloud-source'
 import { DesktopPushService } from '../../runtime/push/desktop-push-service'
 import { executionHostPushCoverage } from '../../notifications/execution-host-push-coverage'
 import type { OrcaRuntimeService } from '../../runtime/orca-runtime'
@@ -7,6 +8,9 @@ import { mainProcessState as state } from '../main-process-state'
 
 // Push authenticates by host keypair, so accountless hosts must register phones too; shared startup state supplies the runtime in both modes.
 export function startDesktopPushService(runtimeRpc: OrcaRuntimeRpcServer): void {
+  if (!currentForkStablyCloudEnabled()) {
+    return // Fork (BAD-896): no phone registers with the upstream push gateway
+  }
   const runtime: OrcaRuntimeService | null = state.core.runtime
   if (!runtime) {
     console.warn('[push] Background push startup skipped: runtime not started')

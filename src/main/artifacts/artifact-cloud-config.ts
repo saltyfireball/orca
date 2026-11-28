@@ -1,4 +1,5 @@
 import { app } from 'electron'
+import { assertForkStablyCloudOn } from '../fork/stably-cloud/stably-cloud-source'
 
 const PRODUCTION_ARTIFACTS_API_URL = 'https://share.onorca.dev'
 
@@ -15,6 +16,7 @@ export function resolveArtifactCloudApiUrl(
   env: NodeJS.ProcessEnv = process.env,
   packaged = isPackaged()
 ): string {
+  assertForkStablyCloudOn() // Fork (BAD-896)
   const candidate = override?.trim() || env.ORCA_ARTIFACTS_API_URL?.trim()
   const url = new URL(candidate || PRODUCTION_ARTIFACTS_API_URL)
   const loopback = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)

@@ -3,6 +3,7 @@
 // spreads it. The entry title is the card's own heading text (ForkEndpointFailoverSetting.tsx).
 import type { SettingsSearchEntry } from '@/components/settings/search/settings-search'
 import type { Translate } from '@/i18n/use-translate'
+import { stablyCloudSearchEntry } from '../stably-cloud/stably-cloud-search-entry'
 import { feedbackEndpointSearchEntry } from '../feedback-endpoint/feedback-endpoint-search-entry'
 
 export function getForkRemoteSettingsSectionParts(
@@ -77,7 +78,9 @@ export function getForkRemoteSettingsSectionParts(
         keywords: ['webhook', 'automation', 'ci', 'github', 'trigger', 'forkWebhooks']
       },
       // BAD-895: the Feedback address card.
-      feedbackEndpointSearchEntry(t)
+      feedbackEndpointSearchEntry(t),
+      // BAD-896: the upstream cloud services card.
+      stablyCloudSearchEntry(t)
     ]
   ]
 }

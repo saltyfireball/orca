@@ -1,5 +1,6 @@
 import process from 'node:process'
 import { getAppEnvironment } from '../../../shared/app-lifecycle/app-environment'
+import { currentForkStablyCloudEnabled } from '../../fork/stably-cloud/stably-cloud-source'
 import { DesktopPushService } from '../../runtime/push/desktop-push-service'
 import { resolvePushGatewayOrigin } from '../../runtime/push/push-gateway-origin'
 import type { OrcaRuntimeService } from '../../runtime/orca-runtime'
@@ -10,6 +11,9 @@ export function startOrcadDesktopPushService(
   runtime: OrcaRuntimeService,
   runtimeRpc: OrcaRuntimeRpcServer
 ): void {
+  if (!currentForkStablyCloudEnabled()) {
+    return // Fork (BAD-896)
+  }
   const pushService = DesktopPushService.create({
     runtime,
     runtimeRpc,

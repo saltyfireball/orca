@@ -66,6 +66,62 @@ ones `SLRM-123 `).
   - Code is in `src/shared/fork/feedback-endpoint.ts` (the reader), `src/main/fork/feedback-endpoint/`
     (the source the main process reads), `src/renderer/src/fork/feedback-endpoint/` (the card and its
     search entry) and `mobile/src/diagnostics/feedback-endpoint-config.ts`.
+- **One switch for upstream's cloud services (BAD-896).** Upstream's app calls hosted services
+  that belong to the Orca project, not to the app: sign-in, the phone relay, phone push, connectors,
+  share links, what's-new feeds and the plugin install counts and safety list. One setting,
+  `forkStablyCloudEnabled`, turns all of them off: with it off the app makes no request to an
+  upstream host (`orca.dev`, `onorca.dev` and their subdomains). Direct phone pairing over a LAN,
+  Tailscale or any VPN does not use any of them and keeps working.
+  - **The default.** Unset follows the build: a build made with `ORCA_FORK_STABLY_CLOUD_DEFAULT=on`
+    starts with the services on, any other build (including every build that sets nothing) starts
+    with them off, so a stranger's copy calls nothing until they choose to. A saved true or false
+    always wins. The build value is a compile-time define in `electron.vite.config.ts` (main and
+    renderer); `config/vitest.config.ts` defines it on so upstream's own tests run unchanged. Settings >
+    Blackfish > Remote servers has the card "Upstream's cloud services"; on a server:
+    `orca settings set forkStablyCloudEnabled true --environment <name>`. The main process reads
+    the setting on every call, so new requests follow a change at once; relay, connector and push
+    services already running stop at the next launch.
+  - **What the switch covers.** Each has one gate:
+    1. Sign-in, profiles and teams, relay and connector tokens, server sign-in
+       (`login.onorca.dev`): `getOrcaCloudAuthConfig` answers "not configured", so every caller
+       that already handled a build without sign-in (the Settings account card, the CLI, the
+       server sign-in run, the cloud console link) takes that path.
+    2. Phone relay (`relay.onorca.dev` director and its cells): the relay host installs only with a
+       configured sign-in, so it never starts; no pairing offer carries a relay.
+    3. Phone push gateway (`push.onorca.dev`): the push service is not started (desktop and
+       orcad), and the gateway client refuses to send even when it was built while the switch was on.
+    4. Connector (`connector.orca.dev`; Slack, Linear and GitHub events): installs only with a
+       configured sign-in. The fork's local webhook listener and the PR watchers are not affected.
+    5. Share links for artifacts, skills and bots (`share.onorca.dev`, `app.orca.dev`):
+       `resolveArtifactCloudApiUrl` refuses, so no share request has an address.
+    6. What's-new nudge and changelog feeds (`orca.dev/whats-new`): `fetchNudge` and
+       `fetchChangelog` return nothing. The Mac update feed is the fork's own GitHub releases and is not
+       affected.
+    7. Plugin install counts (`orca.dev/plugins/stats.json`): no refresh; counts already cached stay.
+    8. Plugin safety (kill) list (`orca.dev/plugins/kill-list.json`): no refresh; the cached list
+       stays in force. With the switch off the list is not refreshed, so a plugin revoked after the
+       last refresh stays installed; turn the switch on to keep revocations current.
+  - **Not covered, on purpose.** Feedback and crash reports (their own setting, BAD-895);
+    telemetry (PostHog) and the diagnostics upload, which are already off in a fork build because it
+    injects no key or token; GitHub-hosted data (the plugin catalog repository, release feeds, the
+    fork sync status); links in menus that open in the user's browser (docs, changelog, download pages,
+    theme and translation directories), which are the user's own navigation, not a call by the app;
+    third-party accounts the user signs into (GitHub, Linear, Google, Slack, model providers). The
+    phone dials only the addresses the desktop hands it, so it has no upstream address of its own to
+    switch off, apart from its store update check and About links (a phone build setting, not this one).
+  - **Tests.** `stably-cloud-requests.test.ts` calls the real entry points (sign-in through
+    `connectCurrentOrcaProfile`, the push gateway client, `fetchNudge`, `fetchChangelog`, the plugin
+    kill-list service and install counts, the share address) with spies on `net.fetch` and the global
+    fetch (only `electron` is stood in): with the switch off nothing is requested and no sign-in
+    page opens; with it on the same calls reach `login.onorca.dev`, `push.onorca.dev` and `orca.dev`,
+    so the spies are proven to see them. `stably-cloud-direct-pairing.test.ts` starts a real RPC
+    server with the switch off, makes a real pairing offer (no relay) and connects a real encrypted
+    client that gets an answer, with no outbound request. `stably-cloud-hosts.test.ts` fails when
+    a new file in the main process names an upstream host without being gated, so a host that arrives
+    in an upstream merge cannot slip past the switch.
+  - Code is in `src/shared/fork/stably-cloud.ts` (the reader and the build default),
+    `src/main/fork/stably-cloud/` (the source the main process reads, the guarded fetch) and
+    `src/renderer/src/fork/stably-cloud/` (the card and its search entry).
 - **agy skip-permissions guard: tests only (BAD-877).** An Antigravity chat on the host's agy
   launches `agy acp`, and adds `--dangerously-skip-permissions` (approves tools, not plans) only in
   Full access, since agy has no Full access session mode (upstream #39471). In every other mode agy
@@ -4328,6 +4384,7 @@ Apply these in this order. Each one is a single commit.
 234. `BAD-895 Fork builds post feedback, crash reports, language requests and mobile connection diagnostics only to the address in forkFeedbackEndpointUrl (empty by default, so nothing goes to Stably's orca.dev/v1/feedback); Send Feedback and the startup crash prompt hide when it is empty, and mobile reads EXPO_PUBLIC_FEEDBACK_ENDPOINT_URL`
 235. `BAD-899 The CLI typecheck project no longer pulls src/main/bots: the own-removal seam types botChatTreeIndex structurally instead of importing BotChatTreeIndex (a type import still adds the file and its imports to the program); behavior unchanged`
 236. `BAD-873 Custom ACP agents: orca agent custom add|list|remove saves a program that speaks ACP over stdio (env values in a private 0600 store, never settings or argv); a native chat starts on it from orca agent launch --agent <name> or the + menu, and a bot runs on it with orca bot set --agent <name>; SOUL.md and MEMORY.md reach it only as _meta.orca.systemPrompt when it advertises that capability, and an --owns-prompt agent gets the bot rules only, as _meta.orca.context`
+237. `BAD-896 One setting, forkStablyCloudEnabled, turns off every upstream-hosted cloud service (sign-in, phone relay, phone push, connector, share links, what's-new feeds, plugin install counts and safety list) so no request goes to an upstream host; unset follows the build default (ORCA_FORK_STABLY_CLOUD_DEFAULT=on, off when the build sets nothing); direct phone pairing is unaffected`
 
 The Settings page carries three one-line hooks for the fork's own pane (SLRM-2228):
 `settings-navigation-types.ts` lists the `fork` pane id, `useSettingsNavigationMetadata.ts`
@@ -5935,6 +5992,21 @@ Upstream files only get short hooks, which keeps merges small:
   without it. `ForkTextSetting.tsx` takes the key, `ForkSettingsPane.tsx` and
   `endpoint-failover-search.ts` list the card, `fork-global-settings.ts` intersects the setting;
   the settings catalog is regenerated.
+
+- Upstream cloud switch (BAD-896), small edits in stock files, each a call to
+  `src/main/fork/stably-cloud/stably-cloud-source.ts`: `profile-cloud-auth-config.ts` returns
+  "not configured" first thing in `getOrcaCloudAuthConfig`; `artifact-cloud-config.ts` asserts the
+  switch in `resolveArtifactCloudApiUrl`; `push-gateway-client.ts` defaults its fetch to
+  `forkStablyCloudFetch`; `main-process-push-startup.ts` and `orcad-desktop-push.ts` return before
+  starting the push service; `nudge-campaign.ts` and `updater-changelog.ts` return before their
+  request; `plugin-kill-list-service.ts` and `plugin-install-stats-service.ts` assert the switch in
+  their fetch of the default address and skip background refreshes; `fork-ready-foundation-hooks.ts`
+  (desktop) and `core-runtime-activation.ts` (orcad, before the relay and connector install) install
+  the setting source; `ForkSettingsPane.tsx` and `endpoint-failover-search.ts` list the card;
+  `fork-global-settings.ts` intersects the setting; `electron.vite.config.ts` defines
+  `ORCA_FORK_STABLY_CLOUD_DEFAULT` for main and renderer and `config/vitest.config.ts` defines it
+  on; the settings catalog is regenerated. A sync that brings back a new upstream host in the main
+  process fails `stably-cloud-hosts.test.ts` until the host is gated.
 
 - Custom ACP agents (BAD-873), small edits in stock files:
   - **The agent id.** `custom-acp` is added to `tui-agent.ts`, `tui-agent-config.ts` (detection

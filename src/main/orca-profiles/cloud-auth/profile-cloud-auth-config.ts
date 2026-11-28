@@ -3,6 +3,8 @@ import {
   cleanCloudServiceOrigin as cleanOrigin
 } from '../../../shared/network/cloud-service-url'
 import { resolvePushGatewayOrigin } from '../../runtime/push/push-gateway-origin'
+import { FORK_STABLY_CLOUD_OFF_MESSAGE } from '../../../shared/fork/stably-cloud'
+import { currentForkStablyCloudEnabled } from '../../fork/stably-cloud/stably-cloud-source'
 import { getAppEnvironment, hasAppEnvironment } from '../../../shared/app-lifecycle/app-environment'
 
 export type OrcaCloudAuthConfig = {
@@ -40,6 +42,10 @@ export function getOrcaCloudAuthConfig(
   env: NodeJS.ProcessEnv = process.env,
   packaged: boolean = isPackagedOrcaBuild()
 ): { configured: true; config: OrcaCloudAuthConfig } | { configured: false; setupMessage: string } {
+  // Fork (BAD-896): one switch for every upstream cloud service; off reads as not configured.
+  if (!currentForkStablyCloudEnabled()) {
+    return { configured: false, setupMessage: FORK_STABLY_CLOUD_OFF_MESSAGE }
+  }
   // Plain HTTP token endpoints are development-only.
   const allowLoopbackHttp = !packaged
   const cleanEndpointUrl = (value: string | undefined): string | null =>

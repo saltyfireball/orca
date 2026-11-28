@@ -5,6 +5,10 @@ import {
   type PluginKillList,
   type PluginKillListEntry
 } from '../../../shared/plugins/catalog/plugin-kill-list'
+import {
+  assertForkStablyCloudOn,
+  currentForkStablyCloudEnabled
+} from '../../fork/stably-cloud/stably-cloud-source'
 import { PluginKillListStore } from './plugin-kill-list-store'
 import { fetchBoundedJson } from './plugin-bounded-json-fetch'
 
@@ -115,6 +119,9 @@ export class PluginKillListService {
   }
 
   private refreshInBackground(): void {
+    if (!currentForkStablyCloudEnabled()) {
+      return // Fork (BAD-896): the cached list stays in force
+    }
     void this.refresh().catch((error) =>
       console.warn('[plugins] failed to refresh plugin safety list; using cached state:', error)
     )
@@ -156,6 +163,9 @@ export async function fetchPluginKillList(
   fetcher: typeof fetch = fetch,
   url = PLUGIN_KILL_LIST_URL
 ): Promise<PluginKillList> {
+  if (url === PLUGIN_KILL_LIST_URL) {
+    assertForkStablyCloudOn() // Fork (BAD-896)
+  }
   const json = await fetchBoundedJson(fetcher, url, {
     label: 'plugin kill-list',
     maxBytes: PLUGIN_KILL_LIST_DOWNLOAD_LIMIT,

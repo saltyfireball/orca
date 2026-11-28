@@ -1,4 +1,5 @@
 import { net } from 'electron'
+import { currentForkStablyCloudEnabled } from '../../fork/stably-cloud/stably-cloud-source'
 import { compareVersions, isValidVersion } from '../releases/updater-fallback'
 
 export type NudgeConfig = {
@@ -8,6 +9,9 @@ export type NudgeConfig = {
 }
 
 export async function fetchNudge(): Promise<NudgeConfig | null> {
+  if (!currentForkStablyCloudEnabled()) {
+    return null // Fork (BAD-896)
+  }
   try {
     const res = await net.fetch('https://orca.dev/whats-new/nudge.json', {
       signal: AbortSignal.timeout(5000)

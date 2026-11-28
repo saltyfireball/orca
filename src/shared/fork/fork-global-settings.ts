@@ -52,6 +52,7 @@ import type { ForkPauseAllSettings } from './pause-all'
 import type { ForkAutomationChainSettings } from '../automation-chain-triggers'
 import type { ForkBotRoomHopSettings } from './bot-room-hops'
 import type { ForkFeedbackEndpointSettings } from './feedback-endpoint'
+import type { ForkStablyCloudSettings } from './stably-cloud'
 
 /** Fork-only settings, kept out of the upstream settings type so it stays under its line budget. */
 export type ForkGlobalSettings = ForkCustomAppThemeSettings &
@@ -140,6 +141,8 @@ export type ForkGlobalSettings = ForkCustomAppThemeSettings &
   ForkBotRoomHopSettings &
   /** Fork (BAD-895): where feedback and crash reports are posted; unset is off. */
   ForkFeedbackEndpointSettings &
+  /** Fork (BAD-896): the one switch for upstream's hosted cloud services. */
+  ForkStablyCloudSettings &
   /** Fork (BAD-689): automations that start on another automation's run ending, and the chain depth limit. */
   ForkAutomationChainSettings & {
     /** Fork (SLRM-2096): the lost work scan's checks, base branches and archive folder. */

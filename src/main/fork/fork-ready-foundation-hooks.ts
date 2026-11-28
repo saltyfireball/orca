@@ -13,6 +13,7 @@ import {
   installForkCommandGuards,
   type ForkCommandGuardsHostStore
 } from './command-guards/command-guards-install'
+import { installForkStablyCloudSource } from './stably-cloud/stably-cloud-source'
 import { installForkQuickTask } from './quick-task/quick-task-app'
 
 export { forkPostReadyAppName } from './app-name'
@@ -24,6 +25,8 @@ export { forkPostReadyAppName } from './app-name'
 export async function installForkReady(
   store: Pick<ProfilePreferences, 'getSettings' | 'onSettingsChanged'> & ForkCommandGuardsHostStore
 ): Promise<void> {
+  // BAD-896: before the relay, connector and push services start.
+  installForkStablyCloudSource(() => store.getSettings())
   // BAD-764: before any chat is restored, adopted or started.
   installForkCommandGuards(store)
   watchForkUsageRetention(store)

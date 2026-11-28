@@ -1,5 +1,6 @@
 import { net } from 'electron'
 import type { ChangelogData } from '../../../shared/updater/update-status-types'
+import { currentForkStablyCloudEnabled } from '../../fork/stably-cloud/stably-cloud-source'
 import { compareVersions } from './updater-fallback'
 
 type ChangelogEntry = {
@@ -29,6 +30,9 @@ export async function fetchChangelog(
   incomingVersion: string,
   localVersion: string
 ): Promise<ChangelogData | null> {
+  if (!currentForkStablyCloudEnabled()) {
+    return null // Fork (BAD-896)
+  }
   const res = await net.fetch('https://orca.dev/whats-new/changelog.json', {
     signal: AbortSignal.timeout(5000)
   })

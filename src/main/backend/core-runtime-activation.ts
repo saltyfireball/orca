@@ -34,6 +34,7 @@ import { isAgentStatusHooksEnabled } from '../../shared/agent-hook-listener/conf
 import { installOrcadConnectorHost, installOrcadRelayAndAccount } from '../orcad/orcad-orca-account'
 import { startForkRuntimeSettleServices } from '../fork/runtime-settle-hooks'
 import { installForkHeadlessHost } from '../fork/headless-host'
+import { installForkStablyCloudSource } from '../fork/stably-cloud/stably-cloud-source'
 
 export async function activateBackendRuntime(
   host: BackendCoreHost,
@@ -107,6 +108,7 @@ export async function activateBackendRuntime(
     createOrcadProfileStateStartup(runtimeUserDataPath)
   )
   profileShutdown.store = profileStore
+  installForkStablyCloudSource(() => profileStore.getSettings()) // Fork (BAD-896): before any cloud install below
   const { installOrcadUsageService } = await import('../orcad/host-runtime/orcad-usage-service')
   const usageClients = installOrcadUsageService(profileStore, runtimeUserDataPath, registerCleanup)
   registerCleanup(() => worktreeRemovalLifetime.close())

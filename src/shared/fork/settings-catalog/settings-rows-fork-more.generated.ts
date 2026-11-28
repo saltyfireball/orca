@@ -188,6 +188,8 @@ export const FORK_SETTINGS_ROWS_FORK_MORE = {
     '{"t":{"k":"boolean"},"d":"Snooze: a snoozed workspace or chat comes back when its agent fails or errors; unset is on.","o":true}',
   forkSnoozeWakeOnOpen:
     '{"t":{"k":"boolean"},"d":"Snooze: opening a snoozed workspace or chat wakes it; unset is on.","o":true}',
+  forkStablyCloudEnabled:
+    '{"t":{"k":"boolean"},"d":"True calls upstream\'s hosted services, false calls none; unset follows the build default (off unless the build says on).","o":true}',
   forkSyncNotice:
     '{"t":{"k":"boolean"},"d":"Sync status: say when the fork is behind upstream or its last sync failed; unset is on.","o":true}',
   forkSyncNoticeStaleDays:

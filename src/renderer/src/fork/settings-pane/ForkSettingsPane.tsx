@@ -56,6 +56,7 @@ import { ForkOwnerTokenSetting } from '../owner-token/ForkOwnerTokenSetting'
 import { ForkWebhooksSetting } from '../webhooks/ForkWebhooksSetting'
 import { ForkServerHealthSetting } from '../server-health/ForkServerHealthSetting'
 import { ForkServerHeartbeatSetting } from '../server-health/ForkServerHeartbeatSetting'
+import { ForkStablyCloudSetting } from '../stably-cloud/ForkStablyCloudSetting'
 import { ForkFeedbackEndpointSetting } from '../feedback-endpoint/ForkFeedbackEndpointSetting'
 import { ForkServerUpdateSetting } from '../server-update/ForkServerUpdateSetting'
 import { ForkApprovalTriageSetting } from '../approval-triage/ForkApprovalTriageSetting'
@@ -144,7 +145,8 @@ const SECTION_CARDS: Record<
     ['owner-token', ForkOwnerTokenSetting],
     ['webhooks', ForkWebhooksSetting],
     ['server-update', ForkServerUpdateSetting],
-    ['feedback-endpoint', ForkFeedbackEndpointSetting]
+    ['feedback-endpoint', ForkFeedbackEndpointSetting],
+    ['stably-cloud', ForkStablyCloudSetting]
   ],
   sync: [['sync-notice', ForkSyncNoticeSetting]]
 }

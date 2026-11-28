@@ -1,4 +1,5 @@
 // Return best-effort gateway outcomes instead of throwing through notification fan-out.
+import { forkStablyCloudFetch } from '../../fork/stably-cloud/stably-cloud-source'
 import { z } from 'zod'
 import { lazyZodSchema } from '../../../shared/schema/lazy-zod-schema'
 import { cancelUnreadResponseBody } from '../../lib/unread-response-body'
@@ -71,7 +72,7 @@ export class PushGatewayClient {
 
   constructor(options: PushGatewayClientOptions) {
     this.origin = new URL(options.gatewayUrl).origin
-    this.fetchImpl = options.fetch ?? globalThis.fetch
+    this.fetchImpl = options.fetch ?? forkStablyCloudFetch // Fork (BAD-896)
     this.session = new PushGatewaySession({
       origin: this.origin,
       keypair: options.keypair,
