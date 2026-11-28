@@ -101,6 +101,11 @@ ones `SLRM-123 `).
     8. Plugin safety (kill) list (`orca.dev/plugins/kill-list.json`): no refresh; the cached list
        stays in force. With the switch off the list is not refreshed, so a plugin revoked after the
        last refresh stays installed; turn the switch on to keep revocations current.
+  - **Released builds.** `fork-sync.yml` sets `ORCA_FORK_STABLY_CLOUD_DEFAULT: 'on'` in its
+    workflow-level env, so the Mac app and the orcad template the Linux server tarballs ship are built
+    with the services on and behave as before; only a build that leaves it unset (a standalone build)
+    is off. `config/scripts/fork/fork-sync-cloud-default.test.mjs` fails if the workflow loses the line,
+    a job overrides it, or the build stops reading that name.
   - **Not covered, on purpose.** Feedback and crash reports (their own setting, BAD-895);
     telemetry (PostHog) and the diagnostics upload, which are already off in a fork build because it
     injects no key or token; GitHub-hosted data (the plugin catalog repository, release feeds, the

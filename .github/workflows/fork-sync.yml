@@ -32,6 +32,9 @@ env:
   # Holds status.json and the recorded base. The app reads it at the same name
   # (FORK_SYNC_STATUS_BRANCH in src/shared/fork/fork-sync-status.ts).
   FORK_SYNC_STATUS_BRANCH: fork-sync-status
+  # BAD-896: released builds (the Mac app and the orcad template the Linux server tarballs ship) start
+  # with upstream's cloud services on, as before. A build that leaves this unset starts with them off.
+  ORCA_FORK_STABLY_CLOUD_DEFAULT: 'on'
 
 concurrency:
   group: fork-sync
